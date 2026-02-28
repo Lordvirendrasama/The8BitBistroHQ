@@ -1,0 +1,40 @@
+{
+  "placeholderImages": [
+    {
+      "id": "avatar-1",
+      "description": "Pixel art avatar of a person with a hat",
+      "imageUrl": "https://images.unsplash.com/photo-1729179666011-38d13280b92f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwaXhlbCUyMGF2YXRhcnxlbnwwfHx8fDE3NjE4NTg0NDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pixel avatar"
+    },
+    {
+      "id": "avatar-2",
+      "description": "Pixel art avatar of a person with glasses",
+      "imageUrl": "https://images.unsplash.com/photo-1634324173063-909962333bca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwaXhlbCUyMGNoYXJhY3RlcnxlbnwwfHx8fDE3NjE4MTQ4NTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pixel character"
+    },
+    {
+      "id": "avatar-3",
+      "description": "Pixel art avatar of a person with headphones",
+      "imageUrl": "https://images.unsplash.com/photo-1631555567492-8ba42744b474?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwaXhlbCUyMHBlcnNvbnxlbnwwfHx8fDE3NjE4NTg0NDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pixel person"
+    },
+    {
+      "id": "avatar-4",
+      "description": "Pixel art avatar with spiky hair",
+      "imageUrl": "https://images.unsplash.com/photo-1576495169018-bd2414046c6b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwaXhlbCUyMGFydHxlbnwwfHx8fDE3NjE4MTc4MDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pixel art"
+    },
+    {
+      "id": "avatar-5",
+      "description": "Pixel art avatar of a robot",
+      "imageUrl": "https://images.unsplash.com/photo-1710098455568-441061ab4dfa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwaXhlbCUyMHJvYm90fGVufDB8fHx8MTc2MTg1ODQ0Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pixel robot"
+    },
+    {
+      "id": "avatar-6",
+      "description": "Pixel art avatar of an alien",
+      "imageUrl": "https://images.unsplash.com/photo-1727428032033-67c72ae0a7b0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwaXhlbCUyMGFsaWVufGVufDB8fHx8MTc2MTg1ODQ0Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pixel alien"
+    }
+  ]
+}
