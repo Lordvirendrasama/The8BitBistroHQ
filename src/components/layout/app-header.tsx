@@ -156,41 +156,53 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex flex-col items-center justify-center h-10 sm:h-12 w-48 sm:w-64 px-2 sm:px-4 rounded-xl border-2 transition-all bg-card hover:bg-muted/5 group shadow-sm shrink-0 border-primary/20 data-[state=open]:border-primary overflow-hidden">
-          <div className="flex justify-between w-full items-center px-1 mb-1">
+        <button className="flex flex-col items-center justify-center h-14 sm:h-16 w-52 sm:w-72 px-3 sm:px-5 rounded-2xl border-2 transition-all bg-card hover:bg-muted/5 group shadow-lg border-primary/20 data-[state=open]:border-primary overflow-hidden relative">
+          <div className="flex justify-between w-full items-end px-1 mb-1.5">
             <div className="flex flex-col items-start leading-none">
-              <span className={cn("text-[10px] sm:text-xs font-black font-mono", isMet ? "text-emerald-600" : "text-foreground")}>₹{Math.round(projectedRevenue).toLocaleString()}</span>
+              <span className="text-[8px] font-black uppercase text-muted-foreground opacity-50 tracking-tighter mb-0.5">Earned</span>
+              <span className={cn("text-sm sm:text-base font-black font-mono tracking-tighter", isMet ? "text-emerald-600" : "text-foreground")}>₹{Math.round(projectedRevenue).toLocaleString()}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className={cn("text-[8px] font-black uppercase tracking-tighter", isMet ? "text-emerald-500" : "text-primary")}>
+            
+            <div className="flex flex-col items-center leading-none">
+              <span className={cn(
+                "text-[9px] sm:text-[10px] font-black font-mono px-2 py-0.5 rounded-full border shadow-sm transition-colors",
+                isMet ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" : "bg-primary/5 border-primary/20 text-primary"
+              )}>
                 {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
               </span>
             </div>
+
             <div className="flex flex-col items-end leading-none">
-              <span className="text-[10px] sm:text-xs font-black font-mono opacity-40">₹{Math.round(target).toLocaleString()}</span>
+              <span className="text-[8px] font-black uppercase text-muted-foreground opacity-50 tracking-tighter mb-0.5">Goal</span>
+              <span className="text-xs sm:text-sm font-black font-mono opacity-40">₹{Math.round(target).toLocaleString()}</span>
             </div>
           </div>
-          <div className="w-full h-1.5 sm:h-2 bg-muted/30 rounded-full relative overflow-hidden border border-background/50">
+          <div className="w-full h-2 sm:h-2.5 bg-muted/30 rounded-full relative overflow-hidden border border-background/50 shadow-inner">
             <div 
-              className={cn("h-full transition-all duration-1000", isMet ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-primary shadow-[0_0_8px_rgba(239,0,53,0.3)]")} 
+              className={cn(
+                "h-full transition-all duration-1000 rounded-full", 
+                isMet ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]" : "bg-primary shadow-[0_0_12px_rgba(239,0,53,0.4)]"
+              )} 
               style={{ width: `${progress}%` }} 
             />
           </div>
+          {/* Subtle decorative elements for visibility */}
+          <div className={cn("absolute top-0 left-0 w-1 h-full", isMet ? "bg-emerald-500" : "bg-primary")} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0 overflow-hidden font-body border-2 shadow-2xl" align="center">
-        <div className="p-3 bg-muted/20 border-b flex justify-between items-center">
+      <PopoverContent className="w-80 p-0 overflow-hidden font-body border-2 shadow-2xl" align="center">
+        <div className="p-4 bg-muted/20 border-b flex justify-between items-center">
           <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-            <Settings2 className="h-3 w-3" />
-            Mission Control
+            <Settings2 className="h-3.5 w-3.5" />
+            Strategy Engine
           </h4>
-          <Badge variant="outline" className="text-[8px] font-black border-amber-500/30 text-amber-600 uppercase">Strategic Focus</Badge>
+          <Badge variant="outline" className="text-[8px] font-black border-primary/30 text-primary uppercase">Financial Pillars</Badge>
         </div>
-        <div className="p-3 space-y-3">
+        <div className="p-4 space-y-4">
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight">Overheads</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.overheads).toLocaleString()}/day</p>
+              <Label className="text-[10px] font-black uppercase tracking-tight">Fixed Overheads</Label>
+              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.overheads).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeFixed || false} 
@@ -200,8 +212,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-primary">Loan EMI</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.loan).toLocaleString()}/day</p>
+              <Label className="text-[10px] font-black uppercase tracking-tight text-primary">Debt EMI Share</Label>
+              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.loan).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeLoan || false} 
@@ -211,8 +223,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-emerald-600">Monthly Rent</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.rent).toLocaleString()}/day</p>
+              <Label className="text-[10px] font-black uppercase tracking-tight text-emerald-600">Lease (Rent)</Label>
+              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.rent).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeRent || false} 
@@ -222,8 +234,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-amber-600">Rent Backlog</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.backlog).toLocaleString()}/day</p>
+              <Label className="text-[10px] font-black uppercase tracking-tight text-amber-600">Backlog Recovery</Label>
+              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.backlog).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeBacklog || false} 
@@ -232,10 +244,10 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
             />
           </div>
         </div>
-        <div className={cn("p-3 border-t border-dashed", isMet ? "bg-emerald-500/5" : "bg-primary/5")}>
+        <div className={cn("p-4 border-t border-dashed", isMet ? "bg-emerald-500/10" : "bg-primary/5")}>
           <div className="flex justify-between items-center">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Combined Daily Goal</span>
-            <span className={cn("text-base font-black font-mono", isMet ? "text-emerald-600" : "text-primary")}>₹{Math.round(target).toLocaleString()}</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Survival Threshold</span>
+            <span className={cn("text-lg font-black font-mono", isMet ? "text-emerald-600" : "text-primary")}>₹{Math.round(target).toLocaleString()}</span>
           </div>
         </div>
       </PopoverContent>
@@ -430,7 +442,7 @@ export function AppHeader({
 
     return (
         <>
-            <header className="flex h-16 items-center gap-1.5 sm:gap-2 border-b bg-card px-2 sm:px-6 sticky top-0 z-40 w-full overflow-hidden font-body">
+            <header className="flex h-20 items-center gap-1.5 sm:gap-2 border-b bg-card px-2 sm:px-6 sticky top-0 z-40 w-full overflow-hidden font-body">
                 <SidebarTrigger className="shrink-0 scale-90 sm:scale-100"/>
                 
                 <div className="flex-1 flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth pr-1 sm:pr-4">
