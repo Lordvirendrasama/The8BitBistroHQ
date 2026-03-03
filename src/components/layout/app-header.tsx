@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { useState, useEffect, useMemo } from 'react';
@@ -156,26 +156,23 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex flex-col items-center justify-center h-10 sm:h-12 min-w-[140px] sm:min-w-[240px] px-2 sm:px-4 rounded-xl border-2 transition-all bg-card hover:bg-muted/5 group shadow-sm shrink-0 border-primary/20 data-[state=open]:border-primary">
-          <div className="flex justify-between w-full items-baseline gap-1 sm:gap-4 px-1">
-            <div className="flex flex-col items-start">
-              <span className="text-[6px] sm:text-[7px] font-black uppercase text-muted-foreground tracking-widest opacity-60 hidden xs:block">Earned</span>
-              <span className={cn("text-[9px] sm:text-sm font-black font-mono leading-none", isMet ? "text-emerald-600" : "text-foreground")}>₹{Math.round(projectedRevenue).toLocaleString()}</span>
+        <button className="flex flex-col items-center justify-center h-10 sm:h-12 w-48 sm:w-64 px-2 sm:px-4 rounded-xl border-2 transition-all bg-card hover:bg-muted/5 group shadow-sm shrink-0 border-primary/20 data-[state=open]:border-primary overflow-hidden">
+          <div className="flex justify-between w-full items-center px-1 mb-1">
+            <div className="flex flex-col items-start leading-none">
+              <span className={cn("text-[10px] sm:text-xs font-black font-mono", isMet ? "text-emerald-600" : "text-foreground")}>₹{Math.round(projectedRevenue).toLocaleString()}</span>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-widest text-muted-foreground opacity-60 hidden xs:block">{isMet ? 'Surplus' : 'To Goal'}</span>
-              <span className={cn("text-[8px] sm:text-xs font-black font-mono leading-none", isMet ? "text-emerald-500" : "text-primary")}>
-                {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `₹${Math.round(diff).toLocaleString()}`}
+            <div className="flex items-center gap-1">
+              <span className={cn("text-[8px] font-black uppercase tracking-tighter", isMet ? "text-emerald-500" : "text-primary")}>
+                {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
               </span>
             </div>
-            <div className="flex flex-col items-end">
-              <span className="text-[6px] sm:text-[7px] font-black uppercase text-muted-foreground tracking-widest opacity-60 hidden xs:block">Mission</span>
-              <span className="text-[9px] sm:text-sm font-black font-mono leading-none">₹{Math.round(target).toLocaleString()}</span>
+            <div className="flex flex-col items-end leading-none">
+              <span className="text-[10px] sm:text-xs font-black font-mono opacity-40">₹{Math.round(target).toLocaleString()}</span>
             </div>
           </div>
-          <div className="w-full h-1 sm:h-2 bg-muted/30 rounded-full mt-1 sm:mt-1.5 relative overflow-hidden border-2 border-background/50 shadow-inner">
+          <div className="w-full h-1.5 sm:h-2 bg-muted/30 rounded-full relative overflow-hidden border border-background/50">
             <div 
-              className={cn("h-full transition-all duration-1000", isMet ? "bg-emerald-500" : "bg-primary")} 
+              className={cn("h-full transition-all duration-1000", isMet ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-primary shadow-[0_0_8px_rgba(239,0,53,0.3)]")} 
               style={{ width: `${progress}%` }} 
             />
           </div>
