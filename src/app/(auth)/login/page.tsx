@@ -218,6 +218,7 @@ export default function LoginPage() {
             <div className="relative h-24 w-24 sm:h-32 sm:w-32 drop-shadow-[0_0_25px_rgba(239,0,53,0.2)] hover:scale-110 transition-transform">
                 <Image src="/logo.png" alt="The 8 Bit Bistro" width={128} height={128} className="object-contain" priority />
             </div>
+            <p className="text-[10px] font-black font-mono mt-4 text-primary uppercase tracking-[0.2em] bg-primary/5 px-3 py-1 rounded-full border border-primary/10">Build v{APP_VERSION}</p>
         </div>
 
         {activeOffers.length > 0 && (

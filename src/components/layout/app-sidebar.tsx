@@ -127,7 +127,7 @@ export function AppSidebar() {
         <div className="flex flex-col items-center justify-center p-4">
           <Image src="/logo.png" alt="The 8 Bit Bistro" width={80} height={80} className="drop-shadow-md" />
           {!isCollapsed && (
-            <span className="text-[10px] font-mono mt-2 opacity-40 uppercase tracking-tighter">Build v{APP_VERSION}</span>
+            <span className="text-[10px] font-mono mt-2 font-black text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-full">Build v{APP_VERSION}</span>
           )}
         </div>
       </SidebarHeader>
