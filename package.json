@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "push": "git add . && git commit --allow-empty -m 'Build v1.9.7: Strategic UI Refinement & Sync' && git push origin main --force"
+    "push": "git add . && git commit --allow-empty -m 'Build v1.9.9: Bill Shortcut & Mobile Optimization Sync' && git push origin main --force"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",

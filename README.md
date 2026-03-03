@@ -1,8 +1,9 @@
+
 # Pixel Perks: The 8 Bit Bistro Members Club
 
 Pixel Perks is a gamified loyalty and cafe management platform designed specifically for **The 8 Bit Bistro**. It blends retro gaming aesthetics with modern operational tools.
 
-## 🚀 One-Click Deployment (v1.9.5)
+## 🚀 One-Click Deployment (v1.9.9)
 To push your latest changes to GitHub, use the following method:
 
 ### Method 1: Terminal (Recommended)
