@@ -6,7 +6,7 @@ import type { Station, AssignedMember, StationStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, CheckCircle2, UserPlus } from 'lucide-react';
+import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, CheckCircle2, UserPlus, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -348,7 +348,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
               </div>
           ) : (
               <>
-                  <div className="grid grid-cols-4 gap-1.5 w-full">
+                  <div className="grid grid-cols-5 gap-1 w-full">
                       {station.status === 'in-use' ? (
                           <Button onClick={() => onToggleTimer(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                               <Pause className="h-3.5 w-3.5" />
@@ -387,6 +387,10 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                       <Button onClick={() => onOpenMoveModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border-primary/20 text-primary hover:bg-primary/5 shadow-sm">
                           <ArrowRightLeft className="h-3.5 w-3.5"/>
                           <span className="text-[8px] font-bold uppercase leading-none">Move</span>
+                      </Button>
+                      <Button onClick={() => onOpenBillModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-primary hover:bg-primary/5 border-primary/10 shadow-sm">
+                          <Receipt className="h-3.5 w-3.5"/>
+                          <span className="text-[8px] font-bold uppercase leading-none">Bill</span>
                       </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 w-full">
