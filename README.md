@@ -3,15 +3,15 @@
 
 Pixel Perks is a gamified loyalty and cafe management platform designed specifically for **The 8 Bit Bistro**.
 
-## 🚀 Permanent One-Click Deployment (v2.0.8)
+## 🚀 Permanent One-Click Deployment (v2.0.9)
 
 To fix authentication errors permanently and enable the "Play" button, follow these steps exactly:
 
 ### Step 1: Repair the Connection (Run Once)
-Copy and paste this command into your terminal and press Enter. This securely links your token to your machine without saving it in the code (which GitHub blocks).
+Replace `YOUR_TOKEN` with your GitHub Personal Access Token and run this command in your terminal:
 
 ```bash
-git remote set-url origin https://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@github.com/Lordvirendrasama/The8BitBistroHQ.git
+git remote set-url origin https://YOUR_TOKEN@github.com/Lordvirendrasama/The8BitBistroHQ.git
 ```
 
 ### Step 2: Press Play
