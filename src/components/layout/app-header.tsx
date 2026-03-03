@@ -156,38 +156,33 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex flex-col items-center justify-center h-14 sm:h-16 w-52 sm:w-72 px-3 sm:px-5 rounded-2xl border-2 transition-all bg-card hover:bg-muted/5 group shadow-lg border-primary/20 data-[state=open]:border-primary overflow-hidden relative">
-          <div className="flex justify-between w-full items-end px-1 mb-1.5">
-            <div className="flex flex-col items-start leading-none">
-              <span className="text-[8px] font-black uppercase text-muted-foreground opacity-50 tracking-tighter mb-0.5">Earned</span>
-              <span className={cn("text-sm sm:text-base font-black font-mono tracking-tighter", isMet ? "text-emerald-600" : "text-foreground")}>₹{Math.round(projectedRevenue).toLocaleString()}</span>
-            </div>
+        <button className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border transition-all bg-card hover:bg-muted/5 group border-primary/20 data-[state=open]:border-primary overflow-hidden relative shadow-sm">
+          <div className="flex justify-between items-center w-full mb-1">
+            <span className={cn("text-[11px] sm:text-xs font-black font-mono tracking-tighter", isMet ? "text-emerald-600" : "text-foreground")}>
+              ₹{Math.round(projectedRevenue).toLocaleString()}
+            </span>
             
-            <div className="flex flex-col items-center leading-none">
-              <span className={cn(
-                "text-[9px] sm:text-[10px] font-black font-mono px-2 py-0.5 rounded-full border shadow-sm transition-colors",
-                isMet ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" : "bg-primary/5 border-primary/20 text-primary"
-              )}>
-                {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
-              </span>
-            </div>
+            <span className={cn(
+              "text-[9px] font-black font-mono",
+              isMet ? "text-emerald-600" : "text-primary"
+            )}>
+              {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
+            </span>
 
-            <div className="flex flex-col items-end leading-none">
-              <span className="text-[8px] font-black uppercase text-muted-foreground opacity-50 tracking-tighter mb-0.5">Goal</span>
-              <span className="text-xs sm:text-sm font-black font-mono opacity-40">₹{Math.round(target).toLocaleString()}</span>
-            </div>
+            <span className="text-[10px] font-black font-mono opacity-30">
+              ₹{Math.round(target).toLocaleString()}
+            </span>
           </div>
-          <div className="w-full h-2 sm:h-2.5 bg-muted/30 rounded-full relative overflow-hidden border border-background/50 shadow-inner">
+          <div className="w-full h-1 bg-muted/30 rounded-full relative overflow-hidden">
             <div 
               className={cn(
                 "h-full transition-all duration-1000 rounded-full", 
-                isMet ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]" : "bg-primary shadow-[0_0_12px_rgba(239,0,53,0.4)]"
+                isMet ? "bg-emerald-500" : "bg-primary"
               )} 
               style={{ width: `${progress}%` }} 
             />
           </div>
-          {/* Subtle decorative elements for visibility */}
-          <div className={cn("absolute top-0 left-0 w-1 h-full", isMet ? "bg-emerald-500" : "bg-primary")} />
+          <div className={cn("absolute top-0 left-0 w-0.5 h-full", isMet ? "bg-emerald-500" : "bg-primary")} />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0 overflow-hidden font-body border-2 shadow-2xl" align="center">
@@ -301,12 +296,11 @@ const TodayExpenses = () => {
       <Button 
         variant="outline" 
         size="sm" 
-        className="h-10 sm:h-12 px-2 sm:px-4 gap-1 sm:gap-2 bg-destructive/5 hover:bg-destructive/10 text-destructive border-2 border-destructive/30 rounded-xl font-black transition-all shrink-0 font-body"
+        className="h-10 sm:h-11 px-2 sm:px-4 gap-1 sm:gap-2 bg-destructive/5 hover:bg-destructive/10 text-destructive border border-destructive/30 rounded-lg font-black transition-all shrink-0 font-body"
         onClick={() => setIsOpen(true)}
       >
         <ShoppingCart className="h-3 sm:h-4 w-3 sm:w-4" />
         <div className="flex flex-col items-start leading-tight">
-          <span className="text-[6px] sm:text-[7px] uppercase font-black opacity-60 hidden xs:block">Spend</span>
           <span className="font-mono text-[10px] sm:text-sm">₹{total.toLocaleString()}</span>
         </div>
       </Button>
