@@ -3,24 +3,26 @@
 
 Pixel Perks is a gamified loyalty and cafe management platform designed specifically for **The 8 Bit Bistro**. It blends retro gaming aesthetics with modern operational tools.
 
-## 🚀 One-Click Deployment (v2.0.0)
+## 🚀 One-Click Deployment (v2.0.1)
 To push your latest changes to GitHub, use the following method:
 
-### Method 1: Terminal (Recommended)
+### Method 1: IDE "Play" Button (Recommended)
+1. Open `package.json`.
+2. Find the `"push"` script under `scripts`.
+3. Click the **Play** icon next to it.
+
+### Method 2: Terminal
 Run this command in your terminal:
 ```bash
 npm run push
 ```
 
-### Method 2: IDE "Play" Button
-Open `package.json`, find the `"push"` script under `scripts`, and click the **Play** icon next to it.
-
 ---
 
 ## ✅ Fixing "Authentication Failed"
-If your push fails with an "Invalid username or token" error, run this command once to link your token:
+If your push fails with an "Invalid username or token" error, run this command **once** to re-link your token securely:
 ```bash
-git remote set-url origin https://Lordvirendrasama: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@github.com/Lordvirendrasama/The8BitBistroHQ.git
+git remote set-url origin https://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@github.com/Lordvirendrasama/The8BitBistroHQ.git
 ```
 
 ---
