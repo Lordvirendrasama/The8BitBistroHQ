@@ -26,18 +26,44 @@ export default function AppLayout({ children }: { children: React.Node }) {
 
   // Effect to get or create the daily shift
   useEffect(() => {
-    // Guest now allowed to participate in shifts
-    if (user && db && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest')) {
-        setIsLoadingShift(true);
-        getActiveOrStartShift(user).then(shift => {
-            setActiveShift(shift);
-            setIsLoadingShift(false);
-        });
-    } else {
-        setActiveShift(null);
-        setIsLoadingShift(false);
+    let isMounted = true;
+
+    async function initializeShift() {
+        if (user && db && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest')) {
+            setIsLoadingShift(true);
+            try {
+                const shift = await getActiveOrStartShift(user);
+                if (isMounted) {
+                    setActiveShift(shift);
+                }
+            } catch (error) {
+                console.error("Critical: Failed to load shift data:", error);
+                if (isMounted) {
+                    toast({
+                        variant: 'destructive',
+                        title: "Sync Error",
+                        description: "Could not retrieve daily shift. Check your connection."
+                    });
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingShift(false);
+                }
+            }
+        } else {
+            if (isMounted) {
+                setActiveShift(null);
+                setIsLoadingShift(false);
+            }
+        }
     }
-  }, [user, db]);
+
+    initializeShift();
+
+    return () => {
+        isMounted = false;
+    };
+  }, [user, db, toast]);
 
   // All relevant tasks for the current shift
   const shiftTasks = useMemo(() => {
@@ -91,8 +117,11 @@ export default function AppLayout({ children }: { children: React.Node }) {
 
   if (loading || isLoadingShift) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div>Loading...</div>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="font-headline text-[10px] tracking-widest text-muted-foreground animate-pulse uppercase">Syncing Bistro OS...</p>
+        </div>
       </div>
     );
   }

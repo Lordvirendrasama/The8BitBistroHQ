@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "push": "git add . && git commit --allow-empty -m 'Build v2.0.1: Strategic Sync & Auth Fix' && git push origin main --force"
+    "push": "git add . && git commit --allow-empty -m 'Build v2.0.2: Boot Fix & Strategic Optimization' && git push origin main --force"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",
@@ -47,7 +47,7 @@
     "firebase": "^11.9.1",
     "genkit": "^1.20.0",
     "lucide-react": "^0.475.0",
-    "next": "15.3.8",
+    "next": "15.1.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
