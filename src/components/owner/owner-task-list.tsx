@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, isPast, isToday } from 'date-fns';
-import { CheckCircle2, Clock, AlertCircle, Trash2, Plus, GripVertical, Search, ChevronRight, ChevronDown, ListPlus } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, Trash2, Plus, GripVertical, Search, ChevronRight, ChevronDown, ListPlus, Edit } from 'lucide-react';
 import { useAuth } from '@/firebase/auth/use-user';
 import { updateOwnerTask, deleteOwnerTask, addOwnerTask, reorderOwnerTasks } from '@/firebase/firestore/owner-tasks';
 import { useToast } from '@/hooks/use-toast';
@@ -27,8 +28,9 @@ export function OwnerTaskList() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSeparatorMode, setIsSeparatorMode] = useState(false);
+  const [editingTask, setEditingTask] = useState<OwnerTask | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('all');
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -51,18 +53,44 @@ export function OwnerTaskList() {
   const handleToggleComplete = async (task: OwnerTask) => {
     if (!user) return;
     const newStatus = task.status === 'pending' ? 'completed' : 'pending';
-    await updateOwnerTask(task.id, { status: newStatus, title: task.title }, user);
+    await updateOwnerTask(task.id, { status: newStatus }, user);
     toast({ title: newStatus === 'completed' ? "Task Done!" : "Task Reopened" });
+  };
+
+  const handleEditClick = (task: OwnerTask) => {
+    setEditingTask(task);
+    setIsSeparatorMode(!!task.isSeparator);
+    setFormData({
+      title: task.title,
+      description: task.description || '',
+      dueDateTime: task.dueDateTime.slice(0, 16),
+      priority: task.priority,
+      category: task.category,
+      isRecurring: !!task.isRecurring,
+      isSeparator: !!task.isSeparator
+    });
+    setIsModalOpen(true);
   };
 
   const handleSave = async () => {
     if (!user || !formData.title) return;
-    const success = await addOwnerTask({ ...formData, isSeparator: isSeparatorMode }, user);
-    if (success) {
-      toast({ title: "Task Saved" });
-      setIsModalOpen(false);
-      setFormData({ title: '', description: '', dueDateTime: new Date().toISOString().slice(0, 16), priority: 'medium', category: 'strategic', isRecurring: false, isSeparator: false });
+    
+    if (editingTask) {
+      const success = await updateOwnerTask(editingTask.id, { ...formData, isSeparator: isSeparatorMode }, user);
+      if (success) {
+        toast({ title: "Task Updated" });
+        setIsModalOpen(false);
+        setEditingTask(null);
+      }
+    } else {
+      const success = await addOwnerTask({ ...formData, isSeparator: isSeparatorMode }, user);
+      if (success) {
+        toast({ title: "Task Saved" });
+        setIsModalOpen(false);
+      }
     }
+    
+    setFormData({ title: '', description: '', dueDateTime: new Date().toISOString().slice(0, 16), priority: 'medium', category: 'strategic', isRecurring: false, isSeparator: false });
   };
 
   const onDragEnd = async (result: DropResult) => {
@@ -103,10 +131,10 @@ export function OwnerTaskList() {
           </h2>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={() => { setIsSeparatorMode(true); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-3 text-[10px] border-2 border-dashed">
+          <Button variant="outline" onClick={() => { setEditingTask(null); setIsSeparatorMode(true); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-3 text-[10px] border-2 border-dashed">
             <ListPlus className="mr-2 h-4 w-4" /> Add Header
           </Button>
-          <Button onClick={() => { setIsSeparatorMode(false); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-4 text-[10px] shadow-lg">
+          <Button onClick={() => { setEditingTask(null); setIsSeparatorMode(false); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-4 text-[10px] shadow-lg">
             <Plus className="mr-2 h-4 w-4" /> New Action
           </Button>
         </div>
@@ -122,16 +150,16 @@ export function OwnerTaskList() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all" className="text-[10px] uppercase font-normal">All Items</SelectItem>
             <SelectItem value="pending" className="text-[10px] uppercase font-normal">Pending</SelectItem>
             <SelectItem value="completed" className="text-[10px] uppercase font-normal">Completed</SelectItem>
-            <SelectItem value="all" className="text-[10px] uppercase font-normal">All Items</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <Card className="border-2 shadow-none overflow-hidden">
         <CardContent className="p-0">
-          <div className="hidden sm:grid grid-cols-[40px_50px_1fr_80px_140px_60px] bg-muted/30 border-b py-3 px-4 text-[10px] font-normal uppercase tracking-tight text-muted-foreground">
+          <div className="hidden sm:grid grid-cols-[40px_50px_1fr_80px_140px_100px] bg-muted/30 border-b py-3 px-4 text-[10px] font-normal uppercase tracking-tight text-muted-foreground">
             <div className="text-center">Pos</div>
             <div className="text-center">Done</div>
             <div>Task</div>
@@ -157,8 +185,8 @@ export function OwnerTaskList() {
                           )}
                         >
                           <div className={cn(
-                            "flex flex-col sm:grid sm:grid-cols-[40px_50px_1fr_80px_140px_60px] items-center p-4 sm:py-3",
-                            task.isSeparator && "sm:grid-cols-[40px_50px_1fr_60px]"
+                            "flex flex-col sm:grid sm:grid-cols-[40px_50px_1fr_80px_140px_100px] items-center p-4 sm:py-3",
+                            task.isSeparator && "sm:grid-cols-[40px_50px_1fr_100px]"
                           )}>
                             {/* HANDLE */}
                             <div {...provided.dragHandleProps} className="hidden sm:flex justify-center cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 transition-opacity">
@@ -213,7 +241,10 @@ export function OwnerTaskList() {
                             )}
 
                             {/* ACTIONS */}
-                            <div className="w-full sm:w-auto flex justify-end gap-2">
+                            <div className="w-full sm:w-auto flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEditClick(task)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteOwnerTask(task.id)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -238,11 +269,11 @@ export function OwnerTaskList() {
         </CardContent>
       </Card>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if(!open) setEditingTask(null); }}>
         <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-normal uppercase tracking-tight text-xl">
-              {isSeparatorMode ? 'Create Header' : 'New Strategic Action'}
+              {editingTask ? 'Edit Action' : (isSeparatorMode ? 'Create Header' : 'New Strategic Action')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -252,6 +283,10 @@ export function OwnerTaskList() {
             </div>
             {!isSeparatorMode && (
               <>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">Description (Optional)</Label>
+                  <Input value={formData.description} onChange={e => setFormData(p => ({...p, description: e.target.value}))} placeholder="Brief details..." className="font-normal uppercase text-xs border-2" />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">Focus Area</Label>
@@ -285,7 +320,7 @@ export function OwnerTaskList() {
           </div>
           <DialogFooter>
             <Button onClick={handleSave} className="w-full font-normal uppercase h-14 text-lg shadow-xl tracking-widest">
-              Add to Roadmap
+              {editingTask ? 'Apply Changes' : 'Add to Roadmap'}
             </Button>
           </DialogFooter>
         </DialogContent>
