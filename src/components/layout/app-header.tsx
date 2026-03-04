@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { useState, useEffect, useMemo } from 'react';
-import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings } from '@/lib/types';
+import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask } from '@/lib/types';
 import { EndOfDayModal } from '@/components/staff/end-of-day-modal';
 import { AdminNotifications } from '@/components/admin/notifications';
 import { PendingNotifications } from '@/components/layout/pending-notifications';
@@ -31,6 +31,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { updateSettings } from "@/firebase/firestore/settings";
 import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
+import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const HeaderTimer = ({ station }: { station: Station }) => {
   const [remainingTime, setRemainingTime] = useState(0);
@@ -348,6 +350,109 @@ const TodayExpenses = () => {
   );
 };
 
+const OwnerTaskDropdown = () => {
+  const { db } = useFirebase();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const tasksQuery = useMemo(() => {
+    if (!db || user?.username !== 'Viren') return null;
+    return collection(db, 'ownerTasks');
+  }, [db, user]);
+
+  const { data: tasks } = useCollection<OwnerTask>(tasksQuery);
+
+  const pendingTasks = useMemo(() => {
+    if (!tasks) return [];
+    return tasks
+      .filter(t => t.status === 'pending')
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [tasks]);
+
+  const handleToggle = async (task: OwnerTask) => {
+    if (!user) return;
+    const success = await updateOwnerTask(task.id, { status: 'completed' }, user);
+    if (success) {
+      toast({ title: "Task Completed", description: `"${task.title}" checked off.` });
+    }
+  };
+
+  if (user?.username !== 'Viren') return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" className="relative h-8 w-8 rounded-lg border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all">
+          <ListTodo className="h-4 w-4 text-primary" />
+          {pendingTasks.length > 0 && (
+            <Badge variant="destructive" className="absolute -right-2 -top-2 h-4 min-w-[16px] p-0 flex items-center justify-center text-[8px] rounded-full ring-2 ring-background font-black">
+              {pendingTasks.length}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
+        <div className="p-4 bg-muted/20 border-b flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Owner Checklist</h4>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/owner-tasks')} className="h-6 text-[8px] font-black uppercase tracking-tighter">View All</Button>
+        </div>
+        
+        <ScrollArea className="max-h-[350px]">
+          <div className="divide-y">
+            {pendingTasks.length > 0 ? pendingTasks.map((task) => (
+              <div key={task.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group">
+                <div className="flex items-start gap-3">
+                  <Checkbox 
+                    id={`header-task-${task.id}`} 
+                    checked={false} 
+                    onCheckedChange={() => handleToggle(task)}
+                    className="mt-0.5 border-primary/40 data-[state=checked]:bg-primary"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <Label 
+                      htmlFor={`header-task-${task.id}`}
+                      className="text-xs font-black uppercase tracking-tight leading-tight cursor-pointer group-hover:text-primary transition-colors block truncate"
+                    >
+                      {task.title}
+                    </Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className={cn(
+                        "h-1.5 w-1.5 rounded-full shrink-0",
+                        task.priority === 'high' ? "bg-destructive" : task.priority === 'medium' ? "bg-amber-500" : "bg-blue-500"
+                      )} />
+                      <span className="text-[8px] font-bold text-muted-foreground uppercase">{task.category || 'Strategic'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <div className="p-8 text-center space-y-2 opacity-30">
+                <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Horizon Clear</p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+        
+        <div className="p-3 bg-muted/5 border-t border-dashed">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full h-9 text-[10px] font-black uppercase tracking-[0.2em] gap-2 border-2"
+            onClick={() => router.push('/owner-tasks')}
+          >
+            Mission Control Center
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 interface AppHeaderProps {
   activeShift: Shift | null;
   onTaskToggle: (task: ShiftTask) => void;
@@ -452,6 +557,7 @@ export function AppHeader({
                     <div className="flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2">
                         <PendingNotifications />
                         <div className="flex items-center gap-1">
+                            <OwnerTaskDropdown />
                             <StaffNotepad />
                             <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-primary rounded-lg" onClick={() => setTasksVisible(true)}>
                               <Bell className="h-4 w-4" />
