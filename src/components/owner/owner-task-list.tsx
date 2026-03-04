@@ -107,7 +107,20 @@ export function OwnerTaskList() {
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
     
-    const sorted = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+    // Primary Sort: Status (Pending first, then Completed)
+    // Secondary Sort: Manual Order
+    const sorted = [...tasks].sort((a, b) => {
+      // Separate groups by status
+      // Note: separators stay pending by default, so they stay at the top unless marked done
+      const aDone = a.status === 'completed';
+      const bDone = b.status === 'completed';
+      
+      if (aDone && !bDone) return 1;
+      if (!aDone && bDone) return -1;
+      
+      // Within same status group, use manual order
+      return (a.order || 0) - (b.order || 0);
+    });
 
     return sorted.filter(t => {
       if (t.isSeparator && !searchQuery) return true;
