@@ -366,7 +366,7 @@ const OwnerTaskDropdown = () => {
   const pendingTasks = useMemo(() => {
     if (!tasks) return [];
     return tasks
-      .filter(t => t.status === 'pending')
+      .filter(t => t.status === 'pending' && !t.isSeparator) // Hide headers/separators in the dropdown
       .sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [tasks]);
 
