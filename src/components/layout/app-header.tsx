@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { useState, useEffect, useMemo } from 'react';
@@ -257,6 +257,7 @@ const OwnerConsumptionHeader = () => {
   const { db } = useFirebase();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [editingConsumption, setEditingConsumption] = useState<OwnerConsumption | null>(null);
 
   const consumptionQuery = useMemo(() => !db ? null : collection(db, 'ownerConsumption'), [db]);
   const { data: consumptions } = useCollection<OwnerConsumption>(consumptionQuery);
@@ -273,6 +274,16 @@ const OwnerConsumptionHeader = () => {
   const totalValue = useMemo(() => {
     return todayConsumptions.reduce((sum, c) => sum + (c.totalValue || 0), 0);
   }, [todayConsumptions]);
+
+  const handleEdit = (c: OwnerConsumption) => {
+    setEditingConsumption(c);
+    setIsOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingConsumption(null);
+    setIsOpen(true);
+  };
 
   return (
     <>
@@ -301,8 +312,8 @@ const OwnerConsumptionHeader = () => {
           <ScrollArea className="max-h-[300px]">
             <div className="divide-y">
               {todayConsumptions.length > 0 ? todayConsumptions.map((c) => (
-                <div key={c.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group">
-                  <div className="flex justify-between items-start">
+                <div key={c.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group relative">
+                  <div className="flex justify-between items-start pr-8">
                     <div className="space-y-0.5">
                       <p className="text-[10px] font-black uppercase text-foreground leading-tight">
                         {c.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
@@ -313,6 +324,14 @@ const OwnerConsumptionHeader = () => {
                     </div>
                     <span className="font-mono font-black text-xs text-indigo-600">₹{c.totalValue}</span>
                   </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleEdit(c)}
+                  >
+                    <Edit className="h-3.5 w-3.5 text-indigo-600" />
+                  </Button>
                 </div>
               )) : (
                 <div className="py-12 text-center space-y-2 opacity-30">
@@ -326,7 +345,7 @@ const OwnerConsumptionHeader = () => {
           <div className="p-3 bg-muted/10 border-t border-dashed">
             <Button 
               className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-[10px] tracking-widest shadow-lg"
-              onClick={() => setIsOpen(true)}
+              onClick={handleAddNew}
             >
               <History className="mr-2 h-3.5 w-3.5" />
               Add Owner Order
@@ -339,6 +358,7 @@ const OwnerConsumptionHeader = () => {
         isOpen={isOpen} 
         onOpenChange={setIsOpen} 
         foodItems={foodItems || []} 
+        consumption={editingConsumption}
       />
     </>
   );

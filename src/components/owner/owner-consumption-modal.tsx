@@ -8,34 +8,46 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { PlusCircle, MinusCircle, Search, ShoppingBag, Utensils, Zap, Crown } from 'lucide-react';
-import type { FoodItem, BillItem } from '@/lib/types';
+import { PlusCircle, MinusCircle, Search, ShoppingBag, Utensils, Zap, Crown, Calendar, Clock, Trash2, Save } from 'lucide-react';
+import type { FoodItem, BillItem, OwnerConsumption } from '@/lib/types';
 import { useAuth } from '@/firebase/auth/use-user';
-import { addOwnerConsumption } from '@/firebase/firestore/owner-consumption';
+import { addOwnerConsumption, updateOwnerConsumption, deleteOwnerConsumption } from '@/firebase/firestore/owner-consumption';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface OwnerConsumptionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   foodItems: FoodItem[];
+  consumption?: OwnerConsumption | null; // Pass for edit mode
   onSuccess?: () => void;
 }
 
-export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, onSuccess }: OwnerConsumptionModalProps) {
+export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consumption, onSuccess }: OwnerConsumptionModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<BillItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16));
+
+  const isEditMode = !!consumption;
 
   useEffect(() => {
     if (isOpen) {
-      setItems([]);
+      if (consumption) {
+        setItems(consumption.items || []);
+        setTimestamp(new Date(consumption.timestamp).toISOString().slice(0, 16));
+      } else {
+        setItems([]);
+        setTimestamp(new Date().toISOString().slice(0, 16));
+      }
       setSearchTerm('');
     }
-  }, [isOpen]);
+  }, [isOpen, consumption]);
 
   const filteredFood = useMemo(() => {
     const term = searchTerm.toLowerCase();
@@ -63,11 +75,35 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, onSucce
   const handleSave = async () => {
     if (!user || items.length === 0) return;
     setIsSubmitting(true);
-    const result = await addOwnerConsumption(items, user);
+    
+    const finalTimestamp = new Date(timestamp).toISOString();
+    let result;
+
+    if (isEditMode && consumption) {
+        result = await updateOwnerConsumption(consumption.id, items, user, finalTimestamp);
+    } else {
+        result = await addOwnerConsumption(items, user, finalTimestamp);
+    }
+
     if (result) {
-      toast({ title: "Internal Consumption Logged", description: `Opportunity cost of ₹${totalValue.toLocaleString()} recorded.` });
+      toast({ 
+        title: isEditMode ? "Log Updated" : "Internal Consumption Logged", 
+        description: `Opportunity cost of ₹${totalValue.toLocaleString()} recorded.` 
+      });
       onSuccess?.();
       onOpenChange(false);
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDelete = async () => {
+    if (!user || !consumption) return;
+    setIsSubmitting(true);
+    const success = await deleteOwnerConsumption(consumption.id, user);
+    if (success) {
+        toast({ title: "Log Deleted", description: "The internal record has been removed." });
+        onSuccess?.();
+        onOpenChange(false);
     }
     setIsSubmitting(false);
   };
@@ -78,7 +114,7 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, onSucce
         <DialogHeader className="p-6 bg-indigo-600 text-white shrink-0">
           <DialogTitle className="flex items-center gap-3 text-xl font-display uppercase tracking-tight">
             <Crown className="h-7 w-7 fill-current" />
-            Owner Internal Order
+            {isEditMode ? 'Edit Internal Order' : 'Owner Internal Order'}
           </DialogTitle>
           <DialogDescription className="text-white/70 font-bold text-[10px] uppercase tracking-widest mt-1">
             Logging items for Viren. Tracked as opportunity cost (NOT added to revenue).
@@ -158,17 +194,52 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, onSucce
             </ScrollArea>
 
             <div className="p-6 bg-indigo-50/50 border-t space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-700/60">Log Timestamp (Adjustable)</Label>
+                <div className="flex items-center gap-2 bg-white border-2 rounded-lg p-2">
+                    <Calendar className="h-4 w-4 text-indigo-600" />
+                    <input 
+                        type="datetime-local" 
+                        value={timestamp}
+                        onChange={e => setTimestamp(e.target.value)}
+                        className="flex-1 bg-transparent border-none outline-none font-mono text-xs font-bold text-indigo-700"
+                    />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-700/60">Shadow Total</span>
                 <span className="text-2xl font-black font-mono text-indigo-600 tracking-tighter">₹{totalValue.toLocaleString()}</span>
               </div>
-              <Button 
-                disabled={isSubmitting || items.length === 0} 
-                onClick={handleSave} 
-                className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-lg shadow-xl"
-              >
-                {isSubmitting ? "SYNCING..." : "COMMIT LOG"}
-              </Button>
+
+              <div className="flex gap-2">
+                {isEditMode && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-14 w-14 shrink-0 border-2 border-destructive/30 text-destructive hover:bg-destructive/5">
+                                <Trash2 className="h-5 w-5" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="border-4 border-destructive">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="font-headline text-destructive uppercase">Delete Internal Record?</AlertDialogTitle>
+                                <AlertDialogDescription className="font-bold">This will permanently remove this shadow order from the ledger.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 font-black uppercase shadow-lg">Destroy Record</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+                <Button 
+                    disabled={isSubmitting || items.length === 0} 
+                    onClick={handleSave} 
+                    className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-lg shadow-xl"
+                >
+                    {isSubmitting ? "SYNCING..." : isEditMode ? "UPDATE LOG" : "COMMIT LOG"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
