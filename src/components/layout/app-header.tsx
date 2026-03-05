@@ -678,9 +678,9 @@ export function AppHeader({
 
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                     {user?.username === 'Viren' && (
-                        <div className="hidden lg:flex flex-col items-end gap-0.5 mr-1">
-                            <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
-                            <p className="text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
+                        <div className="flex flex-col items-end gap-0.5 mr-1 shrink-0">
+                            <p className="text-[7px] sm:text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
+                            <p className="text-[10px] sm:text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
                         </div>
                     )}
                     <StrategicTarget projectedRevenue={projectedRevenue} />
