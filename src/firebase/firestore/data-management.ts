@@ -348,6 +348,7 @@ export const exportAccountingLedger = async (filters?: ExportFilters): Promise<s
 
 /**
  * Exports members in a format optimized for native Google Contacts import.
+ * Hardcodes "TEBBC" as the last name for easy WhatsApp filtering.
  */
 export const exportGoogleContacts = async (): Promise<string> => {
   const db = getFirestore();
@@ -364,9 +365,7 @@ export const exportGoogleContacts = async (): Promise<string> => {
     'E-mail 1 - Type', 
     'E-mail 1 - Value', 
     'Phone 1 - Type', 
-    'Phone 1 - Value',
-    'Organization 1 - Name',
-    'Organization 1 - Title'
+    'Phone 1 - Value'
   ];
 
   let csvContent = headers.map(escapeCsvField).join(',') + '\n';
@@ -375,25 +374,19 @@ export const exportGoogleContacts = async (): Promise<string> => {
     // Only export if there's at least a phone or email
     if (!member.phone && !member.email) return;
 
-    const nameParts = member.name.trim().split(/\s+/);
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-    
     // Clean phone number: remove all non-digits
     const cleanPhone = member.phone ? member.phone.replace(/\D/g, '') : '';
 
     const row = [
-      member.name,
-      firstName,
-      lastName,
+      `${member.name} TEBBC`, // Full Display Name
+      member.name,           // Given Name (The actual user name)
+      'TEBBC',               // Family Name (Last name suffix for sorting)
       member.username,
       `Bistro Member Profile: Level ${member.level}, Loyalty Pts: ${member.points}, Total Spent: ₹${member.totalSpent}. Joined: ${member.joinDate}`,
       member.email ? 'Personal' : '',
       member.email || '',
       member.phone ? 'Mobile' : '',
-      cleanPhone,
-      'The 8 Bit Bistro',
-      'Member'
+      cleanPhone
     ].map(escapeCsvField);
 
     csvContent += row.join(',') + '\n';
