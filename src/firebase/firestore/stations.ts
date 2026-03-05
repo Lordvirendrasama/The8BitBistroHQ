@@ -1,7 +1,7 @@
 
 'use client';
 
-import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, runTransaction, writeBatch } from 'firebase/firestore';
 import type { Station, AssignedMember, BillItem } from '@/lib/types';
 
 /**
@@ -64,6 +64,28 @@ export const removeStation = async (stationId: string) => {
         console.error("Error removing station: ", e);
     }
 }
+
+export const updateStationsBatch = async (stations: Station[]) => {
+    const db = getFirestore();
+    const batch = writeBatch(db);
+    
+    stations.forEach((s, idx) => {
+        const ref = doc(db, 'stations', s.id);
+        const updates = {
+            name: s.name,
+            order: s.order ?? idx * 100
+        };
+        batch.update(ref, updates);
+    });
+
+    try {
+        await batch.commit();
+        return true;
+    } catch (e) {
+        console.error("Error updating stations batch:", e);
+        return false;
+    }
+};
 
 /**
  * Transfers an active session from a source station to an available target station.

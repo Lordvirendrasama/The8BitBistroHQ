@@ -146,7 +146,11 @@ export type LogEntryType =
     | 'INVENTORY_PURCHASED'
     | 'LIABILITY_CYCLE_APPLIED'
     | 'LIABILITY_PAYMENT_RECORDED'
-    | 'LIABILITY_DEBT_SHARE_UPDATE';
+    | 'LIABILITY_DEBT_SHARE_UPDATE'
+    | 'STATION_CREATED'
+    | 'STATION_UPDATED'
+    | 'STATION_DELETED'
+    | 'STATION_REORDERED';
 
 
 export interface LogEntry {
@@ -250,6 +254,7 @@ export interface Station {
   members: AssignedMember[];
   currentBill?: BillItem[];
   discount?: number;
+  order?: number;
 }
 
 export interface ShiftTask {

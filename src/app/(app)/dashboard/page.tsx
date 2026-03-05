@@ -6,7 +6,7 @@ import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2 } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2 } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, runTransaction, doc } from 'firebase/firestore';
@@ -19,6 +19,7 @@ import { CheckoutModal } from '@/components/dashboard/checkout-modal';
 import { EditTimeModal } from '@/components/dashboard/edit-time-modal';
 import { MoveStationModal } from '@/components/dashboard/move-station-modal';
 import { JoinPlayerModal } from '@/components/dashboard/join-player-modal';
+import { ManageStationsModal } from '@/components/dashboard/manage-stations-modal';
 import { archiveBill } from '@/firebase/firestore/bills';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
@@ -41,19 +42,26 @@ function DashboardContent() {
   const [isEditTimeModalOpen, setIsEditTimeModalOpen] = useState(false);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [manageType, setManageType] = useState<'ps5' | 'boardgame'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
   const membersQuery = useMemo(() => !db ? null : collection(db, 'members'), [db]);
   const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
   
-  const stationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), orderBy('name')), [db]);
-  const { data: stations, loading: stationsLoading } = useCollection<Station>(stationsQuery);
+  const stationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), orderBy('order')), [db]);
+  const { data: rawStations, loading: stationsLoading } = useCollection<Station>(stationsQuery);
 
-  const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
-  const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
-
-  const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
-  const { data: gamingPackages } = useCollection<GamingPackage>(packagesQuery);
+  const stations = useMemo(() => {
+    if (!rawStations) return [];
+    // Secondary alphabetical sort for items without an explicit order
+    return [...rawStations].sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        return a.name.localeCompare(b.name);
+    });
+  }, [rawStations]);
 
   const ps5Stations = useMemo(() => stations?.filter(s => s.type === 'ps5') || [], [stations]);
   const boardGameStations = useMemo(() => stations?.filter(s => s.type === 'boardgame') || [], [stations]);
@@ -116,8 +124,26 @@ function DashboardContent() {
     const existingNumbers = stationList.map(s => parseInt(s.name.match(/\d+$/)?.[0] || '0', 10)).filter(n => !isNaN(n));
     const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
     const newName = type === 'ps5' ? `PS5 ${maxNumber + 1}` : `Table ${maxNumber + 1}`;
+    
+    const maxOrder = stationList.reduce((max, s) => Math.max(max, s.order || 0), 0);
 
-    await addStation({ name: newName, type, status: 'available', startTime: null, endTime: null, packageName: null, members: [], currentBill: [], discount: 0 });
+    await addStation({ 
+        name: newName, 
+        type, 
+        status: 'available', 
+        startTime: null, 
+        endTime: null, 
+        packageName: null, 
+        members: [], 
+        currentBill: [], 
+        discount: 0,
+        order: maxOrder + 100
+    });
+  };
+
+  const handleManage = (type: 'ps5' | 'boardgame') => {
+    setManageType(type);
+    setIsManageModalOpen(true);
   };
 
   const handlePauseTimer = (station: Station) => {
@@ -598,7 +624,10 @@ function DashboardContent() {
         <Card className="border-none shadow-none bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-primary"/> PS5 Consoles</CardTitle>
-            <Button size="sm" onClick={() => handleAddStation('ps5')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Console</Button>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleManage('ps5')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                <Button size="sm" onClick={() => handleAddStation('ps5')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Console</Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {ps5Stations.length > 0 ? (
@@ -625,7 +654,10 @@ function DashboardContent() {
         <Card className="border-none shadow-none bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Users className="h-5 sm:h-6 w-5 sm:w-6 text-primary" /> Board Games</CardTitle>
-            <Button size="sm" onClick={() => handleAddStation('boardgame')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Table</Button>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                <Button size="sm" onClick={() => handleAddStation('boardgame')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Table</Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {boardGameStations.length > 0 ? (
@@ -660,6 +692,13 @@ function DashboardContent() {
           <JoinPlayerModal isOpen={isJoinModalOpen} onOpenChange={setIsJoinModalOpen} station={selectedStation} members={members || []} onConfirm={handleConfirmJoin} />
         </>
       )}
+
+      <ManageStationsModal 
+        isOpen={isManageModalOpen} 
+        onOpenChange={setIsManageModalOpen} 
+        stations={manageType === 'ps5' ? ps5Stations : boardGameStations} 
+        type={manageType}
+      />
     </div>
   );
 }
