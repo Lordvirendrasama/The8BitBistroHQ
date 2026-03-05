@@ -1,3 +1,4 @@
+
 'use client';
 import { getFirestore, collection, getDocs, writeBatch, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Member, LogEntry, Bill, Expense } from '@/lib/types';
@@ -345,41 +346,54 @@ export const exportAccountingLedger = async (filters?: ExportFilters): Promise<s
   return csvContent;
 };
 
+/**
+ * Exports members in a format optimized for native Google Contacts import.
+ */
 export const exportGoogleContacts = async (): Promise<string> => {
   const db = getFirestore();
   const membersSnapshot = await getDocs(collection(db, 'members'));
   const members = membersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
 
+  // Native Google CSV Headers
   const headers = [
-    'Name', 'Given Name', 'Family Name', 'Nickname', 
-    'E-mail 1 - Type', 'E-mail 1 - Value', 
-    'Phone 1 - Type', 'Phone 1 - Value',
-    'Notes'
+    'Name', 
+    'Given Name', 
+    'Family Name', 
+    'Nickname', 
+    'Notes',
+    'E-mail 1 - Type', 
+    'E-mail 1 - Value', 
+    'Phone 1 - Type', 
+    'Phone 1 - Value',
+    'Organization 1 - Name',
+    'Organization 1 - Title'
   ];
 
   let csvContent = headers.map(escapeCsvField).join(',') + '\n';
 
   members.forEach(member => {
+    // Only export if there's at least a phone or email
     if (!member.phone && !member.email) return;
 
     const nameParts = member.name.trim().split(/\s+/);
     const firstName = nameParts[0] || '';
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
     
-    const suffix = 'The 8 Bit Bistro Member';
-    const modifiedLastName = lastName ? `${lastName} ${suffix}` : suffix;
-    const fullNameWithSuffix = `${firstName} ${modifiedLastName}`.trim();
+    // Clean phone number: remove all non-digits
+    const cleanPhone = member.phone ? member.phone.replace(/\D/g, '') : '';
 
     const row = [
-      fullNameWithSuffix,
+      member.name,
       firstName,
-      modifiedLastName,
+      lastName,
       member.username,
+      `Bistro Member Profile: Level ${member.level}, Loyalty Pts: ${member.points}, Total Spent: ₹${member.totalSpent}. Joined: ${member.joinDate}`,
       member.email ? 'Personal' : '',
       member.email || '',
       member.phone ? 'Mobile' : '',
-      member.phone || '',
-      `Bistro Level: ${member.level}, Total Spent: ₹${member.totalSpent}`
+      cleanPhone,
+      'The 8 Bit Bistro',
+      'Member'
     ].map(escapeCsvField);
 
     csvContent += row.join(',') + '\n';
