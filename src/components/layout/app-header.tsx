@@ -677,10 +677,12 @@ export function AppHeader({
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-                    <div className="hidden lg:flex flex-col items-end gap-0.5 mr-1">
-                        <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
-                        <p className="text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
-                    </div>
+                    {user?.username === 'Viren' && (
+                        <div className="hidden lg:flex flex-col items-end gap-0.5 mr-1">
+                            <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
+                            <p className="text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
+                        </div>
+                    )}
                     <StrategicTarget projectedRevenue={projectedRevenue} />
                     <OwnerConsumptionHeader />
                     <TodayExpenses />
