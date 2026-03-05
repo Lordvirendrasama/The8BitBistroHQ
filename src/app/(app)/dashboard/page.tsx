@@ -52,6 +52,12 @@ function DashboardContent() {
   const stationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), orderBy('order')), [db]);
   const { data: rawStations, loading: stationsLoading } = useCollection<Station>(stationsQuery);
 
+  const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
+  const { data: foodItems, loading: foodLoading } = useCollection<FoodItem>(foodItemsQuery);
+
+  const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
+  const { data: gamingPackages, loading: packagesLoading } = useCollection<GamingPackage>(packagesQuery);
+
   const stations = useMemo(() => {
     if (!rawStations) return [];
     // Secondary alphabetical sort for items without an explicit order
@@ -604,7 +610,7 @@ function DashboardContent() {
     setSelectedStation(null);
   };
 
-  if (stationsLoading || membersLoading) {
+  if (stationsLoading || membersLoading || foodLoading || packagesLoading) {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center gap-4 opacity-50">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
