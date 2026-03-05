@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { useState, useEffect, useMemo } from 'react';
@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { addExpense } from '@/firebase/firestore/expenses';
-import { format, differenceInCalendarMonths } from 'date-fns';
+import { format, differenceInCalendarMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -610,7 +610,7 @@ export function AppHeader({
             const isItemized = (station.currentBill || []).some(item => 
               item.name === station.packageName || 
               item.name.startsWith(`Time: ${station.packageName}`) ||
-              item.name.startsWith(`Buy Recharge: ${station.packageName}`)
+              item.startsWith(`Buy Recharge: ${station.packageName}`)
             );
             if (!isItemized) {
               const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
@@ -628,6 +628,20 @@ export function AppHeader({
       }
       return Math.max(0, sum);
     }, [bills, stations, packages]);
+
+    const monthRevenue = useMemo(() => {
+      if (!bills) return 0;
+      const now = new Date();
+      const start = startOfMonth(now);
+      const end = endOfMonth(now);
+      
+      return bills
+        .filter(bill => {
+          const d = new Date(bill.timestamp);
+          return d >= start && d <= end;
+        })
+        .reduce((s, b) => s + (b.totalAmount || 0), 0);
+    }, [bills]);
 
     const handleLogoutClick = async () => {
         if (user && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest') && activeShift) {
@@ -663,6 +677,10 @@ export function AppHeader({
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                    <div className="hidden lg:flex flex-col items-end gap-0.5 mr-1">
+                        <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
+                        <p className="text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
+                    </div>
                     <StrategicTarget projectedRevenue={projectedRevenue} />
                     <OwnerConsumptionHeader />
                     <TodayExpenses />
