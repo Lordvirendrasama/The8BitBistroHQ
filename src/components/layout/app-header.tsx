@@ -610,7 +610,7 @@ export function AppHeader({
             const isItemized = (station.currentBill || []).some(item => 
               item.name === station.packageName || 
               item.name.startsWith(`Time: ${station.packageName}`) ||
-              item.startsWith(`Buy Recharge: ${station.packageName}`)
+              item.name.startsWith(`Buy Recharge: ${station.packageName}`)
             );
             if (!isItemized) {
               const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
