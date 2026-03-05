@@ -150,7 +150,8 @@ export type LogEntryType =
     | 'STATION_CREATED'
     | 'STATION_UPDATED'
     | 'STATION_DELETED'
-    | 'STATION_REORDERED';
+    | 'STATION_REORDERED'
+    | 'OWNER_CONSUMPTION_ADDED';
 
 
 export interface LogEntry {
@@ -427,6 +428,18 @@ export interface InventoryPurchase {
   supplier?: string;
   purchaseDate: string;
   expiryDate?: string;
+  addedBy: {
+    uid: string;
+    displayName: string;
+  };
+  cycle?: string;
+}
+
+export interface OwnerConsumption {
+  id: string;
+  items: BillItem[];
+  totalValue: number;
+  timestamp: string;
   addedBy: {
     uid: string;
     displayName: string;

@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { useState, useEffect, useMemo } from 'react';
-import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask } from '@/lib/types';
+import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem } from '@/lib/types';
 import { EndOfDayModal } from '@/components/staff/end-of-day-modal';
 import { AdminNotifications } from '@/components/admin/notifications';
 import { PendingNotifications } from '@/components/layout/pending-notifications';
@@ -33,6 +33,7 @@ import { updateSettings } from "@/firebase/firestore/settings";
 import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
+import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
 
 const HeaderTimer = ({ station }: { station: Station }) => {
   const [remainingTime, setRemainingTime] = useState(0);
@@ -249,6 +250,97 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
         </div>
       </PopoverContent>
     </Popover>
+  );
+};
+
+const OwnerConsumptionHeader = () => {
+  const { db } = useFirebase();
+  const { user } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const consumptionQuery = useMemo(() => !db ? null : collection(db, 'ownerConsumption'), [db]);
+  const { data: consumptions } = useCollection<OwnerConsumption>(consumptionQuery);
+
+  const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
+  const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
+
+  const todayConsumptions = useMemo(() => {
+    if (!consumptions) return [];
+    return consumptions.filter(c => c.timestamp && isBusinessToday(c.timestamp))
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }, [consumptions]);
+
+  const totalValue = useMemo(() => {
+    return todayConsumptions.reduce((sum, c) => sum + (c.totalValue || 0), 0);
+  }, [todayConsumptions]);
+
+  return (
+    <>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-10 sm:h-11 px-2 sm:px-4 gap-1 sm:gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-600 border border-indigo-500/30 rounded-lg font-black transition-all shrink-0 font-body"
+          >
+            <Crown className="h-3 sm:h-4 w-3 sm:w-4 fill-current" />
+            <div className="flex flex-col items-start leading-tight">
+              <span className="font-mono text-[10px] sm:text-sm">₹{totalValue.toLocaleString()}</span>
+            </div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0 overflow-hidden font-body border-2 shadow-2xl" align="center">
+          <div className="p-4 bg-indigo-600 text-white flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Crown className="h-4 w-4 fill-current" />
+              <h4 className="font-black text-[10px] uppercase tracking-widest">Internal Ledger</h4>
+            </div>
+            <Badge variant="outline" className="text-[8px] font-black border-white/30 text-white uppercase">Shadow Cost</Badge>
+          </div>
+          
+          <ScrollArea className="max-h-[300px]">
+            <div className="divide-y">
+              {todayConsumptions.length > 0 ? todayConsumptions.map((c) => (
+                <div key={c.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] font-black uppercase text-foreground leading-tight">
+                        {c.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                      </p>
+                      <p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                        <Clock className="h-2.5 w-2.5" /> {format(new Date(c.timestamp), 'p')} • By {c.addedBy.displayName}
+                      </p>
+                    </div>
+                    <span className="font-mono font-black text-xs text-indigo-600">₹{c.totalValue}</span>
+                  </div>
+                </div>
+              )) : (
+                <div className="py-12 text-center space-y-2 opacity-30">
+                  <Utensils className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">No Shadow Orders</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          
+          <div className="p-3 bg-muted/10 border-t border-dashed">
+            <Button 
+              className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-[10px] tracking-widest shadow-lg"
+              onClick={() => setIsOpen(true)}
+            >
+              <History className="mr-2 h-3.5 w-3.5" />
+              Add Owner Order
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <OwnerConsumptionModal 
+        isOpen={isOpen} 
+        onOpenChange={setIsOpen} 
+        foodItems={foodItems || []} 
+      />
+    </>
   );
 };
 
@@ -552,6 +644,7 @@ export function AppHeader({
 
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                     <StrategicTarget projectedRevenue={projectedRevenue} />
+                    <OwnerConsumptionHeader />
                     <TodayExpenses />
                     
                     <div className="flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2">
