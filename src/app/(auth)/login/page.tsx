@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
-import { Shield, Users, User, Power, Zap, Clock, Calendar, Gamepad2, Cpu, Wifi, KeyRound, ArrowRight } from 'lucide-react';
+import { collection, query, where, doc, setDoc } from 'firebase/firestore';
+import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { GamingPackage, Employee } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ export default function LoginPage() {
   const { user, login, loading } = useAuth();
   
   const [isEntering, setIsEntering] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -114,6 +115,30 @@ export default function LoginPage() {
   const handleLoginAttempt = (emp: Employee) => {
     setPendingUser(emp);
     setIsPinModalOpen(true);
+  };
+
+  const handleManualSeed = async () => {
+    if (!db) return;
+    setIsSeeding(true);
+    try {
+        const empsRef = collection(db, 'employees');
+        const initial = [
+            { username: 'Viren', displayName: 'Viren', role: 'admin', pin: '6969', salary: 0, salaryType: 'monthly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/viren/100/100' },
+            { username: 'Abbas', displayName: 'Abbas', role: 'staff', pin: '8888', salary: 100, salaryType: 'hourly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/abbas/100/100' },
+            { username: 'Guest', displayName: 'Guest', role: 'guest', pin: '1234', salary: 0, salaryType: 'hourly', weekOffDay: 0, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/guest/100/100' }
+        ];
+        
+        for (const emp of initial) {
+            const newDocRef = doc(empsRef);
+            await setDoc(newDocRef, emp);
+        }
+        
+        toast({ title: "System Initialized", description: "Default profiles have been restored." });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: "Recovery Failed", description: error.message });
+    } finally {
+        setIsSeeding(false);
+    }
   };
 
   const executeLogin = async (username: string, pin: string) => {
@@ -244,7 +269,7 @@ export default function LoginPage() {
                     emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : ""
                 )}>
                     <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
-                        {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Wifi className="h-12 w-12" /> : <User className="h-12 w-12" />}
+                        {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Users className="h-12 w-12" /> : <User className="h-12 w-12" />}
                     </div>
                     {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
                      emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
@@ -253,6 +278,22 @@ export default function LoginPage() {
                     <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">{emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}</span>
                 </Button>
             ))}
+            {(!employees || employees.length === 0) && (
+                <div className="col-span-full py-12 flex flex-col items-center gap-4 opacity-50 bg-card/20 rounded-3xl border-2 border-dashed">
+                    <RefreshCcw className="h-10 w-10 animate-spin text-muted-foreground" />
+                    <div className="text-center">
+                        <p className="font-headline text-[10px] tracking-widest uppercase">No Operator Profiles Detected</p>
+                        <button 
+                            onClick={handleManualSeed} 
+                            disabled={isSeeding}
+                            className="text-[10px] font-black uppercase text-primary hover:underline mt-2 flex items-center justify-center gap-2"
+                        >
+                            {isSeeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
+                            Initialize Default Profiles
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
 
         <p className="text-[8px] font-mono text-muted-foreground/30 uppercase tracking-widest text-center">
