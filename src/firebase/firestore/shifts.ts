@@ -1,4 +1,3 @@
-
 'use client';
 
 import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc } from 'firebase/firestore';
@@ -54,6 +53,7 @@ const calculateAttendanceOnEnd = (logoutTime: Date) => {
 export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | null> => {
     const db = getFirestore();
     const businessToday = getBusinessDate(); // Uses 5 AM threshold
+    const isOwner = user.username === 'Viren';
     
     const shiftsRef = collection(db, 'shifts');
     const q = query(shiftsRef, where('date', '==', businessToday), limit(1));
@@ -81,9 +81,12 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 updates.tasks = [...shiftData.tasks, ...newTasksToSync];
             }
 
-            const userIsListed = shift.employees.some(e => e.username === user.username);
-            if (!userIsListed) {
-                updates.employees = [...shift.employees, { username: user.username, displayName: user.displayName }];
+            // ONLY track login for non-owner users
+            if (!isOwner) {
+                const userIsListed = shift.employees.some(e => e.username === user.username);
+                if (!userIsListed) {
+                    updates.employees = [...shift.employees, { username: user.username, displayName: user.displayName }];
+                }
             }
             
             if (shift.endTime) {
@@ -100,6 +103,9 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             }
             return shift;
         } else {
+            // If user is owner, don't trigger a new shift start
+            if (isOwner) return null;
+
             const now = new Date();
             
             // Get employee settings for weekoff check
