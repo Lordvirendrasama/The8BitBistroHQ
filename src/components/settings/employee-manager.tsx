@@ -59,11 +59,11 @@ export function EmployeeManager() {
       username: emp.username,
       displayName: emp.displayName,
       role: emp.role,
-      salary: emp.salary,
-      salaryType: emp.salaryType,
-      weekOffDay: emp.weekOffDay,
-      joinDate: emp.joinDate.slice(0, 10),
-      pin: emp.pin
+      salary: emp.salary || 0,
+      salaryType: emp.salaryType || 'monthly',
+      weekOffDay: emp.weekOffDay ?? 5,
+      joinDate: emp.joinDate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+      pin: emp.pin || ''
     });
     setModalOpen(true);
   };
@@ -123,11 +123,11 @@ export function EmployeeManager() {
                   <TableCell>
                     <div className="flex items-center gap-1.5 font-mono font-bold text-xs">
                       <Banknote className="h-3 w-3 text-emerald-600" />
-                      ₹{emp.salary.toLocaleString()} / {emp.salaryType}
+                      ₹{(emp.salary ?? 0).toLocaleString()} / {emp.salaryType || 'hourly'}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="text-[10px] font-bold uppercase">{DAYS[emp.weekOffDay]}</span>
+                    <span className="text-[10px] font-bold uppercase">{DAYS[emp.weekOffDay] || 'N/A'}</span>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
