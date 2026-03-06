@@ -53,7 +53,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 { username: 'Guest', displayName: 'Guest', role: 'guest', pin: '1234', salary: 0, salaryType: 'hourly', weekOffDay: 0, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/guest/100/100' }
             ];
             for (const emp of initial) {
-                await addDoc(empsRef, emp);
+                // Use username as the ID to avoid duplicates and ensure consistency
+                const empDocRef = doc(db, 'employees', emp.username);
+                await setDoc(empDocRef, emp);
             }
         }
     };
@@ -140,11 +142,4 @@ export const useAuth = () => {
 export const useUser = () => {
     const { user, loading } = useAuth();
     return { user, loading };
-}
-
-// Internal helper for seeding
-async function addDoc(colRef: any, data: any) {
-    const db = getFirestore();
-    const docRef = doc(colRef);
-    await setDoc(docRef, data);
 }

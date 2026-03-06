@@ -43,7 +43,21 @@ export default function LoginPage() {
 
   // Fetch Employees
   const employeesQuery = useMemo(() => !db ? null : query(collection(db, 'employees'), where('isActive', '==', true)), [db]);
-  const { data: employees, loading: empsLoading } = useCollection<Employee>(employeesQuery);
+  const { data: rawEmployees, loading: empsLoading } = useCollection<Employee>(employeesQuery);
+
+  // Sort Employees: Viren first, then Admins, then alphabetical
+  const employees = useMemo(() => {
+    if (!rawEmployees) return [];
+    return [...rawEmployees].sort((a, b) => {
+        if (a.username === 'Viren') return -1;
+        if (b.username === 'Viren') return 1;
+        
+        if (a.role === 'admin' && b.role !== 'admin') return -1;
+        if (b.role === 'admin' && a.role !== 'admin') return 1;
+        
+        return a.displayName.localeCompare(b.displayName);
+    });
+  }, [rawEmployees]);
 
   // Fetch Live Offers
   const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
@@ -121,7 +135,6 @@ export default function LoginPage() {
     if (!db) return;
     setIsSeeding(true);
     try {
-        const empsRef = collection(db, 'employees');
         const initial = [
             { username: 'Viren', displayName: 'Viren', role: 'admin', pin: '6969', salary: 0, salaryType: 'monthly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/viren/100/100' },
             { username: 'Abbas', displayName: 'Abbas', role: 'staff', pin: '8888', salary: 100, salaryType: 'hourly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/abbas/100/100' },
@@ -129,8 +142,8 @@ export default function LoginPage() {
         ];
         
         for (const emp of initial) {
-            const newDocRef = doc(empsRef);
-            await setDoc(newDocRef, emp);
+            const empDocRef = doc(db, 'employees', emp.username);
+            await setDoc(empDocRef, emp);
         }
         
         toast({ title: "System Initialized", description: "Default profiles have been restored." });
