@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash, Edit, Users, Shield, Banknote, Calendar } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Users, Shield, Banknote, Calendar, Clock } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +47,9 @@ export function EmployeeManager() {
     salaryType: 'monthly' as Employee['salaryType'],
     weekOffDay: 5,
     joinDate: new Date().toISOString().slice(0, 10),
-    pin: ''
+    pin: '',
+    workStartTime: '11:00',
+    workEndTime: '23:00'
   });
 
   const empQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
@@ -63,7 +65,9 @@ export function EmployeeManager() {
       salaryType: emp.salaryType || 'monthly',
       weekOffDay: emp.weekOffDay ?? 5,
       joinDate: emp.joinDate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-      pin: emp.pin || ''
+      pin: emp.pin || '',
+      workStartTime: emp.workStartTime || '11:00',
+      workEndTime: emp.workEndTime || '23:00'
     });
     setModalOpen(true);
   };
@@ -82,7 +86,11 @@ export function EmployeeManager() {
     
     setModalOpen(false);
     setIsSubmitting(false);
-    setFormData({ username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '' });
+    setFormData({ 
+        username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', 
+        weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '',
+        workStartTime: '11:00', workEndTime: '23:00'
+    });
   };
 
   return (
@@ -103,7 +111,7 @@ export function EmployeeManager() {
               <TableHead className="font-black uppercase text-[10px]">Operator</TableHead>
               <TableHead className="font-black uppercase text-[10px]">Role</TableHead>
               <TableHead className="font-black uppercase text-[10px]">Compensation</TableHead>
-              <TableHead className="font-black uppercase text-[10px]">Weekoff</TableHead>
+              <TableHead className="font-black uppercase text-[10px]">Shift Hours</TableHead>
               <TableHead className="text-right font-black uppercase text-[10px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -127,7 +135,10 @@ export function EmployeeManager() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="text-[10px] font-bold uppercase">{DAYS[emp.weekOffDay] || 'N/A'}</span>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-tight">{emp.workStartTime || '11:00'} - {emp.workEndTime || '23:00'}</span>
+                        <span className="text-[8px] font-bold text-muted-foreground uppercase">{DAYS[emp.weekOffDay] || 'N/A'} OFF</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -178,6 +189,18 @@ export function EmployeeManager() {
                 </Select>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Shift Starts</Label>
+                <Input type="time" value={formData.workStartTime} onChange={e => setFormData({...formData, workStartTime: e.target.value})} className="font-bold" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Shift Ends</Label>
+                <Input type="time" value={formData.workEndTime} onChange={e => setFormData({...formData, workEndTime: e.target.value})} className="font-bold" />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase text-muted-foreground">Salary Amount</Label>

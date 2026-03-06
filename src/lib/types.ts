@@ -463,6 +463,8 @@ export interface Employee {
   joinDate: string;
   photoURL?: string;
   isActive: boolean;
+  workStartTime?: string; // "HH:mm"
+  workEndTime?: string;   // "HH:mm"
 }
 
 export interface Leave {

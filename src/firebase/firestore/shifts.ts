@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc } from 'firebase/firestore';
@@ -5,13 +6,14 @@ import type { Shift, ShiftTask, LogEntry, Task, ShiftBreak, Employee } from '@/l
 import type { CustomUser } from '@/firebase/auth/use-user';
 import { getBusinessDate } from '@/lib/utils';
 
-// Constants for shift logic
-const EXPECTED_START_TIME = "11:00"; // 11:00 AM
-const LATE_ARRIVAL_THRESHOLD = 5; // minutes
-const EXPECTED_END_TIME = "23:00"; // 11:00 PM
+// Defaults for shift logic
+const DEFAULT_START_TIME = "11:00"; // 11:00 AM
+const LATE_ARRIVAL_THRESHOLD = 10; // Updated to 10 minutes
+const DEFAULT_END_TIME = "23:00";   // 11:00 PM
 
 const calculateAttendanceOnStart = (loginTime: Date, empSettings?: Employee) => {
-    const [expH, expM] = EXPECTED_START_TIME.split(':').map(Number);
+    const expectedStart = empSettings?.workStartTime || DEFAULT_START_TIME;
+    const [expH, expM] = expectedStart.split(':').map(Number);
     const expDate = new Date(loginTime);
     expDate.setHours(expH, expM, 0, 0);
 
@@ -23,15 +25,15 @@ const calculateAttendanceOnStart = (loginTime: Date, empSettings?: Employee) => 
         lateMinutes = diffMins;
     }
 
-    // Default to Friday (5) if employee settings not available
     const weekOff = empSettings ? empSettings.weekOffDay : 5;
     const workedOnWeeklyOff = loginTime.getDay() === weekOff;
 
     return { lateMinutes, workedOnWeeklyOff };
 };
 
-const calculateAttendanceOnEnd = (logoutTime: Date) => {
-    const [expH, expM] = EXPECTED_END_TIME.split(':').map(Number);
+const calculateAttendanceOnEnd = (logoutTime: Date, empSettings?: Employee) => {
+    const expectedEnd = empSettings?.workEndTime || DEFAULT_END_TIME;
+    const [expH, expM] = expectedEnd.split(':').map(Number);
     const expDate = new Date(logoutTime);
     expDate.setHours(expH, expM, 0, 0);
 
@@ -81,7 +83,6 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 updates.tasks = [...shiftData.tasks, ...newTasksToSync];
             }
 
-            // ONLY track login for non-owner users
             if (!isOwner) {
                 const userIsListed = shift.employees.some(e => e.username === user.username);
                 if (!userIsListed) {
@@ -103,12 +104,10 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             }
             return shift;
         } else {
-            // If user is owner, don't trigger a new shift start
             if (isOwner) return null;
 
             const now = new Date();
             
-            // Get employee settings for weekoff check
             const empsRef = collection(db, 'employees');
             const empQ = query(empsRef, where('username', '==', user.username), limit(1));
             const empSnap = await getDocs(empQ);
@@ -166,7 +165,14 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
     try {
         const shiftDoc = await getDoc(shiftRef);
         const now = new Date();
-        const { earlyLeaveMinutes, overtimeMinutes } = calculateAttendanceOnEnd(now);
+        
+        // Get primary staff settings for end calculations
+        const empsRef = collection(db, 'employees');
+        const empQ = query(empsRef, where('username', '==', user.username), limit(1));
+        const empSnap = await getDocs(empQ);
+        const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
+
+        const { earlyLeaveMinutes, overtimeMinutes } = calculateAttendanceOnEnd(now, empSettings);
 
         if (forceEnd && shiftDoc.exists()) {
             const shiftData = shiftDoc.data() as Shift;

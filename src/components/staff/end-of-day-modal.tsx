@@ -1,6 +1,6 @@
 
 'use client';
-import type { Shift, ShiftTask, Bill, Debt } from '@/lib/types';
+import type { Shift, ShiftTask, Bill, Debt, Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,13 +13,13 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Moon, IndianRupee, Wallet, ListChecks, TrendingUp, AlertTriangle, User, Phone, Info, MinusCircle, PlusCircle } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Moon, IndianRupee, Wallet, ListChecks, TrendingUp, AlertTriangle, User, Phone, Info, MinusCircle, PlusCircle, Clock } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
 import { Input } from '../ui/input';
 import { useAuth } from '@/firebase/auth/use-user';
 import { cn, isBusinessToday } from '@/lib/utils';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -44,12 +44,43 @@ export function EndOfDayModal({
   const [cashTotal, setCashTotal] = useState('');
   const [upiTotal, setUpiTotal] = useState('');
   const [shiftExpenses, setShiftExpenses] = useState('');
+  const [employeeSettings, setEmployeeSettings] = useState<Employee | null>(null);
+
+  useEffect(() => {
+    if (isOpen && user && db) {
+        const fetchSettings = async () => {
+            const empsRef = collection(db, 'employees');
+            const q = query(empsRef, where('username', '==', user.username), limit(1));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                setEmployeeSettings(snap.docs[0].data() as Employee);
+            }
+        };
+        fetchSettings();
+    }
+  }, [isOpen, user, db]);
 
   const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
   const { data: bills } = useCollection<Bill>(billsQuery);
 
   const debtsQuery = useMemo(() => !db ? null : query(collection(db, 'debts'), where('status', '==', 'pending')), [db]);
   const { data: debts } = useCollection<Debt>(debtsQuery);
+
+  const isLoggingOutEarly = useMemo(() => {
+    if (!employeeSettings?.workEndTime) return false;
+    const [h, m] = employeeSettings.workEndTime.split(':').map(Number);
+    const now = new Date();
+    const target = new Date();
+    target.setHours(h, m, 0, 0);
+    
+    // If target time is small (e.g. 1 AM) and current time is late night (e.g. 11 PM), 
+    // it technically means the next calendar day.
+    if (h < 5 && now.getHours() >= 18) {
+        target.setDate(target.getDate() + 1);
+    }
+
+    return now < target;
+  }, [employeeSettings]);
 
   const systemTally = useMemo(() => {
     if (!bills) return { cash: 0, upi: 0, pending: 0, activeDebtors: [] as Debt[] };
@@ -118,6 +149,17 @@ export function EndOfDayModal({
         
         <ScrollArea className="flex-1 min-h-0 bg-background">
           <div className="p-4 sm:p-6 space-y-4">
+            
+            {isLoggingOutEarly && (
+                <div className="p-4 rounded-xl border-2 border-destructive bg-destructive/5 flex items-center gap-3 animate-pulse">
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                    <div className="space-y-0.5">
+                        <p className="font-black uppercase text-xs text-destructive">Early Exit Alert</p>
+                        <p className="text-[10px] font-bold text-foreground">You are logging out early. Scheduled shift ends at {employeeSettings?.workEndTime || '23:00'}.</p>
+                    </div>
+                </div>
+            )}
+
             <div className="p-4 sm:p-5 rounded-2xl border-2 bg-muted/5 space-y-4 shadow-sm">
               <div>
                 <h3 className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
