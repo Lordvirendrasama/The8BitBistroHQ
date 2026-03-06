@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -275,16 +274,6 @@ export default function LoginPage() {
                 <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />
                 <span className="font-headline text-[10px] tracking-tight uppercase">GUEST</span>
                 <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">Visitor Terminal</span>
-            </Button>
-        </div>
-
-        <div className="pt-2">
-            <Button onClick={() => handleLoginAttempt('Abbas')} disabled={isEntering} className={cn(
-                  "h-14 sm:h-16 px-12 sm:px-16 rounded-full font-headline text-xs sm:text-sm tracking-[0.2em] transition-all duration-500 uppercase border-b-4 border-black/10 shadow-lg",
-                  isEntering ? "bg-emerald-500 scale-90 opacity-50" : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-primary/20"
-                )}>
-                {isEntering ? <Zap className="mr-2 sm:mr-3 h-4 sm:h-5 w-4 sm:w-5 animate-spin" /> : <Power className="mr-2 sm:mr-3 h-4 sm:h-5 w-4 sm:w-5" />}
-                {isEntering ? 'Entering...' : 'Start Shift'}
             </Button>
         </div>
 
