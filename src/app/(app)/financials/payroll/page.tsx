@@ -1,15 +1,16 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import type { Shift, Settings } from '@/lib/types';
+import type { Shift, Settings, Employee } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Clock, Timer, IndianRupee, TrendingUp, Calendar, ArrowRight, UserCheck } from 'lucide-react';
+import { Users, Clock, Timer, IndianRupee, TrendingUp, Calendar, ArrowRight, UserCheck, Banknote } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, differenceInHours, differenceInMinutes } from 'date-fns';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,9 @@ export default function PayrollPage() {
   const settingsQuery = useMemo(() => !db ? null : collection(db, 'settings'), [db]);
   const { data: settingsList } = useCollection<Settings>(settingsQuery);
   const settings = settingsList?.[0] || { hourlySalaryRate: 100 };
+
+  const empsQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
+  const { data: employees } = useCollection<Employee>(empsQuery);
 
   const shiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), orderBy('startTime', 'desc')), [db]);
   const { data: allShifts, loading } = useCollection<Shift>(shiftsQuery);
@@ -43,12 +47,15 @@ export default function PayrollPage() {
         totalSeconds: number,
         totalEarnings: number,
         lastActive: string,
-        lateInstances: number
+        lateInstances: number,
+        salaryType: string,
+        baseRate: number
     }> = {};
 
     monthShifts.forEach(s => {
-        // Multi-employee shift support
         s.employees.forEach(emp => {
+            const empSettings = employees?.find(e => e.username === emp.username);
+            
             if (!staffMap[emp.username]) {
                 staffMap[emp.username] = {
                     displayName: emp.displayName,
@@ -56,7 +63,9 @@ export default function PayrollPage() {
                     totalSeconds: 0,
                     totalEarnings: 0,
                     lastActive: s.startTime,
-                    lateInstances: 0
+                    lateInstances: 0,
+                    salaryType: empSettings?.salaryType || 'hourly',
+                    baseRate: empSettings?.salary || (settings.hourlySalaryRate || 100)
                 };
             }
 
@@ -69,15 +78,22 @@ export default function PayrollPage() {
                 const durationSec = Math.floor(durationMs / 1000);
                 staff.totalSeconds += durationSec;
                 
-                // Calculation: (Seconds / 3600) * Hourly Rate
-                const hours = durationSec / 3600;
-                staff.totalEarnings += hours * (settings.hourlySalaryRate || 100);
+                // Calculation logic:
+                if (staff.salaryType === 'monthly') {
+                    // For monthly fixed, we estimate daily share (Rate / 30) per day worked
+                    // This can be adjusted to specific contract logic
+                    staff.totalEarnings += (staff.baseRate / 30);
+                } else {
+                    // Standard Hourly
+                    const hours = durationSec / 3600;
+                    staff.totalEarnings += hours * staff.baseRate;
+                }
             }
         });
     });
 
     return Object.entries(staffMap).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.totalEarnings - a.totalEarnings);
-  }, [allShifts, selectedMonth, settings]);
+  }, [allShifts, selectedMonth, settings, employees]);
 
   const monthOptions = useMemo(() => {
     if (!allShifts) return [];
@@ -93,7 +109,7 @@ export default function PayrollPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-4xl tracking-wider text-foreground">STAFF PAYROLL</h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">WAGE CALCULATION BASED ON AUTOMATED SHIFT DURATION & ATTENDANCE</p>
+          <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">WAGE CALCULATION BASED ON INDIVIDUAL EMPLOYEE SALARIES & ATTENDANCE</p>
         </div>
         <div className="flex gap-2">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -115,12 +131,12 @@ export default function PayrollPage() {
         <Card className="border-2 bg-muted/5">
             <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <IndianRupee className="h-4 w-4" /> Hourly Rate
+                    <IndianRupee className="h-4 w-4" /> Global Default Rate
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="text-3xl font-black">₹{settings.hourlySalaryRate || 100}<span className="text-xs ml-1 opacity-40">/HR</span></div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Configured in Loyalty Settings</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Used if individual salary is unset</p>
             </CardContent>
         </Card>
 
@@ -160,8 +176,8 @@ export default function PayrollPage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead className="font-black uppercase text-[10px] pl-6">Operator</TableHead>
-                        <TableHead className="font-black uppercase text-[10px] text-center">Days Worked</TableHead>
-                        <TableHead className="font-black uppercase text-[10px] text-center">Total Hours</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] text-center">Structure</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] text-center">Days / Hours</TableHead>
                         <TableHead className="font-black uppercase text-[10px] text-center">Late Logs</TableHead>
                         <TableHead className="text-right font-black uppercase text-[10px] pr-6">Earned Salary</TableHead>
                     </TableRow>
@@ -185,11 +201,15 @@ export default function PayrollPage() {
                                         </div>
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-center font-bold text-xs">{staff.daysWorked} DAYS</TableCell>
                                 <TableCell className="text-center">
-                                    <div className="flex items-center justify-center gap-1.5 font-mono text-xs font-bold">
-                                        <Timer className="h-3.5 w-3.5 opacity-40" />
-                                        {h}H {m}M
+                                    <Badge variant="outline" className="h-4 text-[7px] font-black uppercase border-emerald-500/20 text-emerald-600">
+                                        {staff.salaryType} (₹{staff.baseRate})
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <div className="flex flex-col items-center justify-center font-mono text-[10px] font-bold">
+                                        <span className="flex items-center gap-1"><Calendar className="h-2 w-2"/> {staff.daysWorked} DAYS</span>
+                                        <span className="flex items-center gap-1 opacity-50"><Timer className="h-2 w-2"/> {h}H {m}M</span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-center">

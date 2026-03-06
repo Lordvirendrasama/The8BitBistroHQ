@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -8,10 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Shield, Users, User, Power, Zap, Clock, Calendar, Gamepad2, Cpu, Wifi, KeyRound, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { GamingPackage } from '@/lib/types';
+import type { GamingPackage, Employee } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -37,7 +38,11 @@ export default function LoginPage() {
   // PIN State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
-  const [pendingUser, setPendingUser] = useState<'Viren' | 'Abbas' | 'Guest' | null>(null);
+  const [pendingUser, setPendingUser] = useState<Employee | null>(null);
+
+  // Fetch Employees
+  const employeesQuery = useMemo(() => !db ? null : query(collection(db, 'employees'), where('isActive', '==', true)), [db]);
+  const { data: employees, loading: empsLoading } = useCollection<Employee>(employeesQuery);
 
   // Fetch Live Offers
   const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
@@ -49,7 +54,6 @@ export default function LoginPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter Active Offers for Today - ONLY PRIORITY OFFERS
   const activeOffers = useMemo(() => {
     if (!packages) return [];
     const day = currentTime.toLocaleDateString('en-US', { weekday: 'short' });
@@ -67,7 +71,6 @@ export default function LoginPage() {
     });
   }, [packages, currentTime]);
 
-  // Mouse following logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePos({ x: e.clientX, y: e.clientY });
@@ -108,19 +111,19 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
-  const handleLoginAttempt = (username: 'Viren' | 'Abbas' | 'Guest') => {
-    setPendingUser(username);
+  const handleLoginAttempt = (emp: Employee) => {
+    setPendingUser(emp);
     setIsPinModalOpen(true);
   };
 
-  const executeLogin = async (username: 'Viren' | 'Abbas' | 'Guest') => {
+  const executeLogin = async (username: string, pin: string) => {
     if (isEntering) return;
     setIsEntering(true);
     playChime();
     
     setTimeout(async () => {
       try {
-        await login(username);
+        await login(username, pin);
         router.push('/dashboard');
       } catch (error: any) {
         setIsEntering(false);
@@ -130,33 +133,17 @@ export default function LoginPage() {
           description: error.message,
         });
       }
-    }, 1200);
+    }, 800);
   };
 
   const verifyPinAndLogin = () => {
     if (!pendingUser) return;
-
-    const pinMap = {
-      'Viren': '6969',
-      'Abbas': '8888',
-      'Guest': '1234'
-    };
-
-    if (pinInput === pinMap[pendingUser]) {
-      setIsPinModalOpen(false);
-      setPinInput('');
-      executeLogin(pendingUser);
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Permission Denied',
-        description: `Incorrect PIN for ${pendingUser}.`,
-      });
-      setPinInput('');
-    }
+    executeLogin(pendingUser.username, pinInput);
+    setIsPinModalOpen(false);
+    setPinInput('');
   };
 
-  if (loading || (user && !isEntering)) {
+  if (loading || empsLoading || (user && !isEntering)) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
         <div className="flex flex-col items-center gap-4">
@@ -251,34 +238,25 @@ export default function LoginPage() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-4xl">
-            <Button onClick={() => handleLoginAttempt('Viren')} variant="outline" className="group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm">
-                <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block"><Cpu className="h-12 w-12" /></div>
-                <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" />
-                <span className="font-headline text-[10px] tracking-tight uppercase">VIREN</span>
-                <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">Master Console</span>
-            </Button>
-
-            <Button onClick={() => handleLoginAttempt('Abbas')} variant="outline" className="group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-emerald-500/5 backdrop-blur-xl border-2 border-emerald-500/20 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all rounded-2xl shadow-lg">
-                <div className="absolute top-0 right-0 p-2 opacity-10 hidden xs:block"><Wifi className="h-12 w-12 text-emerald-500" /></div>
-                <div className="absolute top-2 left-2 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </div>
-                <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" />
-                <span className="font-headline text-[10px] tracking-tight uppercase text-emerald-600 dark:text-emerald-400">ABBAS</span>
-                <span className="text-[8px] font-black opacity-60 uppercase tracking-widest">Operator Entrance</span>
-            </Button>
-
-            <Button onClick={() => handleLoginAttempt('Guest')} variant="outline" className="group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all rounded-2xl shadow-sm">
-                <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block"><User className="h-12 w-12" /></div>
-                <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />
-                <span className="font-headline text-[10px] tracking-tight uppercase">GUEST</span>
-                <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">Visitor Terminal</span>
-            </Button>
+            {employees?.map(emp => (
+                <Button key={emp.id} onClick={() => handleLoginAttempt(emp)} variant="outline" className={cn(
+                    "group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm",
+                    emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : ""
+                )}>
+                    <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
+                        {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Wifi className="h-12 w-12" /> : <User className="h-12 w-12" />}
+                    </div>
+                    {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
+                     emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
+                     <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
+                    <span className="font-headline text-[10px] tracking-tight uppercase">{emp.displayName}</span>
+                    <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">{emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}</span>
+                </Button>
+            ))}
         </div>
 
         <p className="text-[8px] font-mono text-muted-foreground/30 uppercase tracking-widest text-center">
-            BISTRO_OS_v{APP_VERSION} // LOCAL_AUTH_ENABLED // STABLE_BUILD
+            BISTRO_OS_v{APP_VERSION} // DYNAMIC_AUTH_ENABLED // STABLE_BUILD
         </p>
       </main>
 
@@ -290,7 +268,7 @@ export default function LoginPage() {
               Verification
             </DialogTitle>
             <DialogDescription className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground">
-              Enter the unique 4-digit PIN for <strong>{pendingUser}</strong>.
+              Enter the unique 4-digit PIN for <strong>{pendingUser?.displayName}</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 sm:py-6 flex flex-col items-center gap-4">

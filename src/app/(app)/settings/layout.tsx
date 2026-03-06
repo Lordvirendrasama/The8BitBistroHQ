@@ -12,6 +12,8 @@ const settingsNav = [
   { href: '/settings/categories', label: 'Categories' },
   { href: '/settings/packages', label: 'Gaming Packages' },
   { href: '/settings/recharge-packs', label: 'Recharge Packs' },
+  { href: '/settings/employees', label: 'Employees' },
+  { href: '/settings/leaves', label: 'Staff Leaves' },
   { href: '/settings/tasks', label: 'Shift Tasks' },
   { href: '/settings/logs', label: 'Logs' },
   { href: '/settings/data', label: 'Data' },
@@ -31,7 +33,7 @@ export default function SettingsLayout({
           Settings & Admin
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Central management for loyalty mechanics, menu, rewards, and audit logs.
+          Central management for loyalty mechanics, menu, rewards, and workforce.
         </p>
       </div>
 

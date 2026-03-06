@@ -2,7 +2,7 @@
 'use client';
 
 import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc } from 'firebase/firestore';
-import type { Shift, ShiftTask, LogEntry, Task, ShiftBreak } from '@/lib/types';
+import type { Shift, ShiftTask, LogEntry, Task, ShiftBreak, Employee } from '@/lib/types';
 import type { CustomUser } from '@/firebase/auth/use-user';
 import { getBusinessDate } from '@/lib/utils';
 
@@ -10,9 +10,8 @@ import { getBusinessDate } from '@/lib/utils';
 const EXPECTED_START_TIME = "11:00"; // 11:00 AM
 const LATE_ARRIVAL_THRESHOLD = 5; // minutes
 const EXPECTED_END_TIME = "23:00"; // 11:00 PM
-const WEEKLY_OFF_DAY = 5; // Friday (JS Date.getDay() -> 0: Sun, 1: Mon, ..., 5: Fri)
 
-const calculateAttendanceOnStart = (loginTime: Date) => {
+const calculateAttendanceOnStart = (loginTime: Date, empSettings?: Employee) => {
     const [expH, expM] = EXPECTED_START_TIME.split(':').map(Number);
     const expDate = new Date(loginTime);
     expDate.setHours(expH, expM, 0, 0);
@@ -25,7 +24,9 @@ const calculateAttendanceOnStart = (loginTime: Date) => {
         lateMinutes = diffMins;
     }
 
-    const workedOnWeeklyOff = loginTime.getDay() === WEEKLY_OFF_DAY;
+    // Default to Friday (5) if employee settings not available
+    const weekOff = empSettings ? empSettings.weekOffDay : 5;
+    const workedOnWeeklyOff = loginTime.getDay() === weekOff;
 
     return { lateMinutes, workedOnWeeklyOff };
 };
@@ -85,7 +86,6 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 updates.employees = [...shift.employees, { username: user.username, displayName: user.displayName }];
             }
             
-            // If the shift was marked ended but someone logs in again, we "Recover" it
             if (shift.endTime) {
                 updates.endTime = null;
                 updates.status = 'recovered';
@@ -101,7 +101,14 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             return shift;
         } else {
             const now = new Date();
-            const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now);
+            
+            // Get employee settings for weekoff check
+            const empsRef = collection(db, 'employees');
+            const empQ = query(empsRef, where('username', '==', user.username), limit(1));
+            const empSnap = await getDocs(empQ);
+            const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
+
+            const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now, empSettings);
 
             const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
                 name: task.name,

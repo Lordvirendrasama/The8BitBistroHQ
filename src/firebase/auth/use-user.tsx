@@ -2,10 +2,9 @@
 'use client';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { logUserLogin } from '@/firebase/firestore/logs';
-import { getFirestore, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, limit, doc, setDoc } from 'firebase/firestore';
 import { endShift } from '../firestore/shifts';
-import { createAdminNotification } from '../firestore/notifications';
-import type { Shift, ShiftTask } from '@/lib/types';
+import type { Employee } from '@/lib/types';
 
 // Define a user type for our custom auth
 export interface CustomUser {
@@ -18,7 +17,7 @@ export interface CustomUser {
 interface AuthContextType {
   user: CustomUser | null;
   loading: boolean;
-  login: (username: 'Viren' | 'Abbas' | 'Guest') => Promise<void>;
+  login: (username: string, pin: string) => Promise<void>;
   logout: (totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number }, forceLogout?: boolean) => Promise<void>;
   switchUser: () => void;
 }
@@ -38,50 +37,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
+  // Initialization Seed: Ensure base users exist in DB if not present
+  useEffect(() => {
+    const seed = async () => {
+        const db = getFirestore();
+        const empsRef = collection(db, 'employees');
+        const q = query(empsRef, limit(1));
+        const snap = await getDocs(q);
+        
+        if (snap.empty) {
+            console.log("Seeding initial employees...");
+            const initial = [
+                { username: 'Viren', displayName: 'Viren', role: 'admin', pin: '6969', salary: 0, salaryType: 'monthly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/viren/100/100' },
+                { username: 'Abbas', displayName: 'Abbas', role: 'staff', pin: '8888', salary: 100, salaryType: 'hourly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/abbas/100/100' },
+                { username: 'Guest', displayName: 'Guest', role: 'guest', pin: '1234', salary: 0, salaryType: 'hourly', weekOffDay: 0, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/guest/100/100' }
+            ];
+            for (const emp of initial) {
+                await addDoc(empsRef, emp);
+            }
+        }
+    };
+    seed();
+  }, []);
 
-  const login = async (username: 'Viren' | 'Abbas' | 'Guest') => {
+
+  const login = async (username: string, pin: string) => {
     setLoading(true);
-    let loggedInUser: CustomUser | null = null;
+    const db = getFirestore();
+    const empsRef = collection(db, 'employees');
+    const q = query(empsRef, where('username', '==', username), where('isActive', '==', true), limit(1));
+    const snap = await getDocs(q);
 
-    if (username === 'Viren') {
-        loggedInUser = { 
-            username: 'Viren',
-            displayName: 'Viren',
-            photoURL: 'https://picsum.photos/seed/viren/100/100',
-            role: 'admin',
-        };
-    } else if (username === 'Abbas') {
-        loggedInUser = {
-            username: 'Abbas',
-            displayName: 'Abbas',
-            photoURL: 'https://picsum.photos/seed/abbas/100/100',
-            role: 'staff',
-        };
-    } else if (username === 'Guest') {
-        loggedInUser = {
-            username: 'Guest',
-            displayName: 'Guest',
-            photoURL: 'https://picsum.photos/seed/guest/100/100',
-            role: 'guest',
-        };
+    if (snap.empty) {
+        setLoading(false);
+        throw new Error('User not found or inactive');
     }
 
-    if (loggedInUser) {
-      sessionStorage.setItem('user', JSON.stringify(loggedInUser));
-      setUser(loggedInUser);
-      await logUserLogin(loggedInUser);
-      setLoading(false);
-    } else {
-      setLoading(false);
-      throw new Error('Invalid user selected');
+    const empData = snap.docs[0].data() as Employee;
+    
+    if (empData.pin !== pin) {
+        setLoading(false);
+        throw new Error('Invalid PIN');
     }
+
+    const loggedInUser: CustomUser = {
+        username: empData.username,
+        displayName: empData.displayName,
+        photoURL: empData.photoURL || `https://picsum.photos/seed/${empData.username}/100/100`,
+        role: empData.role,
+    };
+
+    sessionStorage.setItem('user', JSON.stringify(loggedInUser));
+    setUser(loggedInUser);
+    await logUserLogin(loggedInUser);
+    setLoading(false);
   };
 
   const logout = async (totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number; }, forceLogout?: boolean) => {
     if (user && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest')) {
       try {
         const db = getFirestore();
-        const today = new Date().toISOString().split('T')[0];
         const q = query(
           collection(db, 'shifts'),
           where('endTime', '==', null),
@@ -91,7 +106,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (!activeShiftSnapshot.empty) {
           const activeShiftDoc = activeShiftSnapshot.docs[0];
-          // Pass forceLogout flag to endShift so it can handle the notification logic
           await endShift(activeShiftDoc.id, user, totals, forceLogout);
         }
       } catch (error) {
@@ -118,7 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === null) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
@@ -126,4 +140,11 @@ export const useAuth = () => {
 export const useUser = () => {
     const { user, loading } = useAuth();
     return { user, loading };
+}
+
+// Internal helper for seeding
+async function addDoc(colRef: any, data: any) {
+    const db = getFirestore();
+    const docRef = doc(colRef);
+    await setDoc(docRef, data);
 }

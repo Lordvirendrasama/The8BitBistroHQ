@@ -151,7 +151,11 @@ export type LogEntryType =
     | 'STATION_UPDATED'
     | 'STATION_DELETED'
     | 'STATION_REORDERED'
-    | 'OWNER_CONSUMPTION_ADDED';
+    | 'OWNER_CONSUMPTION_ADDED'
+    | 'EMPLOYEE_ADDED'
+    | 'EMPLOYEE_UPDATED'
+    | 'EMPLOYEE_DELETED'
+    | 'LEAVE_RECORDED';
 
 
 export interface LogEntry {
@@ -445,4 +449,30 @@ export interface OwnerConsumption {
     displayName: string;
   };
   cycle?: string;
+}
+
+export interface Employee {
+  id: string;
+  username: string;
+  displayName: string;
+  role: 'admin' | 'staff' | 'guest';
+  pin: string;
+  salary: number;
+  salaryType: 'monthly' | 'hourly';
+  weekOffDay: number; // 0-6 (Sun-Sat)
+  joinDate: string;
+  photoURL?: string;
+  isActive: boolean;
+}
+
+export interface Leave {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  type: 'paid' | 'unpaid' | 'sick';
+  status: 'approved' | 'pending' | 'rejected';
+  createdAt: string;
 }
