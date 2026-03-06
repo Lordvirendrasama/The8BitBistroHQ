@@ -31,62 +31,66 @@ export default function PayrollPage() {
   const { data: allShifts, loading } = useCollection<Shift>(shiftsQuery);
 
   const stats = useMemo(() => {
-    if (!allShifts) return [];
+    if (!employees) return [];
 
     const start = startOfMonth(new Date(selectedMonth + "-01"));
     const end = endOfMonth(start);
 
-    const monthShifts = allShifts.filter(s => {
+    const monthShifts = allShifts?.filter(s => {
         const date = new Date(s.startTime);
         return date >= start && date <= end && s.status === 'completed';
-    });
+    }) || [];
 
     const staffMap: Record<string, {
         displayName: string,
         daysWorked: number,
         totalSeconds: number,
         totalEarnings: number,
-        lastActive: string,
+        lastActive: string | null,
         lateInstances: number,
         salaryType: string,
         baseRate: number
     }> = {};
 
-    monthShifts.forEach(s => {
-        s.employees.forEach(emp => {
-            const empSettings = employees?.find(e => e.username === emp.username);
-            
-            if (!staffMap[emp.username]) {
-                staffMap[emp.username] = {
-                    displayName: emp.displayName,
-                    daysWorked: 0,
-                    totalSeconds: 0,
-                    totalEarnings: 0,
-                    lastActive: s.startTime,
-                    lateInstances: 0,
-                    salaryType: empSettings?.salaryType || 'hourly',
-                    baseRate: empSettings?.salary || (settings.hourlySalaryRate || 100)
-                };
-            }
+    // 1. Initialize with all active employees
+    employees.filter(e => e.isActive).forEach(emp => {
+        staffMap[emp.username] = {
+            displayName: emp.displayName || emp.username,
+            daysWorked: 0,
+            totalSeconds: 0,
+            totalEarnings: 0,
+            lastActive: null,
+            lateInstances: 0,
+            salaryType: emp.salaryType || 'hourly',
+            baseRate: emp.salary || (settings.hourlySalaryRate || 100)
+        };
+    });
 
-            const staff = staffMap[emp.username];
-            staff.daysWorked += 1;
-            if (s.lateMinutes) staff.lateInstances += 1;
-            
-            if (s.endTime) {
-                const durationMs = new Date(s.endTime).getTime() - new Date(s.startTime).getTime();
-                const durationSec = Math.floor(durationMs / 1000);
-                staff.totalSeconds += durationSec;
+    // 2. Aggregate shift data
+    monthShifts.forEach(s => {
+        s.employees.forEach(shiftEmp => {
+            if (staffMap[shiftEmp.username]) {
+                const staff = staffMap[shiftEmp.username];
+                staff.daysWorked += 1;
+                if (s.lateMinutes) staff.lateInstances += 1;
                 
-                // Calculation logic:
-                if (staff.salaryType === 'monthly') {
-                    // For monthly fixed, we estimate daily share (Rate / 30) per day worked
-                    // This can be adjusted to specific contract logic
-                    staff.totalEarnings += (staff.baseRate / 30);
-                } else {
-                    // Standard Hourly
-                    const hours = durationSec / 3600;
-                    staff.totalEarnings += hours * staff.baseRate;
+                if (s.endTime) {
+                    const durationMs = new Date(s.endTime).getTime() - new Date(s.startTime).getTime();
+                    const durationSec = Math.floor(durationMs / 1000);
+                    staff.totalSeconds += durationSec;
+                    
+                    if (staff.salaryType === 'monthly') {
+                        // Monthly structure: Flat day rate (monthly/30) per worked day
+                        staff.totalEarnings += (staff.baseRate / 30);
+                    } else {
+                        // Hourly structure
+                        const hours = durationSec / 3600;
+                        staff.totalEarnings += hours * staff.baseRate;
+                    }
+                }
+                
+                if (!staff.lastActive || new Date(s.startTime) > new Date(staff.lastActive)) {
+                    staff.lastActive = s.startTime;
                 }
             }
         });
@@ -96,9 +100,13 @@ export default function PayrollPage() {
   }, [allShifts, selectedMonth, settings, employees]);
 
   const monthOptions = useMemo(() => {
-    if (!allShifts) return [];
     const months = new Set<string>();
-    allShifts.forEach(s => months.add(format(new Date(s.startTime), 'yyyy-MM')));
+    // Always include current month
+    months.add(format(new Date(), 'yyyy-MM'));
+    
+    if (allShifts) {
+        allShifts.forEach(s => months.add(format(new Date(s.startTime), 'yyyy-MM')));
+    }
     return Array.from(months).sort().reverse();
   }, [allShifts]);
 
@@ -117,11 +125,11 @@ export default function PayrollPage() {
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                    {monthOptions.length > 0 ? monthOptions.map(m => (
+                    {monthOptions.map(m => (
                         <SelectItem key={m} value={m} className="font-bold uppercase text-[10px]">
                             {format(new Date(m + "-01"), 'MMMM yyyy').toUpperCase()}
                         </SelectItem>
-                    )) : <SelectItem value={selectedMonth}>CURRENT MONTH</SelectItem>}
+                    ))}
                 </SelectContent>
             </Select>
         </div>
@@ -143,12 +151,12 @@ export default function PayrollPage() {
         <Card className="border-2 bg-muted/5">
             <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <UserCheck className="h-4 w-4" /> Active Workforce
+                    <UserCheck className="h-4 w-4" /> Registered Staff
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="text-3xl font-black">{stats.length} <span className="text-xs ml-1 opacity-40">OPERATORS</span></div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Staff recorded this month</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Total workforce tracked</p>
             </CardContent>
         </Card>
 
@@ -203,7 +211,7 @@ export default function PayrollPage() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <Badge variant="outline" className="h-4 text-[7px] font-black uppercase border-emerald-500/20 text-emerald-600">
-                                        {staff.salaryType} (₹{staff.baseRate})
+                                        {staff.salaryType} (₹{staff.baseRate.toLocaleString()})
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-center">
@@ -225,7 +233,7 @@ export default function PayrollPage() {
                     })}
                     {stats.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No operator shifts recorded for this month.</TableCell>
+                            <TableCell colSpan={5} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No staff operators found in database.</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
