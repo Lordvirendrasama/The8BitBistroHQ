@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { Leave, Employee } from '@/lib/types';
@@ -46,7 +45,7 @@ export function LeaveManager() {
     
     await recordLeave({
       employeeId: emp.id,
-      employeeName: emp.displayName,
+      employeeName: emp.displayName || emp.username || 'Unknown Operator',
       startDate: formData.startDate,
       endDate: formData.endDate,
       type: formData.type,
