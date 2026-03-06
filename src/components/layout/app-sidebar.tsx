@@ -21,7 +21,29 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { UsersIcon } from '@/components/icons/users-icon';
 import { ChartIcon } from '@/components/icons/chart-icon';
 import { SettingsIcon } from '@/components/icons/settings-icon';
-import { Ticket, Users, History, Gem, Utensils, Gamepad2, Database, ListChecks, Receipt, FileBarChart, PieChart, ShieldCheck, ReceiptIndianRupee, Zap, Wallet, BarChart3, Package, ShoppingBag, Landmark } from 'lucide-react';
+import { 
+  Ticket, 
+  Users, 
+  History, 
+  Gem, 
+  Utensils, 
+  Gamepad2, 
+  Database, 
+  ListChecks, 
+  Receipt, 
+  FileBarChart, 
+  PieChart, 
+  ShieldCheck, 
+  ReceiptIndianRupee, 
+  Zap, 
+  Wallet, 
+  BarChart3, 
+  Package, 
+  ShoppingBag, 
+  Landmark,
+  Tag,
+  CalendarDays
+} from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
 const allNavItems = [
@@ -64,7 +86,11 @@ const allNavItems = [
         { href: '/settings', label: 'Loyalty Config', icon: Gem },
         { href: '/settings/rewards', label: 'Reward Catalog', icon: PieChart },
         { href: '/settings/menu', label: 'Food Menu', icon: Utensils },
+        { href: '/settings/categories', label: 'Categories', icon: Tag },
         { href: '/settings/packages', label: 'Gaming Packages', icon: Gamepad2 },
+        { href: '/settings/recharge-packs', label: 'Recharge Packs', icon: Zap },
+        { href: '/settings/employees', label: 'Employees', icon: Users },
+        { href: '/settings/leaves', label: 'Staff Leaves', icon: CalendarDays },
         { href: '/settings/tasks', label: 'Shift Tasks', icon: ListChecks },
         { href: '/settings/logs', label: 'System Logs', icon: History },
         { href: '/settings/data', label: 'Data Management', icon: Database },
