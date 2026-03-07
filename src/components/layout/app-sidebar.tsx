@@ -42,11 +42,13 @@ import {
   ShoppingBag, 
   Landmark,
   Tag,
-  CalendarDays
+  CalendarDays,
+  LayoutDashboard
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
 const allNavItems = [
+  { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
   { href: '/recharges', icon: Zap, label: 'Recharge Hub' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
