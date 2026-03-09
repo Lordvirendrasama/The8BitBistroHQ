@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -24,6 +23,7 @@ import { archiveBill } from '@/firebase/firestore/bills';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
 import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool } from '@/firebase/firestore/members';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const tierMultipliers: Record<MemberTier, number> = {
   Red: 1,
@@ -398,7 +398,7 @@ function DashboardContent() {
     updateStation(stationId, {
         status: 'in-use',
         members: assignedPlayers.map(p => ({ ...p, status: 'active' })),
-        startTime: null,
+        startTime: new Date().toISOString(),
         endTime: null,
         packageName: "Walk-in Order",
         currentBill: [],
@@ -407,7 +407,27 @@ function DashboardContent() {
   };
 
   const handleSaveBill = (stationId: string, newBill: BillItem[], newDiscount: number) => {
-    updateStation(stationId, { currentBill: newBill, discount: newDiscount });
+    const station = stations.find(s => s.id === stationId);
+    const updates: Partial<Station> = { currentBill: newBill, discount: newDiscount };
+    
+    // Automatic transition to active food session if items are added to an available station
+    if (station?.status === 'available' && newBill.length > 0) {
+        updates.status = 'in-use';
+        updates.packageName = 'Walk-in Order';
+        updates.startTime = new Date().toISOString();
+        
+        // If no members are explicitly assigned, create a generic walk-in profile
+        if (station.members.length === 0) {
+            updates.members = [{
+                id: `guest-walkin-${Date.now()}`,
+                name: 'Walk-in Customer',
+                avatarUrl: PlaceHolderImages.find(img => img.id === 'avatar-6')?.imageUrl || 'https://picsum.photos/seed/guest/100/100',
+                status: 'active'
+            }];
+        }
+    }
+
+    updateStation(stationId, updates);
     toast({ title: "Bill Saved" });
   };
 

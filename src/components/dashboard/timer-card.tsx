@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -163,9 +162,22 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
   const showTwoTimers = activeWithTimers.length > 1 && maxRemaining > minRemaining + 1000;
 
+  // Filter food items for the preview list
+  const foodItems = useMemo(() => {
+    return (station.currentBill || []).filter(item => 
+        !item.name.startsWith('Time:') && 
+        !item.name.startsWith('Buy Recharge:') && 
+        !item.name.startsWith('Recharge:')
+    );
+  }, [station.currentBill]);
+
+  const billTotal = useMemo(() => {
+    return (station.currentBill || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }, [station.currentBill]);
+
   return (
     <Card className={cn(
-        "flex flex-col transition-all h-full overflow-hidden border-2 shadow-sm font-body",
+        "flex flex-col transition-all h-full overflow-hidden border-2 shadow-sm font-body min-h-[340px]",
         cardBorderColor,
         cardBgColor
     )}>
@@ -175,11 +187,13 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 {station.type === 'ps5' ? <Gamepad2 className="h-5 w-5"/> : <Users className="h-5 w-5" />}
                 {station.name}
             </CardTitle>
-            {shortestMember && (
+            {shortestMember ? (
                 <span className="text-[10px] font-bold uppercase text-primary tracking-normal flex items-center gap-1.5 bg-background/80 border border-primary/10 px-2 py-0.5 rounded-full w-fit shadow-sm">
                     <User className="h-2.5 w-2.5" />
                     {shortestMember.name}
                 </span>
+            ) : station.status !== 'available' && (
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest opacity-60">Food Only Order</span>
             )}
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -195,14 +209,21 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
         </div>
       </CardHeader>
       
-      <CardContent className="flex-grow flex flex-col items-center justify-center space-y-3 py-2 px-4 relative">
-        <div className="flex flex-col items-center">
+      <CardContent className="flex-grow flex flex-col items-center justify-center py-2 px-4 relative">
+        <div className="flex flex-col items-center mb-4">
             <div className={cn(
                 "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none transition-colors",
                 isTimeUp && "text-destructive",
                 isTimeLow && "text-yellow-600"
                 )}>
-                {(shortestMember?.endTime || station.endTime) ? formatTime(minRemaining) : "00:00"}
+                {(shortestMember?.endTime || station.endTime) 
+                    ? formatTime(minRemaining) 
+                    : isRunning ? (
+                        <div className="flex flex-col items-center">
+                            <Utensils className="h-8 w-8 mb-1 text-emerald-600" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Bistro Order</span>
+                        </div>
+                    ) : "00:00"}
             </div>
             {showTwoTimers && (
                 <div className="mt-1.5 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
@@ -214,8 +235,32 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
         </div>
 
+        {/* Mini Food List Preview */}
+        {(isRunning || isPaused) && foodItems.length > 0 && (
+            <div className="w-full space-y-2 mb-4 bg-background/40 rounded-xl p-2.5 border border-dashed animate-in fade-in duration-500">
+                <div className="flex justify-between items-center px-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                        <Utensils className="h-2 w-2" /> Current Order
+                    </p>
+                    <p className="font-mono text-[10px] font-black text-primary">₹{billTotal.toLocaleString()}</p>
+                </div>
+                <ScrollArea className="h-20 w-full">
+                    <div className="space-y-1.5 pr-3">
+                        {foodItems.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-[9px] font-bold group/item">
+                                <span className="truncate flex-1 uppercase tracking-tight text-foreground/80">
+                                    {item.quantity}x {item.name}
+                                </span>
+                                <span className="font-mono opacity-40 ml-2">₹{item.price * item.quantity}</span>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </div>
+        )}
+
         <Popover open={isManageOpen} onOpenChange={setIsManageOpen}>
-            <div className="h-14 flex items-center justify-center mt-2">
+            <div className="h-14 flex items-center justify-center">
             {(isRunning || isPaused) && station.members.length > 0 ? (
                 <PopoverTrigger asChild>
                     <button className="flex -space-x-3 hover:scale-105 transition-transform cursor-pointer focus:outline-none">
@@ -324,7 +369,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
         </Popover>
 
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-1 mt-2">
             {station.startTime && (isRunning || isPaused) && (
                 <div className="text-[9px] font-bold text-muted-foreground flex items-center gap-1.5 bg-muted/30 px-3 py-1 rounded-full shadow-inner">
                     <Clock className="h-3 w-3" />
