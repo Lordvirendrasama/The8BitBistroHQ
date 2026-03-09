@@ -1,39 +1,23 @@
 
 'use client';
-import { LiabilityDashboard } from '@/components/liabilities/liability-dashboard';
-import { useAuth } from '@/firebase/auth/use-user';
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function LiabilitiesPage() {
-  const { user } = useAuth();
-
-  // ONLY Viren can see this page
-  if (user?.username !== 'Viren') {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center space-y-4 text-center">
-        <ShieldAlert className="h-16 w-16 text-destructive" />
-        <h1 className="text-4xl font-headline">Access Denied</h1>
-        <p className="text-muted-foreground max-w-md font-medium">
-          The Liabilities module is restricted to the Owner (Viren). 
-          Staff and guests are not permitted to view long-term debt projections.
-        </p>
-      </div>
-    );
-  }
+/**
+ * Redirect old liabilities route to the new location within Financials.
+ */
+export default function LiabilitiesRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/financials/liabilities');
+  }, [router]);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-headline text-4xl sm:text-5xl tracking-wider text-foreground flex items-center gap-4">
-          <ShieldCheck className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
-          LIABILITIES HUB
-        </h1>
-        <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs sm:text-sm pl-1">
-          LONG-TERM DEBT TRACKING, INTEREST CALCULATION & PAYOFF PROJECTIONS.
-        </p>
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="font-headline text-[10px] tracking-widest text-muted-foreground animate-pulse uppercase">Relocating Liabilities Hub...</p>
       </div>
-
-      <LiabilityDashboard />
     </div>
   );
 }

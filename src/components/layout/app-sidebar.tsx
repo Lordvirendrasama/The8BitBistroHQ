@@ -51,13 +51,13 @@ const allNavItems = [
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
-  { href: '/liabilities', icon: Landmark, label: 'Liabilities', ownerOnly: true },
   { 
     href: '/financials', 
     icon: Wallet, 
     label: 'Financials',
     subItems: [
         { href: '/financials/dashboard', label: 'Profit Dashboard', icon: BarChart3, adminOnly: true },
+        { href: '/financials/liabilities', label: 'Debt & Liabilities', icon: Landmark, ownerOnly: true },
         { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee, adminOnly: true },
         { href: '/financials/inventory', label: 'Inventory (Stock)', icon: Package },
         { href: '/financials/expenses', label: 'Other Expenses', icon: ShoppingBag },
@@ -111,7 +111,10 @@ export function AppSidebar() {
             return {
                 ...item,
                 subItems: item.subItems.filter(sub => {
-                    if (sub.adminOnly && user.role !== 'admin') return false;
+                    // Check adminOnly restriction
+                    if ((sub as any).adminOnly && user.role !== 'admin') return false;
+                    // Check ownerOnly restriction for sub-items
+                    if ((sub as any).ownerOnly && user.username !== 'Viren') return false;
                     return true;
                 })
             };
@@ -123,6 +126,7 @@ export function AppSidebar() {
       // Hide Daily Checklist from top-level for Viren since it's now a tab in Owner Control Center
       filtered = filtered.filter(item => item.href !== '/staff');
     } else {
+      // Hide owner-only top-level items for non-Viren users
       filtered = filtered.filter(item => !item.ownerOnly);
     }
 
