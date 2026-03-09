@@ -5,7 +5,7 @@ import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, runTransaction, doc } from 'firebase/firestore';
@@ -20,6 +20,7 @@ import { MoveStationModal } from '@/components/dashboard/move-station-modal';
 import { JoinPlayerModal } from '@/components/dashboard/join-player-modal';
 import { ManageStationsModal } from '@/components/dashboard/manage-stations-modal';
 import { GlobalRechargeModal } from '@/components/dashboard/global-recharge-modal';
+import { GlobalRewardsModal } from '@/components/dashboard/global-rewards-modal';
 import { archiveBill } from '@/firebase/firestore/bills';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
@@ -45,6 +46,7 @@ function DashboardContent() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
+  const [isRewardsModalOpen, setIsRewardsModalOpen] = useState(false);
   const [manageType, setManageType] = useState<'ps5' | 'boardgame'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
@@ -645,10 +647,22 @@ function DashboardContent() {
           <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
           <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground uppercase font-black tracking-widest opacity-60">Manage PS5 units and game tables.</p>
         </div>
-        <Button onClick={() => setIsRechargeModalOpen(true)} className="h-12 px-6 font-black uppercase tracking-widest bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500">
-            <Zap className="mr-2 h-5 w-5 fill-current" />
-            Quick Recharge
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+            <Button 
+                onClick={() => setIsRewardsModalOpen(true)} 
+                className="h-12 px-6 font-black uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
+            >
+                <Gift className="mr-2 h-5 w-5 fill-current" />
+                Redeem Perks
+            </Button>
+            <Button 
+                onClick={() => setIsRechargeModalOpen(true)} 
+                className="h-12 px-6 font-black uppercase tracking-widest bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
+            >
+                <Zap className="mr-2 h-5 w-5 fill-current" />
+                Quick Recharge
+            </Button>
+        </div>
       </div>
 
       <div className="space-y-6 sm:space-y-8">
@@ -735,6 +749,12 @@ function DashboardContent() {
         isOpen={isRechargeModalOpen} 
         onOpenChange={setIsRechargeModalOpen} 
         members={members || []} 
+      />
+
+      <GlobalRewardsModal
+        isOpen={isRewardsModalOpen}
+        onOpenChange={setIsRewardsModalOpen}
+        members={members || []}
       />
     </div>
   );

@@ -77,7 +77,6 @@ const allNavItems = [
         { href: '/analytics/accounting', label: 'Financial Audit', icon: ReceiptIndianRupee },
     ]
   },
-  { href: '/claim-rewards', icon: Ticket, label: 'Claim Rewards' },
   { 
     href: '/settings', 
     icon: SettingsIcon, 
