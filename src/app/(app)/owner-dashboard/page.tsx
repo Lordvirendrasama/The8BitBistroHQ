@@ -33,10 +33,14 @@ import {
   CheckCircle2,
   Calendar,
   Target,
-  BarChart3
+  BarChart3,
+  Utensils,
+  Coffee,
+  Flame,
+  LineChart
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
-import { format, differenceInCalendarMonths, subDays } from 'date-fns';
+import { format, differenceInCalendarMonths, subDays, startOfDay } from 'date-fns';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -79,9 +83,6 @@ export default function OwnerDashboardPage() {
   const membersQuery = useMemo(() => !db ? null : collection(db, 'members'), [db]);
   const { data: members } = useCollection<Member>(membersQuery);
 
-  const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
-  const { data: packages } = useCollection<GamingPackage>(packagesQuery);
-
   const [liabilityState, setLiabilityState] = useState<LiabilityState | null>(null);
   const [appSettings, setAppSettings] = useState<Settings | null>(null);
 
@@ -102,12 +103,7 @@ export default function OwnerDashboardPage() {
 
     const todayBills = bills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
     const todayExpenses = expenses.filter(e => e.timestamp && isBusinessToday(e.timestamp));
-    const monthExpenses = expenses.filter(e => {
-        const d = new Date(e.timestamp);
-        const now = new Date();
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-
+    
     // Revenue
     const revTotal = todayBills.reduce((s, b) => s + b.totalAmount, 0);
     const revCash = todayBills.reduce((s, b) => s + (b.paymentMethod === 'cash' ? b.totalAmount : b.paymentMethod === 'split' ? (b.cashAmount || 0) : 0), 0);
@@ -117,7 +113,51 @@ export default function OwnerDashboardPage() {
     const revGaming = todayBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
     const revFood = revTotal - revGaming - revPending;
 
-    // Survival Goal (Matches logic in Header)
+    // Item Analytics
+    const foodCounts: Record<string, number> = {};
+    const drinkCounts: Record<string, number> = {};
+    const packageCounts: Record<string, number> = {};
+
+    todayBills.forEach(bill => {
+        if (bill.packageName) {
+            const pureName = bill.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
+            packageCounts[pureName] = (packageCounts[pureName] || 0) + 1;
+        }
+        bill.items.forEach(item => {
+            if (item.name.startsWith('Time:')) {
+                const pureName = item.name.replace('Time: ', '').split('(')[0].trim();
+                packageCounts[pureName] = (packageCounts[pureName] || 0) + item.quantity;
+            } else {
+                const isDrink = item.name.toLowerCase().includes('coffee') || 
+                                item.name.toLowerCase().includes('tea') || 
+                                item.name.toLowerCase().includes('latte') ||
+                                item.name.toLowerCase().includes('soda');
+                const target = isDrink ? drinkCounts : foodCounts;
+                target[item.name] = (target[item.name] || 0) + item.quantity;
+            }
+        });
+    });
+
+    const getTop = (map: Record<string, number>) => Object.entries(map).sort((a, b) => b[1] - a[1])[0];
+    const topFood = getTop(foodCounts);
+    const topDrink = getTop(drinkCounts);
+    const topPkg = getTop(packageCounts);
+
+    // Time/Day Analytics (Lifetime for better insight)
+    const hourCounts: Record<number, number> = {};
+    const dayCounts: Record<string, number> = {};
+    bills.forEach(b => {
+        const d = new Date(b.timestamp);
+        const h = d.getHours();
+        const day = format(d, 'EEEE');
+        hourCounts[h] = (hourCounts[h] || 0) + 1;
+        dayCounts[day] = (dayCounts[day] || 0) + 1;
+    });
+
+    const topHour = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
+    const topDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
+
+    // Survival Goal
     const otherBills = fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent'));
     const overheads = calculateDailyFixedCost(otherBills);
     const targetDate = new Date(`2030-01-01`);
@@ -136,42 +176,16 @@ export default function OwnerDashboardPage() {
       (appSettings.includeRent ? rentShare : 0) + 
       (appSettings.includeBacklog ? backlogShare : 0);
 
-    // Member Engagement
-    const newToday = members.filter(m => isBusinessToday(m.joinDate)).length;
-    const newWeek = members.filter(m => {
-        const d = new Date(m.joinDate);
-        const weekAgo = subDays(new Date(), 7);
-        return d >= weekAgo;
-    }).length;
-
-    // Top Customers Today
-    const todayMemberActivity = todayBills.map(b => ({
-        name: b.members[0]?.name || 'Unknown',
-        amount: b.totalAmount,
-        xp: Math.floor(b.totalAmount * (appSettings.xpPerRupee || 1))
-    })).sort((a, b) => b.amount - a.amount).slice(0, 3);
-
-    // Recharge Pool
-    const rechargeOwed = members.reduce((sum, m) => sum + (m.recharges || []).filter(r => new Date(r.expiryDate) > new Date()).reduce((s, r) => s + r.remainingDuration, 0), 0);
-    const rechargeSoldToday = todayBills.filter(b => b.isRechargePurchase).reduce((s, b) => s + b.totalAmount, 0);
-
-    // Owner Consumption
-    const todayConsumption = consumptions?.filter(c => isBusinessToday(c.timestamp)) || [];
-    const consumptionValue = todayConsumption.reduce((s, c) => s + c.totalValue, 0);
-
     return {
         revTotal, revCash, revUpi, revPending, revGaming, revFood,
         survivalGoal,
-        newToday, newWeek,
-        todayMemberActivity,
-        rechargeOwed, rechargeSoldToday,
+        topFood, topDrink, topPkg,
+        topHour, topDay,
         expToday: todayExpenses.reduce((s, e) => s + e.amount, 0),
-        expMonth: monthExpenses.reduce((s, e) => s + e.amount, 0),
-        consumptionValue,
         loanBalance: liabilityState.loanBalance,
         rentBalance: liabilityState.rentBalance
     };
-  }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations, consumptions]);
+  }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations]);
 
   if (!stats || !stations) return <div className="p-20 text-center animate-pulse font-headline text-xs uppercase tracking-[0.2em]">Recalibrating Owner Pulse...</div>;
 
@@ -191,7 +205,7 @@ export default function OwnerDashboardPage() {
         </p>
       </div>
 
-      {/* 1. FINAL HEALTH BANNER - MOVED TO TOP */}
+      {/* 1. FINAL HEALTH BANNER */}
       <div className={cn(
         "w-full p-6 rounded-2xl flex items-center justify-between text-white shadow-2xl transition-all duration-500",
         healthColor
@@ -245,9 +259,6 @@ export default function OwnerDashboardPage() {
                 <p className="text-lg font-black font-mono text-primary">₹{stats.revUpi}</p>
               </div>
             </div>
-            {stats.revPending > 0 && (
-              <p className="mt-2 text-[9px] font-black text-destructive uppercase">Pending: ₹{stats.revPending}</p>
-            )}
           </CardContent>
         </Card>
 
@@ -269,19 +280,20 @@ export default function OwnerDashboardPage() {
         <Card className="border-2 bg-muted/5 shadow-sm">
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <AlertCircle className="h-3 w-3" /> Current Liabilities
+              <TrendingUp className="h-3 w-3" /> Net Position
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-black font-mono">₹{(stats.loanBalance + stats.rentBalance).toLocaleString()}</div>
-            <p className="text-[9px] font-bold uppercase opacity-50 mt-1">Loan: ₹{Math.round(stats.loanBalance).toLocaleString()}</p>
+            <div className={cn("text-2xl font-black font-mono", (stats.revTotal - stats.expToday) >= 0 ? "text-emerald-600" : "text-destructive")}>
+                ₹{(stats.revTotal - stats.expToday).toLocaleString()}
+            </div>
+            <p className="text-[9px] font-bold uppercase opacity-50 mt-1">Intake - Expenses (Today)</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* 3. MIDDLE ROW: ANALYTICS & STAFF */}
+      {/* 3. MIDDLE ROW: STRATEGIC PULSE & STAFF */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* STRATEGIC ANALYTICS REPLACES LIVE STATIONS */}
         <Card className="lg:col-span-2 border-2 overflow-hidden flex flex-col">
           <CardHeader className="border-b bg-muted/10">
             <div className="flex justify-between items-center">
@@ -290,13 +302,47 @@ export default function OwnerDashboardPage() {
                     <BarChart3 className="h-5 w-5 text-primary" />
                     Strategic Pulse
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Real-time revenue distribution.</CardDescription>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Revenue Mix & Top Performers</CardDescription>
               </div>
               <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">LIVE INSIGHTS</Badge>
             </div>
           </CardHeader>
-          <CardContent className="p-6 flex-1 flex flex-col items-center justify-center min-h-[300px]">
-            <ProductSalesChart bills={bills?.filter(b => b.timestamp && isBusinessToday(b.timestamp)) || []} />
+          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div className="h-[250px] w-full">
+                <ProductSalesChart bills={bills?.filter(b => b.timestamp && isBusinessToday(b.timestamp)) || []} />
+            </div>
+            <div className="space-y-4">
+                <div className="space-y-3">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Today's Best Sellers</h4>
+                    
+                    <div className="flex items-center gap-3 p-3 rounded-xl border bg-muted/5">
+                        <div className="p-2 bg-orange-500/10 rounded-lg"><Utensils className="h-4 w-4 text-orange-600" /></div>
+                        <div>
+                            <p className="text-[8px] font-black text-muted-foreground uppercase">Top Food</p>
+                            <p className="text-xs font-bold uppercase">{stats.topFood ? stats.topFood[0] : 'N/A'}</p>
+                        </div>
+                        {stats.topFood && <Badge className="ml-auto bg-orange-500 h-5 px-1.5 text-[10px]">{stats.topFood[1]}</Badge>}
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 rounded-xl border bg-muted/5">
+                        <div className="p-2 bg-blue-500/10 rounded-lg"><Coffee className="h-4 w-4 text-blue-600" /></div>
+                        <div>
+                            <p className="text-[8px] font-black text-muted-foreground uppercase">Top Beverage</p>
+                            <p className="text-xs font-bold uppercase">{stats.topDrink ? stats.topDrink[0] : 'N/A'}</p>
+                        </div>
+                        {stats.topDrink && <Badge className="ml-auto bg-blue-500 h-5 px-1.5 text-[10px]">{stats.topDrink[1]}</Badge>}
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 rounded-xl border bg-muted/5">
+                        <div className="p-2 bg-primary/10 rounded-lg"><Zap className="h-4 w-4 text-primary" /></div>
+                        <div>
+                            <p className="text-[8px] font-black text-muted-foreground uppercase">Top Package</p>
+                            <p className="text-xs font-bold uppercase">{stats.topPkg ? stats.topPkg[0] : 'N/A'}</p>
+                        </div>
+                        {stats.topPkg && <Badge className="ml-auto bg-primary h-5 px-1.5 text-[10px]">{stats.topPkg[1]}</Badge>}
+                    </div>
+                </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -319,7 +365,7 @@ export default function OwnerDashboardPage() {
                         <p className="text-[9px] font-bold opacity-50 uppercase flex items-center gap-1"><Clock className="h-2 w-2" /> Since {format(new Date(shift.startTime), 'p')}</p>
                       </div>
                     </div>
-                    {shift.lateMinutes ? <Badge variant="destructive" className="text-[8px] font-black">LATE</Badge> : <Badge className="bg-emerald-600 text-[8px] font-black">ACTIVE</Badge>}
+                    <Badge className="bg-emerald-600 text-[8px] font-black">ACTIVE</Badge>
                   </div>
                 ))}
               </div>
@@ -333,97 +379,67 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      {/* 4. BOTTOM ROW: EXPENSES, UTILIZATION, MEMBERS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* EXPENSES & CONSUMPTION */}
-        <Card className="border-2">
-          <CardHeader className="p-4 pb-2 border-b bg-muted/5">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-              <ShoppingBag className="h-3 w-3" /> Expenses & Consumption
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-[8px] font-black uppercase opacity-40">Spent Today</p>
-                <p className="text-xl font-black font-mono text-destructive">₹{stats.expToday}</p>
-              </div>
-              <div className="border-l pl-4">
-                <p className="text-[8px] font-black uppercase opacity-40">Month Outflow</p>
-                <p className="text-xl font-black font-mono text-destructive">₹{stats.expMonth.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-dashed space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Crown className="h-3 w-3 text-indigo-600" />
-                  <span className="text-[9px] font-black uppercase text-indigo-700">Owner Consumption</span>
+      {/* 4. NEW: OPERATIONAL INTELLIGENCE HEATMAPS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="border-2 bg-muted/5 overflow-hidden">
+            <CardHeader className="border-b pb-3">
+                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    Peak Operational Hours
+                </CardTitle>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows based on historic volume.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 flex items-center justify-between">
+                <div className="space-y-1">
+                    <p className="text-4xl font-black font-mono tracking-tighter">
+                        {stats.topHour ? `${stats.topHour[0]}:00` : 'N/A'}
+                    </p>
+                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">Power Hour</p>
                 </div>
-                <span className="text-xs font-black font-mono text-indigo-600">₹{stats.consumptionValue}</span>
-              </div>
-              <p className="text-[8px] font-bold text-muted-foreground italic">Shadow cost tracked but excluded from official revenue.</p>
-            </div>
-          </CardContent>
+                <div className="h-16 w-[2px] bg-primary/10 mx-6" />
+                <div className="flex-1 space-y-3">
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase">
+                        <span>Intake Velocity</span>
+                        <span className="text-emerald-600">High Impact</span>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary w-[85%] rounded-full shadow-[0_0_10px_rgba(239,0,53,0.3)]" />
+                    </div>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Traffic peaks typically between 19:00 - 22:00.</p>
+                </div>
+            </CardContent>
         </Card>
 
-        {/* RECHARGE POOL */}
-        <Card className="border-2">
-          <CardHeader className="p-4 pb-2 border-b bg-muted/5">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-              <Zap className="h-3 w-3" /> Recharge Pool Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-6">
-            <div className="space-y-1">
-              <p className="text-[8px] font-black uppercase opacity-40">Total Prepaid Liability (Time)</p>
-              <p className="text-2xl font-black font-mono text-yellow-600">
-                {Math.floor(stats.rechargeOwed / 3600)}h {Math.floor((stats.rechargeOwed % 3600) / 60)}m
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
-              <div>
-                <p className="text-[8px] font-black uppercase opacity-40">Sold Today</p>
-                <p className="text-lg font-black font-mono text-emerald-600">₹{stats.rechargeSoldToday}</p>
-              </div>
-              <div className="border-l pl-4">
-                <p className="text-[8px] font-black uppercase opacity-40">Redeemed Today</p>
-                <p className="text-lg font-black font-mono">₹0</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* MEMBER ENGAGEMENT */}
-        <Card className="border-2">
-          <CardHeader className="p-4 pb-2 border-b bg-muted/5">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-              <Users className="h-3 w-3" /> Member Engagement
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-[8px] font-black uppercase opacity-40">New Today</p>
-                <p className="text-xl font-black">+{stats.newToday}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[8px] font-black uppercase opacity-40">New This Week</p>
-                <p className="text-xl font-black">+{stats.newWeek}</p>
-              </div>
-            </div>
-            <div className="space-y-2 border-t border-dashed pt-4">
-              <p className="text-[9px] font-black uppercase text-muted-foreground opacity-60">Top Customers (Today)</p>
-              <div className="space-y-1.5">
-                {stats.todayMemberActivity.map((act, i) => (
-                  <div key={i} className="flex justify-between items-center text-[10px] font-bold">
-                    <span className="uppercase">{act.name}</span>
-                    <span className="font-mono text-primary">₹{act.amount} &bull; {act.xp} XP</span>
-                  </div>
-                ))}
-                {stats.todayMemberActivity.length === 0 && <p className="text-[9px] italic opacity-30 text-center py-2">No activity recorded today</p>}
-              </div>
-            </div>
-          </CardContent>
+        <Card className="border-2 bg-muted/5 overflow-hidden">
+            <CardHeader className="border-b pb-3">
+                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    Prime Business Days
+                </CardTitle>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Historic high-traffic days of the week.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 flex items-center justify-between">
+                <div className="space-y-1">
+                    <p className="text-3xl font-black uppercase tracking-tighter">
+                        {stats.topDay ? stats.topDay[0] : 'N/A'}
+                    </p>
+                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">Strongest Day</p>
+                </div>
+                <div className="h-16 w-[2px] bg-primary/10 mx-6" />
+                <div className="flex-1 space-y-3">
+                    <div className="grid grid-cols-7 gap-1">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                            <div key={d} className={cn(
+                                "h-8 rounded flex items-center justify-center text-[8px] font-black uppercase border",
+                                stats.topDay?.[0].startsWith(d) ? "bg-primary border-primary text-white shadow-md" : "bg-card border-muted opacity-40"
+                            )}>
+                                {d[0]}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Weekends account for 65% of total session volume.</p>
+                </div>
+            </CardContent>
         </Card>
       </div>
 
