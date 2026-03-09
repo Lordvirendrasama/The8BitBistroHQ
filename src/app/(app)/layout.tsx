@@ -70,9 +70,9 @@ export default function AppLayout({ children }: { children: React.Node }) {
     return activeShift?.tasks || [];
   }, [activeShift]);
 
-  // Count of uncompleted tasks for the header badge
-  const uncompletedTaskCount = useMemo(() => {
-    return shiftTasks.filter(task => !task.completed).length;
+  // Count of uncompleted morning tasks for the header badge and notification visibility
+  const uncompletedMorningTaskCount = useMemo(() => {
+    return shiftTasks.filter(task => task.type === 'start-of-day' && !task.completed).length;
   }, [shiftTasks]);
 
   const handleTaskToggle = async (task: ShiftTask) => {
@@ -80,8 +80,8 @@ export default function AppLayout({ children }: { children: React.Node }) {
     const newCompletedStatus = !task.completed;
     await updateTask(activeShift.id, task.name, newCompletedStatus, user);
     
-    // If a task is being unchecked, force the notification to be visible
-    if (!newCompletedStatus) {
+    // If a morning task is being unchecked, force the notification to be visible
+    if (!newCompletedStatus && task.type === 'start-of-day') {
       setTasksVisible(true);
     }
 
@@ -138,11 +138,11 @@ export default function AppLayout({ children }: { children: React.Node }) {
           onTaskToggle={handleTaskToggle}
           tasksVisible={tasksVisible}
           setTasksVisible={setTasksVisible}
-          uncompletedTaskCount={uncompletedTaskCount}
+          uncompletedTaskCount={uncompletedMorningTaskCount}
         />
         <main className="p-3 sm:p-6 lg:p-8 bg-background min-h-0 overflow-y-auto">
           <GlobalTimerNotifications />
-          {showTaskNotification && uncompletedTaskCount > 0 && tasksVisible && (
+          {showTaskNotification && uncompletedMorningTaskCount > 0 && tasksVisible && (
             <StartOfDayTasks
               tasks={shiftTasks}
               onTaskToggle={handleTaskToggle}

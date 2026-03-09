@@ -8,7 +8,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
 import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { useState, useEffect, useMemo } from 'react';
 import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem } from '@/lib/types';
 import { EndOfDayModal } from '@/components/staff/end-of-day-modal';
@@ -705,7 +704,6 @@ export function AppHeader({
                             <Moon className="h-4 w-4 fill-current" />
                           </Button>
                         )}
-                        <ThemeToggle />
                     </div>
 
                     <DropdownMenu>

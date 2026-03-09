@@ -25,8 +25,8 @@ export default function RootLayout({
       <body className={`${inter.variable} font-body antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          forcedTheme="dark"
           disableTransitionOnChange
         >
           <FirebaseClientProvider>

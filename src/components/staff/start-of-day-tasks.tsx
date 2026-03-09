@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ListChecks, Minus, Sun, Moon } from 'lucide-react';
+import { ListChecks, Minus, Sun } from 'lucide-react';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -22,12 +22,11 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  // Only show tasks that are NOT completed in the accountability log
+  // Only show tasks that are NOT completed and are specifically start-of-day
   const sodTasks = useMemo(() => tasks.filter(t => t.type === 'start-of-day' && !t.completed), [tasks]);
-  const eodTasks = useMemo(() => tasks.filter(t => t.type === 'end-of-day' && !t.completed), [tasks]);
 
-  // If there are literally no pending tasks, the layout will handle hiding the component via layout.tsx
-  if (sodTasks.length === 0 && eodTasks.length === 0) {
+  // If there are no pending morning tasks, the layout will handle hiding the component
+  if (sodTasks.length === 0) {
     return null;
   }
 
@@ -83,20 +82,6 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
               </h4>
               <div className="space-y-0.5 bg-muted/30 rounded-lg p-1.5 border border-dashed">
                 {sodTasks.map((task) => (
-                  <TaskItem key={task.name} task={task} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {eodTasks.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 px-1 tracking-widest">
-                <Moon className="h-3 w-3 text-primary" />
-                Final Tasks
-              </h4>
-              <div className="space-y-0.5 bg-muted/30 rounded-lg p-1.5 border border-dashed">
-                {eodTasks.map((task) => (
                   <TaskItem key={task.name} task={task} />
                 ))}
               </div>
