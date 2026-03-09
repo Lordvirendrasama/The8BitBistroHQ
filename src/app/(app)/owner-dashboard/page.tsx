@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import type { Station, Bill, Expense, Employee, Shift, LiabilityState, FixedBill, Settings, OwnerConsumption, Member, GamingPackage } from '@/lib/types';
@@ -32,13 +32,15 @@ import {
   Percent,
   CheckCircle2,
   Calendar,
-  Target
+  Target,
+  BarChart3
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
-import { format, differenceInCalendarMonths, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, differenceInCalendarMonths, subDays } from 'date-fns';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { ProductSalesChart } from '@/components/analytics/product-sales-chart';
 
 export default function OwnerDashboardPage() {
   const { db } = useFirebase();
@@ -189,7 +191,27 @@ export default function OwnerDashboardPage() {
         </p>
       </div>
 
-      {/* TOP ROW: FINANCIAL OVERVIEW */}
+      {/* 1. FINAL HEALTH BANNER - MOVED TO TOP */}
+      <div className={cn(
+        "w-full p-6 rounded-2xl flex items-center justify-between text-white shadow-2xl transition-all duration-500",
+        healthColor
+      )}>
+        <div className="flex items-center gap-4">
+          <ShieldCheck className="h-10 w-10" />
+          <div>
+            <h3 className="text-2xl font-headline tracking-tighter">CAFÉ STATUS: {healthStatus}</h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">
+              Health check performed based on current business day intake and utilization metrics.
+            </p>
+          </div>
+        </div>
+        <div className="hidden sm:flex flex-col items-end">
+          <p className="text-[10px] font-black uppercase opacity-60">Goal Performance</p>
+          <p className="text-3xl font-black font-mono">{(healthScore * 100).toFixed(1)}%</p>
+        </div>
+      </div>
+
+      {/* 2. TOP ROW: FINANCIAL OVERVIEW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-2 bg-card shadow-sm">
           <CardHeader className="p-4 pb-2">
@@ -257,46 +279,24 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      {/* MIDDLE ROW: LIVE OPS & STAFF */}
+      {/* 3. MIDDLE ROW: ANALYTICS & STAFF */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LIVE STATIONS */}
-        <Card className="lg:col-span-2 border-2">
+        {/* STRATEGIC ANALYTICS REPLACES LIVE STATIONS */}
+        <Card className="lg:col-span-2 border-2 overflow-hidden flex flex-col">
           <CardHeader className="border-b bg-muted/10">
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Live Station Status</CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Active session audit.</CardDescription>
+                <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    Strategic Pulse
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Real-time revenue distribution.</CardDescription>
               </div>
-              <Badge className="bg-emerald-600 text-[10px] font-black uppercase">{stations.filter(s => s.status !== 'available').length} ACTIVE</Badge>
+              <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">LIVE INSIGHTS</Badge>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
-              {stations.sort((a,b) => (a.order || 0) - (b.order || 0)).map(station => {
-                const isActive = station.status !== 'available';
-                return (
-                  <div key={station.id} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("h-2 w-2 rounded-full", isActive ? "bg-emerald-500 animate-pulse" : "bg-muted")} />
-                      <div className="min-w-0">
-                        <p className="text-xs font-black uppercase truncate">{station.name}</p>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase truncate">
-                          {isActive ? station.members.map(m => m.name).join(', ') : 'Idle Console'}
-                        </p>
-                      </div>
-                    </div>
-                    {isActive ? (
-                      <div className="text-right">
-                        <p className="text-xs font-black text-primary font-mono">₹{station.currentBill?.reduce((s, i) => s + (i.price * i.quantity), 0) || 0}</p>
-                        <p className="text-[8px] font-bold uppercase opacity-50">Current Value</p>
-                      </div>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="h-7 text-[8px] font-black uppercase tracking-widest border border-dashed">Open</Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+          <CardContent className="p-6 flex-1 flex flex-col items-center justify-center min-h-[300px]">
+            <ProductSalesChart bills={bills?.filter(b => b.timestamp && isBusinessToday(b.timestamp)) || []} />
           </CardContent>
         </Card>
 
@@ -333,7 +333,7 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      {/* BOTTOM ROW: EXPENSES, UTILIZATION, MEMBERS */}
+      {/* 4. BOTTOM ROW: EXPENSES, UTILIZATION, MEMBERS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* EXPENSES & CONSUMPTION */}
         <Card className="border-2">
@@ -427,7 +427,7 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      {/* QUICK ACTIONS */}
+      {/* 5. QUICK ACTIONS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Button onClick={() => router.push('/financials/expenses')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-primary hover:text-white transition-all shadow-md">
           <Plus className="h-4 w-4" /> Add Expense
@@ -444,26 +444,6 @@ export default function OwnerDashboardPage() {
         <Button onClick={() => router.push('/settings/packages')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-pink-600 hover:text-white transition-all shadow-md">
           <Zap className="h-4 w-4" /> Create Offer
         </Button>
-      </div>
-
-      {/* FINAL HEALTH BANNER */}
-      <div className={cn(
-        "w-full p-6 rounded-2xl flex items-center justify-between text-white shadow-2xl transition-all duration-500",
-        healthColor
-      )}>
-        <div className="flex items-center gap-4">
-          <ShieldCheck className="h-10 w-10" />
-          <div>
-            <h3 className="text-2xl font-headline tracking-tighter">CAFÉ STATUS: {healthStatus}</h3>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">
-              Health check performed based on current business day intake and utilization metrics.
-            </p>
-          </div>
-        </div>
-        <div className="hidden sm:flex flex-col items-end">
-          <p className="text-[10px] font-black uppercase opacity-60">Goal Performance</p>
-          <p className="text-3xl font-black font-mono">{(healthScore * 100).toFixed(1)}%</p>
-        </div>
       </div>
     </div>
   );
