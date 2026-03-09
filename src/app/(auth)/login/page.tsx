@@ -10,9 +10,9 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
-import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { GamingPackage, Employee } from '@/lib/types';
+import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw, IndianRupee } from 'lucide-react';
+import { cn, isBusinessToday } from '@/lib/utils';
+import type { GamingPackage, Employee, Bill } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -41,9 +41,12 @@ export default function LoginPage() {
   const [pinInput, setPinInput] = useState('');
   const [pendingUser, setPendingUser] = useState<Employee | null>(null);
 
-  // Fetch Employees
+  // Fetch Data
   const employeesQuery = useMemo(() => !db ? null : query(collection(db, 'employees'), where('isActive', '==', true)), [db]);
   const { data: rawEmployees, loading: empsLoading } = useCollection<Employee>(employeesQuery);
+
+  const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
+  const { data: bills } = useCollection<Bill>(billsQuery);
 
   // Sort Employees: Viren first, then Admins, then alphabetical
   const employees = useMemo(() => {
@@ -58,6 +61,13 @@ export default function LoginPage() {
         return a.displayName.localeCompare(b.displayName);
     });
   }, [rawEmployees]);
+
+  const todayCollection = useMemo(() => {
+    if (!bills) return 0;
+    return bills
+      .filter(b => b.timestamp && isBusinessToday(b.timestamp))
+      .reduce((s, b) => s + (b.totalAmount || 0), 0);
+  }, [bills]);
 
   // Fetch Live Offers
   const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
@@ -224,14 +234,26 @@ export default function LoginPage() {
                     {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
             </div>
-            <div className="text-right">
-                <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] flex items-center justify-end gap-2">
-                    <Clock className="h-3 w-3" />
-                    Live Terminal
-                </p>
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none">
-                    {currentTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </p>
+            
+            <div className="flex items-center gap-6">
+                <div className="text-right">
+                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                        <IndianRupee className="h-3 w-3" />
+                        Today's Intake
+                    </p>
+                    <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-emerald-500">
+                        ₹{todayCollection.toLocaleString()}
+                    </p>
+                </div>
+                <div className="text-right">
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                        <Clock className="h-3 w-3" />
+                        Live Terminal
+                    </p>
+                    <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none">
+                        {currentTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -328,6 +350,8 @@ export default function LoginPage() {
           <div className="py-4 sm:py-6 flex flex-col items-center gap-4">
             <Input
               type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
               maxLength={4}
               value={pinInput}
               onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
