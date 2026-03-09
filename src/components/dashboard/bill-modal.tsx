@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { PlusCircle, MinusCircle, Save, Ticket, CreditCard, Search, ShoppingBag, Utensils, Tag, X } from 'lucide-react';
+import { PlusCircle, MinusCircle, Save, Ticket, CreditCard, Search, ShoppingBag, Utensils, Tag, X, Gamepad2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +50,8 @@ export function BillModal({
 
   const categories = useMemo(() => {
     const cats = Array.from(new Set(foodItems.map(item => item.category)));
-    return cats.sort();
+    const sorted = cats.sort();
+    return ["Gaming", ...sorted];
   }, [foodItems]);
 
   useEffect(() => {
@@ -67,8 +68,6 @@ export function BillModal({
   }, [foodItems]);
 
   const filteredMenu = useMemo(() => {
-    if (!searchTerm) return menuByCategory;
-    
     const term = searchTerm.toLowerCase();
     const filtered: Record<string, FoodItem[]> = {};
     
@@ -79,6 +78,14 @@ export function BillModal({
     
     return filtered;
   }, [menuByCategory, searchTerm]);
+
+  const filteredGaming = useMemo(() => {
+    if (!gamingPackages) return [];
+    const term = searchTerm.toLowerCase();
+    return gamingPackages
+        .filter(p => !p.isAddTimePackage && !p.isRechargePack)
+        .filter(p => p.name.toLowerCase().includes(term));
+  }, [gamingPackages, searchTerm]);
 
   const scrollToCategory = (category: string) => {
     setActiveCategory(category);
@@ -119,7 +126,6 @@ export function BillModal({
   const initialPackagePrice = useMemo(() => {
     if (!station || !station.packageName || station.packageName === 'Walk-in Order') return 0;
     
-    // Robust check for itemized session items to prevent double charging
     const hasItemizedSessionItems = billItems.some(i => {
         const nameLower = i.name.toLowerCase();
         const pkgNameLower = station.packageName!.toLowerCase();
@@ -269,6 +275,29 @@ export function BillModal({
             <div className={cn("flex-1 flex flex-col min-w-0 overflow-hidden", activeTab === 'review' && "hidden md:flex")}>
                 <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 md:px-5 md:py-4 scroll-smooth">
                     <div className="space-y-8 md:space-y-10 pb-16">
+                        {/* GAMING PACKAGES SECTION (BILLING ONLY) */}
+                        <div key="Gaming" id={`category-section-Gaming`} className="space-y-2 md:space-y-3">
+                            <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary/60 bg-background/95 backdrop-blur-sm border-b border-dashed border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
+                                <Gamepad2 className="h-3 w-3" /> SESSION PACKAGES (BILLING ONLY)
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
+                                {filteredGaming.map(pkg => (
+                                    <button 
+                                        key={pkg.id} 
+                                        onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
+                                        className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                    >
+                                        <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                        <div className="flex justify-between items-end">
+                                            <span className="font-mono font-black text-xs md:text-base">₹{pkg.price}</span>
+                                            <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* FOOD CATEGORIES */}
                         {Object.entries(filteredMenu).map(([category, items]) => (
                             <div key={category} id={`category-section-${category}`} className="space-y-2 md:space-y-3">
                                 <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-muted-foreground/60 bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">

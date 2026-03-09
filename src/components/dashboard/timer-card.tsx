@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -5,7 +6,7 @@ import type { Station, AssignedMember, StationStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, CheckCircle2, UserPlus, Receipt } from 'lucide-react';
+import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -19,7 +20,7 @@ interface TimerCardProps {
   onOpenEditTimeModal: (station: Station) => void;
   onOpenMoveModal?: (station: Station) => void;
   onStopPlayer?: (stationId: string, playerId: string) => void;
-  onOpenJoinModal?: (station: Station) => void;
+  onOpenJoinModal?: (stationId: string) => void;
   onTogglePlayerTimer?: (stationId: string, playerId: string) => void;
 }
 
@@ -93,6 +94,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   const [minRemaining, setMinRemaining] = useState(0);
   const [maxRemaining, setMaxRemaining] = useState(0);
   const [isManageOpen, setIsManageOpen] = useState(false);
+  const [isOrderVisible, setIsOrderVisible] = useState(false);
   
   const isRunning = station.status === 'in-use';
   const isPaused = station.status === 'paused';
@@ -162,7 +164,6 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
   const showTwoTimers = activeWithTimers.length > 1 && maxRemaining > minRemaining + 1000;
 
-  // Filter food items for the preview list
   const foodItems = useMemo(() => {
     return (station.currentBill || []).filter(item => 
         !item.name.startsWith('Time:') && 
@@ -235,27 +236,41 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
         </div>
 
-        {/* Mini Food List Preview */}
+        {/* Dropdown Food List Preview */}
         {(isRunning || isPaused) && foodItems.length > 0 && (
-            <div className="w-full space-y-2 mb-4 bg-background/40 rounded-xl p-2.5 border border-dashed animate-in fade-in duration-500">
-                <div className="flex justify-between items-center px-1">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                        <Utensils className="h-2 w-2" /> Current Order
-                    </p>
-                    <p className="font-mono text-[10px] font-black text-primary">₹{billTotal.toLocaleString()}</p>
-                </div>
-                <ScrollArea className="h-20 w-full">
-                    <div className="space-y-1.5 pr-3">
-                        {foodItems.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-[9px] font-bold group/item">
-                                <span className="truncate flex-1 uppercase tracking-tight text-foreground/80">
-                                    {item.quantity}x {item.name}
-                                </span>
-                                <span className="font-mono opacity-40 ml-2">₹{item.price * item.quantity}</span>
-                            </div>
-                        ))}
+            <div className="w-full mt-2">
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full h-7 flex justify-between items-center px-2 hover:bg-muted/50 text-[9px] font-black uppercase tracking-widest text-muted-foreground rounded-lg border border-dashed border-muted-foreground/20"
+                    onClick={() => setIsOrderVisible(!isOrderVisible)}
+                >
+                    <div className="flex items-center gap-1.5">
+                        <Utensils className="h-3 w-3" />
+                        <span>Current Order</span>
                     </div>
-                </ScrollArea>
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-primary">₹{billTotal.toLocaleString()}</span>
+                        {isOrderVisible ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </div>
+                </Button>
+                
+                {isOrderVisible && (
+                    <div className="mt-2 space-y-2 bg-background/40 rounded-xl p-2.5 border border-dashed animate-in fade-in slide-in-from-top-1 duration-300">
+                        <ScrollArea className="h-24 w-full">
+                            <div className="space-y-1.5 pr-3">
+                                {foodItems.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-[9px] font-bold group/item">
+                                        <span className="truncate flex-1 uppercase tracking-tight text-foreground/80">
+                                            {item.quantity}x {item.name}
+                                        </span>
+                                        <span className="font-mono opacity-40 ml-2">₹{item.price * item.quantity}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                )}
             </div>
         )}
 
@@ -393,7 +408,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
               </div>
           ) : (
               <>
-                  <div className="grid grid-cols-5 gap-1 w-full">
+                  <div className="grid grid-cols-4 gap-1 w-full">
                       {station.status === 'in-use' ? (
                           <Button onClick={() => onToggleTimer(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                               <Pause className="h-3.5 w-3.5" />
@@ -425,17 +440,13 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                           </svg>
                           <span className="text-[8px] font-bold uppercase leading-none">Time</span>
                       </Button>
-                      <Button onClick={() => onOpenJoinModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
+                      <Button onClick={() => onOpenJoinModal?.(station.id)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
                           <UserPlus className="h-3.5 w-3.5"/>
                           <span className="text-[8px] font-bold uppercase leading-none">Join</span>
                       </Button>
                       <Button onClick={() => onOpenMoveModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border-primary/20 text-primary hover:bg-primary/5 shadow-sm">
                           <ArrowRightLeft className="h-3.5 w-3.5"/>
                           <span className="text-[8px] font-bold uppercase leading-none">Move</span>
-                      </Button>
-                      <Button onClick={() => onOpenBillModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-primary hover:bg-primary/5 border-primary/10 shadow-sm">
-                          <Receipt className="h-3.5 w-3.5"/>
-                          <span className="text-[8px] font-bold uppercase leading-none">Bill</span>
                       </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 w-full">
