@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
 import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem } from '@/lib/types';
@@ -689,10 +689,35 @@ export function AppHeader({
 
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                     {user?.username === 'Viren' && (
-                        <div className="flex flex-col items-end gap-0.5 mr-1 shrink-0">
-                            <p className="text-[7px] sm:text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
-                            <p className="text-[10px] sm:text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
-                        </div>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button className="flex flex-col items-end gap-0.5 mr-1 shrink-0 hover:bg-muted/10 p-1 rounded transition-colors text-right">
+                                    <p className="text-[7px] sm:text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
+                                    <p className="text-[10px] sm:text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-56 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
+                                <div className="p-3 bg-muted/20 border-b">
+                                    <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                        <Activity className="h-3.5 w-3.5 text-emerald-600" />
+                                        Month Performance
+                                    </h4>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Daily Average</span>
+                                        <span className="text-sm font-black font-mono text-emerald-600 tabular-nums">
+                                            ₹{Math.round(monthRevenue / new Date().getDate()).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="pt-2 border-t border-dashed">
+                                        <p className="text-[8px] text-muted-foreground uppercase font-black tracking-widest leading-relaxed">
+                                            Calculated across {new Date().getDate()} days of active business.
+                                        </p>
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     )}
                     <StrategicTarget projectedRevenue={projectedRevenue} />
                     <OwnerConsumptionHeader />
