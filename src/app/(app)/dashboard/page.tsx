@@ -5,7 +5,7 @@ import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2, Settings2 } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, runTransaction, doc } from 'firebase/firestore';
@@ -19,6 +19,7 @@ import { EditTimeModal } from '@/components/dashboard/edit-time-modal';
 import { MoveStationModal } from '@/components/dashboard/move-station-modal';
 import { JoinPlayerModal } from '@/components/dashboard/join-player-modal';
 import { ManageStationsModal } from '@/components/dashboard/manage-stations-modal';
+import { GlobalRechargeModal } from '@/components/dashboard/global-recharge-modal';
 import { archiveBill } from '@/firebase/firestore/bills';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
@@ -43,6 +44,7 @@ function DashboardContent() {
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [manageType, setManageType] = useState<'ps5' | 'boardgame'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
@@ -60,7 +62,6 @@ function DashboardContent() {
 
   const stations = useMemo(() => {
     if (!rawStations) return [];
-    // Secondary alphabetical sort for items without an explicit order
     return [...rawStations].sort((a, b) => {
         if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
         if (a.order !== undefined) return -1;
@@ -410,13 +411,11 @@ function DashboardContent() {
     const station = stations.find(s => s.id === stationId);
     const updates: Partial<Station> = { currentBill: newBill, discount: newDiscount };
     
-    // Automatic transition to active food session if items are added to an available station
     if (station?.status === 'available' && newBill.length > 0) {
         updates.status = 'in-use';
         updates.packageName = 'Walk-in Order';
         updates.startTime = new Date().toISOString();
         
-        // If no members are explicitly assigned, create a generic walk-in profile
         if (station.members.length === 0) {
             updates.members = [{
                 id: `guest-walkin-${Date.now()}`,
@@ -641,9 +640,15 @@ function DashboardContent() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div>
-        <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
-        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground uppercase font-black tracking-widest opacity-60">Manage PS5 units and game tables.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
+          <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground uppercase font-black tracking-widest opacity-60">Manage PS5 units and game tables.</p>
+        </div>
+        <Button onClick={() => setIsRechargeModalOpen(true)} className="h-12 px-6 font-black uppercase tracking-widest bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500">
+            <Zap className="mr-2 h-5 w-5 fill-current" />
+            Quick Recharge
+        </Button>
       </div>
 
       <div className="space-y-6 sm:space-y-8">
@@ -724,6 +729,12 @@ function DashboardContent() {
         onOpenChange={setIsManageModalOpen} 
         stations={manageType === 'ps5' ? ps5Stations : boardGameStations} 
         type={manageType}
+      />
+
+      <GlobalRechargeModal 
+        isOpen={isRechargeModalOpen} 
+        onOpenChange={setIsRechargeModalOpen} 
+        members={members || []} 
       />
     </div>
   );

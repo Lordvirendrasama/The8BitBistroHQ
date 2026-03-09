@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -50,7 +49,6 @@ import { APP_VERSION } from '@/lib/version';
 const allNavItems = [
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
-  { href: '/recharges', icon: Zap, label: 'Recharge Hub' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
   { href: '/liabilities', icon: Landmark, label: 'Liabilities', ownerOnly: true },
   { 
