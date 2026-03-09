@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -44,7 +43,6 @@ import { format, differenceInCalendarMonths, subDays, startOfDay } from 'date-fn
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { ProductSalesChart } from '@/components/analytics/product-sales-chart';
 
 export default function OwnerDashboardPage() {
   const { db } = useFirebase();
@@ -101,16 +99,18 @@ export default function OwnerDashboardPage() {
   const stats = useMemo(() => {
     if (!bills || !expenses || !liabilityState || !fixedBills || !appSettings || !members || !stations) return null;
 
-    const todayBills = bills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
-    const todayExpenses = expenses.filter(e => e.timestamp && isBusinessToday(e.timestamp));
+    // TARGET PHASE DATA: Filter by cycle '24-02-2026' as requested
+    const targetCycle = '24-02-2026';
+    const phaseBills = bills.filter(b => b.cycle === targetCycle);
+    const phaseExpenses = expenses.filter(e => e.cycle === targetCycle);
     
     // Revenue
-    const revTotal = todayBills.reduce((s, b) => s + b.totalAmount, 0);
-    const revCash = todayBills.reduce((s, b) => s + (b.paymentMethod === 'cash' ? b.totalAmount : b.paymentMethod === 'split' ? (b.cashAmount || 0) : 0), 0);
-    const revUpi = todayBills.reduce((s, b) => s + (b.paymentMethod === 'upi' ? b.totalAmount : b.paymentMethod === 'split' ? (b.upiAmount || 0) : 0), 0);
-    const revPending = todayBills.reduce((s, b) => s + (b.paymentMethod === 'pending' ? b.totalAmount : 0), 0);
+    const revTotal = phaseBills.reduce((s, b) => s + b.totalAmount, 0);
+    const revCash = phaseBills.reduce((s, b) => s + (b.paymentMethod === 'cash' ? b.totalAmount : b.paymentMethod === 'split' ? (b.cashAmount || 0) : 0), 0);
+    const revUpi = phaseBills.reduce((s, b) => s + (b.paymentMethod === 'upi' ? b.totalAmount : b.paymentMethod === 'split' ? (b.upiAmount || 0) : 0), 0);
+    const revPending = phaseBills.reduce((s, b) => s + (b.paymentMethod === 'pending' ? b.totalAmount : 0), 0);
 
-    const revGaming = todayBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
+    const revGaming = phaseBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
     const revFood = revTotal - revGaming - revPending;
 
     // Item Analytics
@@ -118,7 +118,7 @@ export default function OwnerDashboardPage() {
     const drinkCounts: Record<string, number> = {};
     const packageCounts: Record<string, number> = {};
 
-    todayBills.forEach(bill => {
+    phaseBills.forEach(bill => {
         if (bill.packageName) {
             const pureName = bill.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
             packageCounts[pureName] = (packageCounts[pureName] || 0) + 1;
@@ -143,10 +143,10 @@ export default function OwnerDashboardPage() {
     const topDrink = getTop(drinkCounts);
     const topPkg = getTop(packageCounts);
 
-    // Time/Day Analytics (Lifetime for better insight)
+    // Time/Day Analytics (From phase data)
     const hourCounts: Record<number, number> = {};
     const dayCounts: Record<string, number> = {};
-    bills.forEach(b => {
+    phaseBills.forEach(b => {
         const d = new Date(b.timestamp);
         const h = d.getHours();
         const day = format(d, 'EEEE');
@@ -157,7 +157,7 @@ export default function OwnerDashboardPage() {
     const topHour = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
     const topDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
 
-    // Survival Goal
+    // Survival Goal (Fixed costs logic)
     const otherBills = fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent'));
     const overheads = calculateDailyFixedCost(otherBills);
     const targetDate = new Date(`2030-01-01`);
@@ -181,7 +181,7 @@ export default function OwnerDashboardPage() {
         survivalGoal,
         topFood, topDrink, topPkg,
         topHour, topDay,
-        expToday: todayExpenses.reduce((s, e) => s + e.amount, 0),
+        expToday: phaseExpenses.reduce((s, e) => s + e.amount, 0),
         loanBalance: liabilityState.loanBalance,
         rentBalance: liabilityState.rentBalance
     };
@@ -201,7 +201,7 @@ export default function OwnerDashboardPage() {
           OWNER PULSE
         </h1>
         <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
-          OPERATIONAL COMMAND & CONTROL &bull; {format(new Date(), 'PPPP').toUpperCase()}
+          OPERATIONAL COMMAND & CONTROL &bull; PHASE: 24-02-2026
         </p>
       </div>
 
@@ -213,14 +213,14 @@ export default function OwnerDashboardPage() {
         <div className="flex items-center gap-4">
           <ShieldCheck className="h-10 w-10" />
           <div>
-            <h3 className="text-2xl font-headline tracking-tighter">CAFÉ STATUS: {healthStatus}</h3>
+            <h3 className="text-2xl font-headline tracking-tighter">PHASE STATUS: {healthStatus}</h3>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">
-              Health check performed based on current business day intake and utilization metrics.
+              Audit performed based on the 24-02-2026 operational phase intake and utilization metrics.
             </p>
           </div>
         </div>
         <div className="hidden sm:flex flex-col items-end">
-          <p className="text-[10px] font-black uppercase opacity-60">Goal Performance</p>
+          <p className="text-[10px] font-black uppercase opacity-60">Phase Goal Performance</p>
           <p className="text-3xl font-black font-mono">{(healthScore * 100).toFixed(1)}%</p>
         </div>
       </div>
@@ -230,7 +230,7 @@ export default function OwnerDashboardPage() {
         <Card className="border-2 bg-card shadow-sm">
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <IndianRupee className="h-3 w-3" /> Today's Intake
+              <IndianRupee className="h-3 w-3" /> Phase Intake
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
@@ -271,7 +271,7 @@ export default function OwnerDashboardPage() {
           <CardContent className="p-4 pt-0 space-y-2">
             <div className="flex justify-between items-baseline">
               <div className="text-2xl font-black font-mono">₹{Math.round(stats.survivalGoal).toLocaleString()}</div>
-              <Badge variant="outline" className="text-[8px] h-4 font-black border-primary/30 text-primary">DAILY</Badge>
+              <Badge variant="outline" className="text-[8px] h-4 font-black border-primary/30 text-primary">PHASE DAILY AVG</Badge>
             </div>
             <Progress value={(stats.revTotal / stats.survivalGoal) * 100} className="h-1.5" />
           </CardContent>
@@ -287,7 +287,7 @@ export default function OwnerDashboardPage() {
             <div className={cn("text-2xl font-black font-mono", (stats.revTotal - stats.expToday) >= 0 ? "text-emerald-600" : "text-destructive")}>
                 ₹{(stats.revTotal - stats.expToday).toLocaleString()}
             </div>
-            <p className="text-[9px] font-bold uppercase opacity-50 mt-1">Intake - Expenses (Today)</p>
+            <p className="text-[9px] font-bold uppercase opacity-50 mt-1">Intake - Expenses (Phase)</p>
           </CardContent>
         </Card>
       </div>
@@ -300,46 +300,39 @@ export default function OwnerDashboardPage() {
               <div>
                 <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-primary" />
-                    Strategic Pulse
+                    Top Performers
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Revenue Mix & Top Performers</CardDescription>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">High-Volume Items from 24-02-2026</CardDescription>
               </div>
-              <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">LIVE INSIGHTS</Badge>
+              <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">PHASE AUDIT</Badge>
             </div>
           </CardHeader>
-          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div className="h-[250px] w-full">
-                <ProductSalesChart bills={bills?.filter(b => b.timestamp && isBusinessToday(b.timestamp)) || []} />
-            </div>
-            <div className="space-y-4">
-                <div className="space-y-3">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Today's Best Sellers</h4>
-                    
-                    <div className="flex items-center gap-3 p-3 rounded-xl border bg-muted/5">
-                        <div className="p-2 bg-orange-500/10 rounded-lg"><Utensils className="h-4 w-4 text-orange-600" /></div>
-                        <div>
-                            <p className="text-[8px] font-black text-muted-foreground uppercase">Top Food</p>
-                            <p className="text-xs font-bold uppercase">{stats.topFood ? stats.topFood[0] : 'N/A'}</p>
-                        </div>
-                        {stats.topFood && <Badge className="ml-auto bg-orange-500 h-5 px-1.5 text-[10px]">{stats.topFood[1]}</Badge>}
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-orange-500/5 border-orange-500/20">
+                    <div className="p-2 bg-orange-500/10 rounded-lg"><Utensils className="h-5 w-5 text-orange-600" /></div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Top Food</p>
+                        <p className="text-xs font-black uppercase truncate">{stats.topFood ? stats.topFood[0] : 'N/A'}</p>
+                        {stats.topFood && <p className="text-[10px] font-bold text-orange-600 mt-0.5">{stats.topFood[1]} Units Sold</p>}
                     </div>
+                </div>
 
-                    <div className="flex items-center gap-3 p-3 rounded-xl border bg-muted/5">
-                        <div className="p-2 bg-blue-500/10 rounded-lg"><Coffee className="h-4 w-4 text-blue-600" /></div>
-                        <div>
-                            <p className="text-[8px] font-black text-muted-foreground uppercase">Top Beverage</p>
-                            <p className="text-xs font-bold uppercase">{stats.topDrink ? stats.topDrink[0] : 'N/A'}</p>
-                        </div>
-                        {stats.topDrink && <Badge className="ml-auto bg-blue-500 h-5 px-1.5 text-[10px]">{stats.topDrink[1]}</Badge>}
+                <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-blue-500/5 border-blue-500/20">
+                    <div className="p-2 bg-blue-500/10 rounded-lg"><Coffee className="h-5 w-5 text-blue-600" /></div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Top Beverage</p>
+                        <p className="text-xs font-black uppercase truncate">{stats.topDrink ? stats.topDrink[0] : 'N/A'}</p>
+                        {stats.topDrink && <p className="text-[10px] font-bold text-blue-600 mt-0.5">{stats.topDrink[1]} Units Sold</p>}
                     </div>
+                </div>
 
-                    <div className="flex items-center gap-3 p-3 rounded-xl border bg-muted/5">
-                        <div className="p-2 bg-primary/10 rounded-lg"><Zap className="h-4 w-4 text-primary" /></div>
-                        <div>
-                            <p className="text-[8px] font-black text-muted-foreground uppercase">Top Package</p>
-                            <p className="text-xs font-bold uppercase">{stats.topPkg ? stats.topPkg[0] : 'N/A'}</p>
-                        </div>
-                        {stats.topPkg && <Badge className="ml-auto bg-primary h-5 px-1.5 text-[10px]">{stats.topPkg[1]}</Badge>}
+                <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-primary/5 border-primary/20">
+                    <div className="p-2 bg-primary/10 rounded-lg"><Zap className="h-5 w-5 text-primary" /></div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Top Package</p>
+                        <p className="text-xs font-black uppercase truncate">{stats.topPkg ? stats.topPkg[0] : 'N/A'}</p>
+                        {stats.topPkg && <p className="text-[10px] font-bold text-primary mt-0.5">{stats.topPkg[1]} Sessions</p>}
                     </div>
                 </div>
             </div>
@@ -385,9 +378,9 @@ export default function OwnerDashboardPage() {
             <CardHeader className="border-b pb-3">
                 <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
-                    Peak Operational Hours
+                    Peak Phase Hours
                 </CardTitle>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows based on historic volume.</CardDescription>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows for the 24-02-2026 phase.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
@@ -400,12 +393,12 @@ export default function OwnerDashboardPage() {
                 <div className="flex-1 space-y-3">
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase">
                         <span>Intake Velocity</span>
-                        <span className="text-emerald-600">High Impact</span>
+                        <span className="text-emerald-600">Phase Metric</span>
                     </div>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-primary w-[85%] rounded-full shadow-[0_0_10px_rgba(239,0,53,0.3)]" />
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Traffic peaks typically between 19:00 - 22:00.</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Busiest window identified during this phase audit.</p>
                 </div>
             </CardContent>
         </Card>
@@ -414,9 +407,9 @@ export default function OwnerDashboardPage() {
             <CardHeader className="border-b pb-3">
                 <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-primary" />
-                    Prime Business Days
+                    Prime Phase Days
                 </CardTitle>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Historic high-traffic days of the week.</CardDescription>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Highest traffic days identified in this cycle.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
@@ -437,7 +430,7 @@ export default function OwnerDashboardPage() {
                             </div>
                         ))}
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Weekends account for 65% of total session volume.</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Historical high-impact day for the selected period.</p>
                 </div>
             </CardContent>
         </Card>
