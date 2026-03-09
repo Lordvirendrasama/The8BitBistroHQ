@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { IndianRupee, Star, Users } from 'lucide-react';
 import { useFirebase } from '@/firebase/provider';
 import { startOfDay, startOfWeek, startOfMonth, isWithinInterval, subDays, endOfDay, format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface StatsCardsProps {
     period: Period;
