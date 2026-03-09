@@ -1,27 +1,34 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import type { Bill, Expense, Period, DateRange } from '@/lib/types';
+import type { Bill, Expense, DateRange } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, Filter, CalendarIcon, ArrowRight, Wallet } from 'lucide-react';
+import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, CalendarIcon, Wallet, FilterX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, startOfMonth, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { cn } from '@/lib/utils';
 import { exportAccountingLedger, getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/data-management';
 import { Progress } from '@/components/ui/progress';
-import { useEffect } from 'react';
 
 export default function AccountingPage() {
   const { db } = useFirebase();
   const [exportCycle, setExportCycle] = useState('all_cycles');
   const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Date Range State
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: undefined,
+    to: undefined,
+  });
 
   useEffect(() => {
     getAvailableCycles().then(setAvailableCycles);
@@ -37,9 +44,18 @@ export default function AccountingPage() {
     if (!bills || !expenses) return { revenue: 0, spend: 0, items: [] };
 
     const filterByCycle = (item: any) => exportCycle === 'all_cycles' || item.cycle === exportCycle;
+    
+    const filterByDate = (itemDate: string) => {
+        if (!dateRange.from) return true;
+        const d = new Date(itemDate);
+        if (dateRange.to) {
+            return d >= startOfDay(dateRange.from) && d <= endOfDay(dateRange.to);
+        }
+        return d >= startOfDay(dateRange.from) && d <= endOfDay(dateRange.from);
+    };
 
-    const matchedBills = bills.filter(filterByCycle);
-    const matchedExpenses = expenses.filter(filterByCycle);
+    const matchedBills = bills.filter(b => filterByCycle(b) && filterByDate(b.timestamp));
+    const matchedExpenses = expenses.filter(e => filterByCycle(e) && filterByDate(e.timestamp));
 
     const revenue = matchedBills.reduce((sum, b) => sum + b.totalAmount, 0);
     const spend = matchedExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -50,33 +66,44 @@ export default function AccountingPage() {
             type: 'income',
             desc: `${b.stationName} Checkout`,
             amount: b.totalAmount,
-            method: b.paymentMethod
+            method: b.paymentMethod,
+            cycle: b.cycle
         })),
         ...matchedExpenses.map(e => ({
             date: e.timestamp,
             type: 'expense',
             desc: e.description,
             amount: e.amount,
-            method: 'CASH'
+            method: 'CASH',
+            cycle: e.cycle
         }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return { revenue, spend, items: combined };
-  }, [bills, expenses, exportCycle]);
+  }, [bills, expenses, exportCycle, dateRange]);
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-        const csv = await exportAccountingLedger({ cycle: exportCycle === 'all_cycles' ? undefined : exportCycle });
+        const csv = await exportAccountingLedger({ 
+            cycle: exportCycle === 'all_cycles' ? undefined : exportCycle,
+            startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
+            endDate: dateRange.to ? dateRange.to.toISOString() : undefined
+        });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `accounting-ledger-${exportCycle}.csv`;
+        link.download = `accounting-ledger-${exportCycle}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
         link.click();
     } finally {
         setIsExporting(false);
     }
+  };
+
+  const resetFilters = () => {
+    setExportCycle('all_cycles');
+    setDateRange({ from: undefined, to: undefined });
   };
 
   const netProfit = filteredData.revenue - filteredData.spend;
@@ -87,15 +114,19 @@ export default function AccountingPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto font-body">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-4xl tracking-wider text-foreground">Financial Audit</h1>
-          <p className="mt-2 text-muted-foreground font-bold uppercase text-xs tracking-widest">Reconcile revenue and operating costs by operational cycle.</p>
+          <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Reconcile revenue and operating costs by operational cycle.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="icon" onClick={resetFilters} className="h-12 w-12 border-2 shrink-0">
+                <FilterX className="h-5 w-5 opacity-50" />
+            </Button>
+            
             <Select value={exportCycle} onValueChange={setExportCycle}>
-                <SelectTrigger className="w-[200px] h-12 font-black uppercase text-[10px] border-2">
+                <SelectTrigger className="w-[180px] h-12 font-black uppercase text-[10px] border-2 bg-background">
                     <SelectValue placeholder="Select Phase" />
                 </SelectTrigger>
                 <SelectContent>
@@ -103,6 +134,35 @@ export default function AccountingPage() {
                     {availableCycles.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}
                 </SelectContent>
             </Select>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                            "w-[240px] h-12 justify-start text-left font-black uppercase text-[10px] border-2 bg-background",
+                            !dateRange.from && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange.from ? (
+                            dateRange.to ? (
+                                <>{format(dateRange.from, "LLL dd")} - {format(dateRange.to, "LLL dd, y")}</>
+                            ) : (format(dateRange.from, "LLL dd, y"))
+                        ) : (<span>Filter by Date</span>)}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        selected={{ from: dateRange.from, to: dateRange.to }}
+                        onSelect={(range: any) => setDateRange(range || { from: undefined, to: undefined })}
+                        numberOfMonths={2}
+                    />
+                </PopoverContent>
+            </Popover>
+
             <Button onClick={handleExport} disabled={isExporting} className="h-12 px-6 font-black uppercase tracking-tight shadow-lg">
                 <Download className="mr-2 h-5 w-5" /> Export Ledger
             </Button>
@@ -170,6 +230,7 @@ export default function AccountingPage() {
                         <TableHead className="font-black uppercase text-[10px]">Timestamp</TableHead>
                         <TableHead className="font-black uppercase text-[10px]">Description</TableHead>
                         <TableHead className="font-black uppercase text-[10px]">Method</TableHead>
+                        <TableHead className="font-black uppercase text-[10px]">Phase</TableHead>
                         <TableHead className="text-right font-black uppercase text-[10px]">Amount</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -198,6 +259,9 @@ export default function AccountingPage() {
                             <TableCell>
                                 <Badge variant="secondary" className="font-black uppercase text-[9px] tracking-widest">{item.method}</Badge>
                             </TableCell>
+                            <TableCell>
+                                <span className="text-[10px] font-bold uppercase opacity-40">{item.cycle || 'Unlabeled'}</span>
+                            </TableCell>
                             <TableCell className="text-right">
                                 <span className={cn("font-mono font-black text-sm", item.type === 'income' ? "text-emerald-600" : "text-destructive")}>
                                     {item.type === 'income' ? '+' : '-'} ₹{item.amount.toLocaleString()}
@@ -207,7 +271,7 @@ export default function AccountingPage() {
                     ))}
                     {filteredData.items.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={4} className="h-64 text-center opacity-30 italic font-headline text-[10px] tracking-widest">No entries found for this period.</TableCell>
+                            <TableCell colSpan={5} className="h-64 text-center opacity-30 italic font-headline text-[10px] tracking-widest">No entries found for this selection.</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
