@@ -8,13 +8,10 @@ import type { Shift } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format, differenceInHours, differenceInMinutes } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { CheckCircle2, XCircle, Clock, Wallet, IndianRupee, ShoppingCart, User, AlertCircle, Timer, Coffee, Zap, Moon } from 'lucide-react';
-import Image from 'next/image';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -31,11 +28,29 @@ export default function ShiftReportsPage() {
 
   const { data: allShifts, loading, error } = useCollection<Shift>(shiftsQuery);
 
+  const staffOptions = useMemo(() => {
+    if (!allShifts) return [];
+    const staff = new Map<string, string>(); // username -> display name
+    allShifts.forEach(s => {
+        if (s.staffId) {
+            staff.set(s.staffId.toLowerCase(), s.staffId);
+        }
+        s.employees?.forEach(e => {
+            staff.set(e.username.toLowerCase(), e.displayName || e.username);
+        });
+    });
+    return Array.from(staff.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allShifts]);
+
   const filteredShifts = useMemo(() => {
     if (!allShifts) return [];
     return allShifts.filter(shift => {
         const date = new Date(shift.startTime);
-        const matchesStaff = staffFilter === 'all' || shift.staffId === staffFilter || shift.employees?.some(e => e.username === staffFilter);
+        
+        const matchesStaff = staffFilter === 'all' || 
+                             shift.staffId?.toLowerCase() === staffFilter.toLowerCase() || 
+                             shift.employees?.some(e => e.username.toLowerCase() === staffFilter.toLowerCase());
+        
         const matchesMonth = monthFilter === 'all' || format(date, 'yyyy-MM') === monthFilter;
         return matchesStaff && matchesMonth;
     });
@@ -46,16 +61,6 @@ export default function ShiftReportsPage() {
     const months = new Set<string>();
     allShifts.forEach(s => months.add(format(new Date(s.startTime), 'yyyy-MM')));
     return Array.from(months).sort().reverse();
-  }, [allShifts]);
-
-  const staffOptions = useMemo(() => {
-    if (!allShifts) return [];
-    const staff = new Set<string>();
-    allShifts.forEach(s => {
-        if (s.staffId) staff.add(s.staffId);
-        s.employees?.forEach(e => staff.add(e.username));
-    });
-    return Array.from(staff).sort();
   }, [allShifts]);
 
   const formatShiftDuration = (start: string, end?: string) => {
@@ -93,8 +98,10 @@ export default function ShiftReportsPage() {
                         <SelectValue placeholder="All Staff" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Staff</SelectItem>
-                        {staffOptions.map(id => <SelectItem key={id} value={id}>{id.toUpperCase()}</SelectItem>)}
+                        <SelectItem value="all">ALL STAFF</SelectItem>
+                        {staffOptions.map(([username, displayName]) => (
+                            <SelectItem key={username} value={username}>{displayName.toUpperCase()}</SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
@@ -105,7 +112,7 @@ export default function ShiftReportsPage() {
                         <SelectValue placeholder="All Months" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All History</SelectItem>
+                        <SelectItem value="all">ALL HISTORY</SelectItem>
                         {monthOptions.map(m => <SelectItem key={m} value={m}>{format(new Date(m + "-01"), 'MMMM yyyy').toUpperCase()}</SelectItem>)}
                     </SelectContent>
                 </Select>
@@ -150,7 +157,7 @@ export default function ShiftReportsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-600">
                             <Zap className="h-3 w-3 text-emerald-500 fill-current" />
                             {format(new Date(shift.startTime), 'p')}
                         </div>
@@ -160,7 +167,7 @@ export default function ShiftReportsPage() {
                                 {format(new Date(shift.endTime), 'p')}
                             </div>
                         ) : (
-                            <Badge variant="outline" className="w-fit h-4 text-[7px] animate-pulse uppercase border-emerald-500 text-emerald-600">Active</Badge>
+                            <Badge variant="outline" className="w-fit h-4 text-[7px] animate-pulse uppercase border-emerald-500 text-emerald-600 bg-emerald-500/5">Active</Badge>
                         )}
                     </div>
                   </TableCell>

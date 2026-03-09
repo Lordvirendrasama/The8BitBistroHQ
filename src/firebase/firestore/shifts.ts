@@ -7,9 +7,9 @@ import type { CustomUser } from '@/firebase/auth/use-user';
 import { getBusinessDate } from '@/lib/utils';
 
 // Defaults for shift logic
-const DEFAULT_START_TIME = "11:00"; // 11:00 AM
-const LATE_ARRIVAL_THRESHOLD = 10; // Updated to 10 minutes
-const DEFAULT_END_TIME = "23:00";   // 11:00 PM
+const DEFAULT_START_TIME = "11:00"; 
+const LATE_ARRIVAL_THRESHOLD = 10; 
+const DEFAULT_END_TIME = "23:00";   
 
 const calculateAttendanceOnStart = (loginTime: Date, empSettings?: Employee) => {
     const expectedStart = empSettings?.workStartTime || DEFAULT_START_TIME;
@@ -37,6 +37,11 @@ const calculateAttendanceOnEnd = (logoutTime: Date, empSettings?: Employee) => {
     const expDate = new Date(logoutTime);
     expDate.setHours(expH, expM, 0, 0);
 
+    // If expected end is early morning (e.g. 1 AM) and current logout is late night
+    if (expH < 5 && logoutTime.getHours() >= 18) {
+        expDate.setDate(expDate.getDate() + 1);
+    }
+
     let earlyLeaveMinutes = 0;
     let overtimeMinutes = 0;
 
@@ -54,18 +59,39 @@ const calculateAttendanceOnEnd = (logoutTime: Date, empSettings?: Employee) => {
 
 export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | null> => {
     const db = getFirestore();
-    const businessToday = getBusinessDate(); // Uses 5 AM threshold
+    const businessToday = getBusinessDate(); 
     const isOwner = user.username === 'Viren';
     
     const shiftsRef = collection(db, 'shifts');
-    const q = query(shiftsRef, where('date', '==', businessToday), limit(1));
     
     try {
+        // 1. AUTO LOGOUT LOGIC: Find any "active" shifts from PREVIOUS business days and close them at 5 AM
+        const qActive = query(shiftsRef, where('status', '==', 'active'));
+        const activeSnap = await getDocs(qActive);
+        
+        for (const d of activeSnap.docs) {
+            const data = d.data() as Shift;
+            if (data.date !== businessToday && !data.endTime) {
+                // Auto-close at 5 AM of the next calendar day from its start
+                const sDate = new Date(data.startTime);
+                const autoEndDate = new Date(sDate);
+                autoEndDate.setDate(autoEndDate.getDate() + 1);
+                autoEndDate.setHours(5, 0, 0, 0);
+                
+                await updateDoc(d.ref, {
+                    endTime: autoEndDate.toISOString(),
+                    status: 'completed',
+                    note: 'Auto-closed at 5 AM boundary'
+                });
+            }
+        }
+
         const masterTasksRef = collection(db, 'tasks');
         const masterTasksSnapshot = await getDocs(masterTasksRef);
         const masterTasks = masterTasksSnapshot.docs.map(doc => doc.data() as Task);
 
-        const shiftSnapshot = await getDocs(q);
+        const qToday = query(shiftsRef, where('date', '==', businessToday), limit(1));
+        const shiftSnapshot = await getDocs(qToday);
 
         if (!shiftSnapshot.empty) {
             const shiftDoc = shiftSnapshot.docs[0];
@@ -90,9 +116,8 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 }
             }
             
-            if (shift.endTime) {
-                updates.endTime = null;
-                updates.status = 'recovered';
+            if (shift.status === 'completed' && !shift.endTime) {
+                updates.status = 'active';
             }
 
             if (Object.keys(updates).length > 0) {
@@ -100,7 +125,6 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 if (updates.tasks) shift.tasks = updates.tasks;
                 if (updates.employees) shift.employees = updates.employees;
                 if (updates.status) shift.status = updates.status;
-                if (updates.endTime !== undefined) shift.endTime = updates.endTime;
             }
             return shift;
         } else {
@@ -166,7 +190,6 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
         const shiftDoc = await getDoc(shiftRef);
         const now = new Date();
         
-        // Get primary staff settings for end calculations
         const empsRef = collection(db, 'employees');
         const empQ = query(empsRef, where('username', '==', user.username), limit(1));
         const empSnap = await getDocs(empQ);
@@ -204,9 +227,9 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
         };
 
         if (totals) {
-            if (totals.cashTotal >= 0) updates.cashTotal = totals.cashTotal;
-            if (totals.upiTotal >= 0) updates.upiTotal = totals.upiTotal;
-            if (totals.shiftExpenses >= 0) updates.shiftExpenses = totals.shiftExpenses;
+            updates.cashTotal = totals.cashTotal || 0;
+            updates.upiTotal = totals.upiTotal || 0;
+            updates.shiftExpenses = totals.shiftExpenses || 0;
         }
 
         batch.update(shiftRef, updates);
@@ -237,8 +260,12 @@ export const startBreak = async (shiftId: string, user: CustomUser) => {
             if (!snap.exists()) return;
             
             const data = snap.data() as Shift;
-            const newBreaks = [...(data.breaks || []), { startTime: new Date().toISOString() }];
             
+            // Check if there is an active break
+            const hasActive = data.breaks?.some(b => !b.endTime);
+            if (hasActive) return;
+
+            const newBreaks = [...(data.breaks || []), { startTime: new Date().toISOString() }];
             transaction.update(shiftRef, { breaks: newBreaks });
             
             const logRef = doc(collection(db, 'logs'));
@@ -269,6 +296,9 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
             const data = snap.data() as Shift;
             const now = new Date();
             
+            const hasActive = data.breaks?.some(b => !b.endTime);
+            if (!hasActive) return;
+
             const updatedBreaks = data.breaks.map(b => {
                 if (!b.endTime) {
                     const duration = Math.floor((now.getTime() - new Date(b.startTime).getTime()) / 1000);
