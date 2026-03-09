@@ -8,7 +8,7 @@ import type { Bill, Expense, DateRange } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, CalendarIcon, Wallet, FilterX } from 'lucide-react';
+import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, CalendarIcon, Wallet, FilterX, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -81,6 +81,34 @@ export default function AccountingPage() {
 
     return { revenue, spend, items: combined };
   }, [bills, expenses, exportCycle, dateRange]);
+
+  const monthlyBreakdown = useMemo(() => {
+    if (!bills || !expenses) return [];
+
+    const breakdownMap: Record<string, { monthKey: string, monthName: string, revenue: number, expense: number }> = {};
+
+    const filterByCycle = (item: any) => exportCycle === 'all_cycles' || item.cycle === exportCycle;
+
+    bills.filter(filterByCycle).forEach(b => {
+        const d = new Date(b.timestamp);
+        const key = format(d, 'yyyy-MM');
+        if (!breakdownMap[key]) {
+            breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
+        }
+        breakdownMap[key].revenue += b.totalAmount;
+    });
+
+    expenses.filter(filterByCycle).forEach(e => {
+        const d = new Date(e.timestamp);
+        const key = format(d, 'yyyy-MM');
+        if (!breakdownMap[key]) {
+            breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
+        }
+        breakdownMap[key].expense += e.amount;
+    });
+
+    return Object.values(breakdownMap).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+  }, [bills, expenses, exportCycle]);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -214,6 +242,47 @@ export default function AccountingPage() {
       </div>
 
       <Card className="border-2 shadow-none overflow-hidden">
+        <CardHeader className="bg-muted/10 border-b">
+            <CardTitle className="font-headline text-lg tracking-tight flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Monthly Performance Breakdown
+            </CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Grouped revenue and expenses by operational month.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+            <Table>
+                <TableHeader>
+                    <TableRow className="bg-muted/5">
+                        <TableHead className="font-black uppercase text-[10px]">Month</TableHead>
+                        <TableHead className="text-center font-black uppercase text-[10px]">Revenue</TableHead>
+                        <TableHead className="text-center font-black uppercase text-[10px]">Expenses</TableHead>
+                        <TableHead className="text-right font-black uppercase text-[10px]">Net Profit</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {monthlyBreakdown.map((row, idx) => (
+                        <TableRow key={row.monthKey} className="hover:bg-muted/5 transition-colors">
+                            <TableCell className="font-black uppercase text-xs py-4">{row.monthName}</TableCell>
+                            <TableCell className="text-center font-mono font-bold text-emerald-600">₹{row.revenue.toLocaleString()}</TableCell>
+                            <TableCell className="text-center font-mono font-bold text-destructive">₹{row.expense.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">
+                                <span className={cn("font-mono font-black text-sm", (row.revenue - row.expense) >= 0 ? "text-emerald-600" : "text-destructive")}>
+                                    ₹{(row.revenue - row.expense).toLocaleString()}
+                                </span>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                    {monthlyBreakdown.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={4} className="h-32 text-center opacity-30 italic font-headline text-[10px] tracking-widest uppercase">No monthly data available.</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="border-2 shadow-none overflow-hidden">
         <CardHeader className="bg-muted/30 border-b">
             <div className="flex justify-between items-center">
                 <div>
@@ -239,8 +308,8 @@ export default function AccountingPage() {
                         <TableRow key={idx} className="hover:bg-muted/5 transition-colors">
                             <TableCell className="py-4">
                                 <div className="flex flex-col">
-                                    <span className="font-black text-[10px] uppercase">{format(new Date(item.date), 'MMM d, yyyy')}</span>
-                                    <span className="text-[9px] text-muted-foreground font-mono">{format(new Date(item.date), 'p')}</span>
+                                    <span className="font-black text-[10px] uppercase">{item.date ? format(new Date(item.date), 'MMM d, yyyy') : 'N/A'}</span>
+                                    <span className="text-[9px] text-muted-foreground font-mono">{item.date ? format(new Date(item.date), 'p') : ''}</span>
                                 </div>
                             </TableCell>
                             <TableCell>
