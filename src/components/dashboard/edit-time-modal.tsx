@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Plus, Clock, IndianRupee, Minus, Sparkles, History, Users, CheckCircle2, User } from 'lucide-react';
+import { Plus, Clock, IndianRupee, Minus, Sparkles, History, Users, CheckCircle2, User, Star } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { GamingPackage, Station, AssignedMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,7 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [customMinutes, setCustomMinutes] = useState('');
   const [customPrice, setCustomPrice] = useState('');
+  const [clientTime, setClientTime] = useState<string>('');
 
   // Reduce Time State
   const [reduceValue, setReduceValue] = useState('30');
@@ -56,10 +57,13 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
   [station]);
 
   useEffect(() => {
-    if (isOpen && allStationMembers.length > 0) {
-      // Default to selecting only currently active members
-      const activeIds = allStationMembers.filter(m => m.status !== 'finished').map(m => m.id);
-      setSelectedPlayerIds(activeIds);
+    if (isOpen) {
+      setClientTime(new Date().toTimeString().slice(0, 5));
+      if (allStationMembers.length > 0) {
+        // Default to selecting only currently active members
+        const activeIds = allStationMembers.filter(m => m.status !== 'finished').map(m => m.id);
+        setSelectedPlayerIds(activeIds);
+      }
       
       setSelectedPackageId(null);
       setCustomMinutes('');
@@ -80,8 +84,40 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
   };
 
   const addTimePackages = useMemo(() => {
-    return gamingPackages.filter(p => p.isAddTimePackage);
-  }, [gamingPackages]);
+    if (!gamingPackages || !station) return [];
+    
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' });
+
+    return gamingPackages.filter(p => {
+        // 1. Explicit Add Time packages
+        if (p.isAddTimePackage) return true;
+
+        // 2. Available Priority Offers matching station type
+        if (p.isPriorityOffer) {
+            // Recharges shouldn't show up here generally as they are for the balance pool
+            if (p.isRechargePack) return false;
+
+            // Station Type check: Board game stations only see Board Game Passes
+            if (station.type === 'boardgame' && !p.isBoardGamePass) return false;
+            if (station.type === 'ps5' && p.isBoardGamePass) return false;
+
+            let isAvailable = true;
+            if (p.availableDays && p.availableDays.length > 0 && !p.availableDays.includes(currentDay)) isAvailable = false;
+            if (isAvailable && p.startTime && clientTime < p.startTime) isAvailable = false;
+            if (isAvailable && p.endTime && clientTime > p.endTime) isAvailable = false;
+            
+            return isAvailable;
+        }
+
+        return false;
+    }).sort((a, b) => {
+        // Priority offers first
+        if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
+        if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
+        return 0;
+    });
+  }, [gamingPackages, station, clientTime]);
 
   const selectedPackage = useMemo(() => {
     return addTimePackages.find(p => p.id === selectedPackageId);
@@ -214,7 +250,10 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                                     <div className="flex items-center gap-3">
                                         <RadioGroupItem value={pkg.id} id={pkg.id} />
                                         <div className="space-y-0.5">
-                                            <p className="font-black text-[11px] uppercase tracking-tight">{pkg.name}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-black text-[11px] uppercase tracking-tight">{pkg.name}</p>
+                                                {pkg.isPriorityOffer && <Star className="h-3 w-3 text-amber-500 fill-current" />}
+                                            </div>
                                             <div className="flex items-center gap-2 text-[8px] font-bold text-muted-foreground uppercase tracking-widest">
                                                 <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatPackageDuration(pkg.duration)}</span>
                                             </div>
