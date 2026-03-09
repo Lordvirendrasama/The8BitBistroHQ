@@ -99,7 +99,7 @@ export default function OwnerDashboardPage() {
   const stats = useMemo(() => {
     if (!bills || !expenses || !liabilityState || !fixedBills || !appSettings || !members || !stations) return null;
 
-    // TARGET PHASE DATA: Filter by cycle '24-02-2026' as requested
+    // TARGET PHASE DATA: Filter by cycle '24-02-2026'
     const targetCycle = '24-02-2026';
     const phaseBills = bills.filter(b => b.cycle === targetCycle);
     const phaseExpenses = expenses.filter(e => e.cycle === targetCycle);
@@ -113,7 +113,7 @@ export default function OwnerDashboardPage() {
     const revGaming = phaseBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
     const revFood = revTotal - revGaming - revPending;
 
-    // Item Analytics
+    // Item Analytics (Phase Locked)
     const foodCounts: Record<string, number> = {};
     const drinkCounts: Record<string, number> = {};
     const packageCounts: Record<string, number> = {};
@@ -143,19 +143,21 @@ export default function OwnerDashboardPage() {
     const topDrink = getTop(drinkCounts);
     const topPkg = getTop(packageCounts);
 
-    // Time/Day Analytics (From phase data)
-    const hourCounts: Record<number, number> = {};
-    const dayCounts: Record<string, number> = {};
-    phaseBills.forEach(b => {
+    // --- MONTH-ON-MONTH (MoM) ANALYTICS FOR HEATMAPS ---
+    // User requested heatmaps be based on MoM data (All time or cumulative month aggregation)
+    const momHourCounts: Record<number, number> = {};
+    const momDayCounts: Record<string, number> = {};
+    
+    bills.forEach(b => {
         const d = new Date(b.timestamp);
         const h = d.getHours();
         const day = format(d, 'EEEE');
-        hourCounts[h] = (hourCounts[h] || 0) + 1;
-        dayCounts[day] = (dayCounts[day] || 0) + 1;
+        momHourCounts[h] = (momHourCounts[h] || 0) + 1;
+        momDayCounts[day] = (momDayCounts[day] || 0) + 1;
     });
 
-    const topHour = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
-    const topDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
+    const topHour = Object.entries(momHourCounts).sort((a, b) => b[1] - a[1])[0];
+    const topDay = Object.entries(momDayCounts).sort((a, b) => b[1] - a[1])[0];
 
     // Survival Goal (Fixed costs logic)
     const otherBills = fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent'));
@@ -300,9 +302,9 @@ export default function OwnerDashboardPage() {
               <div>
                 <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-primary" />
-                    Top Performers
+                    Top Performers (Phase 24-02-2026)
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">High-Volume Items from 24-02-2026</CardDescription>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">High-Volume Items from the targeted cycle.</CardDescription>
               </div>
               <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">PHASE AUDIT</Badge>
             </div>
@@ -372,15 +374,18 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      {/* 4. NEW: OPERATIONAL INTELLIGENCE HEATMAPS */}
+      {/* 4. OPERATIONAL INTELLIGENCE HEATMAPS - MONTH-ON-MONTH DATA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-2 bg-muted/5 overflow-hidden">
             <CardHeader className="border-b pb-3">
-                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-primary" />
-                    Peak Phase Hours
-                </CardTitle>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows for the 24-02-2026 phase.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        Global Peak Hours
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">MoM ANALYTICS</Badge>
+                </div>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows based on full system history.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
@@ -393,23 +398,26 @@ export default function OwnerDashboardPage() {
                 <div className="flex-1 space-y-3">
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase">
                         <span>Intake Velocity</span>
-                        <span className="text-emerald-600">Phase Metric</span>
+                        <span className="text-emerald-600">MONTHLY TREND</span>
                     </div>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-primary w-[85%] rounded-full shadow-[0_0_10px_rgba(239,0,53,0.3)]" />
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Busiest window identified during this phase audit.</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Busiest window identified from month-on-month behavioral data.</p>
                 </div>
             </CardContent>
         </Card>
 
         <Card className="border-2 bg-muted/5 overflow-hidden">
             <CardHeader className="border-b pb-3">
-                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-primary" />
-                    Prime Phase Days
-                </CardTitle>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Highest traffic days identified in this cycle.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        Prime Business Days
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">MoM ANALYTICS</Badge>
+                </div>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Highest traffic days identified across all months.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
@@ -430,7 +438,7 @@ export default function OwnerDashboardPage() {
                             </div>
                         ))}
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Historical high-impact day for the selected period.</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Historical high-impact day derived from longitudinal month-on-month data.</p>
                 </div>
             </CardContent>
         </Card>
