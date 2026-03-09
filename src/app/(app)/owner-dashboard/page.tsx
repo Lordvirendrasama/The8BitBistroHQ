@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -31,12 +30,14 @@ import {
   Play, 
   Percent,
   CheckCircle2,
-  Calendar
+  Calendar,
+  Target
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, differenceInCalendarMonths, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export default function OwnerDashboardPage() {
   const { db } = useFirebase();
@@ -151,10 +152,6 @@ export default function OwnerDashboardPage() {
     const rechargeOwed = members.reduce((sum, m) => sum + (m.recharges || []).filter(r => new Date(r.expiryDate) > new Date()).reduce((s, r) => s + r.remainingDuration, 0), 0);
     const rechargeSoldToday = todayBills.filter(b => b.isRechargePurchase).reduce((s, b) => s + b.totalAmount, 0);
 
-    // Utilization (Heuristic based on 12 hour business day)
-    const ps5Count = stations.filter(s => s.type === 'ps5').length;
-    const tableCount = stations.filter(s => s.type === 'boardgame').length;
-    
     // Owner Consumption
     const todayConsumption = consumptions?.filter(c => isBusinessToday(c.timestamp)) || [];
     const consumptionValue = todayConsumption.reduce((s, c) => s + c.totalValue, 0);
@@ -173,7 +170,7 @@ export default function OwnerDashboardPage() {
     };
   }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations, consumptions]);
 
-  if (!stats) return <div className="p-20 text-center animate-pulse font-headline text-xs uppercase tracking-[0.2em]">Recalibrating Owner Pulse...</div>;
+  if (!stats || !stations) return <div className="p-20 text-center animate-pulse font-headline text-xs uppercase tracking-[0.2em]">Recalibrating Owner Pulse...</div>;
 
   const healthScore = stats.revTotal / (stats.survivalGoal || 1);
   const healthStatus = healthScore >= 1.2 ? 'STRONG' : healthScore >= 0.8 ? 'STABLE' : 'DANGER';
