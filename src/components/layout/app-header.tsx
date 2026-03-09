@@ -88,6 +88,7 @@ const HeaderTimer = ({ station }: { station: Station }) => {
 const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => {
   const { db } = useFirebase();
   const { user } = useAuth();
+  const router = useRouter();
   const [globalSettings, setGlobalSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
@@ -193,7 +194,18 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
             <Settings2 className="h-3.5 w-3.5" />
             Strategy Engine
           </h4>
-          <Badge variant="outline" className="text-[8px] font-black border-primary/30 text-primary uppercase">Financial Pillars</Badge>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-6 px-2 text-[8px] font-black uppercase tracking-tighter border-primary/20 hover:bg-primary hover:text-white"
+              onClick={() => { router.push('/billing-history'); }}
+            >
+              <History className="h-2.5 w-2.5 mr-1" />
+              History
+            </Button>
+            <Badge variant="outline" className="text-[8px] font-black border-primary/30 text-primary uppercase">Financial Pillars</Badge>
+          </div>
         </div>
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between group">
