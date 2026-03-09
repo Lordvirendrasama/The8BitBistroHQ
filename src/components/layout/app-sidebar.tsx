@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -118,7 +119,10 @@ export function AppSidebar() {
         return item;
     });
 
-    if (user.username !== 'Viren') {
+    if (user.username === 'Viren') {
+      // Hide Daily Checklist from top-level for Viren since it's now a tab in Owner Control Center
+      filtered = filtered.filter(item => item.href !== '/staff');
+    } else {
       filtered = filtered.filter(item => !item.ownerOnly);
     }
 

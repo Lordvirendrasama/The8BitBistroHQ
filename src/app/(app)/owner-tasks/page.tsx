@@ -2,8 +2,9 @@
 'use client';
 import { OwnerTaskList } from '@/components/owner/owner-task-list';
 import { ExpenseDashboard } from '@/components/owner/expense-dashboard';
+import { StaffOperations } from '@/components/staff/staff-page';
 import { useAuth } from '@/firebase/auth/use-user';
-import { ShieldAlert, ShieldCheck, Wallet } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Wallet, ListChecks } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function OwnerTasksPage() {
@@ -45,6 +46,13 @@ export default function OwnerTasksPage() {
             Checklist & Alerts
           </TabsTrigger>
           <TabsTrigger 
+            value="daily" 
+            className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-black uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
+          >
+            <ListChecks className="h-5 w-5" />
+            Daily Operations
+          </TabsTrigger>
+          <TabsTrigger 
             value="expenses" 
             className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-black uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
           >
@@ -55,6 +63,10 @@ export default function OwnerTasksPage() {
 
         <TabsContent value="tasks" className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
           <OwnerTaskList />
+        </TabsContent>
+
+        <TabsContent value="daily" className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+          <StaffOperations isOwnerView={true} />
         </TabsContent>
 
         <TabsContent value="expenses" className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
