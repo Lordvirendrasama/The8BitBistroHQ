@@ -85,10 +85,13 @@ export default function FinancialDashboardPage() {
     // --- FIXED COSTS ---
     const dailyFixed = calculateDailyFixedCost(fixedBills);
     
-    // For monthFixed, if it's the current month, we only count up to current day
-    // If it's a past/future month, we count full month
+    // Respect Business Day Rollover for counting elapsed days in month
     const isNow = isSameMonth(selectedDate, new Date());
-    const daysToCount = isNow ? new Date().getDate() : daysInMonth;
+    let daysToCount = daysInMonth;
+    if (isNow) {
+        const bDateStr = getBusinessDate();
+        daysToCount = parseInt(bDateStr.split('-')[2], 10);
+    }
     const monthFixed = dailyFixed * daysToCount;
 
     // --- INVENTORY ESTIMATE ---

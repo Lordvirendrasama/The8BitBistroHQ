@@ -640,18 +640,30 @@ export function AppHeader({
       return Math.max(0, sum);
     }, [bills, stations, packages]);
 
-    const monthRevenue = useMemo(() => {
-      if (!bills) return 0;
-      const now = new Date();
-      const start = startOfMonth(now);
-      const end = endOfMonth(now);
+    const { monthRevenue, businessDayCount, monthName } = useMemo(() => {
+      const bDateStr = getBusinessDate(); // respecting 5am boundary
+      const parts = bDateStr.split('-');
+      const bYear = parseInt(parts[0], 10);
+      const bMonth = parseInt(parts[1], 10) - 1;
+      const bDay = parseInt(parts[2], 10);
       
-      return bills
+      const bDate = new Date(bYear, bMonth, bDay);
+      const bMonthStart = new Date(bYear, bMonth, 1, 5, 0, 0);
+      const nextMonthStart = new Date(bYear, bMonth + 1, 1, 5, 0, 0);
+      const mName = format(bDate, 'MMMM');
+
+      const total = !bills ? 0 : bills
         .filter(bill => {
           const d = new Date(bill.timestamp);
-          return d >= start && d <= end;
+          return d >= bMonthStart && d < nextMonthStart;
         })
         .reduce((s, b) => s + (b.totalAmount || 0), 0);
+
+      return { 
+        monthRevenue: total, 
+        businessDayCount: Math.max(1, bDay),
+        monthName: mName
+      };
     }, [bills]);
 
     const handleLogoutClick = async () => {
@@ -700,19 +712,19 @@ export function AppHeader({
                                 <div className="p-3 bg-muted/20 border-b">
                                     <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                         <Activity className="h-3.5 w-3.5 text-emerald-600" />
-                                        Month Performance
+                                        {monthName} Performance
                                     </h4>
                                 </div>
                                 <div className="p-4 space-y-3">
                                     <div className="flex justify-between items-center">
                                         <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Daily Average</span>
                                         <span className="text-sm font-black font-mono text-emerald-600 tabular-nums">
-                                            ₹{Math.round(monthRevenue / new Date().getDate()).toLocaleString()}
+                                            ₹{Math.round(monthRevenue / businessDayCount).toLocaleString()}
                                         </span>
                                     </div>
                                     <div className="pt-2 border-t border-dashed">
                                         <p className="text-[8px] text-muted-foreground uppercase font-black tracking-widest leading-relaxed">
-                                            Calculated across {new Date().getDate()} days of active business.
+                                            Calculated across {businessDayCount} days of active business.
                                         </p>
                                     </div>
                                 </div>
