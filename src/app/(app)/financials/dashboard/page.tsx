@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -38,7 +37,9 @@ export default function FinancialDashboardPage() {
   const stats = useMemo(() => {
     if (!bills || !expenses || !fixedBills || !inventory) return null;
 
-    const targetDateStr = getBusinessDate(selectedDate);
+    // IMPORTANT: When picking from calendar, treat selection as the "Intended" business day
+    const targetDateStr = getBusinessDate(selectedDate, true);
+    
     const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
     const daysInMonth = differenceInDays(end, start) + 1;
@@ -312,7 +313,7 @@ export default function FinancialDashboardPage() {
         <div className="text-center sm:text-left">
             <h4 className="font-black uppercase tracking-tight text-lg">Financial Modeling Notice</h4>
             <p className="text-sm text-muted-foreground max-w-2xl font-medium mt-1">
-                You are currently viewing the audit for <strong>{format(selectedDate, 'PPPP')}</strong>. The survival goal of ₹{Math.round(stats.breakEven)} per day is based on the average inventory replenishment and fixed recurring costs for this period.
+                You are currently viewing the audit for <strong>{format(selectedDate, 'PPPP')}</strong>. The survival goal of ₹{Math.round(stats.breakEven)} per day is based on the average inventory replenishment and fixed recurring costs for this period. The business day rollover is set to 5:00 AM.
             </p>
         </div>
       </div>

@@ -8,11 +8,16 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Returns the "Business Date" (YYYY-MM-DD) in local time.
  * If before 5:00 AM, it returns the previous calendar day.
+ * 
+ * @param date The date to evaluate
+ * @param ignoreOffset If true, returns the date part without the 5 AM rollover logic (used for calendar selections)
  */
-export function getBusinessDate(date: Date = new Date()): string {
+export function getBusinessDate(date: Date = new Date(), ignoreOffset: boolean = false): string {
   const d = new Date(date);
+  
   // Business day starts at 5:00 AM local time
-  if (d.getHours() < 5) {
+  // If evaluateTimestamp is true, we check if the hour is before 5 AM
+  if (!ignoreOffset && d.getHours() < 5) {
     d.setDate(d.getDate() - 1);
   }
   

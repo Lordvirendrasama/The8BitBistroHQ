@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users } from 'lucide-react';
+import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteBill, updateBill } from '@/firebase/firestore/bills';
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +55,8 @@ export default function BillingHistoryPage() {
     const filteredBills = useMemo(() => {
         if (!bills) return [];
         if (!date) return bills;
-        const selectedBusinessDate = getBusinessDate(date);
+        // When picking from calendar, we want the "Intended" business day
+        const selectedBusinessDate = getBusinessDate(date, true);
         return bills.filter(bill => getBusinessDate(new Date(bill.timestamp)) === selectedBusinessDate);
     }, [bills, date]);
 
@@ -65,7 +65,10 @@ export default function BillingHistoryPage() {
     }, [filteredBills]);
 
     const projectedTotal = useMemo(() => {
-        if (!date || getBusinessDate(date) !== getBusinessDate(new Date())) {
+        if (!date) return 0;
+        
+        // If we are looking at the current live business day
+        if (getBusinessDate(date, true) !== getBusinessDate(new Date())) {
             return filteredTotal;
         }
 
@@ -73,11 +76,9 @@ export default function BillingHistoryPage() {
 
         if (activeStations) {
             activeStations.forEach(station => {
-                // 1. Sum of current bill items (Food/Drinks/Extensions)
                 const currentBillSum = (station.currentBill || []).reduce((s, i) => s + (i.price * i.quantity), 0);
                 projected += currentBillSum;
 
-                // 2. Initial Package logic (if not already in bill)
                 if (station.packageName && station.packageName !== 'Walk-in Order' && gamingPackages) {
                     const isItemized = (station.currentBill || []).some(item => 
                         item.name === station.packageName || 
@@ -93,7 +94,6 @@ export default function BillingHistoryPage() {
                             const playerCount = station.members.length || 1;
                             const capacity = pkg.playerCapacity || 1;
                             const instances = Math.ceil(playerCount / capacity);
-                            // Only add if it's a paid package (not a standard recharge use)
                             if (!station.packageName.startsWith('Recharge: ')) {
                                 projected += (pkg.price * instances);
                             }
@@ -190,7 +190,7 @@ export default function BillingHistoryPage() {
                             <p className="text-xl font-black text-primary font-mono">₹{filteredTotal.toLocaleString()}</p>
                         </div>
                         
-                        {(!date || getBusinessDate(date) === getBusinessDate(new Date())) && (
+                        {date && getBusinessDate(date, true) === getBusinessDate(new Date()) && (
                             <div className="bg-blue-500/5 border-2 border-blue-500/20 rounded-lg px-4 py-2 flex flex-col justify-center shrink-0 animate-in fade-in slide-in-from-right-2 duration-500">
                                 <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Projected</p>
                                 <p className="text-xl font-black text-blue-600 font-mono">₹{Math.floor(projectedTotal).toLocaleString()}</p>
@@ -207,135 +207,147 @@ export default function BillingHistoryPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <Accordion type="single" collapsible className="w-full">
-                        {filteredBills?.map((bill, bIdx) => (
-                            <AccordionItem value={bill.id} key={`${bill.id}-${bIdx}`} className="border-b last:border-0 px-2 sm:px-0">
-                                <AccordionTrigger className="hover:no-underline py-4 px-2 sm:px-4 hover:bg-muted/5 transition-colors">
-                                    <div className="flex flex-col sm:flex-row justify-between w-full items-start sm:items-center gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-black uppercase tracking-tight text-sm">{bill.stationName}</p>
-                                            <Badge variant="outline" className="text-[9px] uppercase font-black h-5 border-primary/30">
-                                                {(bill.paymentMethod || 'cash').toUpperCase()}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-[10px] text-muted-foreground font-mono font-bold uppercase">
-                                            {format(new Date(bill.timestamp), 'MMM d, h:mm a')}
-                                        </p>
-                                        
-                                        <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-start sm:justify-center px-0 sm:px-4">
-                                            {(bill.members || []).map((member, mIdx) => (
-                                                <div key={`${member.id || 'm'}-${mIdx}`} className="flex items-center gap-1.5 bg-muted/50 pl-1 pr-2 py-0.5 rounded-full border border-primary/10">
-                                                    <Avatar className="h-5 w-5 border border-background">
-                                                        <AvatarImage src={member.avatarUrl} />
-                                                        <AvatarFallback className="text-[8px]">{member.name?.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[60px]">{member.name}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                        {filteredBills?.map((bill, bIdx) => {
+                            const billHour = new Date(bill.timestamp).getHours();
+                            const isNightShift = billHour < 5;
 
-                                        <div className="font-black text-lg text-primary shrink-0 self-end sm:self-center font-mono">
-                                            ₹{(bill.totalAmount || 0).toLocaleString()}
+                            return (
+                                <AccordionItem value={bill.id} key={`${bill.id}-${bIdx}`} className="border-b last:border-0 px-2 sm:px-0">
+                                    <AccordionTrigger className="hover:no-underline py-4 px-2 sm:px-4 hover:bg-muted/5 transition-colors">
+                                        <div className="flex flex-col sm:flex-row justify-between w-full items-start sm:items-center gap-3">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-black uppercase tracking-tight text-sm">{bill.stationName}</p>
+                                                <Badge variant="outline" className="text-[9px] uppercase font-black h-5 border-primary/30">
+                                                    {(bill.paymentMethod || 'cash').toUpperCase()}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-[10px] text-muted-foreground font-mono font-bold uppercase">
+                                                    {format(new Date(bill.timestamp), 'MMM d, h:mm a')}
+                                                </p>
+                                                {isNightShift && (
+                                                    <Badge variant="secondary" className="h-4 px-1.5 text-[7px] font-black uppercase bg-indigo-500/10 text-indigo-600 border-indigo-500/20">
+                                                        <Moon className="h-2 w-2 mr-1" /> Night Shift
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-start sm:justify-center px-0 sm:px-4">
+                                                {(bill.members || []).map((member, mIdx) => (
+                                                    <div key={`${member.id || 'm'}-${mIdx}`} className="flex items-center gap-1.5 bg-muted/50 pl-1 pr-2 py-0.5 rounded-full border border-primary/10">
+                                                        <Avatar className="h-5 w-5 border border-background">
+                                                            <AvatarImage src={member.avatarUrl} />
+                                                            <AvatarFallback className="text-[8px]">{member.name?.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[60px]">{member.name}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="font-black text-lg text-primary shrink-0 self-end sm:self-center font-mono">
+                                                ₹{(bill.totalAmount || 0).toLocaleString()}
+                                            </div>
                                         </div>
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="mx-2 sm:mx-4 p-3 sm:p-4 bg-muted/20 rounded-xl border-2 border-dashed space-y-4 mb-4">
-                                        <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                                            <Info className="h-3.5 w-3.5" />
-                                            Surgical Receipt Audit
-                                        </h4>
-                                        <TooltipProvider>
-                                            <div className="overflow-hidden border-2 rounded-lg bg-background shadow-sm">
-                                                <Table>
-                                                    <TableBody>
-                                                        {bill.initialPackagePrice > 0 && (
-                                                            <TableRow className="text-xs bg-muted/5">
-                                                                <TableCell className="px-3 font-bold uppercase text-[10px]">
-                                                                    {bill.packageName || 'Initial Gaming Session'}
-                                                                </TableCell>
-                                                                <TableCell className="text-center font-mono">1</TableCell>
-                                                                <TableCell className="text-right px-3 font-mono font-bold">₹{bill.initialPackagePrice.toLocaleString()}</TableCell>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="mx-2 sm:mx-4 p-3 sm:p-4 bg-muted/20 rounded-xl border-2 border-dashed space-y-4 mb-4">
+                                            <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                                <Info className="h-3.5 w-3.5" />
+                                                Surgical Receipt Audit
+                                            </h4>
+                                            <TooltipProvider>
+                                                <div className="overflow-hidden border-2 rounded-lg bg-background shadow-sm">
+                                                    <Table>
+                                                        <TableBody>
+                                                            {bill.initialPackagePrice > 0 && (
+                                                                <TableRow className="text-xs bg-muted/5">
+                                                                    <TableCell className="px-3 font-bold uppercase text-[10px]">
+                                                                        {bill.packageName || 'Initial Gaming Session'}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-center font-mono">1</TableCell>
+                                                                    <TableCell className="text-right px-3 font-mono font-bold">₹{bill.initialPackagePrice.toLocaleString()}</TableCell>
+                                                                </TableRow>
+                                                            )}
+                                                            {(bill.items || []).map((item, iIdx) => (
+                                                                <TableRow key={`${item.itemId || 'i'}-${iIdx}`} className="text-xs">
+                                                                    <TableCell className="px-3">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="font-bold uppercase text-[10px]">{item.name}</span>
+                                                                            {item.addedAt && (
+                                                                                <Tooltip>
+                                                                                    <TooltipTrigger asChild>
+                                                                                        <Button variant="ghost" size="icon" className="h-4 w-4 opacity-30">
+                                                                                            <Clock className="h-3 w-3" />
+                                                                                        </Button>
+                                                                                    </TooltipTrigger>
+                                                                                    <TooltipContent>
+                                                                                        <p className="text-[10px] font-bold">Added: {format(new Date(item.addedAt), 'p')}</p>
+                                                                                    </TooltipContent>
+                                                                                </Tooltip>
+                                                                            )}
+                                                                        </div>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-center font-mono">{item.quantity}</TableCell>
+                                                                    <TableCell className="text-right px-3 font-mono">₹{(item.price * item.quantity).toLocaleString()}</TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                            {bill.discount > 0 && (
+                                                                <TableRow className="font-bold text-destructive text-xs">
+                                                                    <TableCell className="px-3 uppercase text-[10px]">Special Discount</TableCell>
+                                                                    <TableCell></TableCell>
+                                                                    <TableCell className="text-right px-3 font-mono">- ₹{bill.discount.toLocaleString()}</TableCell>
+                                                                </TableRow>
+                                                            )}
+                                                            <TableRow className="font-black border-t-2 bg-muted/30">
+                                                                <TableCell className="px-3 uppercase tracking-widest text-[10px]">Grand Total</TableCell>
+                                                                <TableCell colSpan={2} className="text-right px-3 font-mono text-base text-primary">₹{(bill.totalAmount || 0).toLocaleString()}</TableCell>
                                                             </TableRow>
-                                                        )}
-                                                        {(bill.items || []).map((item, iIdx) => (
-                                                            <TableRow key={`${item.itemId || 'i'}-${iIdx}`} className="text-xs">
-                                                                <TableCell className="px-3">
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="font-bold uppercase text-[10px]">{item.name}</span>
-                                                                        {item.addedAt && (
-                                                                            <Tooltip>
-                                                                                <TooltipTrigger asChild>
-                                                                                    <Button variant="ghost" size="icon" className="h-4 w-4 opacity-30">
-                                                                                        <Clock className="h-3 w-3" />
-                                                                                    </Button>
-                                                                                </TooltipTrigger>
-                                                                                <TooltipContent>
-                                                                                    <p className="text-[10px] font-bold">Added: {format(new Date(item.addedAt), 'p')}</p>
-                                                                                </TooltipContent>
-                                                                            </Tooltip>
-                                                                        )}
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell className="text-center font-mono">{item.quantity}</TableCell>
-                                                                <TableCell className="text-right px-3 font-mono">₹{(item.price * item.quantity).toLocaleString()}</TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                        {bill.discount > 0 && (
-                                                            <TableRow className="font-bold text-destructive text-xs">
-                                                                <TableCell className="px-3 uppercase text-[10px]">Special Discount</TableCell>
-                                                                <TableCell></TableCell>
-                                                                <TableCell className="text-right px-3 font-mono">- ₹{bill.discount.toLocaleString()}</TableCell>
-                                                            </TableRow>
-                                                        )}
-                                                        <TableRow className="font-black border-t-2 bg-muted/30">
-                                                            <TableCell className="px-3 uppercase tracking-widest text-[10px]">Grand Total</TableCell>
-                                                            <TableCell colSpan={2} className="text-right px-3 font-mono text-base text-primary">₹{(bill.totalAmount || 0).toLocaleString()}</TableCell>
-                                                        </TableRow>
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
-                                        </TooltipProvider>
-                                        
-                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
-                                            <div className="text-[9px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                                                <Users className="h-3 w-3 text-primary" />
-                                                XP awarded to {bill.members.filter(m => m.id && !m.id.startsWith('guest-')).length} members.
-                                            </div>
-                                            {canEdit && (
-                                                <div className="flex gap-2 w-full sm:w-auto">
-                                                    <Button variant="outline" size="sm" onClick={() => setEditingBill(bill)} className="flex-1 sm:flex-none font-black uppercase text-[10px] h-9 border-2">
-                                                        <Edit className="mr-2 h-3.5 w-3.5" /> Edit
-                                                    </Button>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="destructive" size="sm" className="flex-1 sm:flex-none font-black uppercase text-[10px] h-9 shadow-md">
-                                                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Wipe
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent className="border-4 border-destructive">
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle className="font-headline text-destructive uppercase tracking-tighter">Destroy Data?</AlertDialogTitle>
-                                                                <AlertDialogDescription className="font-bold text-foreground">
-                                                                    This will erase the bill and REVERT XP for all associated members. This is permanent.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter className="gap-2">
-                                                                <AlertDialogCancel className="font-bold">ABORT</AlertDialogCancel>
-                                                                <AlertDialogAction className="bg-destructive hover:bg-destructive/90 font-black uppercase shadow-xl" onClick={() => handleDeleteBill(bill.id)}>
-                                                                    CONFIRM WIPEOUT
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
+                                                        </TableBody>
+                                                    </Table>
                                                 </div>
-                                            )}
+                                            </TooltipProvider>
+                                            
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
+                                                <div className="text-[9px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                                                    <Users className="h-3 w-3 text-primary" />
+                                                    XP awarded to {bill.members.filter(m => m.id && !m.id.startsWith('guest-')).length} members.
+                                                </div>
+                                                {canEdit && (
+                                                    <div className="flex gap-2 w-full sm:w-auto">
+                                                        <Button variant="outline" size="sm" onClick={() => setEditingBill(bill)} className="flex-1 sm:flex-none font-black uppercase text-[10px] h-9 border-2">
+                                                            <Edit className="mr-2 h-3.5 w-3.5" /> Edit
+                                                        </Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="destructive" size="sm" className="flex-1 sm:flex-none font-black uppercase text-[10px] h-9 shadow-md">
+                                                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Wipe
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent className="border-4 border-destructive">
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle className="font-headline text-destructive uppercase tracking-tighter">Destroy Data?</AlertDialogTitle>
+                                                                    <AlertDialogDescription className="font-bold text-foreground">
+                                                                        This will erase the bill and REVERT XP for all associated members. This is permanent.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter className="gap-2">
+                                                                    <AlertDialogCancel className="font-bold">ABORT</AlertDialogCancel>
+                                                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90 font-black uppercase shadow-xl" onClick={() => handleDeleteBill(bill.id)}>
+                                                                        CONFIRM WIPEOUT
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            );
+                        })}
                          {(!filteredBills || filteredBills.length === 0) && (
-                            <div className="text-center text-muted-foreground p-12 italic text-sm font-bold uppercase tracking-[0.2em] opacity-30">No records found.</div>
+                            <div className="text-center text-muted-foreground p-12 italic text-sm font-bold uppercase tracking-[0.2em] opacity-30">No records found for this period.</div>
                         )}
                     </Accordion>
                 </CardContent>
