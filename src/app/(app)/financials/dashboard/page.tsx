@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import type { Bill, Expense, FixedBill, InventoryPurchase, Settings } from '@/lib/types';
+import type { Bill, Expense, FixedBill, InventoryPurchase } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Utensils, Gamepad2, Package, AlertCircle, CheckCircle2, Info, ReceiptIndianRupee, BarChart3, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Separator } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Utensils, Package, AlertCircle, CheckCircle2, Info, ReceiptIndianRupee, BarChart3, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, differenceInDays, addDays, subDays, isSameMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -15,6 +14,7 @@ import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 export default function FinancialDashboardPage() {
   const { db } = useFirebase();

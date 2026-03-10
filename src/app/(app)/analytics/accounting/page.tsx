@@ -8,7 +8,7 @@ import type { Bill, Expense, DateRange, FixedBill, LiabilityState, Settings } fr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2, Info } from 'lucide-react';
+import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
