@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -42,7 +43,8 @@ import {
   Landmark,
   Tag,
   CalendarDays,
-  LayoutDashboard
+  LayoutDashboard,
+  CreditCard
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
@@ -58,8 +60,7 @@ const allNavItems = [
         { href: '/financials/dashboard', label: 'Profit Dashboard', icon: BarChart3, adminOnly: true },
         { href: '/financials/liabilities', label: 'Debt & Liabilities', icon: Landmark, ownerOnly: true },
         { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee, adminOnly: true },
-        { href: '/financials/inventory', label: 'Inventory (Stock)', icon: Package },
-        { href: '/financials/expenses', label: 'Other Expenses', icon: ShoppingBag },
+        { href: '/financials/spending', label: 'Spending & Stock', icon: ShoppingBag },
         { href: '/financials/payroll', label: 'Staff Payroll', icon: Users, adminOnly: true },
     ]
   },
