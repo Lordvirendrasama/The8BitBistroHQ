@@ -10,9 +10,9 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
-import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw, IndianRupee } from 'lucide-react';
+import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw, IndianRupee, TrendingUp } from 'lucide-react';
 import { cn, isBusinessToday } from '@/lib/utils';
-import type { GamingPackage, Employee, Bill } from '@/lib/types';
+import type { GamingPackage, Employee, Bill, Station } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -48,6 +48,9 @@ export default function LoginPage() {
   const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
   const { data: bills } = useCollection<Bill>(billsQuery);
 
+  const stationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
+  const { data: stations } = useCollection<Station>(stationsQuery);
+
   // Sort Employees: Viren first, then Admins, then alphabetical
   const employees = useMemo(() => {
     if (!rawEmployees) return [];
@@ -72,6 +75,39 @@ export default function LoginPage() {
   // Fetch Live Offers
   const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
   const { data: packages } = useCollection<GamingPackage>(packagesQuery);
+
+  const projectedTotal = useMemo(() => {
+    let sum = todayCollection;
+    if (stations && packages) {
+      stations.filter(s => s.status === 'in-use' || s.status === 'paused' || s.status === 'finishing').forEach(station => {
+        sum += (station.currentBill || []).reduce((s, i) => s + (i.price * i.quantity), 0);
+        
+        if (station.packageName && station.packageName !== 'Walk-in Order') {
+          const isItemized = (station.currentBill || []).some(item => 
+            item.name === station.packageName || 
+            item.name.startsWith(`Time: ${station.packageName}`) ||
+            item.name.startsWith(`Buy Recharge: ${station.packageName}`) ||
+            item.name.startsWith(`Recharge: ${station.packageName}`)
+          );
+
+          if (!isItemized) {
+            const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
+            const pkg = packages.find(p => p.name.toLowerCase() === pureName.toLowerCase());
+            if (pkg) {
+              const playerCount = station.members.length || 1;
+              const capacity = pkg.playerCapacity || 1;
+              const instances = Math.ceil(playerCount / capacity);
+              if (!station.packageName.startsWith('Recharge: ')) {
+                sum += (pkg.price * instances);
+              }
+            }
+          }
+        }
+        sum -= (station.discount || 0);
+      });
+    }
+    return Math.max(0, sum);
+  }, [todayCollection, stations, packages]);
 
   // Clock Update
   useEffect(() => {
@@ -221,10 +257,10 @@ export default function LoginPage() {
       <div className="absolute inset-0 z-2 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
 
       <main className={cn(
-        "relative z-10 w-full max-w-5xl flex flex-col items-center gap-6 sm:gap-10 transition-all duration-700",
+        "relative z-10 w-full max-w-6xl flex flex-col items-center gap-6 sm:gap-10 transition-all duration-700",
         isEntering ? "opacity-0 scale-95 blur-xl" : "opacity-100 scale-100 blur-0"
       )}>
-        <div className="w-full max-w-lg flex justify-between items-end px-2 animate-in fade-in slide-in-from-top-4 duration-1000">
+        <div className="w-full flex justify-between items-end px-2 animate-in fade-in slide-in-from-top-4 duration-1000">
             <div className="text-left">
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
                     <Calendar className="h-3 w-3" />
@@ -245,7 +281,16 @@ export default function LoginPage() {
                         ₹{todayCollection.toLocaleString()}
                     </p>
                 </div>
-                <div className="text-right">
+                <div className="text-right border-l border-foreground/10 pl-6">
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                        <TrendingUp className="h-3 w-3" />
+                        Projected
+                    </p>
+                    <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-blue-500">
+                        ₹{Math.floor(projectedTotal).toLocaleString()}
+                    </p>
+                </div>
+                <div className="text-right border-l border-foreground/10 pl-6">
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] flex items-center justify-end gap-2">
                         <Clock className="h-3 w-3" />
                         Live Terminal
