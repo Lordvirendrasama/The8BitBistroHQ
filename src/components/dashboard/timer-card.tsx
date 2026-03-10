@@ -6,11 +6,12 @@ import type { Station, AssignedMember, StationStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt } from 'lucide-react';
+import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { updateStation } from '@/firebase/firestore/stations';
 
 interface TimerCardProps {
   station: Station;
@@ -93,11 +94,13 @@ const IndividualPlayerTimer = ({
 export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer }: TimerCardProps) {
   const [minRemaining, setMinRemaining] = useState(0);
   const [maxRemaining, setMaxRemaining] = useState(0);
+  const [graceRemaining, setGraceRemaining] = useState(0);
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [isOrderVisible, setIsOrderVisible] = useState(false);
   
   const isRunning = station.status === 'in-use';
   const isPaused = station.status === 'paused';
+  const isFinishing = station.status === 'finishing';
 
   const activeMembers = useMemo(() => 
     station.members.filter(m => m.status !== 'finished'), 
@@ -127,6 +130,14 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
     const update = () => {
         const now = Date.now();
 
+        if (isFinishing && station.finishingStartTime) {
+            const start = new Date(station.finishingStartTime).getTime();
+            const elapsed = now - start;
+            const buffer = 5 * 60 * 1000; // 5 mins
+            setGraceRemaining(Math.max(-3600000, buffer - elapsed)); // Allow negative for overtime
+            return;
+        }
+
         if (isPaused) {
             const minPause = shortestMember?.remainingTimeOnPause ?? station.remainingTimeOnPause ?? 0;
             const maxPause = longestMember?.remainingTimeOnPause ?? station.remainingTimeOnPause ?? 0;
@@ -154,24 +165,38 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [isRunning, isPaused, shortestMember, longestMember, station.endTime, station.remainingTimeOnPause]);
+  }, [isRunning, isPaused, isFinishing, shortestMember, longestMember, station.endTime, station.remainingTimeOnPause, station.finishingStartTime]);
 
   const isTimeUp = minRemaining <= 0 && (shortestMember?.endTime || station.endTime) && isRunning;
   const isTimeLow = minRemaining > 0 && minRemaining < 5 * 60 * 1000 && isRunning;
+  const isGraceOver = isFinishing && graceRemaining <= 0;
 
-  const cardBorderColor = isPaused ? 'border-blue-500' : isTimeUp ? 'border-destructive' : isTimeLow ? 'border-yellow-500' : isRunning ? 'border-emerald-500' : 'border-border';
-  const cardBgColor = isPaused ? 'bg-blue-500/5' : isTimeUp ? 'bg-destructive/5' : isTimeLow ? 'bg-yellow-500/5' : isRunning ? 'bg-emerald-500/5' : 'bg-card';
+  const cardBorderColor = isPaused ? 'border-blue-500' : isTimeUp ? 'border-destructive' : isTimeLow ? 'border-yellow-500' : isRunning ? 'border-emerald-500' : isFinishing ? (isGraceOver ? 'border-destructive animate-pulse shadow-destructive/20' : 'border-amber-500') : 'border-border';
+  const cardBgColor = isPaused ? 'bg-blue-500/5' : isTimeUp ? 'bg-destructive/5' : isTimeLow ? 'bg-yellow-500/5' : isRunning ? 'bg-emerald-500/5' : isFinishing ? (isGraceOver ? 'bg-destructive/10' : 'bg-amber-500/5') : 'bg-card';
 
-  const showTwoTimers = activeWithTimers.length > 1 && maxRemaining > minRemaining + 1000;
+  const showTwoTimers = activeWithTimers.length > 1 && maxRemaining > minRemaining + 1000 && !isFinishing;
 
   const allOrderItems = useMemo(() => {
-    // Show everything in the dropdown preview for a complete audit of the current session
     return (station.currentBill || []);
   }, [station.currentBill]);
 
   const billTotal = useMemo(() => {
     return (station.currentBill || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
   }, [station.currentBill]);
+
+  const handleStartFinishing = () => {
+    updateStation(station.id, {
+        status: 'finishing',
+        finishingStartTime: new Date().toISOString()
+    });
+  };
+
+  const handleCancelFinishing = () => {
+    updateStation(station.id, {
+        status: 'in-use',
+        finishingStartTime: null
+    });
+  };
 
   return (
     <Card className={cn(
@@ -195,46 +220,68 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
         </div>
         <div className="flex flex-col items-end gap-1">
-            <Badge variant={isRunning || isPaused ? 'default' : 'secondary'} className={cn(
+            <Badge variant={isRunning || isPaused || isFinishing ? 'default' : 'secondary'} className={cn(
                 "font-bold uppercase text-[10px] tracking-tight",
                 isPaused && 'bg-blue-600',
                 isRunning && !isTimeUp && 'bg-emerald-600',
                 isTimeLow && 'bg-yellow-600',
                 isTimeUp && 'bg-destructive',
+                isFinishing && !isGraceOver && 'bg-amber-500',
+                isGraceOver && 'bg-destructive animate-pulse'
             )}>
-                {isPaused ? "Paused" : isTimeUp ? "Time's Up" : isRunning ? 'In Use' : 'Available'}
+                {isPaused ? "Paused" : isFinishing ? (isGraceOver ? "Grace Expired" : "Finishing Up") : isTimeUp ? "Time's Up" : isRunning ? 'In Use' : 'Available'}
             </Badge>
         </div>
       </CardHeader>
       
       <CardContent className="flex-grow flex flex-col items-center justify-center py-2 px-4 relative">
         <div className="flex flex-col items-center mb-4">
-            <div className={cn(
-                "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none transition-colors",
-                isTimeUp && "text-destructive",
-                isTimeLow && "text-yellow-600"
-                )}>
-                {(shortestMember?.endTime || station.endTime) 
-                    ? formatTime(minRemaining) 
-                    : isRunning ? (
-                        <div className="flex flex-col items-center">
-                            <Utensils className="h-8 w-8 mb-1 text-emerald-600" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Bistro Order</span>
-                        </div>
-                    ) : "00:00"}
-            </div>
-            {showTwoTimers && (
-                <div className="mt-1.5 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-                    <div className="text-[9px] font-bold uppercase text-muted-foreground opacity-60 tracking-widest leading-none mb-0.5">Session Ends</div>
-                    <div className="text-base font-bold font-mono text-muted-foreground/80 tracking-tight tabular-nums leading-none">
-                        {formatTime(maxRemaining)}
+            {isFinishing ? (
+                <div className="flex flex-col items-center">
+                    <div className={cn(
+                        "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none",
+                        isGraceOver ? "text-destructive" : "text-amber-600"
+                    )}>
+                        {graceRemaining < 0 ? `-${formatTime(Math.abs(graceRemaining))}` : formatTime(graceRemaining)}
                     </div>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] mt-2 opacity-60">Grace Period</span>
+                    {isGraceOver && (
+                        <div className="mt-2 flex flex-col items-center gap-1 animate-in zoom-in-95 duration-300">
+                            <Badge variant="destructive" className="h-5 px-3 text-[8px] font-black uppercase tracking-widest gap-1 shadow-lg">
+                                <AlertTriangle className="h-3 w-3" /> REQUIRES 30-MIN PACKAGE
+                            </Badge>
+                        </div>
+                    )}
                 </div>
+            ) : (
+                <>
+                    <div className={cn(
+                        "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none transition-colors",
+                        isTimeUp && "text-destructive",
+                        isTimeLow && "text-yellow-600"
+                        )}>
+                        {(shortestMember?.endTime || station.endTime) 
+                            ? formatTime(minRemaining) 
+                            : isRunning ? (
+                                <div className="flex flex-col items-center">
+                                    <Utensils className="h-8 w-8 mb-1 text-emerald-600" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Bistro Order</span>
+                                </div>
+                            ) : "00:00"}
+                    </div>
+                    {showTwoTimers && (
+                        <div className="mt-1.5 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
+                            <div className="text-[9px] font-bold uppercase text-muted-foreground opacity-60 tracking-widest leading-none mb-0.5">Session Ends</div>
+                            <div className="text-base font-bold font-mono text-muted-foreground/80 tracking-tight tabular-nums leading-none">
+                                {formatTime(maxRemaining)}
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
         </div>
 
-        {/* Dropdown Order List Preview */}
-        {(isRunning || isPaused) && allOrderItems.length > 0 && (
+        {(isRunning || isPaused || isFinishing) && allOrderItems.length > 0 && (
             <div className="w-full mt-2">
                 <Button 
                     variant="ghost" 
@@ -273,7 +320,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
         <Popover open={isManageOpen} onOpenChange={setIsManageOpen}>
             <div className="h-14 flex items-center justify-center">
-            {(isRunning || isPaused) && station.members.length > 0 ? (
+            {(isRunning || isPaused || isFinishing) && station.members.length > 0 ? (
                 <PopoverTrigger asChild>
                     <button className="flex -space-x-3 hover:scale-105 transition-transform cursor-pointer focus:outline-none">
                         {station.members.map((member) => (
@@ -289,7 +336,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                     <AvatarImage src={member.avatarUrl} />
                                     <AvatarFallback className="text-[10px] font-bold">{member.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                {shortestMember?.id === member.id && !isTimeUp && (
+                                {shortestMember?.id === member.id && !isTimeUp && !isFinishing && (
                                     <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full p-0.5 shadow-sm ring-1 ring-background">
                                         <Bell className="h-2.5 w-2.5" />
                                     </div>
@@ -311,7 +358,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
             </div>
 
-            {(isRunning || isPaused) && station.members.length > 0 && (
+            {(isRunning || isPaused || isFinishing) && station.members.length > 0 && (
                 <PopoverContent className="w-80 p-0 overflow-hidden shadow-2xl border-2 font-body" align="center">
                     <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session Audit</p>
@@ -337,9 +384,9 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                     </div>
                                     
                                     <div className="flex items-center gap-2">
-                                        <IndividualPlayerTimer member={member} stationStatus={station.status} />
+                                        {!isFinishing && <IndividualPlayerTimer member={member} stationStatus={station.status} />}
 
-                                        {member.status !== 'finished' && (
+                                        {member.status !== 'finished' && !isFinishing && (
                                             <div className="flex gap-1">
                                                 <Button 
                                                     variant="outline" 
@@ -382,7 +429,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
         </Popover>
 
         <div className="flex flex-col items-center gap-1 mt-2">
-            {station.startTime && (isRunning || isPaused) && (
+            {station.startTime && (isRunning || isPaused || isFinishing) && (
                 <div className="text-[9px] font-bold text-muted-foreground flex items-center gap-1.5 bg-muted/30 px-3 py-1 rounded-full shadow-inner">
                     <Clock className="h-3 w-3" />
                     <span>Started: {new Date(station.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -406,7 +453,12 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
           ) : (
               <>
                   <div className="grid grid-cols-4 gap-1 w-full">
-                      {station.status === 'in-use' ? (
+                      {isFinishing ? (
+                          <Button onClick={handleCancelFinishing} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm text-primary">
+                              <X className="h-3.5 w-3.5" />
+                              <span className="text-[8px] font-bold uppercase leading-none">Cancel</span>
+                          </Button>
+                      ) : isRunning ? (
                           <Button onClick={() => onToggleTimer(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                               <Pause className="h-3.5 w-3.5" />
                               <span className="text-[8px] font-bold uppercase leading-none">Pause</span>
@@ -418,23 +470,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                           </Button>
                       )}
                       <Button onClick={() => onOpenEditTimeModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-3.5 w-3.5"
-                          >
-                            <path d="M10 2h4" />
-                            <circle cx="12" cy="14" r="8" />
-                            <path d="M12 11v6" />
-                            <path d="M9 14h6" />
-                          </svg>
+                          <Timer className="h-3.5 w-3.5" />
                           <span className="text-[8px] font-bold uppercase leading-none">Time</span>
                       </Button>
                       <Button onClick={() => onOpenJoinModal?.(station.id)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
@@ -447,13 +483,33 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                       </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 w-full">
-                      <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs shadow-md">
-                          <StopCircle className="h-4 w-4 mr-1.5"/> Stop All
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
-                          <Utensils className="h-4 w-4 mr-1.5" /> Food
-                      </Button>
+                      {!isFinishing ? (
+                          <Button onClick={handleStartFinishing} variant="outline" size="sm" className="h-11 font-black uppercase tracking-tight text-[10px] border-2 border-amber-500/30 text-amber-600 bg-amber-500/5 hover:bg-amber-500 hover:text-white transition-all">
+                              <CheckCircle2 className="h-4 w-4 mr-1.5"/> Finishing Game
+                          </Button>
+                      ) : (
+                          <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-black uppercase tracking-tight text-[10px] shadow-lg animate-in zoom-in-95 duration-300">
+                              <StopCircle className="h-4 w-4 mr-1.5"/> Stop & Settle
+                          </Button>
+                      )}
+                      
+                      {!isFinishing && (
+                          <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs shadow-md">
+                              <StopCircle className="h-4 w-4 mr-1.5"/> Stop All
+                          </Button>
+                      )}
+                      
+                      {isFinishing && (
+                          <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                              <Utensils className="h-4 w-4 mr-1.5" /> Food
+                          </Button>
+                      )}
                   </div>
+                  {!isFinishing && (
+                      <Button variant="outline" size="sm" className="w-full h-9 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                          <Utensils className="h-4 w-4 mr-1.5" /> Food Order
+                      </Button>
+                  )}
               </>
           )}
       </CardFooter>

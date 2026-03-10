@@ -244,7 +244,7 @@ export interface Bill {
   isRechargePurchase?: boolean;
 }
 
-export type StationStatus = 'available' | 'in-use' | 'paused';
+export type StationStatus = 'available' | 'in-use' | 'paused' | 'finishing';
 
 export interface Station {
   id: string;
@@ -255,6 +255,7 @@ export interface Station {
   endTime: string | null;
   pauseStartTime?: string | null;
   remainingTimeOnPause?: number | null;
+  finishingStartTime?: string | null;
   packageName: string | null;
   members: AssignedMember[];
   currentBill?: BillItem[];
