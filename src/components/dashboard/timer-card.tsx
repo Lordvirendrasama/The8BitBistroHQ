@@ -164,12 +164,9 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
   const showTwoTimers = activeWithTimers.length > 1 && maxRemaining > minRemaining + 1000;
 
-  const foodItems = useMemo(() => {
-    return (station.currentBill || []).filter(item => 
-        !item.name.startsWith('Time:') && 
-        !item.name.startsWith('Buy Recharge:') && 
-        !item.name.startsWith('Recharge:')
-    );
+  const allOrderItems = useMemo(() => {
+    // Show everything in the dropdown preview for a complete audit of the current session
+    return (station.currentBill || []);
   }, [station.currentBill]);
 
   const billTotal = useMemo(() => {
@@ -236,8 +233,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
         </div>
 
-        {/* Dropdown Food List Preview */}
-        {(isRunning || isPaused) && foodItems.length > 0 && (
+        {/* Dropdown Order List Preview */}
+        {(isRunning || isPaused) && allOrderItems.length > 0 && (
             <div className="w-full mt-2">
                 <Button 
                     variant="ghost" 
@@ -259,10 +256,10 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     <div className="mt-2 space-y-2 bg-background/40 rounded-xl p-2.5 border border-dashed animate-in fade-in slide-in-from-top-1 duration-300">
                         <ScrollArea className="h-24 w-full">
                             <div className="space-y-1.5 pr-3">
-                                {foodItems.map((item, idx) => (
+                                {allOrderItems.map((item, idx) => (
                                     <div key={idx} className="flex justify-between items-center text-[9px] font-bold group/item">
                                         <span className="truncate flex-1 uppercase tracking-tight text-foreground/80">
-                                            {item.quantity}x {item.name}
+                                            {item.quantity}x {item.name.replace(/^(Time: |Buy Recharge: |Recharge: )/i, '')}
                                         </span>
                                         <span className="font-mono opacity-40 ml-2">₹{item.price * item.quantity}</span>
                                     </div>
