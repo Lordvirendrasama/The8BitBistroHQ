@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const expenseCategories = ['Repairs', 'Maintenance', 'Marketing', 'Transport', 'Utilities', 'Cleaning', 'Decorations', 'Supplies', 'Others'];
+const expenseCategories = ['Supplies', 'Repairs', 'Maintenance', 'Marketing', 'Transport', 'Utilities', 'Cleaning', 'Decorations', 'Others'];
 const inventoryUnits = ['kg', 'litre', 'packets', 'pieces', 'crates', 'boxes'];
 const inventoryCategories = ['Dairy', 'Frozen', 'Produce', 'Beverages', 'Dry Goods', 'Cleaning', 'Consumables', 'Hardware'];
 
@@ -40,7 +40,7 @@ export default function SpendingHubPage() {
   const [expenseData, setExpenseData] = useState({
     amount: '',
     description: '',
-    category: 'Maintenance',
+    category: 'Supplies',
     paymentMethod: 'cash' as 'cash' | 'upi'
   });
 
@@ -86,7 +86,7 @@ export default function SpendingHubPage() {
     const success = await addExpense(numAmt, expenseData.description, user);
     if (success) {
       toast({ title: "Expense Recorded" });
-      setExpenseData({ amount: '', description: '', category: 'Maintenance', paymentMethod: 'cash' });
+      setExpenseData({ amount: '', description: '', category: 'Supplies', paymentMethod: 'cash' });
     }
     setIsSubmitting(false);
   };

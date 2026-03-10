@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 
-const categories = ['Repairs', 'Maintenance', 'Marketing', 'Transport', 'Utilities', 'Cleaning', 'Decorations', 'Supplies', 'Others'];
+const categories = ['Supplies', 'Repairs', 'Maintenance', 'Marketing', 'Transport', 'Utilities', 'Cleaning', 'Decorations', 'Others'];
 
 export default function OperationalExpensesPage() {
   const { db } = useFirebase();
@@ -35,7 +35,7 @@ export default function OperationalExpensesPage() {
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
-    category: 'Maintenance',
+    category: 'Supplies',
     paymentMethod: 'cash' as 'cash' | 'upi',
     notes: ''
   });
@@ -62,7 +62,7 @@ export default function OperationalExpensesPage() {
     if (success) {
       toast({ title: "Expense Recorded" });
       setIsModalOpen(false);
-      setFormData({ amount: '', description: '', category: 'Maintenance', paymentMethod: 'cash', notes: '' });
+      setFormData({ amount: '', description: '', category: 'Supplies', paymentMethod: 'cash', notes: '' });
     }
     setIsSubmitting(false);
   };
@@ -113,13 +113,6 @@ export default function OperationalExpensesPage() {
                             <Button variant={formData.paymentMethod === 'upi' ? 'default' : 'outline'} onClick={() => setFormData(p => ({...p, paymentMethod: 'upi'}))} className="h-11 font-black uppercase text-[10px] gap-2">
                                 <Smartphone className="h-4 w-4" /> UPI
                             </Button>
-                        </div>
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Attachment Requirement</Label>
-                        <div className="p-4 rounded-xl border-2 border-dashed bg-muted/5 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:bg-muted/10 transition-colors">
-                            <Camera className="h-6 w-6 opacity-30" />
-                            <p className="text-[9px] font-bold uppercase opacity-50">Upload Bill Photo (Placeholder)</p>
                         </div>
                     </div>
                 </div>
