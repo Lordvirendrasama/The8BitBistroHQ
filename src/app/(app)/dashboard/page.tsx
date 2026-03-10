@@ -548,17 +548,33 @@ function DashboardContent() {
   const handleAddTime = (pkg: GamingPackage, quantity: number, targetIds: string[]) => {
     if (!selectedStation) return;
     const durationToAddInSeconds = pkg.duration;
+
+    // Strategic Logic: Account for Grace Period Consumption
+    let graceDeduction = 0;
+    if (selectedStation.status === 'finishing' && selectedStation.finishingStartTime) {
+        const elapsedMs = Date.now() - new Date(selectedStation.finishingStartTime).getTime();
+        graceDeduction = Math.floor(elapsedMs / 1000);
+    }
+
     const updatedMembers = selectedStation.members.map(m => {
         if (!targetIds.includes(m.id)) return m;
         let newEndTime = m.endTime ? new Date(m.endTime).toISOString() : null;
         let newRemaining = m.remainingTimeOnPause;
         const wasFinished = m.status === 'finished';
+        
         if ((selectedStation.status === 'paused' || m.status === 'paused') && m.remainingTimeOnPause != null) {
             newRemaining = m.remainingTimeOnPause + durationToAddInSeconds;
-        } else if (selectedStation.status === 'in-use') {
-            const baseTime = (m.endTime && !wasFinished) ? new Date(m.endTime).getTime() : Date.now();
-            newEndTime = new Date(baseTime + durationToAddInSeconds * 1000).toISOString();
+        } else {
+            // If finishing, the current endTime is in the past or invalid. We use Date.now() as the anchor.
+            const baseTime = (m.endTime && !wasFinished && selectedStation.status !== 'finishing') 
+                ? new Date(m.endTime).getTime() 
+                : Date.now();
+            
+            // Deduct the grace period that was already "used" for free
+            const effectiveAdd = Math.max(0, durationToAddInSeconds - graceDeduction);
+            newEndTime = new Date(baseTime + effectiveAdd * 1000).toISOString();
         }
+
         return { 
             ...m, 
             status: 'active' as const, 
@@ -591,13 +607,21 @@ function DashboardContent() {
     const endTimes = activeMembers.map(p => p.endTime ? new Date(p.endTime).getTime() : 0).filter(t => t > 0);
     const latestEndTime = endTimes.length > 0 ? new Date(Math.max(...endTimes)).toISOString() : null;
 
-    updateStation(selectedStation.id, { 
+    const updates: any = { 
         currentBill: newBillItems, 
         members: updatedMembers,
         endTime: latestEndTime 
-    });
+    };
+
+    // Protocol: Recover station from finishing state if time was added
+    if (selectedStation.status === 'finishing') {
+        updates.status = 'in-use';
+        updates.finishingStartTime = null;
+    }
+
+    updateStation(selectedStation.id, updates);
     
-    toast({ title: "Time Added" });
+    toast({ title: "Time Added", description: graceDeduction > 0 ? `Adjusted for used grace period.` : undefined });
     setIsEditTimeModalOpen(false);
     setSelectedStation(null);
   };
