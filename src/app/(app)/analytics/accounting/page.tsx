@@ -8,11 +8,12 @@ import type { Bill, Expense, DateRange, FixedBill, LiabilityState, Settings } fr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Separator } from '@/components/ui/separator';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, isSameMonth, differenceInDays, differenceInCalendarMonths } from "date-fns";
 import { cn } from '@/lib/utils';
 import { exportAccountingLedger, getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/data-management';
@@ -106,6 +107,7 @@ export default function AccountingPage() {
     const fixedBurdenTotal = dailySurvival * daysInPeriod;
     const totalOutflow = opSpend + fixedBurdenTotal;
     const netProfit = revenue - totalOutflow;
+    const remainingTarget = Math.max(0, fixedBurdenTotal - revenue);
 
     const ledger = [
         ...matchedBills.map(b => ({
@@ -131,6 +133,7 @@ export default function AccountingPage() {
         totalOutflow, 
         netProfit, 
         ledger,
+        remainingTarget,
         survivalGoal: fixedBurdenTotal
     };
   }, [bills, expenses, liabilityState, fixedBills, appSettings, dateRange]);
@@ -391,7 +394,7 @@ export default function AccountingPage() {
                         <p className="text-[10px] font-black uppercase">Audit Insight</p>
                     </div>
                     <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                        To cover all liabilities including debt EMI share and deferred rent backlog, you need an additional <strong>₹{Math.round(remainingTarget).toLocaleString()}</strong> for this period.
+                        To cover all liabilities including debt EMI share and deferred rent backlog, you need an additional <strong>₹{Math.round(stats.remainingTarget).toLocaleString()}</strong> for this period.
                     </p>
                 </div>
             </CardContent>
