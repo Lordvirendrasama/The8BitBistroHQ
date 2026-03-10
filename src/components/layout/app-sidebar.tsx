@@ -52,18 +52,13 @@ const allNavItems = [
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
-  { 
-    href: '/financials', 
-    icon: Wallet, 
-    label: 'Financials',
-    subItems: [
-        { href: '/financials/dashboard', label: 'Profit Dashboard', icon: BarChart3, adminOnly: true },
-        { href: '/financials/liabilities', label: 'Debt & Liabilities', icon: Landmark, ownerOnly: true },
-        { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee, adminOnly: true },
-        { href: '/financials/spending', label: 'Spending & Stock', icon: ShoppingBag },
-        { href: '/financials/payroll', label: 'Staff Payroll', icon: Users, adminOnly: true },
-    ]
-  },
+  // Promoted Financial Items
+  { href: '/financials/dashboard', label: 'Profit Dashboard', icon: BarChart3, adminOnly: true },
+  { href: '/financials/liabilities', label: 'Debt & Liabilities', icon: Landmark, ownerOnly: true },
+  { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee, adminOnly: true },
+  { href: '/financials/spending', label: 'Spending & Stock', icon: ShoppingBag },
+  { href: '/financials/payroll', label: 'Staff Payroll', icon: CreditCard, adminOnly: true },
+  
   { href: '/staff', icon: ListChecks, label: 'Daily Checklist' },
   { href: '/shift-reports', icon: FileBarChart, label: 'Shift Reports' },
   { href: '/users', icon: Users, label: 'User Registry' },
@@ -106,12 +101,18 @@ export function AppSidebar() {
   const navItems = React.useMemo(() => {
     if (!user) return [];
     
-    let filtered = allNavItems.map(item => {
+    let filtered = allNavItems.filter(item => {
+        // Top-level adminOnly restriction
+        if ((item as any).adminOnly && user.role !== 'admin') return false;
+        // Top-level ownerOnly restriction
+        if ((item as any).ownerOnly && user.username !== 'Viren') return false;
+        return true;
+    }).map(item => {
         if (item.subItems) {
             return {
                 ...item,
                 subItems: item.subItems.filter(sub => {
-                    // Check adminOnly restriction
+                    // Check adminOnly restriction for sub-items
                     if ((sub as any).adminOnly && user.role !== 'admin') return false;
                     // Check ownerOnly restriction for sub-items
                     if ((sub as any).ownerOnly && user.username !== 'Viren') return false;
@@ -125,9 +126,6 @@ export function AppSidebar() {
     if (user.username === 'Viren') {
       // Hide Daily Checklist from top-level for Viren since it's now a tab in Owner Control Center
       filtered = filtered.filter(item => item.href !== '/staff');
-    } else {
-      // Hide owner-only top-level items for non-Viren users
-      filtered = filtered.filter(item => !item.ownerOnly);
     }
 
     if (user.role === 'admin') {
