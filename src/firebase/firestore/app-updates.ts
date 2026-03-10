@@ -1,6 +1,5 @@
-
-'use client';
-import { getFirestore, collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
+'use server';
+import { getFirestore, collection, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import type { AppUpdate } from '@/lib/types';
 import type { CustomUser } from '../auth/use-user';
 
@@ -22,6 +21,20 @@ export const addAppUpdate = async (text: string, user: CustomUser) => {
     return true;
   } catch (error) {
     console.error("Error adding app update:", error);
+    return false;
+  }
+};
+
+/**
+ * Updates an existing app update (text or status).
+ */
+export const updateAppUpdate = async (id: string, updates: Partial<AppUpdate>) => {
+  const db = getFirestore();
+  try {
+    await updateDoc(doc(db, 'appUpdates', id), updates);
+    return true;
+  } catch (error) {
+    console.error("Error updating app update:", error);
     return false;
   }
 };
