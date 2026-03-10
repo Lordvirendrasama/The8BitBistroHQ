@@ -1,7 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { AdminNotification } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
@@ -21,7 +21,12 @@ export function AdminNotifications() {
 
   const notificationsQuery = useMemo(() => {
     if (!db) return null;
-    return query(collection(db, 'adminNotifications'), where('isRead', '==', false));
+    // Filter out STAFF_NOTE as they are now handled by the StaffNotepad component
+    return query(
+      collection(db, 'adminNotifications'), 
+      where('isRead', '==', false),
+      where('type', 'in', ['BILL_DELETED', 'BILL_MODIFIED', 'INCOMPLETE_SHIFT', 'BILL_DUE'])
+    );
   }, [db]);
 
   const { data: unsortedNotifications, loading } = useCollection<AdminNotification>(notificationsQuery);
@@ -30,7 +35,7 @@ export function AdminNotifications() {
     if (!unsortedNotifications) {
       return [];
     }
-    return unsortedNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return [...unsortedNotifications].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [unsortedNotifications]);
 
 
@@ -50,7 +55,7 @@ export function AdminNotifications() {
         case 'STAFF_NOTE':
             return { icon: <StickyNote className="h-4 w-4" />, title: 'Staff Briefing', color: 'text-blue-600 dark:text-blue-400' };
         default:
-            return { icon: <FileWarning className="h-4 w-4" />, title: 'Incomplete Shift', color: 'text-amber-600 dark:text-amber-400' };
+            return { icon: <FileWarning className="h-4 w-4" />, title: 'System Alert', color: 'text-amber-600 dark:text-amber-400' };
     }
   }
 

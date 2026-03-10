@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/firebase/auth/use-user';
-import { createAdminNotification } from '@/firebase/firestore/notifications';
+import { createAdminNotification, dismissAdminNotification } from '@/firebase/firestore/notifications';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,11 +15,11 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { StickyNote, Send, History, PencilLine, Clock, CheckCircle2, Circle } from 'lucide-react';
+import { StickyNote, Send, History, PencilLine, Clock, CheckCircle2, Circle, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
@@ -37,22 +36,41 @@ export function StaffNotepad() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('write');
 
-  // Fetch history of notes sent by THIS user
+  const isOwner = user?.username === 'Viren';
+
+  // Fetch history of notes
   const historyQuery = useMemo(() => {
     if (!db || !user) return null;
-    return query(
-      collection(db, 'adminNotifications'),
-      where('triggeredBy.username', '==', user.username),
-      where('type', '==', 'STAFF_NOTE')
-    );
-  }, [db, user]);
+    
+    const baseQuery = collection(db, 'adminNotifications');
+    
+    if (isOwner) {
+      // Viren sees ALL staff briefings
+      return query(
+        baseQuery,
+        where('type', '==', 'STAFF_NOTE')
+      );
+    } else {
+      // Staff see only their own history
+      return query(
+        baseQuery,
+        where('triggeredBy.username', '==', user.username),
+        where('type', '==', 'STAFF_NOTE')
+      );
+    }
+  }, [db, user, isOwner]);
 
-  const { data: rawHistory, loading: loadingHistory } = useCollection<AdminNotification>(historyQuery);
+  const { data: rawHistory } = useCollection<AdminNotification>(historyQuery);
 
   const history = useMemo(() => {
     if (!rawHistory) return [];
     return [...rawHistory].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [rawHistory]);
+
+  const unreadCount = useMemo(() => {
+    if (!isOwner) return 0;
+    return history.filter(h => !h.isRead).length;
+  }, [history, isOwner]);
 
   const handleSendNote = async () => {
     if (!note.trim() || !user) return;
@@ -81,11 +99,25 @@ export function StaffNotepad() {
     }
   };
 
+  const handleAcknowledge = async (id: string) => {
+    if (!isOwner) return;
+    await dismissAdminNotification(id);
+    toast({
+      title: "Note Acknowledged",
+      description: "Marked as seen."
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-primary/20 shadow-sm">
+        <Button variant="outline" size="icon" className="relative h-8 w-8 rounded-lg border-primary/20 shadow-sm">
           <StickyNote className="h-4 w-4 text-primary" />
+          {unreadCount > 0 && (
+            <Badge variant="destructive" className="absolute -right-1 -top-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] rounded-full ring-2 ring-background font-black">
+              {unreadCount}
+            </Badge>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md font-body p-0 overflow-hidden border-none shadow-2xl">
@@ -106,6 +138,7 @@ export function StaffNotepad() {
             </TabsTrigger>
             <TabsTrigger value="history" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all gap-2">
               <History className="h-3.5 w-3.5" /> History
+              {unreadCount > 0 && <Badge className="ml-1 h-3.5 px-1 bg-primary text-[7px]">{unreadCount}</Badge>}
             </TabsTrigger>
           </TabsList>
 
@@ -131,19 +164,23 @@ export function StaffNotepad() {
           </TabsContent>
 
           <TabsContent value="history" className="m-0 animate-in fade-in-50 slide-in-from-right-2 duration-300">
-            <ScrollArea className="h-[350px] w-full">
+            <ScrollArea className="h-[400px] w-full">
               <div className="p-4 space-y-3">
                 {history.length > 0 ? (
                   history.map((item) => {
-                    // Extract text from the formatted HTML message
                     const cleanMessage = item.message.split('<em>"')[1]?.split('"</em>')[0] || item.message;
                     
                     return (
-                      <div key={item.id} className="p-4 rounded-xl border-2 bg-card shadow-sm space-y-2 group relative overflow-hidden">
+                      <div key={item.id} className={cn(
+                        "p-4 rounded-xl border-2 shadow-sm space-y-2 group relative overflow-hidden transition-all",
+                        !item.isRead && isOwner ? "border-primary/30 bg-primary/[0.02]" : "bg-card"
+                      )}>
                         <div className="flex justify-between items-start">
                           <div className="flex items-center gap-2 text-[9px] font-black uppercase text-muted-foreground tracking-tighter">
                             <Clock className="h-3 w-3" />
                             {format(new Date(item.timestamp), 'MMM d, h:mm a')}
+                            <span className="opacity-40">•</span>
+                            <span className="text-primary/80">{item.triggeredBy?.displayName}</span>
                           </div>
                           {item.isRead ? (
                             <Badge variant="outline" className="h-4 text-[7px] bg-emerald-50 text-emerald-600 border-emerald-200 uppercase font-black px-1.5">
@@ -151,15 +188,28 @@ export function StaffNotepad() {
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="h-4 text-[7px] bg-primary/5 text-primary border-primary/20 uppercase font-black px-1.5">
-                              <Circle className="h-2 w-2 mr-1 fill-current" /> Sent
+                              <Circle className="h-2 w-2 mr-1 fill-current" /> New
                             </Badge>
                           )}
                         </div>
                         <p className="text-xs font-medium text-foreground leading-relaxed">
                           {cleanMessage}
                         </p>
-                        <div className="absolute right-0 bottom-0 p-1 opacity-0 group-hover:opacity-10 transition-opacity">
-                           <StickyNote className="h-8 w-8 text-primary" />
+                        {isOwner && !item.isRead && (
+                          <div className="pt-2 border-t border-dashed mt-2 flex justify-end">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleAcknowledge(item.id)}
+                              className="h-7 px-2 text-[8px] font-black uppercase tracking-widest text-primary hover:bg-primary/10"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              Acknowledge
+                            </Button>
+                          </div>
+                        )}
+                        <div className="absolute right-0 bottom-0 p-1 opacity-[0.03] pointer-events-none">
+                           <StickyNote className="h-12 w-12 text-primary" />
                         </div>
                       </div>
                     );
