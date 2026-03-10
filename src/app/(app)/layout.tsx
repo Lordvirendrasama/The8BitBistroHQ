@@ -35,6 +35,10 @@ export default function AppLayout({ children }: { children: React.Node }) {
                 const shift = await getActiveOrStartShift(user);
                 if (isMounted) {
                     setActiveShift(shift);
+                    // LOGIC: Auto-minimize tasks for Viren (Owner) account only
+                    if (user.username === 'Viren') {
+                        setTasksVisible(false);
+                    }
                 }
             } catch (error) {
                 console.error("Critical: Failed to load shift data:", error);
