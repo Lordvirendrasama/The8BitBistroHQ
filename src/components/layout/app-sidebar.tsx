@@ -52,12 +52,23 @@ const allNavItems = [
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
-  // Promoted Financial Items
-  { href: '/financials/dashboard', label: 'Profit Dashboard', icon: BarChart3, adminOnly: true },
-  { href: '/financials/liabilities', label: 'Debt & Liabilities', icon: Landmark, ownerOnly: true },
-  { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee, adminOnly: true },
+  
+  // Advanced Financials (Grouped for Viren/Admin)
+  { 
+    label: 'Financials', 
+    icon: Wallet, 
+    href: '/financials', 
+    adminOnly: true,
+    subItems: [
+        { href: '/financials/dashboard', label: 'Profit Dashboard', icon: BarChart3 },
+        { href: '/financials/liabilities', label: 'Debt & Liabilities', icon: Landmark, ownerOnly: true },
+        { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee },
+        { href: '/financials/payroll', label: 'Staff Payroll', icon: CreditCard },
+    ]
+  },
+
+  // Spending & Stock (Top-level for everyone - clean access for staff)
   { href: '/financials/spending', label: 'Spending & Stock', icon: ShoppingBag },
-  { href: '/financials/payroll', label: 'Staff Payroll', icon: CreditCard, adminOnly: true },
   
   { href: '/staff', icon: ListChecks, label: 'Daily Checklist' },
   { href: '/shift-reports', icon: FileBarChart, label: 'Shift Reports' },
