@@ -8,13 +8,12 @@ import type { Bill, Expense, DateRange, FixedBill, LiabilityState, Settings } fr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2, Info } from 'lucide-react';
+import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, CheckCircle2, Info, ArrowUpRight, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Separator } from '@/components/ui/separator';
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, isSameMonth, differenceInDays, differenceInCalendarMonths } from "date-fns";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, isSameMonth, differenceInDays, differenceInCalendarMonths, getDaysInMonth } from "date-fns";
 import { cn } from '@/lib/utils';
 import { exportAccountingLedger, getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/data-management';
 import { Progress } from '@/components/ui/progress';
@@ -27,7 +26,6 @@ export default function AccountingPage() {
   const [liabilityState, setLiabilityState] = useState<LiabilityState | null>(null);
   const [appSettings, setAppSettings] = useState<Settings | null>(null);
   
-  // Date Range State - Default to current month
   const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -79,14 +77,12 @@ export default function AccountingPage() {
     const revenue = matchedBills.reduce((sum, b) => sum + b.totalAmount, 0);
     const opSpend = matchedExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-    // Calculate Fixed Burden for this specific duration
     const daysInPeriod = dateRange.from && dateRange.to 
         ? differenceInDays(endOfDay(dateRange.to), startOfDay(dateRange.from)) + 1
         : 30;
 
     const dailyOverheads = calculateDailyFixedCost(fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent')));
     
-    // Debt portion calculation
     const now = new Date();
     const targetDate = new Date(`2030-01-01`);
     const monthsUntilTarget = Math.max(1, differenceInCalendarMonths(targetDate, now));
@@ -108,6 +104,21 @@ export default function AccountingPage() {
     const totalOutflow = opSpend + fixedBurdenTotal;
     const netProfit = revenue - totalOutflow;
     const remainingTarget = Math.max(0, fixedBurdenTotal - revenue);
+
+    // Run-rate Calculations
+    const isCurrentMonth = dateRange.from && isSameMonth(dateRange.from, now);
+    const totalDaysInMonth = dateRange.from ? getDaysInMonth(dateRange.from) : 30;
+    
+    let daysPassed = daysInPeriod;
+    if (isCurrentMonth) {
+        daysPassed = now.getDate();
+    }
+
+    const currentDailyAvg = revenue / Math.max(1, daysPassed);
+    const targetToMakeIt = totalOutflow + 1; // +1 Rupee profit
+    const remainingToMakeIt = Math.max(0, targetToMakeIt - revenue);
+    const daysRemaining = isCurrentMonth ? Math.max(0, totalDaysInMonth - daysPassed) : 0;
+    const requiredDaily = daysRemaining > 0 ? remainingToMakeIt / daysRemaining : 0;
 
     const ledger = [
         ...matchedBills.map(b => ({
@@ -134,33 +145,31 @@ export default function AccountingPage() {
         netProfit, 
         ledger,
         remainingTarget,
-        survivalGoal: fixedBurdenTotal
+        survivalGoal: fixedBurdenTotal,
+        currentDailyAvg,
+        targetToMakeIt,
+        remainingToMakeIt,
+        requiredDaily,
+        daysRemaining,
+        daysPassed
     };
   }, [bills, expenses, liabilityState, fixedBills, appSettings, dateRange]);
 
   const monthlyBreakdown = useMemo(() => {
     if (!bills || !expenses) return [];
-
     const breakdownMap: Record<string, { monthKey: string, monthName: string, revenue: number, expense: number }> = {};
-
     bills.forEach(b => {
         const d = new Date(b.timestamp);
         const key = format(d, 'yyyy-MM');
-        if (!breakdownMap[key]) {
-            breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
-        }
+        if (!breakdownMap[key]) breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
         breakdownMap[key].revenue += b.totalAmount;
     });
-
     expenses.forEach(e => {
         const d = new Date(e.timestamp);
         const key = format(d, 'yyyy-MM');
-        if (!breakdownMap[key]) {
-            breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
-        }
+        if (!breakdownMap[key]) breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
         breakdownMap[key].expense += e.amount;
     });
-
     return Object.values(breakdownMap).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [bills, expenses]);
 
@@ -183,10 +192,7 @@ export default function AccountingPage() {
   };
 
   const setMonth = (monthDate: Date) => {
-    setDateRange({
-        from: startOfMonth(monthDate),
-        to: endOfMonth(monthDate)
-    });
+    setDateRange({ from: startOfMonth(monthDate), to: endOfMonth(monthDate) });
   };
 
   if (billsLoading || expensesLoading || !stats) {
@@ -210,7 +216,6 @@ export default function AccountingPage() {
         </div>
       </div>
 
-      {/* MONTH QUICK SELECT TOOLBAR */}
       <Card className="border-2 shadow-none bg-muted/5">
         <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -262,7 +267,6 @@ export default function AccountingPage() {
         </CardContent>
       </Card>
 
-      {/* PRIMARY KPIS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-2 shadow-xl bg-emerald-500/5 border-emerald-500/20">
             <CardHeader className="pb-2">
@@ -316,7 +320,6 @@ export default function AccountingPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* MONTHLY PERFORMANCE TABLE */}
         <Card className="lg:col-span-2 border-2 shadow-none overflow-hidden">
             <CardHeader className="bg-muted/10 border-b">
                 <CardTitle className="font-headline text-lg tracking-tight flex items-center gap-2">
@@ -358,50 +361,79 @@ export default function AccountingPage() {
             </CardContent>
         </Card>
 
-        {/* AUDIT SUMMARY CARD */}
-        <Card className="border-2 bg-muted/10">
-            <CardHeader>
-                <CardTitle className="text-sm font-black uppercase tracking-tight">Period Analysis</CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Comprehensive burden breakdown.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="space-y-3">
-                    <div className="flex justify-between items-center text-xs font-bold uppercase">
-                        <span className="text-muted-foreground">Operational Flow</span>
-                        <span className="text-destructive font-mono">- ₹{stats.opSpend.toLocaleString()}</span>
+        <div className="space-y-6">
+            <Card className="border-2 bg-muted/10">
+                <CardHeader>
+                    <CardTitle className="text-sm font-black uppercase tracking-tight">Period Analysis</CardTitle>
+                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Comprehensive burden breakdown.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center text-xs font-bold uppercase">
+                            <span className="text-muted-foreground">Operational Flow</span>
+                            <span className="text-destructive font-mono">- ₹{stats.opSpend.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs font-bold uppercase">
+                            <span className="text-muted-foreground">Weighted Fixed Costs</span>
+                            <span className="text-destructive font-mono">- ₹{Math.round(stats.fixedBurdenTotal).toLocaleString()}</span>
+                        </div>
+                        <Separator className="border-dashed" />
+                        <div className="flex justify-between items-center font-black uppercase">
+                            <span className="text-sm">Total Burden</span>
+                            <span className="text-lg font-mono text-destructive">₹{Math.round(stats.totalOutflow).toLocaleString()}</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-bold uppercase">
-                        <span className="text-muted-foreground">Weighted Fixed Costs</span>
-                        <span className="text-destructive font-mono">- ₹{Math.round(stats.fixedBurdenTotal).toLocaleString()}</span>
-                    </div>
-                    <Separator className="border-dashed" />
-                    <div className="flex justify-between items-center font-black uppercase">
-                        <span className="text-sm">Total Burden</span>
-                        <span className="text-lg font-mono text-destructive">₹{Math.round(stats.totalOutflow).toLocaleString()}</span>
-                    </div>
-                </div>
 
-                <div className={cn("p-4 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center gap-1", stats.netProfit >= 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-destructive/10 border-destructive/20")}>
-                    <p className="text-[10px] font-black uppercase opacity-60">Net Economic Position</p>
-                    <p className={cn("text-3xl font-black font-mono", stats.netProfit >= 0 ? "text-emerald-600" : "text-destructive")}>
-                        {stats.netProfit < 0 ? '-' : '+'} ₹{Math.abs(Math.round(stats.netProfit)).toLocaleString()}
-                    </p>
-                </div>
-
-                <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/10 space-y-2">
-                    <div className="flex items-center gap-2 text-primary">
-                        <Info className="h-4 w-4" />
-                        <p className="text-[10px] font-black uppercase">Audit Insight</p>
+                    <div className={cn("p-4 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center gap-1", stats.netProfit >= 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-destructive/10 border-destructive/20")}>
+                        <p className="text-[10px] font-black uppercase opacity-60">Net Economic Position</p>
+                        <p className={cn("text-3xl font-black font-mono", stats.netProfit >= 0 ? "text-emerald-600" : "text-destructive")}>
+                            {stats.netProfit < 0 ? '-' : '+'} ₹{Math.abs(Math.round(stats.netProfit)).toLocaleString()}
+                        </p>
                     </div>
-                    <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                        To cover all liabilities including debt EMI share and deferred rent backlog, you need an additional <strong>₹{Math.round(stats.remainingTarget).toLocaleString()}</strong> for this period.
-                    </p>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+
+            <Card className="border-2 border-primary/20 bg-primary/5">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                        <ArrowUpRight className="h-4 w-4" /> Strategic Blueprint
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <p className="text-[8px] font-black uppercase text-muted-foreground">Actual Velocity</p>
+                            <p className="text-sm font-black font-mono">₹{Math.round(stats.currentDailyAvg).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                        </div>
+                        <div className="space-y-1 text-right">
+                            <p className="text-[8px] font-black uppercase text-primary">Required Velocity</p>
+                            <p className="text-sm font-black font-mono text-primary">₹{Math.round(stats.requiredDaily).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                        </div>
+                    </div>
+                    
+                    <div className="pt-3 border-t border-dashed border-primary/20">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-[9px] font-black uppercase text-muted-foreground">Month Success Target</span>
+                            <span className="font-mono text-xs font-bold">₹{Math.round(stats.targetToMakeIt).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-black uppercase text-muted-foreground">Remaining To Make It</span>
+                            <span className="font-mono text-xs font-bold text-primary">₹{Math.round(stats.remainingToMakeIt).toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-background/50 p-3 rounded-lg border flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Timer className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-[9px] font-black uppercase text-muted-foreground">Cycle Remaining</span>
+                        </div>
+                        <span className="text-[10px] font-black uppercase">{stats.daysRemaining} Business Days</span>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
       </div>
 
-      {/* DETAILED LEDGER */}
       <Card className="border-2 shadow-none overflow-hidden">
         <CardHeader className="bg-muted/30 border-b">
             <div className="flex justify-between items-center">
