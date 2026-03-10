@@ -42,7 +42,7 @@ import {
   Separator
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
-import { format, differenceInCalendarMonths, subDays, startOfDay } from 'date-fns';
+import { format, differenceInCalendarMonths, subDays, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -102,26 +102,36 @@ export default function OwnerDashboardPage() {
   const stats = useMemo(() => {
     if (!bills || !expenses || !liabilityState || !fixedBills || !appSettings || !members || !stations) return null;
 
-    // TARGET PHASE DATA: Filter by cycle '24-02-2026'
-    const targetCycle = '24-02-2026';
-    const phaseBills = bills.filter(b => b.cycle === targetCycle);
-    const phaseExpenses = expenses.filter(e => e.cycle === targetCycle);
-    
-    // Revenue
-    const revTotal = phaseBills.reduce((s, b) => s + b.totalAmount, 0);
-    const revCash = phaseBills.reduce((s, b) => s + (b.paymentMethod === 'cash' ? b.totalAmount : b.paymentMethod === 'split' ? (b.cashAmount || 0) : 0), 0);
-    const revUpi = phaseBills.reduce((s, b) => s + (b.paymentMethod === 'upi' ? b.totalAmount : b.paymentMethod === 'split' ? (b.upiAmount || 0) : 0), 0);
-    const revPending = phaseBills.reduce((s, b) => s + (b.paymentMethod === 'pending' ? b.totalAmount : 0), 0);
+    const todayStr = getBusinessDate();
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
 
-    const revGaming = phaseBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
+    // DAILY DATA (For main financials)
+    const dailyBills = bills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
+    const dailyExpenses = expenses.filter(e => e.timestamp && isBusinessToday(e.timestamp));
+    
+    // Revenue (Daily)
+    const revTotal = dailyBills.reduce((s, b) => s + b.totalAmount, 0);
+    const revCash = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'cash' ? b.totalAmount : b.paymentMethod === 'split' ? (b.cashAmount || 0) : 0), 0);
+    const revUpi = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'upi' ? b.totalAmount : b.paymentMethod === 'split' ? (b.upiAmount || 0) : 0), 0);
+    const revPending = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'pending' ? b.totalAmount : 0), 0);
+
+    const revGaming = dailyBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
     const revFood = revTotal - revGaming - revPending;
 
-    // Item Analytics (Phase Locked)
+    // MONTHLY DATA (For Performers)
+    const monthlyBills = bills.filter(b => {
+        const d = new Date(b.timestamp);
+        return d >= monthStart && d <= monthEnd;
+    });
+
+    // Item Analytics (Monthly for volume)
     const foodCounts: Record<string, number> = {};
     const drinkCounts: Record<string, number> = {};
     const packageCounts: Record<string, number> = {};
 
-    phaseBills.forEach(bill => {
+    monthlyBills.forEach(bill => {
         if (bill.packageName) {
             const pureName = bill.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
             packageCounts[pureName] = (packageCounts[pureName] || 0) + 1;
@@ -141,7 +151,11 @@ export default function OwnerDashboardPage() {
         });
     });
 
-    const getTop = (map: Record<string, number>) => Object.entries(map).sort((a, b) => b[1] - a[1])[0];
+    const getTop = (map: Record<string, number>) => {
+        const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+        return sorted.length > 0 ? sorted[0] : null;
+    };
+    
     const topFood = getTop(foodCounts);
     const topDrink = getTop(drinkCounts);
     const topPkg = getTop(packageCounts);
@@ -185,9 +199,10 @@ export default function OwnerDashboardPage() {
         survivalGoal,
         topFood, topDrink, topPkg,
         topHour, topDay,
-        expToday: phaseExpenses.reduce((s, e) => s + e.amount, 0),
+        expToday: dailyExpenses.reduce((s, e) => s + e.amount, 0),
         loanBalance: liabilityState.loanBalance,
-        rentBalance: liabilityState.rentBalance
+        rentBalance: liabilityState.rentBalance,
+        todayStr
     };
   }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations]);
 
@@ -205,7 +220,7 @@ export default function OwnerDashboardPage() {
           OWNER PULSE
         </h1>
         <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
-          OPERATIONAL COMMAND & CONTROL &bull; PHASE: 24-02-2026
+          OPERATIONAL COMMAND & CONTROL &bull; CYCLE: {stats.todayStr}
         </p>
       </div>
 
@@ -217,14 +232,14 @@ export default function OwnerDashboardPage() {
         <div className="flex items-center gap-4">
           <ShieldCheck className="h-10 w-10" />
           <div>
-            <h3 className="text-2xl font-headline tracking-tighter">PHASE STATUS: {healthStatus}</h3>
+            <h3 className="text-2xl font-headline tracking-tighter">TODAY'S STATUS: {healthStatus}</h3>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">
-              Audit performed based on the 24-02-2026 operational phase intake and utilization metrics.
+              Audit performed based on current business day intake vs calculated survival threshold.
             </p>
           </div>
         </div>
         <div className="hidden sm:flex flex-col items-end">
-          <p className="text-[10px] font-black uppercase opacity-60">Phase Goal Performance</p>
+          <p className="text-[10px] font-black uppercase opacity-60">Daily Goal Performance</p>
           <p className="text-3xl font-black font-mono">{(healthScore * 100).toFixed(1)}%</p>
         </div>
       </div>
@@ -234,7 +249,7 @@ export default function OwnerDashboardPage() {
         <Card className="border-2 bg-card shadow-sm">
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <IndianRupee className="h-3 w-3" /> Phase Intake
+              <IndianRupee className="h-3 w-3" /> Today's Intake
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
@@ -275,7 +290,7 @@ export default function OwnerDashboardPage() {
           <CardContent className="p-4 pt-0 space-y-2">
             <div className="flex justify-between items-baseline">
               <div className="text-2xl font-black font-mono">₹{Math.round(stats.survivalGoal).toLocaleString()}</div>
-              <Badge variant="outline" className="text-[8px] h-4 font-black border-primary/30 text-primary">PHASE DAILY AVG</Badge>
+              <Badge variant="outline" className="text-[8px] h-4 font-black border-primary/30 text-primary">DAILY TARGET</Badge>
             </div>
             <Progress value={(stats.revTotal / stats.survivalGoal) * 100} className="h-1.5" />
           </CardContent>
@@ -291,7 +306,7 @@ export default function OwnerDashboardPage() {
             <div className={cn("text-2xl font-black font-mono", (stats.revTotal - stats.expToday) >= 0 ? "text-emerald-600" : "text-destructive")}>
                 ₹{(stats.revTotal - stats.expToday).toLocaleString()}
             </div>
-            <p className="text-[9px] font-bold uppercase opacity-50 mt-1">Intake - Expenses (Phase)</p>
+            <p className="text-[9px] font-bold uppercase opacity-50 mt-1">Intake - Expenses (Today)</p>
           </CardContent>
         </Card>
       </div>
@@ -304,11 +319,11 @@ export default function OwnerDashboardPage() {
               <div>
                 <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-primary" />
-                    Top Performers (Phase 24-02-2026)
+                    Monthly Top Performers
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">High-Volume Items from the targeted cycle.</CardDescription>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">High-Volume Items for the current month.</CardDescription>
               </div>
-              <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">PHASE AUDIT</Badge>
+              <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">{format(new Date(), 'MMMM yyyy')}</Badge>
             </div>
           </CardHeader>
           <CardContent className="p-6">
@@ -447,8 +462,8 @@ export default function OwnerDashboardPage() {
 
       {/* 5. QUICK ACTIONS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <Button onClick={() => router.push('/financials/expenses')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-primary hover:text-white transition-all shadow-md">
-          <Plus className="h-4 w-4" /> Add Expense
+        <Button onClick={() => router.push('/financials/spending')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-primary hover:text-white transition-all shadow-md">
+          <Plus className="h-4 w-4" /> Add Outflow
         </Button>
         <Button onClick={() => router.push('/financials/payroll')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-emerald-600 hover:text-white transition-all shadow-md">
           <IndianRupee className="h-4 w-4" /> Pay Salary
