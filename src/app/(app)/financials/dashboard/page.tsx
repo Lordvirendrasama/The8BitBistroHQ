@@ -7,7 +7,7 @@ import { collection, query, where } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import type { Bill, Expense, FixedBill, InventoryPurchase, Settings } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Utensils, Gamepad2, Package, AlertCircle, CheckCircle2, Info, ReceiptIndianRupee, BarChart3, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Utensils, Gamepad2, Package, AlertCircle, CheckCircle2, Info, ReceiptIndianRupee, BarChart3, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Separator } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, differenceInDays, addDays, subDays, isSameMonth } from 'date-fns';
@@ -229,7 +229,7 @@ export default function FinancialDashboardPage() {
                             <span className="font-mono">₹{Math.round(stats.dailyStockEstimate).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm font-bold uppercase">
-                            <span>Ad-hoc Operations</span>
+                            <span>Operational Expense</span>
                             <span className="font-mono">₹{Math.round(stats.expToday).toLocaleString()}</span>
                         </div>
                         <Separator className="bg-destructive/20" />
@@ -318,8 +318,4 @@ export default function FinancialDashboardPage() {
       </div>
     </div>
   );
-}
-
-function Separator({ className }: { className?: string }) {
-    return <div className={cn("h-px w-full my-2", className)} />;
 }

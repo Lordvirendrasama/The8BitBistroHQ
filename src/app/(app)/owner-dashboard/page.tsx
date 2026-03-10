@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -36,7 +37,9 @@ import {
   Utensils,
   Coffee,
   Flame,
-  LineChart
+  LineChart,
+  TrendingDown,
+  Separator
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, differenceInCalendarMonths, subDays, startOfDay } from 'date-fns';
@@ -144,7 +147,6 @@ export default function OwnerDashboardPage() {
     const topPkg = getTop(packageCounts);
 
     // --- MONTH-ON-MONTH (MoM) ANALYTICS FOR HEATMAPS ---
-    // User requested heatmaps be based on MoM data (All time or cumulative month aggregation)
     const momHourCounts: Record<number, number> = {};
     const momDayCounts: Record<string, number> = {};
     
@@ -341,7 +343,6 @@ export default function OwnerDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* STAFF ON DUTY */}
         <Card className="border-2 flex flex-col">
           <CardHeader className="border-b bg-muted/10">
             <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
 import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem } from '@/lib/types';
@@ -426,6 +426,7 @@ const TodayExpenses = () => {
       >
         <ShoppingCart className="h-3 sm:h-4 w-3 sm:w-4" />
         <div className="flex flex-col items-start leading-tight">
+          <span className="text-[8px] uppercase opacity-50 hidden sm:block">Operational Expense</span>
           <span className="font-mono text-[10px] sm:text-sm">₹{total.toLocaleString()}</span>
         </div>
       </Button>
@@ -435,10 +436,10 @@ const TodayExpenses = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-display uppercase tracking-tight">
               <ShoppingCart className="text-destructive h-6 w-6" />
-              Bistro Day Expenses
+              Operational Expense
             </DialogTitle>
             <DialogDescription className="font-bold text-xs uppercase text-muted-foreground mt-1">
-              Total for current business cycle: <span className="text-destructive">₹{total.toLocaleString()}</span>
+              Operational Expense for current business cycle: <span className="text-destructive">₹{total.toLocaleString()}</span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -710,7 +711,7 @@ export function AppHeader({
                             </PopoverTrigger>
                             <PopoverContent className="w-56 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
                                 <div className="p-3 bg-muted/20 border-b">
-                                    <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <h4 className="font-black text-10px uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                         <Activity className="h-3.5 w-3.5 text-emerald-600" />
                                         {monthName} Performance
                                     </h4>
