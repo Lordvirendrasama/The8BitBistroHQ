@@ -88,19 +88,6 @@ const allNavItems = [
     href: '/settings', 
     icon: SettingsIcon, 
     label: 'Settings & Admin',
-    subItems: [
-        { href: '/settings', label: 'Loyalty Config', icon: Gem },
-        { href: '/settings/rewards', label: 'Reward Catalog', icon: PieChart },
-        { href: '/settings/menu', label: 'Food Menu', icon: Utensils },
-        { href: '/settings/categories', label: 'Categories', icon: Tag },
-        { href: '/settings/packages', label: 'Gaming Packages', icon: Gamepad2 },
-        { href: '/settings/recharge-packs', label: 'Recharge Packs', icon: Zap },
-        { href: '/settings/employees', label: 'Employees', icon: Users },
-        { href: '/settings/leaves', label: 'Staff Leaves', icon: CalendarDays },
-        { href: '/settings/tasks', label: 'Shift Tasks', icon: ListChecks },
-        { href: '/settings/logs', label: 'System Logs', icon: History },
-        { href: '/settings/data', label: 'Data Management', icon: Database },
-    ]
   },
 ];
 

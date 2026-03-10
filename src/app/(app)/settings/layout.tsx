@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { LayoutGrid } from 'lucide-react';
 
 const settingsNav = [
-  { href: '/settings', label: 'Loyalty Config' },
+  { href: '/settings', label: 'Hub' },
+  { href: '/settings/loyalty', label: 'Loyalty Config' },
   { href: '/settings/rewards', label: 'Rewards' },
   { href: '/settings/menu', label: 'Food Menu' },
   { href: '/settings/categories', label: 'Categories' },
@@ -28,13 +30,21 @@ export default function SettingsLayout({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-headline text-4xl tracking-wider text-foreground">
-          Settings & Admin
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Central management for loyalty mechanics, menu, rewards, and workforce.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-headline text-4xl tracking-wider text-foreground">
+            Settings & Admin
+          </h1>
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-[10px] tracking-widest">
+            Central management for loyalty mechanics, menu, rewards, and workforce.
+          </p>
+        </div>
+        <Button asChild variant="outline" className="h-10 border-2 font-black uppercase text-[10px] tracking-widest">
+            <Link href="/settings">
+                <LayoutGrid className="mr-2 h-4 w-4" />
+                Back to Hub
+            </Link>
+        </Button>
       </div>
 
       <div className="flex items-center gap-2 border-b pb-2 overflow-x-auto no-scrollbar">
@@ -42,10 +52,10 @@ export default function SettingsLayout({
           <Button
             key={item.href}
             asChild
-            variant={pathname.startsWith(item.href) && (item.href !== '/settings' || pathname === '/settings') ? 'secondary' : 'ghost'}
+            variant={pathname === item.href ? 'secondary' : 'ghost'}
             className={cn(
-              'font-bold shrink-0',
-              (pathname.startsWith(item.href) && (item.href !== '/settings' || pathname === '/settings')) &&
+              'font-bold shrink-0 text-xs uppercase h-9',
+              pathname === item.href &&
                 'bg-primary/10 text-primary hover:bg-primary/20'
             )}
           >
