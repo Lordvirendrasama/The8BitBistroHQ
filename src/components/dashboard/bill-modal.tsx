@@ -1,7 +1,7 @@
 
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import type { Station, FoodItem, BillItem, GamingPackage, Member, AssignedMember, PaymentMethod } from '@/lib/types';
+import type { Station, FoodItem, BillItem, GamingPackage, Member, AssignedMember, PaymentMethod, Bill } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useFirebase } from '@/firebase/provider';
 
 interface BillModalProps {
   isOpen: boolean;
@@ -31,12 +34,17 @@ export function BillModal({
     isOpen, onOpenChange, station, foodItems, 
     onSaveBill, gamingPackages, onConfirmCheckout 
 }: BillModalProps) {
+  const { db } = useFirebase();
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'menu' | 'review'>('menu');
   
+  // Fetch bills to determine real popularity
+  const billsQuery = useMemo(() => !db ? null : query(collection(db, 'bills'), orderBy('timestamp', 'desc'), limit(200)), [db]);
+  const { data: recentBills } = useCollection<Bill>(billsQuery);
+
   useEffect(() => {
     if (isOpen) {
         if (station) {
@@ -60,17 +68,65 @@ export function BillModal({
   }, [categories, activeCategory]);
 
   const hotItems = useMemo(() => {
-    // 3 popular gaming items (prioritizing priority offers)
-    const hotGaming = [...gamingPackages]
-        .filter(p => !p.isAddTimePackage && !p.isRechargePack)
-        .sort((a, b) => (b.isPriorityOffer ? 1 : 0) - (a.isPriorityOffer ? 1 : 0))
-        .slice(0, 3);
+    if (!recentBills) {
+        // Fallback to basic slicing if bills aren't loaded
+        return {
+            gaming: gamingPackages.filter(p => !p.isAddTimePackage && !p.isRechargePack).slice(0, 3),
+            food: foodItems.slice(0, 6)
+        };
+    }
 
-    // 6 popular food items (first 6 from the list for now)
-    const hotFood = [...foodItems].slice(0, 6);
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' });
+    const currentTime = now.toTimeString().slice(0, 5);
 
-    return { gaming: hotGaming, food: hotFood };
-  }, [gamingPackages, foodItems]);
+    // 1. Calculate popularity from bills
+    const itemPopularity: Record<string, number> = {};
+    recentBills.forEach(bill => {
+        bill.items.forEach(item => {
+            itemPopularity[item.itemId] = (itemPopularity[item.itemId] || 0) + item.quantity;
+        });
+        if (bill.packageName) {
+            const pkg = gamingPackages.find(p => p.name === bill.packageName || bill.packageName?.includes(p.name));
+            if (pkg) {
+                itemPopularity[pkg.id] = (itemPopularity[pkg.id] || 0) + (bill.members?.length || 1);
+            }
+        }
+    });
+
+    // 2. Filter Gaming Packages by Availability (specifically for Priority Offers)
+    const availableGaming = gamingPackages.filter(pkg => {
+        if (pkg.isAddTimePackage || pkg.isRechargePack) return false;
+        
+        // If it's a priority offer, check day/time constraints
+        if (pkg.isPriorityOffer) {
+            let isAvailable = true;
+            if (pkg.availableDays && pkg.availableDays.length > 0 && !pkg.availableDays.includes(currentDay)) isAvailable = false;
+            if (isAvailable && pkg.startTime && currentTime < pkg.startTime) isAvailable = false;
+            if (isAvailable && pkg.endTime && currentTime > pkg.endTime) isAvailable = false;
+            return isAvailable;
+        }
+        
+        // Non-priority offers are standard walk-ins, always show them in the general pool
+        return true;
+    });
+
+    // 3. Sort and pick top items
+    const sortedGaming = [...availableGaming].sort((a, b) => {
+        // Boost priority offers to the very top if available
+        if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
+        if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
+        // Then by sales volume
+        return (itemPopularity[b.id] || 0) - (itemPopularity[a.id] || 0);
+    });
+
+    const sortedFood = [...foodItems].sort((a, b) => (itemPopularity[b.id] || 0) - (itemPopularity[a.id] || 0));
+
+    return {
+        gaming: sortedGaming.slice(0, 3),
+        food: sortedFood.slice(0, 6)
+    };
+  }, [recentBills, gamingPackages, foodItems]);
 
   const menuByCategory = useMemo(() => {
     return foodItems.reduce((acc, item) => {
@@ -326,7 +382,7 @@ export function BillModal({
                             </div>
                         </div>
 
-                        {/* FOOD CATEGORIES (MATCHING SIDEBAR ORDER) */}
+                        {/* FOOD CATEGORIES */}
                         {categories.filter(c => c !== 'Hot Items' && c !== 'Gaming').map((category) => {
                             const items = filteredMenu[category] || [];
                             if (items.length === 0) return null;
