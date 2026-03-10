@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -7,7 +6,7 @@ import type { AdminNotification } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { Button } from '@/components/ui/button';
-import { X, FileWarning, Bell, Receipt, Trash2, StickyNote } from 'lucide-react';
+import { X, FileWarning, ShieldAlert, Receipt, Trash2, StickyNote } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { dismissAdminNotification } from '@/firebase/firestore/notifications';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -64,8 +63,8 @@ export function AdminNotifications() {
     <Popover>
         <PopoverTrigger asChild>
             <Button variant="outline" size="icon" className={cn("relative h-8 w-8 rounded-lg", (loading || notifications.length === 0) && "opacity-50")}>
-                <Bell className="h-4 w-4" />
-                <span className="sr-only">Notifications</span>
+                <ShieldAlert className="h-4 w-4 text-primary" />
+                <span className="sr-only">Security Alerts</span>
                 {notifications.length > 0 && (
                     <Badge variant="destructive" className="absolute -right-2 -top-2 h-4 w-4 p-0 flex items-center justify-center text-[8px] rounded-full">
                         {notifications.length}
@@ -75,7 +74,7 @@ export function AdminNotifications() {
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0">
             <div className="p-4 border-b">
-                 <h4 className="font-medium leading-none flex items-center gap-2"><Bell className="h-5 w-5 text-primary" />Security Alerts</h4>
+                 <h4 className="font-medium leading-none flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" />Security Alerts</h4>
             </div>
             <div className="space-y-0 max-h-[400px] overflow-y-auto">
                 {notifications.length > 0 ? notifications.map((notification) => {
