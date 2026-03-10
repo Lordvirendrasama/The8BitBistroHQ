@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -134,7 +133,8 @@ export function AppSidebar() {
       return filtered;
     }
     
-    const restrictedHrefs = ['/users', '/analytics', '/settings', '/shift-reports'];
+    // Restricted routes for staff and guest roles
+    const restrictedHrefs = ['/users', '/analytics', '/settings', '/shift-reports', '/staff'];
     
     if (user.role === 'staff' || user.role === 'guest') {
       return filtered.filter(item => !restrictedHrefs.includes(item.href));
