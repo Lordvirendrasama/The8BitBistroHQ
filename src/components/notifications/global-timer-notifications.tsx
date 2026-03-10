@@ -18,6 +18,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { CheckCircle2 } from 'lucide-react';
+import { updateStation } from '@/firebase/firestore/stations';
 
 /**
  * Universal Voice Announcer Engine
@@ -204,7 +207,6 @@ export function GlobalTimerNotifications() {
         }
 
         // 2. FIVE MINUTE WARNING CHECK
-        // (Only check players who aren't already in the "endCandidates" list)
         const warningCandidates = activeMembersWithTimers.filter(m => {
             const mEndTime = new Date(m.endTime!).getTime();
             const mRemaining = mEndTime - now;
@@ -217,12 +219,10 @@ export function GlobalTimerNotifications() {
         });
 
         if (warningCandidates.length > 1) {
-            // Group warning for multiple players
             warningCandidates.forEach(m => announcedWarnings.current.add(`${station.id}-${m.id}-5min`));
             playAnnouncement(`Attention. Five minutes remaining for everyone at ${station.name}.`);
             toast({ title: "Session Warning", description: `5 minutes left at ${station.name}` });
         } else if (warningCandidates.length === 1) {
-            // Individual warning for single player
             const m = warningCandidates[0];
             announcedWarnings.current.add(`${station.id}-${m.id}-5min`);
             playAnnouncement(`Attention. Five minutes remaining for ${m.name} at ${station.name}.`);
@@ -241,6 +241,17 @@ export function GlobalTimerNotifications() {
     setActiveEndAlert(null);
   };
 
+  const handleStartFinishing = async () => {
+    if (activeEndAlert) {
+      await updateStation(activeEndAlert.station.id, {
+        status: 'finishing',
+        finishingStartTime: new Date().toISOString()
+      });
+      toast({ title: "Grace Period Started", description: "5 minutes wrap-up timer active." });
+      setActiveEndAlert(null);
+    }
+  };
+
   return (
     <>
       <AlertDialog open={!!activeEndAlert} onOpenChange={(open) => !open && setActiveEndAlert(null)}>
@@ -254,12 +265,23 @@ export function GlobalTimerNotifications() {
               <span className="font-semibold text-muted-foreground mt-4 block italic text-sm border bg-muted/50 p-2 rounded">Station: {activeEndAlert?.station.name}</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogAction 
-            className="bg-destructive hover:bg-destructive/90 text-xl h-16 font-bold mt-6 shadow-lg" 
-            onClick={handleAcknowledge}
-          >
-            Acknowledge & Close
-          </AlertDialogAction>
+          
+          <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <Button 
+              variant="outline"
+              className="flex-1 h-16 font-bold text-lg uppercase border-2 border-amber-500/50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm"
+              onClick={handleStartFinishing}
+            >
+              <CheckCircle2 className="mr-2 h-5 w-5" />
+              Finishing Game
+            </Button>
+            <Button 
+              className="flex-1 bg-destructive hover:bg-destructive/90 text-lg h-16 font-bold shadow-lg" 
+              onClick={handleAcknowledge}
+            >
+              Acknowledge & Close
+            </Button>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 

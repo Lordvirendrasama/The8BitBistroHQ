@@ -6,7 +6,7 @@ import type { Station, AssignedMember, StationStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle } from 'lucide-react';
+import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -183,13 +183,6 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   const billTotal = useMemo(() => {
     return (station.currentBill || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
   }, [station.currentBill]);
-
-  const handleStartFinishing = () => {
-    updateStation(station.id, {
-        status: 'finishing',
-        finishingStartTime: new Date().toISOString()
-    });
-  };
 
   const handleCancelFinishing = () => {
     updateStation(station.id, {
@@ -482,34 +475,28 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                           <span className="text-[8px] font-bold uppercase leading-none">Move</span>
                       </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 w-full">
-                      {!isFinishing ? (
-                          <Button onClick={handleStartFinishing} variant="outline" size="sm" className="h-11 font-black uppercase tracking-tight text-[10px] border-2 border-amber-500/30 text-amber-600 bg-amber-500/5 hover:bg-amber-500 hover:text-white transition-all">
-                              <CheckCircle2 className="h-4 w-4 mr-1.5"/> Finishing Game
-                          </Button>
+                  
+                  <div className="w-full">
+                      {isFinishing ? (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-black uppercase tracking-tight text-[10px] shadow-lg animate-in zoom-in-95 duration-300">
+                                <StopCircle className="h-4 w-4 mr-1.5"/> Stop & Settle
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                                <Utensils className="h-4 w-4 mr-1.5" /> Food
+                            </Button>
+                          </div>
                       ) : (
-                          <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-black uppercase tracking-tight text-[10px] shadow-lg animate-in zoom-in-95 duration-300">
-                              <StopCircle className="h-4 w-4 mr-1.5"/> Stop & Settle
-                          </Button>
-                      )}
-                      
-                      {!isFinishing && (
-                          <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs shadow-md">
-                              <StopCircle className="h-4 w-4 mr-1.5"/> Stop All
-                          </Button>
-                      )}
-                      
-                      {isFinishing && (
-                          <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
-                              <Utensils className="h-4 w-4 mr-1.5" /> Food
-                          </Button>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs shadow-md">
+                                <StopCircle className="h-4 w-4 mr-1.5"/> Stop All
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                                <Utensils className="h-4 w-4 mr-1.5" /> Food
+                            </Button>
+                          </div>
                       )}
                   </div>
-                  {!isFinishing && (
-                      <Button variant="outline" size="sm" className="w-full h-9 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
-                          <Utensils className="h-4 w-4 mr-1.5" /> Food Order
-                      </Button>
-                  )}
               </>
           )}
       </CardFooter>
