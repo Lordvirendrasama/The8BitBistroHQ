@@ -39,13 +39,15 @@ import {
   Flame,
   LineChart,
   TrendingDown,
-  Separator
+  Separator,
+  Sparkles
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, differenceInCalendarMonths, subDays, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { AppUpdatesDropdown } from '@/components/owner/app-updates-dropdown';
 
 export default function OwnerDashboardPage() {
   const { db } = useFirebase();
@@ -214,14 +216,19 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12 font-body">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-headline text-4xl tracking-wider text-foreground flex items-center gap-4">
-          <Crown className="h-10 w-10 text-primary fill-current" />
-          OWNER PULSE
-        </h1>
-        <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
-          OPERATIONAL COMMAND & CONTROL &bull; CYCLE: {stats.todayStr}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-4">
+            <h1 className="font-headline text-4xl tracking-wider text-foreground flex items-center gap-4">
+              <Crown className="h-10 w-10 text-primary fill-current" />
+              OWNER PULSE
+            </h1>
+            <AppUpdatesDropdown />
+          </div>
+          <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
+            OPERATIONAL COMMAND & CONTROL &bull; CYCLE: {stats.todayStr}
+          </p>
+        </div>
       </div>
 
       {/* 1. FINAL HEALTH BANNER */}

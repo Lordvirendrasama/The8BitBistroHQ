@@ -478,3 +478,14 @@ export interface Leave {
   status: 'approved' | 'pending' | 'rejected';
   createdAt: string;
 }
+
+export interface AppUpdate {
+  id: string;
+  text: string;
+  status: 'pending' | 'completed';
+  createdAt: string;
+  addedBy: {
+    uid: string;
+    displayName: string;
+  };
+}
