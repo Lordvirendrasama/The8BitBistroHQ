@@ -44,7 +44,8 @@ import {
   Tag,
   CalendarDays,
   LayoutDashboard,
-  CreditCard
+  CreditCard,
+  Target
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
@@ -62,6 +63,7 @@ const allNavItems = [
     subItems: [
         { href: '/financials/dashboard', label: 'Profit Dashboard', icon: BarChart3 },
         { href: '/financials/liabilities', label: 'Debt & Liabilities', icon: Landmark, ownerOnly: true },
+        { href: '/financials/burden-selector', label: 'Burden Selection', icon: Target, ownerOnly: true },
         { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee },
         { href: '/financials/payroll', label: 'Staff Payroll', icon: CreditCard },
     ]
