@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { PlusCircle, MinusCircle, Save, Ticket, CreditCard, Search, ShoppingBag, Utensils, Tag, X, Gamepad2 } from 'lucide-react';
+import { PlusCircle, MinusCircle, Save, Ticket, CreditCard, Search, ShoppingBag, Utensils, Tag, X, Gamepad2, Flame } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -49,9 +49,8 @@ export function BillModal({
   }, [station, isOpen]);
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(foodItems.map(item => item.category)));
-    const sorted = cats.sort();
-    return ["Gaming", ...sorted];
+    const cats = Array.from(new Set(foodItems.map(item => item.category))).sort();
+    return ["Hot Items", ...cats, "Gaming"];
   }, [foodItems]);
 
   useEffect(() => {
@@ -59,6 +58,19 @@ export function BillModal({
         setActiveCategory(categories[0]);
     }
   }, [categories, activeCategory]);
+
+  const hotItems = useMemo(() => {
+    // 3 popular gaming items (prioritizing priority offers)
+    const hotGaming = [...gamingPackages]
+        .filter(p => !p.isAddTimePackage && !p.isRechargePack)
+        .sort((a, b) => (b.isPriorityOffer ? 1 : 0) - (a.isPriorityOffer ? 1 : 0))
+        .slice(0, 3);
+
+    // 6 popular food items (first 6 from the list for now)
+    const hotFood = [...foodItems].slice(0, 6);
+
+    return { gaming: hotGaming, food: hotFood };
+  }, [gamingPackages, foodItems]);
 
   const menuByCategory = useMemo(() => {
     return foodItems.reduce((acc, item) => {
@@ -89,7 +101,7 @@ export function BillModal({
 
   const scrollToCategory = (category: string) => {
     setActiveCategory(category);
-    const element = document.getElementById(`category-section-${category}`);
+    const element = document.getElementById(`category-section-${category.replace(/\s+/g, '-')}`);
     if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -267,7 +279,10 @@ export function BillModal({
                                 : "border-transparent text-muted-foreground font-bold hover:bg-muted"
                         )}
                     >
-                        <span className="text-[10px] uppercase tracking-[0.1em]">{cat}</span>
+                        <span className="text-[10px] uppercase tracking-[0.1em] flex items-center gap-2">
+                            {cat === 'Hot Items' && <Flame className="h-3 w-3 text-primary fill-current" />}
+                            {cat}
+                        </span>
                     </button>
                 ))}
             </div>
@@ -275,10 +290,74 @@ export function BillModal({
             <div className={cn("flex-1 flex flex-col min-w-0 overflow-hidden", activeTab === 'review' && "hidden md:flex")}>
                 <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 md:px-5 md:py-4 scroll-smooth">
                     <div className="space-y-8 md:space-y-10 pb-16">
-                        {/* GAMING PACKAGES SECTION (BILLING ONLY) */}
-                        <div key="Gaming" id={`category-section-Gaming`} className="space-y-2 md:space-y-3">
+                        
+                        {/* HOT ITEMS SECTION */}
+                        <div key="Hot-Items" id="category-section-Hot-Items" className="space-y-2 md:space-y-3">
+                            <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
+                                <Flame className="h-3 w-3 fill-current" /> TOP PICKS
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
+                                {hotItems.gaming.map(pkg => (
+                                    <button 
+                                        key={pkg.id} 
+                                        onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
+                                        className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                    >
+                                        <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                        <div className="flex justify-between items-end">
+                                            <span className="font-mono font-black text-xs md:text-base">₹{pkg.price}</span>
+                                            <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </button>
+                                ))}
+                                {hotItems.food.map(food => (
+                                    <button 
+                                        key={food.id} 
+                                        onClick={() => handleAddItem(food)}
+                                        className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                    >
+                                        <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{food.name}</p>
+                                        <div className="flex justify-between items-end">
+                                            <span className="font-mono font-black text-xs md:text-base">₹{food.price}</span>
+                                            <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* FOOD CATEGORIES (MATCHING SIDEBAR ORDER) */}
+                        {categories.filter(c => c !== 'Hot Items' && c !== 'Gaming').map((category) => {
+                            const items = filteredMenu[category] || [];
+                            if (items.length === 0) return null;
+                            return (
+                                <div key={category} id={`category-section-${category.replace(/\s+/g, '-')}`} className="space-y-2 md:space-y-3">
+                                    <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-muted-foreground/60 bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
+                                        {category}
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
+                                        {items.map(item => (
+                                            <button 
+                                                key={item.id} 
+                                                onClick={() => handleAddItem(item)}
+                                                className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                            >
+                                                <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                                <div className="flex justify-between items-end">
+                                                    <span className="font-mono font-black text-xs md:text-base">₹{item.price}</span>
+                                                    <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* GAMING PACKAGES SECTION (LAST) */}
+                        <div key="Gaming" id="category-section-Gaming" className="space-y-2 md:space-y-3">
                             <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary/60 bg-background/95 backdrop-blur-sm border-b border-dashed border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
-                                <Gamepad2 className="h-3 w-3" /> SESSION PACKAGES (BILLING ONLY)
+                                <Gamepad2 className="h-3 w-3" /> SESSION PACKAGES
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
                                 {filteredGaming.map(pkg => (
@@ -296,31 +375,6 @@ export function BillModal({
                                 ))}
                             </div>
                         </div>
-
-                        {/* FOOD CATEGORIES */}
-                        {Object.entries(filteredMenu).map(([category, items]) => (
-                            <div key={category} id={`category-section-${category}`} className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-muted-foreground/60 bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
-                                    {category}
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
-                                    {items.map(item => (
-                                        <button 
-                                            key={item.id} 
-                                            onClick={() => handleAddItem(item)}
-                                            className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
-                                        >
-                                            <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
-                                            <div className="flex justify-between items-end">
-                                                <span className="font-mono font-black text-xs md:text-base">₹{item.price}</span>
-                                                <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                            <div className="absolute -right-3 -bottom-3 bg-primary/5 rounded-full h-8 w-8 md:h-12 md:w-12 group-hover:scale-150 transition-transform duration-500" />
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>
