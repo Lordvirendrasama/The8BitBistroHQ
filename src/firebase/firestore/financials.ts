@@ -27,6 +27,24 @@ export const addFixedBill = async (billData: Omit<FixedBill, 'id'>, user: Custom
   }
 };
 
+export const updateFixedBill = async (billId: string, updates: Partial<FixedBill>, user: CustomUser) => {
+  const db = getFirestore();
+  const billRef = doc(db, 'fixedBills', billId);
+  try {
+    await updateDoc(billRef, updates);
+    await addDoc(collection(db, 'logs'), {
+      type: 'SETTINGS_UPDATED',
+      description: `Updated fixed bill: <strong>${updates.name || 'ID: ' + billId}</strong>.`,
+      timestamp: new Date().toISOString(),
+      user: { uid: user.username, displayName: user.displayName }
+    });
+    return true;
+  } catch (e) {
+    console.error("Error updating fixed bill:", e);
+    return false;
+  }
+};
+
 export const markBillAsPaid = async (billId: string, user: CustomUser) => {
   const db = getFirestore();
   const billRef = doc(db, 'fixedBills', billId);

@@ -10,13 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ReceiptIndianRupee, Calendar, CheckCircle2, Clock, Trash2, Wallet, TrendingDown } from 'lucide-react';
+import { Plus, ReceiptIndianRupee, Calendar, CheckCircle2, Clock, Trash2, Wallet, TrendingDown, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, isPast, isToday, differenceInDays } from 'date-fns';
-import { addFixedBill, markBillAsPaid, deleteFixedBill } from '@/firebase/firestore/financials';
+import { addFixedBill, markBillAsPaid, deleteFixedBill, updateFixedBill } from '@/firebase/firestore/financials';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ export default function FixedBillsPage() {
   const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingBill, setEditingBill] = useState<FixedBill | null>(null);
 
   const [formData, setFormData] = useState<Omit<FixedBill, 'id'>>({
     name: '',
@@ -63,13 +64,39 @@ export default function FixedBillsPage() {
   const handleSave = async () => {
     if (!formData.name || !formData.amount || !user) return;
     setIsSubmitting(true);
-    const success = await addFixedBill(formData, user);
+    
+    let success = false;
+    if (editingBill) {
+        success = await updateFixedBill(editingBill.id, formData, user);
+        if (success) toast({ title: "Bill Updated" });
+    } else {
+        success = await addFixedBill(formData, user);
+        if (success) toast({ title: "Fixed Bill Added" });
+    }
+
     if (success) {
-      toast({ title: "Fixed Bill Added" });
       setIsModalOpen(false);
-      setFormData({ name: '', amount: 0, repeatCycle: 'monthly', nextDueDate: new Date().toISOString().slice(0, 10), reminderDays: 5, paymentMethod: 'UPI' });
+      resetForm();
     }
     setIsSubmitting(false);
+  };
+
+  const handleEdit = (bill: FixedBill) => {
+    setEditingBill(bill);
+    setFormData({
+        name: bill.name,
+        amount: bill.amount,
+        repeatCycle: bill.repeatCycle,
+        nextDueDate: bill.nextDueDate.slice(0, 10),
+        reminderDays: bill.reminderDays || 5,
+        paymentMethod: bill.paymentMethod || 'UPI'
+    });
+    setIsModalOpen(true);
+  };
+
+  const resetForm = () => {
+    setEditingBill(null);
+    setFormData({ name: '', amount: 0, repeatCycle: 'monthly', nextDueDate: new Date().toISOString().slice(0, 10), reminderDays: 5, paymentMethod: 'UPI' });
   };
 
   const handlePay = async (id: string) => {
@@ -94,15 +121,20 @@ export default function FixedBillsPage() {
           <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">MANAGEMENT OF RECURRING OPERATIONAL BILLS & SUBSCRIPTIONS</p>
         </div>
         {user?.role === 'admin' && (
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <Dialog open={isModalOpen} onOpenChange={(open) => {
+                setIsModalOpen(open);
+                if (!open) resetForm();
+            }}>
                 <DialogTrigger asChild>
-                    <Button className="h-12 px-6 font-black uppercase tracking-tight shadow-xl">
+                    <Button onClick={() => setEditingBill(null)} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl">
                         <Plus className="mr-2 h-5 w-5" /> New Recurring Bill
                     </Button>
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="font-headline text-xl">Setup Recurring Bill</DialogTitle>
+                        <DialogTitle className="font-headline text-xl">
+                            {editingBill ? 'Modify Recurring Bill' : 'Setup Recurring Bill'}
+                        </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-1.5">
@@ -139,7 +171,9 @@ export default function FixedBillsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button onClick={handleSave} disabled={isSubmitting} className="w-full h-14 font-black uppercase tracking-widest shadow-xl">Create Permanent Record</Button>
+                        <Button onClick={handleSave} disabled={isSubmitting} className="w-full h-14 font-black uppercase tracking-widest shadow-xl">
+                            {editingBill ? 'Save Audit Changes' : 'Create Permanent Record'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -223,6 +257,9 @@ export default function FixedBillsPage() {
                         </TableCell>
                         <TableCell className="text-right pr-6">
                             <div className="flex justify-end gap-2">
+                                <Button size="icon" variant="ghost" onClick={() => handleEdit(bill)} className="h-8 w-8 text-muted-foreground hover:text-primary">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                </Button>
                                 <Button size="sm" variant="outline" onClick={() => handlePay(bill.id)} className="h-8 px-3 font-black uppercase text-[9px] border-2 border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all">
                                     <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark Paid
                                 </Button>
