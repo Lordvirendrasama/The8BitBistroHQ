@@ -211,6 +211,7 @@ export interface AssignedMember {
   startTime?: string | null;
   endTime?: string | null;
   remainingTimeOnPause?: number | null; // in seconds
+  remainingSecondsAtStop?: number | null; // in seconds
   status?: 'active' | 'paused' | 'finished';
 }
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -150,11 +151,6 @@ function DashboardContent() {
     });
   };
 
-  const handleManage = (type: 'ps5' | 'boardgame') => {
-    setManageType(type);
-    setIsManageModalOpen(true);
-  };
-
   const handlePauseTimer = (station: Station) => {
     const now = new Date().toISOString();
     const updatedMembers = station.members.map(m => {
@@ -289,9 +285,9 @@ function DashboardContent() {
     const member = updatedMembers[memberIndex];
     
     let playedSeconds = 0;
+    let remainingSeconds = 0;
     if (member.startTime) {
         const totalPossibleSeconds = member.endTime ? (new Date(member.endTime).getTime() - new Date(member.startTime).getTime()) / 1000 : 0;
-        let remainingSeconds = 0;
         
         if ((station.status === 'paused' || member.status === 'paused') && member.remainingTimeOnPause != null) {
             remainingSeconds = member.remainingTimeOnPause;
@@ -314,7 +310,8 @@ function DashboardContent() {
         ...member,
         status: 'finished',
         endTime: now.toISOString(),
-        remainingTimeOnPause: null
+        remainingTimeOnPause: null,
+        remainingSecondsAtStop: remainingSeconds // AUDIT: Capture unused time
     };
 
     const activeMembers = updatedMembers.filter(m => m.status !== 'finished');
@@ -446,12 +443,20 @@ function DashboardContent() {
     const station = stations?.find(s => s.id === stationId);
     if (!station) return;
 
+    const finalMembersForBill: AssignedMember[] = [];
+
     for (const member of station.members) {
-        if (!member.id || member.id.startsWith('guest-') || member.status === 'finished') continue;
         let playedSecondsForMember = 0;
-        if (member.startTime && member.endTime) {
+        let remainingSecondsOnTimer = 0;
+
+        if (member.status === 'finished') {
+            // Player was already stopped individually, take their cached values
+            playedSecondsForMember = 0; // Not strictly needed for pool deduction here as it happened in handleStopPlayer
+            remainingSecondsOnTimer = member.remainingSecondsAtStop || 0;
+        } else if (member.startTime && member.endTime) {
+            // Player is being stopped NOW during Checkout All
             const totalSessionSeconds = Math.floor((new Date(member.endTime).getTime() - new Date(member.startTime).getTime()) / 1000);
-            let remainingSecondsOnTimer = 0;
+            
             if ((station.status === 'paused' || member.status === 'paused') && member.remainingTimeOnPause != null) {
                 remainingSecondsOnTimer = member.remainingTimeOnPause;
             } else {
@@ -459,23 +464,30 @@ function DashboardContent() {
                 remainingSecondsOnTimer = Math.max(0, Math.floor((end - Date.now()) / 1000));
             }
             playedSecondsForMember = Math.max(0, totalSessionSeconds - remainingSecondsOnTimer);
-        }
 
-        if (member.isNewRecharge && member.packageId) {
-            const pkg = gamingPackages?.find(p => p.id === member.packageId);
-            if (pkg) {
-                const newRechargeId = await rechargeMember(member.id, pkg, paymentMethod === 'upi' ? 'upi' : 'cash', { skipBill: true });
-                if (newRechargeId) {
-                    await consumeRechargeTime(member.id, newRechargeId, playedSecondsForMember);
+            if (member.isNewRecharge && member.packageId) {
+                const pkg = gamingPackages?.find(p => p.id === member.packageId);
+                if (pkg) {
+                    const newRechargeId = await rechargeMember(member.id, pkg, paymentMethod === 'upi' ? 'upi' : 'cash', { skipBill: true });
+                    if (newRechargeId) {
+                        await consumeRechargeTime(member.id, newRechargeId, playedSecondsForMember);
+                    }
+                }
+            } else if (member.rechargeId) {
+                if (member.rechargeId === 'pool') {
+                    await consumeMemberBalancePool(member.id, playedSecondsForMember);
+                } else {
+                    await consumeRechargeTime(member.id, member.rechargeId, playedSecondsForMember);
                 }
             }
-        } else if (member.rechargeId) {
-            if (member.rechargeId === 'pool') {
-                await consumeMemberBalancePool(member.id, playedSecondsForMember);
-            } else {
-                await consumeRechargeTime(member.id, member.rechargeId, playedSecondsForMember);
-            }
         }
+
+        finalMembersForBill.push({
+            ...member,
+            status: 'finished',
+            endTime: member.status === 'finished' ? member.endTime : new Date().toISOString(),
+            remainingSecondsAtStop: remainingSecondsOnTimer
+        });
     }
 
     const initialPackage = gamingPackages?.find(p => {
@@ -504,7 +516,7 @@ function DashboardContent() {
         stationId: station.id,
         stationName: station.name,
         packageName: station.packageName || null,
-        members: station.members,
+        members: finalMembersForBill,
         items: billItems,
         initialPackagePrice,
         foodSubtotal,
@@ -680,7 +692,7 @@ function DashboardContent() {
                 Redeem Perks
             </Button>
             <Button 
-                onClick={() => setIsRechargeModalOpen(true)} 
+                onClick={() => setIsRechargePackOpen(true)} 
                 className="h-12 px-6 font-black uppercase tracking-widest bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
             >
                 <Zap className="mr-2 h-5 w-5 fill-current" />
@@ -770,8 +782,8 @@ function DashboardContent() {
       />
 
       <GlobalRechargeModal 
-        isOpen={isRechargeModalOpen} 
-        onOpenChange={setIsRechargeModalOpen} 
+        isOpen={isRechargePackOpen} 
+        onOpenChange={setIsRechargePackOpen} 
         members={members || []} 
       />
 
@@ -785,6 +797,7 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
+  const [isRechargePackOpen, setIsRechargePackOpen] = useState(false);
   return (
     <Suspense fallback={<div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse">Initializing Dashboard...</div>}>
       <DashboardContent />

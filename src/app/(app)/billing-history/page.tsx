@@ -265,6 +265,7 @@ export default function BillingHistoryPage() {
                                                         const start = member.startTime ? new Date(member.startTime) : null;
                                                         const end = member.endTime ? new Date(member.endTime) : null;
                                                         const durationSec = (start && end) ? Math.max(0, differenceInSeconds(end, start)) : 0;
+                                                        const unusedSec = member.remainingSecondsAtStop || 0;
                                                         
                                                         return (
                                                             <div key={mIdx} className="bg-background rounded-xl border-2 p-3 flex flex-col gap-2 shadow-sm">
@@ -276,7 +277,7 @@ export default function BillingHistoryPage() {
                                                                         </Avatar>
                                                                         <span className="font-black text-[10px] uppercase truncate max-w-[100px]">{member.name}</span>
                                                                     </div>
-                                                                    {member.status === 'finished' && (
+                                                                    {unusedSec > 0 && (
                                                                         <Badge variant="outline" className="text-[7px] h-4 bg-amber-500/5 text-amber-600 border-amber-500/20 uppercase font-black px-1.5">Early Exit</Badge>
                                                                     )}
                                                                 </div>
@@ -291,9 +292,17 @@ export default function BillingHistoryPage() {
                                                                         <span className="font-mono text-[10px] font-bold">{end ? format(end, 'p') : 'N/A'}</span>
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex justify-between items-center px-1">
-                                                                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tight">Total Playtime</span>
-                                                                    <span className="font-mono text-[10px] font-black text-primary">{formatLoggedTime(durationSec)}</span>
+                                                                <div className="space-y-1 mt-1">
+                                                                    <div className="flex justify-between items-center px-1">
+                                                                        <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tight">Total Playtime</span>
+                                                                        <span className="font-mono text-[10px] font-black text-primary">{formatLoggedTime(durationSec)}</span>
+                                                                    </div>
+                                                                    {unusedSec > 0 && (
+                                                                        <div className="flex justify-between items-center px-1">
+                                                                            <span className="text-[8px] font-black text-amber-600 uppercase tracking-tight">Unused Time</span>
+                                                                            <span className="font-mono text-[10px] font-black text-amber-600">{formatLoggedTime(unusedSec)}</span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );
