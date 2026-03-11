@@ -292,7 +292,7 @@ function DashboardContent() {
         if ((station.status === 'paused' || member.status === 'paused') && member.remainingTimeOnPause != null) {
             remainingSeconds = member.remainingTimeOnPause;
         } else if (member.endTime) {
-            remainingSeconds = Math.max(0, (new Date(member.endTime).getTime() - Date.now()) / 1000);
+            remainingSeconds = Math.max(0, (new Date(member.endTime).getTime() - now.getTime()) / 1000);
         }
         
         playedSeconds = Math.max(0, totalPossibleSeconds - remainingSeconds);
@@ -444,6 +444,7 @@ function DashboardContent() {
     if (!station) return;
 
     const finalMembersForBill: AssignedMember[] = [];
+    const now = new Date();
 
     for (const member of station.members) {
         let playedSecondsForMember = 0;
@@ -461,7 +462,7 @@ function DashboardContent() {
                 remainingSecondsOnTimer = member.remainingTimeOnPause;
             } else {
                 const end = new Date(member.endTime).getTime();
-                remainingSecondsOnTimer = Math.max(0, Math.floor((end - Date.now()) / 1000));
+                remainingSecondsOnTimer = Math.max(0, Math.floor((end - now.getTime()) / 1000));
             }
             playedSecondsForMember = Math.max(0, totalSessionSeconds - remainingSecondsOnTimer);
 
@@ -485,7 +486,7 @@ function DashboardContent() {
         finalMembersForBill.push({
             ...member,
             status: 'finished',
-            endTime: member.status === 'finished' ? member.endTime : new Date().toISOString(),
+            endTime: member.status === 'finished' ? member.endTime : now.toISOString(),
             remainingSecondsAtStop: remainingSecondsOnTimer
         });
     }
@@ -667,6 +668,11 @@ function DashboardContent() {
     setSelectedStation(null);
   };
 
+  const handleManage = (type: 'ps5' | 'boardgame') => {
+    setManageType(type);
+    setIsManageModalOpen(true);
+  };
+
   if (stationsLoading || membersLoading || foodLoading || packagesLoading) {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center gap-4 opacity-50">
@@ -681,7 +687,7 @@ function DashboardContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
-          <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground uppercase font-black tracking-widest opacity-60">Manage PS5 units and game tables.</p>
+          <p className="mt-1 sm:mt-2 text-xs sm:sm text-muted-foreground uppercase font-black tracking-widest opacity-60">Manage PS5 units and game tables.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <Button 
@@ -692,7 +698,7 @@ function DashboardContent() {
                 Redeem Perks
             </Button>
             <Button 
-                onClick={() => setIsRechargePackOpen(true)} 
+                onClick={() => setIsRechargeModalOpen(true)} 
                 className="h-12 px-6 font-black uppercase tracking-widest bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
             >
                 <Zap className="mr-2 h-5 w-5 fill-current" />
@@ -782,8 +788,8 @@ function DashboardContent() {
       />
 
       <GlobalRechargeModal 
-        isOpen={isRechargePackOpen} 
-        onOpenChange={setIsRechargePackOpen} 
+        isOpen={isRechargeModalOpen} 
+        onOpenChange={setIsRechargeModalOpen} 
         members={members || []} 
       />
 
@@ -797,7 +803,6 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  const [isRechargePackOpen, setIsRechargePackOpen] = useState(false);
   return (
     <Suspense fallback={<div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse">Initializing Dashboard...</div>}>
       <DashboardContent />
