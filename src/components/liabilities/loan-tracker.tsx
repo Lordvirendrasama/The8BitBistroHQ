@@ -8,7 +8,7 @@ import { useFirebase } from '@/firebase/provider';
 import type { LiabilityState, Bill, FixedBill, Expense } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, Zap, Target, TrendingUp, Settings2, Timer, Info, Activity, Calendar as CalendarIcon, Landmark, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Wallet, Zap, Target, TrendingUp, Settings2, Timer, Info, Activity, Calendar as CalendarIcon, Landmark, ArrowRight, CheckCircle2, History, ChevronDown } from 'lucide-react';
 import { format, addMonths, differenceInCalendarMonths, differenceInDays, subDays } from 'date-fns';
 import { cn, isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,15 @@ import { LiabilityConfigModal } from './config-modal';
 import { getLiabilityState, processLiabilityCycles } from '@/firebase/firestore/liabilities';
 import { useAuth } from '@/firebase/auth/use-user';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
+import { ScrollArea } from '../ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+interface ProjectionStep {
+    month: string;
+    interest: number;
+    payment: number;
+    balance: number;
+}
 
 export function LoanTracker() {
   const { db } = useFirebase();
@@ -74,8 +83,8 @@ export function LoanTracker() {
         .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
   }, [bills]);
 
-  const { goal, simResults, velocity } = useMemo(() => {
-    if (!state) return { goal: 0, simResults: null, velocity: 0 };
+  const { goal, simResults, velocity, projectionLedger } = useMemo(() => {
+    if (!state) return { goal: 0, simResults: null, velocity: 0, projectionLedger: [] };
     
     const now = new Date();
     const targetDate = new Date(`${missionYear}-01-01`);
@@ -89,7 +98,7 @@ export function LoanTracker() {
     const requiredMonthlyLoan = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
     const g2 = requiredMonthlyLoan / 30;
 
-    // Behavioral Prediction
+    // Behavioral Prediction (Last 30 Days Surplus)
     const last30DaysSurplus: number[] = [];
     for (let i = 1; i <= 30; i++) {
         const d = subDays(now, i);
@@ -104,17 +113,32 @@ export function LoanTracker() {
     const predictedMonthlyPayment = avgDailySurplus * 30;
     const behavioralMonthlyPayment = Math.max(0, predictedMonthlyPayment);
 
+    // Simulation
     let simLoan = state.loanBalance;
     let simMonths = 0;
     let payoffDate: Date | null = null;
+    const ledger: ProjectionStep[] = [];
 
     if (simLoan > 0 && behavioralMonthlyPayment > 0) {
         while (simLoan > 0 && simMonths < 600) {
             simMonths++;
-            simLoan += (simLoan * monthlyInterestRate);
-            // Growth is annual, so we apply it month by month in the power function
+            const interestThisMonth = simLoan * monthlyInterestRate;
+            simLoan += interestThisMonth;
+            
             let available = behavioralMonthlyPayment * Math.pow(1 + (annualGrowth / 12), simMonths);
-            simLoan -= Math.min(simLoan, available);
+            const actualPayment = Math.min(simLoan, available);
+            simLoan -= actualPayment;
+            
+            // Only store first 36 months + the final month for the UI ledger
+            if (simMonths <= 36 || simLoan <= 0) {
+                ledger.push({
+                    month: format(addMonths(now, simMonths), 'MMM yyyy'),
+                    interest: interestThisMonth,
+                    payment: actualPayment,
+                    balance: simLoan
+                });
+            }
+
             if (simLoan <= 0) {
                 payoffDate = addMonths(now, simMonths);
                 break;
@@ -122,7 +146,12 @@ export function LoanTracker() {
         }
     }
 
-    return { goal: g2, simResults: { payoffDate, monthsToPayoff: simMonths }, velocity: behavioralMonthlyPayment };
+    return { 
+        goal: g2, 
+        simResults: { payoffDate, monthsToPayoff: simMonths }, 
+        velocity: behavioralMonthlyPayment,
+        projectionLedger: ledger
+    };
   }, [state, missionYear, dailyOverheads, growthRate, bills, expenses]);
 
   if (isProcessing || !state) {
@@ -293,6 +322,91 @@ export function LoanTracker() {
                         It then simulates interest compounding monthly against that surplus—factoring in your selected <strong>growth projection</strong>—to find the exact date your balance hits zero.
                     </p>
                 </div>
+            </div>
+        </CardContent>
+      </Card>
+
+      {/* 5. DETAILED PROJECTION LEDGER */}
+      <Card className="border-2 shadow-xl overflow-hidden">
+        <CardHeader className="bg-muted/10 border-b">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <History className="text-primary h-6 w-6" />
+                    <div>
+                        <CardTitle className="text-lg font-headline tracking-tight uppercase">Strategic Repayment Projection</CardTitle>
+                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Amortization schedule at {growthRate}% month-on-month growth.</CardDescription>
+                    </div>
+                </div>
+                <Badge variant="outline" className="font-black uppercase text-[10px] border-primary/30 text-primary">Next 36 Months</Badge>
+            </div>
+        </CardHeader>
+        <CardContent className="p-0">
+            <ScrollArea className="h-[500px]">
+                <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                        <TableRow className="bg-muted/20">
+                            <TableHead className="font-black uppercase text-[10px] pl-6 py-4">Target Month</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] text-center">Interest Added</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] text-center">Projected Payment</TableHead>
+                            <TableHead className="text-right font-black uppercase text-[10px] pr-6">Remaining Principal</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {projectionLedger.map((step, idx) => (
+                            <TableRow key={idx} className={cn("hover:bg-muted/5 transition-colors", step.balance <= 0 && "bg-emerald-500/5")}>
+                                <TableCell className="pl-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center font-black text-[10px]">
+                                            {idx + 1}
+                                        </div>
+                                        <span className="font-black uppercase text-xs">{step.month}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <span className="text-xs font-mono text-destructive font-bold">+ ₹{Math.round(step.interest).toLocaleString()}</span>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-sm font-mono text-emerald-600 font-black">- ₹{Math.round(step.payment).toLocaleString()}</span>
+                                        {idx > 0 && (
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">
+                                                Incl. {(idx * (growthRate/12)).toFixed(1)}% Growth
+                                            </span>
+                                        )}
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                    <div className="flex flex-col items-end">
+                                        <span className={cn("font-mono font-black text-lg tabular-nums", step.balance <= 0 ? "text-emerald-600" : "text-foreground")}>
+                                            {step.balance <= 0 ? 'PAID OFF' : formatCurrency(step.balance)}
+                                        </span>
+                                        <div className="w-24 h-1 bg-muted rounded-full mt-1 overflow-hidden">
+                                            <div 
+                                                className="h-full bg-emerald-500" 
+                                                style={{ width: `${Math.max(0, 100 - (step.balance / state.loanBalance) * 100)}%` }} 
+                                            />
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                        {projectionLedger.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <AlertCircle className="h-8 w-8" />
+                                        <p>Current surplus is too low to cover monthly interest.</p>
+                                        <p className="text-[8px]">Increase growth rate or revenue to see projection.</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </ScrollArea>
+            <div className="p-4 bg-muted/10 border-t flex items-center justify-center gap-2">
+                <ChevronDown className="h-4 w-4 animate-bounce opacity-30" />
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-30">End of 36 Month Strategic window</span>
             </div>
         </CardContent>
       </Card>
