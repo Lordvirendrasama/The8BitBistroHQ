@@ -85,7 +85,8 @@ export interface Settings {
   lastCycleStartDate?: string; // When the previous cycle began (for "Last Cycle to Now" logic)
   hourlySalaryRate?: number; // Standard hourly rate for staff
   includeFixed?: boolean;
-  includeLoan?: boolean;
+  includeLoanInterest?: boolean;
+  includeLoanPrincipal?: boolean;
   includeRent?: boolean;
   includeBacklog?: boolean;
 }

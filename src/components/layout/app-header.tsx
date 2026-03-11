@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
 import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem } from '@/lib/types';
@@ -113,7 +113,7 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
   }, [db]);
 
   const { target, breakdown } = useMemo(() => {
-    if (!liabilityState || !fixedBills || !globalSettings) return { target: 0, breakdown: { overheads: 0, loan: 0, rent: 0, backlog: 0 } };
+    if (!liabilityState || !fixedBills || !globalSettings) return { target: 0, breakdown: { overheads: 0, loanInterest: 0, loanPrincipal: 0, rent: 0, backlog: 0 } };
     
     const otherBills = fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent'));
     const overheads = calculateDailyFixedCost(otherBills);
@@ -126,21 +126,28 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
     const P = liabilityState.loanBalance;
     const r = monthlyInterestRate;
     const n = monthsUntilTarget;
-    const requiredMonthlyLoan = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
-    const loanShare = requiredMonthlyLoan / 30;
+    
+    // Monthly Split
+    const monthlyInterest = P * r;
+    const totalMonthlyEMI = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
+    const monthlyPrincipal = Math.max(0, totalMonthlyEMI - monthlyInterest);
+
+    const loanIntShare = monthlyInterest / 30;
+    const loanPriShare = monthlyPrincipal / 30;
     
     const rentShare = (liabilityState.monthlyRent || 0) / 30;
     const backlogShare = (liabilityState.rentBalance || 0) / monthsUntilTarget / 30;
     
     const finalTarget = 
       (globalSettings.includeFixed ? overheads : 0) + 
-      (globalSettings.includeLoan ? loanShare : 0) + 
+      (globalSettings.includeLoanInterest ? loanIntShare : 0) + 
+      (globalSettings.includeLoanPrincipal ? loanPriShare : 0) + 
       (globalSettings.includeRent ? rentShare : 0) + 
       (globalSettings.includeBacklog ? backlogShare : 0);
 
     return {
       target: finalTarget,
-      breakdown: { overheads, loan: loanShare, rent: rentShare, backlog: backlogShare }
+      breakdown: { overheads, loanInterest: loanIntShare, loanPrincipal: loanPriShare, rent: rentShare, backlog: backlogShare }
     };
   }, [liabilityState, fixedBills, globalSettings]);
 
@@ -211,7 +218,7 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
               <Label className="text-[10px] font-black uppercase tracking-tight">Fixed Overheads</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.overheads).toLocaleString()}</p>
+              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.overheads).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeFixed || false} 
@@ -221,19 +228,30 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-primary">Debt EMI Share</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.loan).toLocaleString()}</p>
+              <Label className="text-[10px] font-black uppercase tracking-tight text-primary">Loan Interest</Label>
+              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.loanInterest).toLocaleString()}</p>
             </div>
             <Switch 
-              checked={globalSettings?.includeLoan || false} 
-              onCheckedChange={(v) => handleToggle('includeLoan', v)} 
+              checked={globalSettings?.includeLoanInterest || false} 
+              onCheckedChange={(v) => handleToggle('includeLoanInterest', v)} 
+              disabled={!isViren}
+            />
+          </div>
+          <div className="flex items-center justify-between group">
+            <div className="space-y-0.5">
+              <Label className="text-[10px] font-black uppercase tracking-tight text-primary">Loan Principal</Label>
+              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.loanPrincipal).toLocaleString()}</p>
+            </div>
+            <Switch 
+              checked={globalSettings?.includeLoanPrincipal || false} 
+              onCheckedChange={(v) => handleToggle('includeLoanPrincipal', v)} 
               disabled={!isViren}
             />
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
               <Label className="text-[10px] font-black uppercase tracking-tight text-emerald-600">Lease (Rent)</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.rent).toLocaleString()}</p>
+              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.rent).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeRent || false} 
@@ -244,7 +262,7 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
               <Label className="text-[10px] font-black uppercase tracking-tight text-amber-600">Backlog Recovery</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">Daily burden: ₹{Math.round(breakdown.backlog).toLocaleString()}</p>
+              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.backlog).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeBacklog || false} 

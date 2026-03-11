@@ -10,7 +10,7 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ShieldCheck, Wallet, Landmark, Calendar, History, Info, AlertCircle, TrendingUp } from 'lucide-react';
+import { ShieldCheck, Wallet, Landmark, Calendar, History, Info, AlertCircle, TrendingUp, Percent, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -103,25 +103,43 @@ export default function BurdenSelectorPage() {
                     />
                 </div>
 
-                {/* 2. BUSINESS LOAN */}
+                {/* 2. LOAN INTEREST */}
                 <div className="flex items-center justify-between p-4 rounded-xl border-2 bg-card hover:bg-muted/5 transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-primary/10 rounded-xl">
-                            <Landmark className="h-6 w-6 text-primary" />
+                            <Percent className="h-6 w-6 text-primary" />
                         </div>
                         <div className="space-y-0.5">
-                            <Label className="text-sm font-black uppercase text-primary">Business Loan EMI</Label>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">The calculated daily share of your main debt until 2030.</p>
+                            <Label className="text-sm font-black uppercase text-primary">Loan Interest Maintenance</Label>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Bare minimum daily intake to prevent debt growth (Interest only).</p>
                         </div>
                     </div>
                     <Switch 
-                        checked={settings?.includeLoan ?? true} 
-                        onCheckedChange={(v) => handleToggle('includeLoan', v)}
+                        checked={settings?.includeLoanInterest ?? true} 
+                        onCheckedChange={(v) => handleToggle('includeLoanInterest', v)}
                         disabled={!isViren}
                     />
                 </div>
 
-                {/* 3. MONTHLY RENT */}
+                {/* 3. LOAN PRINCIPAL */}
+                <div className="flex items-center justify-between p-4 rounded-xl border-2 bg-card hover:bg-muted/5 transition-all">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-primary/10 rounded-xl">
+                            <Zap className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="space-y-0.5">
+                            <Label className="text-sm font-black uppercase text-primary">Loan Principal Recovery</Label>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">The required daily share to clear the principal by the 2030 deadline.</p>
+                        </div>
+                    </div>
+                    <Switch 
+                        checked={settings?.includeLoanPrincipal ?? true} 
+                        onCheckedChange={(v) => handleToggle('includeLoanPrincipal', v)}
+                        disabled={!isViren}
+                    />
+                </div>
+
+                {/* 4. MONTHLY RENT */}
                 <div className="flex items-center justify-between p-4 rounded-xl border-2 bg-card hover:bg-muted/5 transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-emerald-500/10 rounded-xl">
@@ -139,7 +157,7 @@ export default function BurdenSelectorPage() {
                     />
                 </div>
 
-                {/* 4. RENT BACKLOG */}
+                {/* 5. RENT BACKLOG */}
                 <div className="flex items-center justify-between p-4 rounded-xl border-2 bg-card hover:bg-muted/5 transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-amber-500/10 rounded-xl">
@@ -167,7 +185,7 @@ export default function BurdenSelectorPage() {
             <div className="text-center sm:text-left">
                 <h4 className="font-black uppercase tracking-tight text-lg">Impact Notice</h4>
                 <p className="text-sm text-muted-foreground max-w-2xl font-medium mt-1">
-                    Selections made on this page update the <strong>Survival Threshold</strong> globally. This affects the daily goals on the Owner Pulse, Profit Dashboard, and the "Making It" requirements in your Financial Audits. Use this to focus on specific repayment milestones.
+                    Selections made on this page update the <strong>Survival Threshold</strong> globally. This affects the daily goals on the Owner Pulse, Profit Dashboard, and the "Making It" requirements in your Financial Audits. Splitting your loan into <strong>Interest</strong> and <strong>Principal</strong> allows you to manage cashflow during lean periods.
                 </p>
             </div>
         </div>

@@ -8,7 +8,7 @@ import { useFirebase } from '@/firebase/provider';
 import type { LiabilityState, Bill, FixedBill, Expense } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, Zap, Target, TrendingUp, Settings2, Timer, Info, Activity, Calendar as CalendarIcon, Landmark, ArrowRight, CheckCircle2, History, ChevronDown } from 'lucide-react';
+import { Wallet, Zap, Target, TrendingUp, Settings2, Timer, Info, Activity, Calendar as CalendarIcon, Landmark, ArrowRight, CheckCircle2, History, ChevronDown, Percent } from 'lucide-react';
 import { format, addMonths, differenceInCalendarMonths, differenceInDays, subDays } from 'date-fns';
 import { cn, isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '../ui/separator';
 
 interface ProjectionStep {
     month: string;
@@ -83,8 +84,8 @@ export function LoanTracker() {
         .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
   }, [bills]);
 
-  const { goal, simResults, velocity, projectionLedger } = useMemo(() => {
-    if (!state) return { goal: 0, simResults: null, velocity: 0, projectionLedger: [] };
+  const { goal, interestDaily, principalDaily, simResults, velocity, projectionLedger } = useMemo(() => {
+    if (!state) return { goal: 0, interestDaily: 0, principalDaily: 0, simResults: null, velocity: 0, projectionLedger: [] };
     
     const now = new Date();
     const targetDate = new Date(`${missionYear}-01-01`);
@@ -95,8 +96,15 @@ export function LoanTracker() {
     const P = state.loanBalance;
     const r = monthlyInterestRate;
     const n = monthsUntilTarget;
-    const requiredMonthlyLoan = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
-    const g2 = requiredMonthlyLoan / 30;
+    
+    // Monthly Components
+    const monthlyInterest = P * r;
+    const totalMonthlyEMI = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
+    const monthlyPrincipal = Math.max(0, totalMonthlyEMI - monthlyInterest);
+
+    const gInterest = monthlyInterest / 30;
+    const gPrincipal = monthlyPrincipal / 30;
+    const gTotal = totalMonthlyEMI / 30;
 
     // Behavioral Prediction (Last 30 Days Surplus)
     const last30DaysSurplus: number[] = [];
@@ -129,7 +137,6 @@ export function LoanTracker() {
             const actualPayment = Math.min(simLoan, available);
             simLoan -= actualPayment;
             
-            // Only store first 36 months + the final month for the UI ledger
             if (simMonths <= 36 || simLoan <= 0) {
                 ledger.push({
                     month: format(addMonths(now, simMonths), 'MMM yyyy'),
@@ -147,7 +154,9 @@ export function LoanTracker() {
     }
 
     return { 
-        goal: g2, 
+        goal: gTotal,
+        interestDaily: gInterest,
+        principalDaily: gPrincipal,
         simResults: { payoffDate, monthsToPayoff: simMonths }, 
         velocity: behavioralMonthlyPayment,
         projectionLedger: ledger
@@ -226,8 +235,28 @@ export function LoanTracker() {
             <CardContent className="space-y-6">
                 <div className="space-y-1">
                     <p className="text-4xl font-black font-mono tracking-tighter">₹{Math.round(goal).toLocaleString()}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Required daily intake to hit {missionYear} deadline.</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Target daily intake to hit {missionYear} deadline.</p>
                 </div>
+                
+                {/* INTEREST VS PRINCIPAL SPLIT */}
+                <div className="p-4 rounded-xl bg-background/50 border-2 border-dashed space-y-3">
+                    <h4 className="text-[8px] font-black uppercase tracking-widest opacity-50">Surgical Debt Split</h4>
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Percent className="h-3 w-3 text-primary" />
+                            <span className="text-[10px] font-bold uppercase">Bare Min (Interest)</span>
+                        </div>
+                        <span className="font-mono font-black text-sm">₹{Math.round(interestDaily).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Zap className="h-3 w-3 text-primary fill-current" />
+                            <span className="text-[10px] font-bold uppercase">Recovery (Principal)</span>
+                        </div>
+                        <span className="font-mono font-black text-sm">₹{Math.round(principalDaily).toLocaleString()}</span>
+                    </div>
+                </div>
+
                 <div className="space-y-2">
                     <div className="flex justify-between text-[9px] font-black uppercase">
                         <span className="opacity-60">Today's Performance</span>
@@ -326,7 +355,6 @@ export function LoanTracker() {
         </CardContent>
       </Card>
 
-      {/* 5. DETAILED PROJECTION LEDGER */}
       <Card className="border-2 shadow-xl overflow-hidden">
         <CardHeader className="bg-muted/10 border-b">
             <div className="flex justify-between items-center">

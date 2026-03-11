@@ -1,14 +1,15 @@
+
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection } from 'firebase/firestore';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import type { Bill, Expense, FixedBill, InventoryPurchase } from '@/lib/types';
+import type { Bill, Expense, FixedBill, InventoryPurchase, LiabilityState, Settings } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Utensils, Package, AlertCircle, CheckCircle2, Info, ReceiptIndianRupee, BarChart3, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Utensils, Package, AlertCircle, CheckCircle2, Info, ReceiptIndianRupee, BarChart3, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Percent, Zap } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, differenceInDays, addDays, subDays, isSameMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, differenceInDays, addDays, subDays, isSameMonth, differenceInCalendarMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -19,6 +20,19 @@ import { Separator } from '@/components/ui/separator';
 export default function FinancialDashboardPage() {
   const { db } = useFirebase();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [liabilityState, setLiabilityState] = useState<LiabilityState | null>(null);
+  const [appSettings, setAppSettings] = useState<Settings | null>(null);
+
+  useEffect(() => {
+    if (!db) return;
+    const unsubLiab = onSnapshot(doc(db, 'liabilities', 'main_liability_state'), (snap) => {
+      if (snap.exists()) setLiabilityState(snap.data() as LiabilityState);
+    });
+    const unsubSett = onSnapshot(doc(db, 'settings', 'app_config'), (snap) => {
+      if (snap.exists()) setAppSettings(snap.data() as Settings);
+    });
+    return () => { unsubLiab(); unsubSett(); };
+  }, [db]);
 
   // 1. Fetch Data
   const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
@@ -35,11 +49,9 @@ export default function FinancialDashboardPage() {
 
   // 2. Process Statistics
   const stats = useMemo(() => {
-    if (!bills || !expenses || !fixedBills || !inventory) return null;
+    if (!bills || !expenses || !fixedBills || !inventory || !liabilityState || !appSettings) return null;
 
-    // IMPORTANT: When picking from calendar, treat selection as the "Intended" business day
     const targetDateStr = getBusinessDate(selectedDate, true);
-    
     const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
     const daysInMonth = differenceInDays(end, start) + 1;
@@ -52,24 +64,10 @@ export default function FinancialDashboardPage() {
     });
 
     const revToday = dayBills.reduce((s, b) => s + b.totalAmount, 0);
-    
     const revFoodToday = dayBills.reduce((s, b) => {
-        if (b.foodSubtotal !== undefined) {
-            return s + Math.max(0, b.foodSubtotal - (b.discount || 0));
-        }
-        const itemizedFood = b.items
-            .filter(i => {
-                const n = i.name.toLowerCase();
-                return !n.startsWith('time:') && 
-                       !n.startsWith('recharge:') && 
-                       !n.startsWith('buy recharge:') && 
-                       !n.includes('(');
-            })
-            .reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        
-        return s + Math.max(0, itemizedFood - (b.discount || 0));
+        if (b.foodSubtotal !== undefined) return s + Math.max(0, b.foodSubtotal - (b.discount || 0));
+        return s + b.items.filter(i => !i.name.startsWith('Time:')).reduce((sum, item) => sum + (item.price * item.quantity), 0);
     }, 0);
-
     const revGamingToday = revToday - revFoodToday;
     const revMonth = monthBills.reduce((s, b) => s + b.totalAmount, 0);
 
@@ -79,50 +77,69 @@ export default function FinancialDashboardPage() {
         const d = new Date(e.timestamp);
         return d >= start && d <= end;
     });
-
     const expToday = dayExpenses.reduce((s, e) => s + e.amount, 0);
     const expMonth = monthExpenses.reduce((s, e) => s + e.amount, 0);
 
-    // --- FIXED COSTS ---
-    const dailyFixed = calculateDailyFixedCost(fixedBills);
+    // --- STRATEGIC BURDENS ---
+    const dailyFixed = calculateDailyFixedCost(fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent')));
     
-    // Respect Business Day Rollover for counting elapsed days in month
+    const now = new Date();
+    const targetRepaymentDate = new Date(`2030-01-01`);
+    const monthsUntilTarget = Math.max(1, differenceInCalendarMonths(targetRepaymentDate, now));
+    const monthlyInterestRate = (liabilityState.annualInterestRate || 9) / 100 / 12;
+    const P = liabilityState.loanBalance;
+    const r = monthlyInterestRate;
+    const n = monthsUntilTarget;
+    
+    const monthlyInterest = P * r;
+    const totalMonthlyEMI = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
+    const monthlyPrincipal = Math.max(0, totalMonthlyEMI - monthlyInterest);
+
+    const dailyLoanInt = monthlyInterest / 30;
+    const dailyLoanPri = monthlyPrincipal / 30;
+    const dailyRent = (liabilityState.monthlyRent || 0) / 30;
+    const dailyBacklog = (liabilityState.rentBalance || 0) / monthsUntilTarget / 30;
+
+    const activeDailyBurden = 
+        (appSettings.includeFixed ? dailyFixed : 0) +
+        (appSettings.includeLoanInterest ? dailyLoanInt : 0) +
+        (appSettings.includeLoanPrincipal ? dailyLoanPri : 0) +
+        (appSettings.includeRent ? dailyRent : 0) +
+        (appSettings.includeBacklog ? dailyBacklog : 0);
+
+    // Respect Business Day Rollover for counting elapsed days
     const isNow = isSameMonth(selectedDate, new Date());
     let daysToCount = daysInMonth;
     if (isNow) {
         const bDateStr = getBusinessDate();
         daysToCount = parseInt(bDateStr.split('-')[2], 10);
     }
-    const monthFixed = dailyFixed * daysToCount;
+    const monthBurden = activeDailyBurden * daysToCount;
 
     // --- INVENTORY ESTIMATE ---
     const monthStock = inventory.filter(i => {
         const d = new Date(i.purchaseDate);
         return d >= start && d <= end;
     }).reduce((s, i) => s + i.totalCost, 0);
-    
     const dailyStockEstimate = monthStock / daysInMonth;
 
     // --- TOTALS ---
-    const totalExpToday = dailyFixed + expToday + dailyStockEstimate;
+    const totalExpToday = activeDailyBurden + expToday + dailyStockEstimate;
     const profitToday = revToday - totalExpToday;
 
-    const totalExpMonth = monthFixed + expMonth + monthStock;
+    const totalExpMonth = monthBurden + expMonth + monthStock;
     const profitMonth = revMonth - totalExpMonth;
-
-    const breakEven = dailyFixed + dailyStockEstimate;
 
     return {
         revToday, revGamingToday, revFoodToday, revMonth,
         expToday, expMonth,
-        dailyFixed, monthFixed,
+        activeDailyBurden, monthBurden,
         dailyStockEstimate, monthStock,
         totalExpToday, profitToday,
         totalExpMonth, profitMonth,
-        breakEven,
         targetDateStr
     };
-  }, [bills, expenses, fixedBills, inventory, selectedDate]);
+  }, [bills, expenses, fixedBills, inventory, selectedDate, liabilityState, appSettings]);
 
   if (!stats) return <div className="p-12 text-center font-headline text-xs animate-pulse opacity-50">Syncing Financial Core...</div>;
 
@@ -164,7 +181,7 @@ export default function FinancialDashboardPage() {
                 </div>
                 <div>
                     <p className="text-[8px] font-black uppercase text-muted-foreground leading-none">Survival Goal</p>
-                    <p className="text-sm font-black font-mono">₹{Math.round(stats.breakEven).toLocaleString()}<span className="text-[8px] ml-1 opacity-50">/DAY</span></p>
+                    <p className="text-sm font-black font-mono">₹{Math.round(stats.activeDailyBurden + stats.dailyStockEstimate).toLocaleString()}<span className="text-[8px] ml-1 opacity-50">/DAY</span></p>
                 </div>
             </div>
         </div>
@@ -222,8 +239,8 @@ export default function FinancialDashboardPage() {
                     </h3>
                     <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm font-bold uppercase">
-                            <span>Fixed Overheads Share</span>
-                            <span className="font-mono">₹{Math.round(stats.dailyFixed).toLocaleString()}</span>
+                            <span>Active Burden Share</span>
+                            <span className="font-mono">₹{Math.round(stats.activeDailyBurden).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm font-bold uppercase">
                             <span>Stock Purchase Est.</span>
@@ -235,7 +252,7 @@ export default function FinancialDashboardPage() {
                         </div>
                         <Separator className="bg-destructive/20" />
                         <div className="flex justify-between items-center text-lg font-black uppercase text-destructive">
-                            <span>Total Burden</span>
+                            <span>Total Outflow</span>
                             <span className="font-mono">₹{Math.round(stats.totalExpToday).toLocaleString()}</span>
                         </div>
                     </div>
@@ -266,16 +283,16 @@ export default function FinancialDashboardPage() {
         <Card className="border-2 bg-muted/5">
             <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
-                    <ReceiptIndianRupee className="h-4 w-4" /> Cumulative Overheads
+                    <ReceiptIndianRupee className="h-4 w-4" /> Cumulative Burden
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-3xl font-black">₹{Math.round(stats.monthFixed).toLocaleString()}</div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Fixed bill share for period</p>
+                <div className="text-3xl font-black">₹{Math.round(stats.monthBurden).toLocaleString()}</div>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Enabled burdens for period</p>
                 <div className="mt-4 pt-4 border-t border-dashed">
                     <div className="flex justify-between text-[10px] font-black uppercase">
-                        <span>Daily Fixed Burden</span>
-                        <span className="text-primary">₹{Math.round(stats.dailyFixed)}</span>
+                        <span>Daily Weighted Burden</span>
+                        <span className="text-primary">₹{Math.round(stats.activeDailyBurden)}</span>
                     </div>
                 </div>
             </CardContent>
@@ -298,8 +315,8 @@ export default function FinancialDashboardPage() {
                         <span>₹{Math.round(stats.revMonth).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-[9px] font-bold uppercase opacity-60">
-                        <span>Expenses</span>
-                        <span>₹{Math.round(stats.totalExpMonth).toLocaleString()}</span>
+                        <span>Combined Costs</span>
+                        <span>₹{Math.round(stats.monthBurden + stats.expMonth + stats.monthStock).toLocaleString()}</span>
                     </div>
                 </div>
             </CardContent>
@@ -313,7 +330,7 @@ export default function FinancialDashboardPage() {
         <div className="text-center sm:text-left">
             <h4 className="font-black uppercase tracking-tight text-lg">Financial Modeling Notice</h4>
             <p className="text-sm text-muted-foreground max-w-2xl font-medium mt-1">
-                You are currently viewing the audit for <strong>{format(selectedDate, 'PPPP')}</strong>. The survival goal of ₹{Math.round(stats.breakEven)} per day is based on the average inventory replenishment and fixed recurring costs for this period. The business day rollover is set to 5:00 AM.
+                You are currently viewing the audit for <strong>{format(selectedDate, 'PPPP')}</strong>. The survival goal is based on the average inventory replenishment and the <strong>Strategic Burdens</strong> you enabled in settings. The business day rollover is set to 5:00 AM.
             </p>
         </div>
       </div>

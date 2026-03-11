@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -8,7 +9,7 @@ import type { Bill, Expense, DateRange, FixedBill, LiabilityState, Settings } fr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, CheckCircle2, Info, ArrowUpRight, Timer, Landmark, Calendar, History } from 'lucide-react';
+import { ReceiptIndianRupee, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, CheckCircle2, Info, ArrowUpRight, Timer, Landmark, Calendar, History, Percent, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComp } from "@/components/ui/calendar";
@@ -92,14 +93,19 @@ export default function AccountingPage() {
     const r = monthlyInterestRate;
     const n = monthsUntilTarget;
     
-    const monthlyLoan = P > 0 ? ((P * r) / (1 - Math.pow(1 + r, -n))) : 0;
+    // Monthly Split
+    const monthlyInterest = P * r;
+    const totalMonthlyEMI = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
+    const monthlyPrincipal = Math.max(0, totalMonthlyEMI - monthlyInterest);
+
     const monthlyRent = liabilityState.monthlyRent || 0;
     const monthlyBacklog = (liabilityState.rentBalance || 0) / monthsUntilTarget;
 
     // Apply Burden Toggles
     const burdenBreakdown = [
         { id: 'fixed', label: 'Fixed Overheads', active: !!appSettings.includeFixed, value: dailyOverheads * daysInPeriod, icon: Wallet },
-        { id: 'loan', label: 'Loan EMI Share', active: !!appSettings.includeLoan, value: (monthlyLoan / 30) * daysInPeriod, icon: Landmark },
+        { id: 'loan_int', label: 'Loan Interest', active: !!appSettings.includeLoanInterest, value: (monthlyInterest / 30) * daysInPeriod, icon: Percent },
+        { id: 'loan_pri', label: 'Loan Principal Share', active: !!appSettings.includeLoanPrincipal, value: (monthlyPrincipal / 30) * daysInPeriod, icon: Zap },
         { id: 'rent', label: 'Active Lease', active: !!appSettings.includeRent, value: (monthlyRent / 30) * daysInPeriod, icon: Calendar },
         { id: 'backlog', label: 'Backlog Recovery', active: !!appSettings.includeBacklog, value: (monthlyBacklog / 30) * daysInPeriod, icon: History }
     ];

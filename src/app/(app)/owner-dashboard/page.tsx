@@ -186,13 +186,22 @@ export default function OwnerDashboardPage() {
     const P = liabilityState.loanBalance;
     const r = monthlyInterestRate;
     const n = monthsUntilTarget;
-    const loanShare = P > 0 ? ((P * r) / (1 - Math.pow(1 + r, -n))) / 30 : 0;
+    
+    // Monthly Split
+    const monthlyInterest = P * r;
+    const totalMonthlyEMI = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
+    const monthlyPrincipal = Math.max(0, totalMonthlyEMI - monthlyInterest);
+
+    const loanIntShare = monthlyInterest / 30;
+    const loanPriShare = monthlyPrincipal / 30;
+    
     const rentShare = (liabilityState.monthlyRent || 0) / 30;
     const backlogShare = (liabilityState.rentBalance || 0) / monthsUntilTarget / 30;
 
     const survivalGoal = 
       (appSettings.includeFixed ? overheads : 0) + 
-      (appSettings.includeLoan ? loanShare : 0) + 
+      (appSettings.includeLoanInterest ? loanIntShare : 0) + 
+      (appSettings.includeLoanPrincipal ? loanPriShare : 0) + 
       (appSettings.includeRent ? rentShare : 0) + 
       (appSettings.includeBacklog ? backlogShare : 0);
 
