@@ -81,7 +81,7 @@ export function LoanTracker() {
     const targetDate = new Date(`${missionYear}-01-01`);
     const monthsUntilTarget = Math.max(1, differenceInCalendarMonths(targetDate, now));
     const monthlyInterestRate = (state.annualInterestRate || 9) / 100 / 12; 
-    const monthlyGrowth = growthRate / 100;
+    const annualGrowth = growthRate / 100;
 
     const P = state.loanBalance;
     const r = monthlyInterestRate;
@@ -112,7 +112,8 @@ export function LoanTracker() {
         while (simLoan > 0 && simMonths < 600) {
             simMonths++;
             simLoan += (simLoan * monthlyInterestRate);
-            let available = behavioralMonthlyPayment * Math.pow(1 + (monthlyGrowth / 12), simMonths);
+            // Growth is annual, so we apply it month by month in the power function
+            let available = behavioralMonthlyPayment * Math.pow(1 + (annualGrowth / 12), simMonths);
             simLoan -= Math.min(simLoan, available);
             if (simLoan <= 0) {
                 payoffDate = addMonths(now, simMonths);
@@ -224,11 +225,38 @@ export function LoanTracker() {
                 <Timer className="text-primary h-6 w-6" />
                 <div>
                     <CardTitle className="text-xl font-headline tracking-tight uppercase">Reality Payoff Clock</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Estimates freedom based on REAL SURPLUS + {growthRate}% Growth.</CardDescription>
+                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Estimates freedom based on REAL SURPLUS + {growthRate}% Projected Growth.</CardDescription>
                 </div>
             </div>
         </CardHeader>
         <CardContent className="p-0">
+            {/* GROWTH PROJECTION SELECTOR */}
+            <div className="p-6 border-b bg-muted/5">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="space-y-1">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                            <TrendingUp className="h-3 w-3" />
+                            Surplus Velocity Accelerator
+                        </Label>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Project your expected annual revenue growth to see freedom impact.</p>
+                    </div>
+                    <div className="flex bg-background border-2 rounded-xl p-1 shadow-inner overflow-x-auto no-scrollbar max-w-full">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rate => (
+                            <button
+                                key={rate}
+                                onClick={() => setGrowthRate(rate)}
+                                className={cn(
+                                    "w-8 h-8 shrink-0 rounded-lg text-[10px] font-black transition-all",
+                                    growthRate === rate ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                                )}
+                            >
+                                {rate}%
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-b">
                 <div className="p-6 space-y-2">
                     <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
@@ -259,10 +287,10 @@ export function LoanTracker() {
             <div className="p-6 bg-muted/5 flex items-start gap-4">
                 <div className="bg-primary/10 p-2 rounded-lg"><Info className="text-primary h-5 w-5" /></div>
                 <div className="space-y-1">
-                    <h4 className="text-xs font-black uppercase tracking-tight">Understanding the Clock</h4>
+                    <h4 className="text-xs font-black uppercase tracking-tight">Understanding the Velocity Engine</h4>
                     <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
                         This is not a theoretical number. The system scans your actual revenue and fixed overheads over the last 30 days to determine how much surplus cash you generate. 
-                        It then simulates interest compounding monthly against that surplus to find the moment your balance hits zero.
+                        It then simulates interest compounding monthly against that surplus—factoring in your selected <strong>growth projection</strong>—to find the exact date your balance hits zero.
                     </p>
                 </div>
             </div>
