@@ -266,6 +266,7 @@ export default function BillingHistoryPage() {
                                                         const end = member.endTime ? new Date(member.endTime) : null;
                                                         const durationSec = (start && end) ? Math.max(0, differenceInSeconds(end, start)) : 0;
                                                         const unusedSec = member.remainingSecondsAtStop || 0;
+                                                        const hasLeftEarly = unusedSec > 60;
                                                         
                                                         // Calculate original scheduled end time for display
                                                         const scheduledEnd = (end && unusedSec > 0) ? addSeconds(end, unusedSec) : null;
@@ -273,7 +274,7 @@ export default function BillingHistoryPage() {
                                                         return (
                                                             <div key={mIdx} className={cn(
                                                                 "bg-background rounded-xl border-2 p-3 flex flex-col gap-2 shadow-sm transition-all",
-                                                                unusedSec > 60 ? "border-amber-500/50 ring-2 ring-amber-500/10 bg-amber-500/[0.02]" : "border-muted"
+                                                                hasLeftEarly ? "border-amber-500 ring-4 ring-amber-500/10 bg-amber-500/[0.03] animate-in zoom-in-95" : "border-muted"
                                                             )}>
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-2">
@@ -283,8 +284,8 @@ export default function BillingHistoryPage() {
                                                                         </Avatar>
                                                                         <span className="font-black text-[10px] uppercase truncate max-w-[100px]">{member.name}</span>
                                                                     </div>
-                                                                    {unusedSec > 60 && (
-                                                                        <Badge variant="destructive" className="text-[7px] h-4 bg-amber-500 text-white border-none uppercase font-black px-1.5 shadow-sm">Left Early</Badge>
+                                                                    {hasLeftEarly && (
+                                                                        <Badge variant="destructive" className="text-[8px] h-5 bg-amber-600 text-white border-none uppercase font-black px-2 shadow-lg animate-pulse">LEFT EARLY</Badge>
                                                                     )}
                                                                 </div>
                                                                 <div className="grid grid-cols-3 items-center bg-muted/20 p-2 rounded-lg border-2 border-dashed relative">
@@ -294,12 +295,12 @@ export default function BillingHistoryPage() {
                                                                     </div>
                                                                     <div className="flex justify-center opacity-20"><ArrowRight className="h-3 w-3" /></div>
                                                                     <div className="flex flex-col items-center">
-                                                                        <span className={cn("text-[7px] font-black uppercase opacity-50", unusedSec > 60 ? "text-amber-600 opacity-100" : "text-muted-foreground")}>Log Out</span>
-                                                                        <span className={cn("font-mono text-[10px] font-bold", unusedSec > 60 ? "text-amber-600" : "")}>{end ? format(end, 'p') : 'N/A'}</span>
+                                                                        <span className={cn("text-[7px] font-black uppercase opacity-50", hasLeftEarly ? "text-amber-600 opacity-100" : "text-muted-foreground")}>Log Out</span>
+                                                                        <span className={cn("font-mono text-[10px] font-bold", hasLeftEarly ? "text-amber-600" : "")}>{end ? format(end, 'p') : 'N/A'}</span>
                                                                     </div>
                                                                     
                                                                     {scheduledEnd && (
-                                                                        <div className="absolute -bottom-2 right-2 px-1.5 py-0.5 bg-muted border rounded shadow-xs">
+                                                                        <div className="absolute -bottom-2 right-2 px-1.5 py-0.5 bg-muted border-2 rounded shadow-xs ring-1 ring-background">
                                                                             <span className="text-[6px] font-black uppercase text-muted-foreground">Scheduled: {format(scheduledEnd, 'p')}</span>
                                                                         </div>
                                                                     )}
@@ -309,16 +310,16 @@ export default function BillingHistoryPage() {
                                                                         <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tight">Total Playtime</span>
                                                                         <span className={cn(
                                                                             "font-mono text-[10px] font-black",
-                                                                            unusedSec > 60 ? "text-amber-600" : "text-emerald-600"
+                                                                            hasLeftEarly ? "text-amber-600" : "text-emerald-600"
                                                                         )}>{formatLoggedTime(durationSec)}</span>
                                                                     </div>
-                                                                    {unusedSec > 60 && (
-                                                                        <div className="flex justify-between items-center px-1 animate-in slide-in-from-left-1 duration-300">
-                                                                            <span className="text-[8px] font-black text-amber-600 uppercase tracking-tight flex items-center gap-1">
+                                                                    {hasLeftEarly && (
+                                                                        <div className="flex justify-between items-center px-1 animate-in slide-in-from-left-1 duration-300 bg-amber-500/10 rounded py-0.5">
+                                                                            <span className="text-[8px] font-black text-amber-700 uppercase tracking-tight flex items-center gap-1">
                                                                                 <AlertTriangle className="h-2.5 w-2.5" />
-                                                                                Unused Time
+                                                                                Unused Value
                                                                             </span>
-                                                                            <span className="font-mono text-[10px] font-black text-amber-600">-{formatLoggedTime(unusedSec)}</span>
+                                                                            <span className="font-mono text-[10px] font-black text-amber-700">-{formatLoggedTime(unusedSec)}</span>
                                                                         </div>
                                                                     )}
                                                                 </div>

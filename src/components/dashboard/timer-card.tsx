@@ -359,57 +359,67 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     </div>
                     <ScrollArea className="max-h-72">
                         <div className="divide-y">
-                            {station.members.map(member => (
-                                <div key={member.id} className="p-3 flex items-center justify-between hover:bg-muted/5 transition-colors">
-                                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <Avatar className="h-8 w-8 border shadow-sm">
-                                            <AvatarImage src={member.avatarUrl} />
-                                            <AvatarFallback className="text-[10px] font-bold">{member.name[0]}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="min-w-0">
-                                            <p className={cn("text-xs font-bold uppercase truncate", member.status === 'finished' && "line-through opacity-40")}>{member.name}</p>
-                                            {member.status !== 'finished' && (
-                                                <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">
-                                                    {member.endTime ? 'Live Timer' : 'Open Order'}
-                                                </p>
+                            {station.members.map(member => {
+                                const leftEarly = member.status === 'finished' && (member.remainingSecondsAtStop || 0) > 60;
+                                return (
+                                    <div key={member.id} className="p-3 flex items-center justify-between hover:bg-muted/5 transition-colors">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <Avatar className="h-8 w-8 border shadow-sm">
+                                                <AvatarImage src={member.avatarUrl} />
+                                                <AvatarFallback className="text-[10px] font-bold">{member.name[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0">
+                                                <p className={cn("text-xs font-bold uppercase truncate", member.status === 'finished' && "line-through opacity-40")}>{member.name}</p>
+                                                {member.status !== 'finished' ? (
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">
+                                                        {member.endTime ? 'Live Timer' : 'Open Order'}
+                                                    </p>
+                                                ) : leftEarly ? (
+                                                    <Badge variant="destructive" className="h-3.5 text-[6px] font-black uppercase bg-amber-500 border-none">Left Early</Badge>
+                                                ) : (
+                                                    <p className="text-[9px] font-bold text-emerald-600 uppercase opacity-60">Session Done</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            {!isFinishing && <IndividualPlayerTimer member={member} stationStatus={station.status} />}
+
+                                            {member.status !== 'finished' && !isFinishing && (
+                                                <div className="flex gap-1">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="icon" 
+                                                        className={cn("h-8 w-8", member.status === 'paused' ? "text-emerald-600" : "text-blue-600")}
+                                                        onClick={() => onTogglePlayerTimer?.(station.id, member.id)}
+                                                    >
+                                                        {member.status === 'paused' ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                                                    </Button>
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="sm" 
+                                                        className="h-8 px-3 text-[10px] font-bold uppercase shadow-sm shrink-0"
+                                                        onClick={() => {
+                                                            onStopPlayer?.(station.id, member.id);
+                                                            if (station.members.filter(m => m.status !== 'finished').length <= 1) {
+                                                                setIsManageOpen(false);
+                                                            }
+                                                        }}
+                                                    >
+                                                        Stop
+                                                    </Button>
+                                                </div>
+                                            )}
+                                            {member.status === 'finished' && (
+                                                <Badge variant="outline" className={cn(
+                                                    "h-5 px-2 text-[9px] font-bold uppercase",
+                                                    leftEarly ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                )}>{leftEarly ? 'EARLY' : 'DONE'}</Badge>
                                             )}
                                         </div>
                                     </div>
-                                    
-                                    <div className="flex items-center gap-2">
-                                        {!isFinishing && <IndividualPlayerTimer member={member} stationStatus={station.status} />}
-
-                                        {member.status !== 'finished' && !isFinishing && (
-                                            <div className="flex gap-1">
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="icon" 
-                                                    className={cn("h-8 w-8", member.status === 'paused' ? "text-emerald-600" : "text-blue-600")}
-                                                    onClick={() => onTogglePlayerTimer?.(station.id, member.id)}
-                                                >
-                                                    {member.status === 'paused' ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-                                                </Button>
-                                                <Button 
-                                                    variant="destructive" 
-                                                    size="sm" 
-                                                    className="h-8 px-3 text-[10px] font-bold uppercase shadow-sm shrink-0"
-                                                    onClick={() => {
-                                                        onStopPlayer?.(station.id, member.id);
-                                                        if (station.members.filter(m => m.status !== 'finished').length <= 1) {
-                                                            setIsManageOpen(false);
-                                                        }
-                                                    }}
-                                                >
-                                                    Stop
-                                                </Button>
-                                            </div>
-                                        )}
-                                        {member.status === 'finished' && (
-                                            <Badge variant="outline" className="h-5 px-2 text-[9px] font-bold bg-emerald-50 text-emerald-700 border-emerald-200">DONE</Badge>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </ScrollArea>
                     <div className="p-3 bg-muted/10 border-t">
