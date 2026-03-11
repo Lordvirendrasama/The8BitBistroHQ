@@ -8,10 +8,10 @@ import type { Bill, Expense, DateRange, FixedBill, LiabilityState, Settings } fr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, TrendingUp, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, CheckCircle2, Info, ArrowUpRight, Timer } from 'lucide-react';
+import { ReceiptIndianRupee, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, CheckCircle2, Info, ArrowUpRight, Timer, Landmark, Calendar, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarComp } from "@/components/ui/calendar";
 import { Separator } from '@/components/ui/separator';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, isSameMonth, differenceInDays, differenceInCalendarMonths, getDaysInMonth } from "date-fns";
 import { cn } from '@/lib/utils';
@@ -81,6 +81,7 @@ export default function AccountingPage() {
         ? differenceInDays(endOfDay(dateRange.to), startOfDay(dateRange.from)) + 1
         : 30;
 
+    // Fixed Burden Calculation Components
     const dailyOverheads = calculateDailyFixedCost(fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent')));
     
     const now = new Date();
@@ -90,17 +91,21 @@ export default function AccountingPage() {
     const P = liabilityState.loanBalance;
     const r = monthlyInterestRate;
     const n = monthsUntilTarget;
+    
     const monthlyLoan = P > 0 ? ((P * r) / (1 - Math.pow(1 + r, -n))) : 0;
     const monthlyRent = liabilityState.monthlyRent || 0;
     const monthlyBacklog = (liabilityState.rentBalance || 0) / monthsUntilTarget;
 
-    const dailySurvival = 
-      (appSettings.includeFixed ? dailyOverheads : 0) + 
-      (appSettings.includeLoan ? monthlyLoan / 30 : 0) + 
-      (appSettings.includeRent ? monthlyRent / 30 : 0) + 
-      (appSettings.includeBacklog ? monthlyBacklog / 30 : 0);
+    // Apply Burden Toggles
+    const burdenBreakdown = [
+        { id: 'fixed', label: 'Fixed Overheads', active: !!appSettings.includeFixed, value: dailyOverheads * daysInPeriod, icon: Wallet },
+        { id: 'loan', label: 'Loan EMI Share', active: !!appSettings.includeLoan, value: (monthlyLoan / 30) * daysInPeriod, icon: Landmark },
+        { id: 'rent', label: 'Active Lease', active: !!appSettings.includeRent, value: (monthlyRent / 30) * daysInPeriod, icon: Calendar },
+        { id: 'backlog', label: 'Backlog Recovery', active: !!appSettings.includeBacklog, value: (monthlyBacklog / 30) * daysInPeriod, icon: History }
+    ];
 
-    const fixedBurdenTotal = dailySurvival * daysInPeriod;
+    const activeBurdens = burdenBreakdown.filter(b => b.active);
+    const fixedBurdenTotal = activeBurdens.reduce((sum, b) => sum + b.value, 0);
     const totalOutflow = opSpend + fixedBurdenTotal;
     const netProfit = revenue - totalOutflow;
     const remainingTarget = Math.max(0, fixedBurdenTotal - revenue);
@@ -111,7 +116,7 @@ export default function AccountingPage() {
     
     let daysPassed = daysInPeriod;
     if (isCurrentMonth) {
-        daysPassed = now.getDate();
+        daysPassed = Math.max(1, now.getDate());
     }
 
     const currentDailyAvg = revenue / Math.max(1, daysPassed);
@@ -151,7 +156,8 @@ export default function AccountingPage() {
         remainingToMakeIt,
         requiredDaily,
         daysRemaining,
-        daysPassed
+        daysPassed,
+        activeBurdens
     };
   }, [bills, expenses, liabilityState, fixedBills, appSettings, dateRange]);
 
@@ -251,7 +257,7 @@ export default function AccountingPage() {
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
+                        <CalendarComp
                             initialFocus
                             mode="range"
                             selected={{ from: dateRange.from, to: dateRange.to }}
@@ -373,10 +379,25 @@ export default function AccountingPage() {
                             <span className="text-muted-foreground">Operational Flow</span>
                             <span className="text-destructive font-mono">- ₹{stats.opSpend.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-xs font-bold uppercase">
-                            <span className="text-muted-foreground">Weighted Fixed Costs</span>
-                            <span className="text-destructive font-mono">- ₹{Math.round(stats.fixedBurdenTotal).toLocaleString()}</span>
+                        
+                        <div className="pt-2 pb-1 border-t border-dashed">
+                            <p className="text-[8px] font-black uppercase text-muted-foreground/60 tracking-widest mb-2">Enabled Strategic Burdens</p>
+                            <div className="space-y-2">
+                                {stats.activeBurdens.map((burden) => (
+                                    <div key={burden.id} className="flex justify-between items-center text-[10px] font-bold uppercase">
+                                        <div className="flex items-center gap-2">
+                                            <burden.icon className="h-3 w-3 opacity-40" />
+                                            <span className="text-muted-foreground">{burden.label}</span>
+                                        </div>
+                                        <span className="text-destructive/80 font-mono">- ₹{Math.round(burden.value).toLocaleString()}</span>
+                                    </div>
+                                ))}
+                                {stats.activeBurdens.length === 0 && (
+                                    <p className="text-[9px] font-bold text-muted-foreground/40 italic">No burdens active in selector.</p>
+                                )}
+                            </div>
                         </div>
+
                         <Separator className="border-dashed" />
                         <div className="flex justify-between items-center font-black uppercase">
                             <span className="text-sm">Total Burden</span>
