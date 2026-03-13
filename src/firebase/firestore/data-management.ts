@@ -107,18 +107,22 @@ export const getAvailableCycles = async (): Promise<CycleMetadata[]> => {
 };
 
 /**
- * Seals the current data period by tagging all untagged records with the oldName, then starts a new cycle.
+ * Seals the current data period and starts a new cycle.
+ * @param oldName The name to tag existing untagged records with.
+ * @param newName The name of the new active cycle.
+ * @param effectiveDate Optional backdated transition point.
  */
-export const sealAndStartNewCycle = async (oldName: string, newName: string) => {
+export const sealAndStartNewCycle = async (oldName: string, newName: string, effectiveDate?: string) => {
     const db = getFirestore();
-    const now = new Date().toISOString();
+    const transitionPoint = effectiveDate || new Date().toISOString();
     const settings = await getSettings();
     
-    await retroactivelyTagData(oldName, undefined, now, true);
+    // Tag everything BEFORE the transition point with the old name
+    await retroactivelyTagData(oldName, undefined, transitionPoint, true);
 
     await updateSettings({
         activeCycle: newName,
-        cycleStartDate: now,
+        cycleStartDate: transitionPoint,
         lastCycleStartDate: settings.cycleStartDate || undefined
     });
 

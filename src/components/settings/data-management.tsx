@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -35,6 +36,7 @@ export function DataManagement() {
   const { toast } = useToast();
   const [currentActiveName, setCurrentActiveName] = useState('');
   const [newPhaseName, setNewPhaseName] = useState('');
+  const [transitionDate, setTransitionDate] = useState(new Date().toISOString().slice(0, 16));
   const [cycleStartDate, setCycleStartDate] = useState('');
   const [lastCycleStartDate, setLastCycleStartDate] = useState('');
   const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
@@ -80,9 +82,10 @@ export function DataManagement() {
     }
     setIsSavingCycle(true);
     try {
-        await sealAndStartNewCycle(currentActiveName, newPhaseName.trim());
-        logDataAction(`Sealed phase "${currentActiveName}" and started "${newPhaseName.trim()}"`);
-        toast({ title: 'Phase Transition Complete', description: `Data up to now is sealed under "${currentActiveName}".` });
+        const effectiveDate = new Date(transitionDate).toISOString();
+        await sealAndStartNewCycle(currentActiveName, newPhaseName.trim(), effectiveDate);
+        logDataAction(`Sealed phase "${currentActiveName}" and started "${newPhaseName.trim()}" at ${effectiveDate}`);
+        toast({ title: 'Phase Transition Complete', description: `Launch Phase "${newPhaseName.trim()}" initialized.` });
         setNewPhaseName('');
         await loadSettings();
     } catch (e) {
@@ -168,7 +171,7 @@ export function DataManagement() {
   };
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-20 font-body">
         {/* CYCLE TRANSITION CARD */}
         <Card className="border-2 border-primary/30 bg-background shadow-2xl relative overflow-hidden">
             <CardHeader className="bg-primary/5 border-b py-6">
@@ -195,35 +198,51 @@ export function DataManagement() {
                         </div>
                     </div>
 
-                    <div className="space-y-4 flex flex-col justify-end">
-                        <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-primary block">Start New Phase Name</Label>
-                        <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-primary block">Start New Phase Name</Label>
                             <Input 
                                 value={newPhaseName} 
                                 onChange={e => setNewPhaseName(e.target.value)} 
-                                placeholder="e.g. CAFE LIVE"
-                                className="font-black uppercase h-14 text-xl border-2 focus-visible:ring-primary flex-1"
+                                placeholder="e.g. Launch"
+                                className="font-black uppercase h-14 text-xl border-2 focus-visible:ring-primary w-full"
                             />
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button disabled={isSavingCycle || !newPhaseName} size="lg" className="h-14 px-8 font-black uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
-                                        <ArrowRight className="mr-2 h-5 w-5" />
-                                        Transition
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="border-4 border-primary">
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-2xl font-black uppercase">Seal This Period?</AlertDialogTitle>
-                                        <AlertDialogDescription className="text-lg font-medium text-foreground">
-                                            Everything from the start until NOW will be permanently labeled as <strong>"{currentActiveName}"</strong>. Future data will start fresh as <strong>"{newPhaseName}"</strong>.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleStartNewPhase} className="bg-primary hover:bg-primary/90 font-black uppercase px-8">Seal & Start New</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-muted-foreground block">Effective Transition Date</Label>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <Input 
+                                    type="datetime-local"
+                                    value={transitionDate} 
+                                    onChange={e => setTransitionDate(e.target.value)} 
+                                    className="font-mono font-bold h-12 text-sm border-2 flex-1"
+                                />
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button disabled={isSavingCycle || !newPhaseName} className="h-12 px-8 font-black uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
+                                            <ArrowRight className="mr-2 h-5 w-5" />
+                                            Transition
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="border-4 border-primary">
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="text-2xl font-black uppercase">Start Launch Phase?</AlertDialogTitle>
+                                            <AlertDialogDescription className="text-lg font-medium text-foreground">
+                                                Existing records up to <strong>{format(new Date(transitionDate), 'PPP p')}</strong> will be sealed as <strong>"{currentActiveName}"</strong>. 
+                                                New records from that point will be tagged as <strong>"{newPhaseName}"</strong>. 
+                                                <br/><br/>
+                                                <span className="text-primary font-black">MEMBER XP AND LEVELS ARE NOT AFFECTED.</span>
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleStartNewPhase} className="bg-primary hover:bg-primary/90 font-black uppercase px-8">Seal & Launch</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">* Use 2026-03-01 05:00 AM for the Cafe Launch day.</p>
                         </div>
                     </div>
                 </div>
@@ -330,7 +349,7 @@ export function DataManagement() {
                         <CardTitle className="font-headline text-lg">Retro-Labeler</CardTitle>
                     </div>
                     <Button variant="outline" size="sm" onClick={handleLoadLastCycleRange} className="font-black uppercase text-[9px] tracking-widest h-8 px-3 border-2 hover:bg-amber-500/10">
-                        <Zap className="mr-1.5 h-3 w-3 text-amber-500" />
+                        <Zap className="mr-1.5 h-3.5 w-3.5 text-amber-500" />
                         Previous Phase Window
                     </Button>
                 </CardHeader>
