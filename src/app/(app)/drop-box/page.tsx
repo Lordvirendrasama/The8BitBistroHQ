@@ -25,7 +25,8 @@ import {
   FileText,
   FileImage,
   Loader2,
-  HardDrive
+  HardDrive,
+  AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -67,65 +68,79 @@ export default function DropboxPage() {
     if (!fileList || fileList.length === 0 || !user || !storage || !db) return;
     
     setIsUploading(true);
-    setUploadProgress(0);
+    setUploadProgress(1); // Set to 1% immediately to show activity
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
       
       try {
-        // Generate a unique ID for the file name to avoid collisions
+        // 1. Generate path
         const fileId = doc(collection(db, 'temp')).id;
         const storageRef = ref(storage, `dropbox/${fileId}_${file.name}`);
         
-        // 1. Initialize Resumable Task
+        // 2. Initialize Resumable Task
         const task = uploadBytesResumable(storageRef, file);
         setActiveTask(task);
 
-        // 2. Track Progress
-        task.on('state_changed', 
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress || 0);
-          },
-          (error) => {
-            console.error("Storage Error:", error);
-            if (error.code !== 'storage/canceled') {
-              toast({ variant: 'destructive', title: "Upload Error", description: error.message });
+        // 3. Wrap task in promise for better lifecycle management
+        await new Promise((resolve, reject) => {
+          task.on('state_changed', 
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(Math.max(1, Math.round(progress)));
+            },
+            (error) => {
+              console.error("Firebase Storage Error Detail:", error);
+              
+              let errorMessage = error.message;
+              if (error.code === 'storage/unauthorized') {
+                errorMessage = "Access Denied. Check if Storage is enabled in Firebase Console.";
+              } else if (error.code === 'storage/retry-limit-exceeded') {
+                errorMessage = "Connection Timeout. Check your network or firewall.";
+              } else if (error.code === 'storage/canceled') {
+                errorMessage = "Transfer aborted by user.";
+              }
+              
+              reject(new Error(errorMessage));
+            },
+            async () => {
+              try {
+                // 4. Get Public URL
+                const downloadUrl = await getDownloadURL(task.snapshot.ref);
+                
+                // 5. Register in Firestore
+                await registerDropboxFile(db, {
+                  name: file.name,
+                  url: downloadUrl,
+                  type: file.type,
+                  size: file.size,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: {
+                    uid: user.username,
+                    displayName: user.displayName
+                  }
+                }, user);
+                
+                resolve(true);
+              } catch (regError) {
+                reject(regError);
+              }
             }
-          }
-        );
-
-        // 3. Wait for Storage Completion
-        const snapshot = await task;
-        
-        // 4. Get Public URL
-        const downloadUrl = await getDownloadURL(snapshot.ref);
-        
-        // 5. Register in Firestore Registry
-        await registerDropboxFile(db, {
-          name: file.name,
-          url: downloadUrl,
-          type: file.type,
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: {
-            uid: user.username,
-            displayName: user.displayName
-          }
-        }, user);
+          );
+        });
 
       } catch (error: any) {
-        if (error.code === 'storage/canceled') {
-          toast({ title: "Transfer Canceled" });
-          setIsUploading(false);
-          setActiveTask(null);
-          return; // Stop the loop on manual cancel
-        }
-        console.error("Upload Handshake Failed:", error);
+        console.error("DropBox Sync Failure:", error);
+        toast({ 
+          variant: 'destructive', 
+          title: "Transfer Failed", 
+          description: error.message || "An unexpected error occurred during cloud sync."
+        });
+        // Stop the loop on first failure
+        break;
       }
     }
 
-    toast({ title: "Sync Complete", description: "Files registered in DropBox hub." });
     setIsUploading(false);
     setActiveTask(null);
     setUploadProgress(0);
@@ -134,6 +149,7 @@ export default function DropboxPage() {
   const handleCancel = () => {
     if (activeTask) {
       activeTask.cancel();
+      toast({ title: "Transfer Canceled" });
     }
   };
 
@@ -163,7 +179,7 @@ export default function DropboxPage() {
 
   if (!isAuthorized) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center space-y-4 text-center">
+      <div className="flex h-[60vh] flex-col items-center justify-center space-y-4 text-center font-body">
         <ShieldAlert className="h-16 w-16 text-destructive" />
         <h1 className="text-4xl font-headline uppercase tracking-tighter">Access Denied</h1>
         <p className="text-muted-foreground max-w-md font-medium">Bistro DropBox is restricted to management.</p>
@@ -180,7 +196,7 @@ export default function DropboxPage() {
             DROPBOX HUB
           </h1>
           <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-[10px] pl-1">
-            CROSS-DEVICE ASSET SYNCHRONIZATION
+            CROSS-DEVICE ASSET SYNCHRONIZATION // BUILD v2.2.7
           </p>
         </div>
         
@@ -227,16 +243,16 @@ export default function DropboxPage() {
               <div className="space-y-6 w-full animate-in fade-in zoom-in-95 duration-300">
                 <div className="relative flex items-center justify-center">
                   <Loader2 className="h-16 w-16 text-primary animate-spin" />
-                  <span className="absolute font-mono font-black text-[10px] text-primary">
-                    {Math.round(uploadProgress)}%
+                  <span className="absolute font-mono font-black text-xs text-primary">
+                    {uploadProgress}%
                   </span>
                 </div>
                 
                 <div className="space-y-3">
-                    <p className="font-black uppercase text-xs tracking-widest animate-pulse text-primary">Syncing to Cloud...</p>
+                    <p className="font-black uppercase text-xs tracking-widest animate-pulse text-primary">Establishing Cloud Connection...</p>
                     <div className="w-full max-w-[200px] mx-auto space-y-1.5">
                         <Progress value={uploadProgress} className="h-2 bg-primary/10" />
-                        <p className="text-[9px] font-mono font-black text-muted-foreground tracking-widest">{Math.round(uploadProgress)}% COMPLETE</p>
+                        <p className="text-[9px] font-mono font-black text-muted-foreground tracking-widest">{uploadProgress}% SYNCED</p>
                     </div>
                 </div>
 
@@ -268,19 +284,19 @@ export default function DropboxPage() {
           <Card className="border-2 bg-muted/5">
             <CardHeader className="pb-2">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <ArrowRightLeft className="h-3.5 w-3.5" />
-                Bistro Sync Flow
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                Connectivity Notes
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Laptop className="h-6 w-6 text-primary opacity-40" />
-                <div className="flex-1 h-[2px] bg-gradient-to-r from-primary/10 via-primary/40 to-primary/10 rounded-full" />
-                <Smartphone className="h-6 w-6 text-primary opacity-40" />
-              </div>
-              <p className="text-[10px] font-medium text-muted-foreground italic leading-relaxed">
-                Upload here to instantly see the file on your phone or PC terminal.
+              <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                If uploads are stuck at 0%, ensure <strong>Firebase Storage</strong> is enabled in your console and that rules are deployed.
               </p>
+              <div className="flex items-center gap-4">
+                <Laptop className="h-6 w-6 text-primary opacity-20" />
+                <div className="flex-1 h-[2px] bg-gradient-to-r from-primary/5 via-primary/20 to-primary/5 rounded-full" />
+                <Smartphone className="h-6 w-6 text-primary opacity-20" />
+              </div>
             </CardContent>
           </Card>
         </div>
