@@ -52,6 +52,27 @@ export const recordLeave = async (leaveData: Omit<Leave, 'id' | 'createdAt'>) =>
   }
 };
 
+export const updateLeave = async (leaveId: string, updates: Partial<Leave>) => {
+  const db = getFirestore();
+  const ref = doc(db, 'leaves', leaveId);
+  try {
+    const sanitizedUpdates = sanitize(updates);
+    await updateDoc(ref, sanitizedUpdates);
+    
+    await addDoc(collection(db, 'logs'), {
+      type: 'DATA_ACTION',
+      description: `Leave record modified for ID: <strong>${leaveId.slice(0, 8)}</strong>.`,
+      timestamp: new Date().toISOString(),
+      user: { uid: 'system', displayName: 'System' },
+      details: { leaveId, updates: sanitizedUpdates }
+    });
+    return true;
+  } catch (e) {
+    console.error("Error updating leave:", e);
+    return false;
+  }
+};
+
 export const updateLeaveStatus = async (leaveId: string, status: Leave['status']) => {
   const db = getFirestore();
   const ref = doc(db, 'leaves', leaveId);
@@ -59,7 +80,7 @@ export const updateLeaveStatus = async (leaveId: string, status: Leave['status']
     await updateDoc(ref, { status });
     return true;
   } catch (e) {
-    console.error("Error updating leave:", e);
+    console.error("Error updating leave status:", e);
     return false;
   }
 };

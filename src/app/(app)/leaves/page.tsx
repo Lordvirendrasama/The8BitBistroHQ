@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -9,8 +8,8 @@ import type { Leave, Employee } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CalendarRange, User, Search, Clock, Plane, Palmtree, Stethoscope, ChevronRight, Filter, Plus, Trash } from 'lucide-react';
-import { format, isPast, isFuture, isToday } from 'date-fns';
+import { CalendarRange, User, Search, Clock, Plane, Palmtree, Stethoscope, ChevronRight, Filter, Plus, Trash, Edit, Save } from 'lucide-react';
+import { format, isPast, isFuture, isToday, differenceInDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { recordLeave, deleteLeave } from '@/firebase/firestore/leaves';
+import { recordLeave, deleteLeave, updateLeave } from '@/firebase/firestore/leaves';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LeavesTrackerPage() {
@@ -28,6 +27,7 @@ export default function LeavesTrackerPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingLeave, setEditingLeave] = useState<Leave | null>(null);
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -45,14 +45,14 @@ export default function LeavesTrackerPage() {
 
   const stats = useMemo(() => {
     if (!leaves) return { active: 0, upcoming: 0 };
-    const now = new Date();
+    const now = startOfDay(new Date());
     return {
         active: leaves.filter(l => {
-            const start = new Date(l.startDate);
-            const end = new Date(l.endDate);
+            const start = startOfDay(new Date(l.startDate));
+            const end = startOfDay(new Date(l.endDate));
             return now >= start && now <= end;
         }).length,
-        upcoming: leaves.filter(l => new Date(l.startDate) > now).length
+        upcoming: leaves.filter(l => startOfDay(new Date(l.startDate)) > now).length
     };
   }, [leaves]);
 
@@ -66,25 +66,64 @@ export default function LeavesTrackerPage() {
     });
   }, [leaves, searchTerm, typeFilter]);
 
-  const handleRecord = async () => {
+  const handleOpenAdd = () => {
+    setEditingLeave(null);
+    setFormData({
+      employeeId: '',
+      type: 'paid',
+      startDate: new Date().toISOString().slice(0, 10),
+      endDate: new Date().toISOString().slice(0, 10),
+      reason: ''
+    });
+    setModalOpen(true);
+  };
+
+  const handleEditClick = (leave: Leave) => {
+    setEditingLeave(leave);
+    setFormData({
+      employeeId: leave.employeeId,
+      type: leave.type,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      reason: leave.reason
+    });
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
     const emp = employees?.find(e => e.id === formData.employeeId);
-    if (!emp || !formData.startDate || !formData.endDate) return;
+    if (!emp || !formData.startDate || !formData.endDate) {
+        toast({ variant: 'destructive', title: "Missing Information" });
+        return;
+    }
     setIsSubmitting(true);
     
-    await recordLeave({
-      employeeId: emp.id,
-      employeeName: emp.displayName || emp.username || 'Unknown Operator',
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      type: formData.type,
-      reason: formData.reason,
-      status: 'approved'
-    });
+    if (editingLeave) {
+        const success = await updateLeave(editingLeave.id, {
+            employeeId: emp.id,
+            employeeName: emp.displayName || emp.username || 'Unknown Operator',
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            type: formData.type,
+            reason: formData.reason
+        });
+        if (success) toast({ title: "Record Updated" });
+    } else {
+        await recordLeave({
+            employeeId: emp.id,
+            employeeName: emp.displayName || emp.username || 'Unknown Operator',
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            type: formData.type,
+            reason: formData.reason,
+            status: 'approved'
+        });
+        toast({ title: "Leave Recorded" });
+    }
     
-    toast({ title: "Leave Recorded" });
     setModalOpen(false);
     setIsSubmitting(false);
-    setFormData({ employeeId: '', type: 'paid', startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10), reason: '' });
+    setEditingLeave(null);
   };
 
   const getLeaveIcon = (type: string) => {
@@ -105,7 +144,7 @@ export default function LeavesTrackerPage() {
           <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Unified visibility of staff absences & time-off schedules.</p>
         </div>
         <div className="flex gap-2">
-            <Button onClick={() => setModalOpen(true)} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl bg-primary text-white">
+            <Button onClick={handleOpenAdd} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl bg-primary text-white">
                 <Plus className="mr-2 h-5 w-5" /> Record Leave
             </Button>
         </div>
@@ -167,7 +206,7 @@ export default function LeavesTrackerPage() {
                     <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-sm">
                         <TableRow>
                             <TableHead className="font-black uppercase text-[10px] pl-6 bg-muted/20">Employee</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] bg-muted/20">Schedule</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] bg-muted/20">Schedule & Duration</TableHead>
                             <TableHead className="font-black uppercase text-[10px] bg-muted/20 text-center">Category</TableHead>
                             <TableHead className="font-black uppercase text-[10px] bg-muted/20">Reason / Memo</TableHead>
                             <TableHead className="text-right font-black uppercase text-[10px] pr-6 bg-muted/20">Actions</TableHead>
@@ -177,9 +216,10 @@ export default function LeavesTrackerPage() {
                         {filteredLeaves.map((leave) => {
                             const start = new Date(leave.startDate);
                             const end = new Date(leave.endDate);
-                            const now = new Date();
-                            const isActive = now >= start && now <= end;
-                            const isUpcoming = start > now;
+                            const now = startOfDay(new Date());
+                            const isActive = now >= startOfDay(start) && now <= startOfDay(end);
+                            const isUpcoming = startOfDay(start) > now;
+                            const duration = differenceInDays(end, start) + 1;
 
                             return (
                                 <TableRow key={leave.id} className={cn("hover:bg-muted/5 transition-colors group", isActive && "bg-emerald-500/[0.03]")}>
@@ -194,7 +234,7 @@ export default function LeavesTrackerPage() {
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-black text-[10px] uppercase">{format(start, 'MMM dd')} - {format(end, 'MMM dd')}</span>
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">{format(start, 'yyyy')}</span>
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">{duration} {duration === 1 ? 'Day' : 'Days'} • {format(start, 'yyyy')}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
@@ -217,9 +257,14 @@ export default function LeavesTrackerPage() {
                                             ) : (
                                                 <Badge variant="secondary" className="text-[8px] font-black uppercase opacity-40">Completed</Badge>
                                             )}
-                                            <Button variant="ghost" size="icon" onClick={() => deleteLeave(leave.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Trash className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(leave)} className="h-8 w-8 text-muted-foreground hover:text-primary">
+                                                    <Edit className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => deleteLeave(leave.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                                    <Trash className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -235,8 +280,8 @@ export default function LeavesTrackerPage() {
         <DialogContent className="max-w-md font-body">
           <DialogHeader>
             <DialogTitle className="font-headline text-lg uppercase flex items-center gap-2">
-                <CalendarRange className="text-primary h-5 w-5" />
-                Record Staff Absence
+                {editingLeave ? <Edit className="text-primary h-5 w-5" /> : <CalendarRange className="text-primary h-5 w-5" />}
+                {editingLeave ? 'Correct Leave Record' : 'Record Staff Absence'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -276,8 +321,8 @@ export default function LeavesTrackerPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleRecord} disabled={isSubmitting || !formData.employeeId} className="w-full h-14 font-black uppercase tracking-widest shadow-xl text-lg">
-                Commit Leave Record
+            <Button onClick={handleSave} disabled={isSubmitting || !formData.employeeId} className="w-full h-14 font-black uppercase tracking-widest shadow-xl text-lg">
+                {isSubmitting ? 'Syncing...' : editingLeave ? 'Update Leave Record' : 'Commit Leave Record'}
             </Button>
           </DialogFooter>
         </DialogContent>
