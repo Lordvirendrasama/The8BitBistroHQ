@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -11,7 +10,7 @@ interface ProductSalesChartProps {
   gamingPackages: GamingPackage[];
 }
 
-// SURGICAL COLORS: Primary Red, Emerald Green, Bright Blue
+// STRATEGIC PALETTE: Explicitly mapped to business pillars
 const COLORS = [
   '#ef0035', // Gaming (Red)
   '#10b981', // Food (Emerald)
@@ -29,13 +28,13 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
     const gamingPkgIds = new Set(gamingPackages?.map(p => p.id) || []);
     
     bills.forEach(bill => {
-      // Gaming revenue from initial package
+      // 1. Capture Initial Package Revenue
       categoryRevenue['Gaming'] += (bill.initialPackagePrice || 0);
 
+      // 2. Scan Bill Items with Surgical Keywords
       bill.items.forEach(item => {
         const nameLower = item.name.toLowerCase();
         
-        // BETTER DETECTION: Check if it's a Gaming item
         const isGaming = 
             gamingPkgIds.has(item.itemId) || 
             item.name.startsWith('Time:') || 
@@ -70,8 +69,8 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
   return (
     <Card className="flex flex-col border-2 shadow-xl">
       <CardHeader className="items-center pb-0 bg-muted/10 border-b">
-        <CardTitle className="font-headline tracking-widest text-2xl uppercase">REVENUE BY CATEGORY</CardTitle>
-        <CardDescription className="font-bold text-[10px] uppercase tracking-widest">Distribution of income across bistro services.</CardDescription>
+        <CardTitle className="font-headline tracking-widest text-2xl uppercase">REVENUE BY PILLAR</CardTitle>
+        <CardDescription className="font-bold text-[10px] uppercase tracking-widest">Distribution of income across bistro channels.</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-6 pt-10">
         <div className="h-[350px] w-full">
@@ -87,13 +86,20 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
                 dataKey="value"
                 stroke="none"
               >
-                {chartData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={COLORS[index % COLORS.length]} 
-                    className="hover:opacity-80 transition-all cursor-pointer outline-none"
-                  />
-                ))}
+                {chartData.map((entry, index) => {
+                  // Map specific colors based on name for tactical consistency
+                  let color = COLORS[0]; // Default Red
+                  if (entry.name === 'Food') color = COLORS[1]; // Emerald
+                  if (entry.name === 'Beverages') color = COLORS[2]; // Blue
+                  
+                  return (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={color} 
+                      className="hover:opacity-80 transition-all cursor-pointer outline-none"
+                    />
+                  );
+                })}
               </Pie>
               <Tooltip 
                 formatter={(value: number) => `₹${value.toLocaleString()}`}

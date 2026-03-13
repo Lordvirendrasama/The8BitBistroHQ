@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -11,14 +10,14 @@ import { ProductSalesChart } from '@/components/analytics/product-sales-chart';
 import { RewardRedemptionChart } from '@/components/analytics/reward-redemption-chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Utensils, Gift, TrendingUp, IndianRupee, Gamepad2, Pizza, Coffee, CalendarIcon, Clock, FilterX } from 'lucide-react';
+import { Utensils, Gift, TrendingUp, Gamepad2, Pizza, Coffee, CalendarIcon, Clock, FilterX } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { format, startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { cn } from '@/lib/utils';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -84,18 +83,20 @@ export default function ProductAnalyticsPage() {
 
     const menuMap: Record<string, { name: string, quantity: number, revenue: number, type: 'food' | 'drink' }> = {};
     const packageMap: Record<string, { name: string, quantity: number, revenue: number }> = {};
-    const categoryRevenue: Record<string, number> = { 'Food': 0, 'Beverages': 0, 'Gaming': 0 };
+    const categoryRevenue: Record<string, number> = { 'Gaming': 0, 'Food': 0, 'Beverages': 0 };
 
     filtered.forEach(bill => {
       // 1. Process Initial Package
       if (bill.packageName && bill.initialPackagePrice > 0) {
           const pkgName = bill.packageName;
-          if (!packageMap[pkgName]) {
-              packageMap[pkgName] = { name: pkgName, quantity: 0, revenue: 0 };
+          const pureName = pkgName.replace(/^(Time: |Buy Recharge: |Recharge: )/i, '').split('(')[0].trim();
+          
+          if (!packageMap[pureName]) {
+              packageMap[pureName] = { name: pureName, quantity: 0, revenue: 0 };
           }
-          const qty = bill.members.length || 1;
-          packageMap[pkgName].quantity += qty;
-          packageMap[pkgName].revenue += bill.initialPackagePrice;
+          const qty = bill.members?.length || 1;
+          packageMap[pureName].quantity += qty;
+          packageMap[pureName].revenue += bill.initialPackagePrice;
           categoryRevenue['Gaming'] += bill.initialPackagePrice;
       }
 
@@ -103,7 +104,7 @@ export default function ProductAnalyticsPage() {
       bill.items.forEach(item => {
         const nameLower = item.name.toLowerCase();
         
-        // BETTER DETECTION: Check if it's a Gaming item
+        // SURGICAL DIFFERENTIATION
         const isGaming = 
             gamingPkgIds.has(item.itemId) || 
             item.name.startsWith('Time:') || 
@@ -394,7 +395,7 @@ export default function ProductAnalyticsPage() {
                                 </Badge>
                             </div>
                         ))}
-                    </div>
+                    </CardContent>
                 </Card>
             </div>
         </TabsContent>
