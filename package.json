@@ -1,7 +1,6 @@
-
 {
   "name": "nextn",
-  "version": "2.2.3",
+  "version": "2.2.6",
   "private": true,
   "scripts": {
     "dev": "next dev",

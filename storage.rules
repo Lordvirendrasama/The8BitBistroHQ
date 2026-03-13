@@ -1,9 +1,10 @@
 rules_version = '2';
 
-// Craft rules based on data transition patterns
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
+      // Allowing public read/write for development. 
+      // In production, you would restrict this to authenticated users.
       allow read, write: if true;
     }
   }

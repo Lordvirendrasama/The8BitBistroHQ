@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy } from 'firebase/firestore';
-import { uploadDropboxFile, deleteDropboxFile, clearDropbox } from '@/firebase/firestore/dropbox';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL, type UploadTask } from 'firebase/storage';
+import { registerDropboxFile, deleteDropboxFile, clearDropbox } from '@/firebase/firestore/dropbox';
 import type { DropboxFile } from '@/lib/types';
-import type { UploadTask } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -51,13 +51,8 @@ export default function DropboxPage() {
   
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isClearing, setIsClearing] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
+  const [activeTask, setActiveTask] = useState<UploadTask | null>(null);
   
-  // Transfer Control Refs
-  const currentTaskRef = useRef<UploadTask | null>(null);
-  const cancelRequestedRef = useRef(false);
-
   // Security: Restricted access
   const isAuthorized = user?.username === 'Viren' || user?.role === 'admin';
 
@@ -73,88 +68,81 @@ export default function DropboxPage() {
     
     setIsUploading(true);
     setUploadProgress(0);
-    cancelRequestedRef.current = false;
-    let successCount = 0;
 
     for (let i = 0; i < fileList.length; i++) {
-      if (cancelRequestedRef.current) break;
-      
       const file = fileList[i];
+      
       try {
-        // Reset progress for each file in a batch
-        setUploadProgress(0);
+        // Generate a unique ID for the file name to avoid collisions
+        const fileId = doc(collection(db, 'temp')).id;
+        const storageRef = ref(storage, `dropbox/${fileId}_${file.name}`);
         
-        const result = await uploadDropboxFile(storage, db, file, user, (task) => {
-          currentTaskRef.current = task;
-          
-          task.on('state_changed', 
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setUploadProgress(progress || 0);
-            },
-            (error) => {
-              console.error("Upload task error:", error);
-              // Error is handled in the catch block of the parent async call
-            }
-          );
-        });
+        // 1. Initialize Resumable Task
+        const task = uploadBytesResumable(storageRef, file);
+        setActiveTask(task);
 
-        if (result) successCount++;
+        // 2. Track Progress
+        task.on('state_changed', 
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress || 0);
+          },
+          (error) => {
+            console.error("Storage Error:", error);
+            if (error.code !== 'storage/canceled') {
+              toast({ variant: 'destructive', title: "Upload Error", description: error.message });
+            }
+          }
+        );
+
+        // 3. Wait for Storage Completion
+        const snapshot = await task;
+        
+        // 4. Get Public URL
+        const downloadUrl = await getDownloadURL(snapshot.ref);
+        
+        // 5. Register in Firestore Registry
+        await registerDropboxFile(db, {
+          name: file.name,
+          url: downloadUrl,
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: {
+            uid: user.username,
+            displayName: user.displayName
+          }
+        }, user);
+
       } catch (error: any) {
-        console.error("Upload process error:", error);
-        if (error.code !== 'storage/canceled') {
-          toast({ 
-            variant: 'destructive', 
-            title: "Transfer Failed", 
-            description: `Error: ${error.code || 'Network Issue'}.` 
-          });
+        if (error.code === 'storage/canceled') {
+          toast({ title: "Transfer Canceled" });
+          setIsUploading(false);
+          setActiveTask(null);
+          return; // Stop the loop on manual cancel
         }
+        console.error("Upload Handshake Failed:", error);
       }
     }
 
-    if (successCount > 0 && !cancelRequestedRef.current) {
-      toast({ title: "Sync Complete", description: `${successCount} asset(s) registered in DropBox.` });
-    }
-    
+    toast({ title: "Sync Complete", description: "Files registered in DropBox hub." });
     setIsUploading(false);
+    setActiveTask(null);
     setUploadProgress(0);
-    currentTaskRef.current = null;
   };
 
   const handleCancel = () => {
-    if (currentTaskRef.current) {
-      currentTaskRef.current.cancel();
-    }
-    cancelRequestedRef.current = true;
-    setIsUploading(false);
-    setUploadProgress(0);
-    toast({ variant: 'destructive', title: "Transfer Aborted" });
-  };
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleUpload(e.dataTransfer.files);
+    if (activeTask) {
+      activeTask.cancel();
     }
   };
 
   const handleClear = async () => {
     if (!user || !db || !storage) return;
-    setIsClearing(true);
     const success = await clearDropbox(storage, db, user);
     if (success) {
-      toast({ title: "DropBox Nuked", description: "All shared assets have been deleted." });
+      toast({ title: "DropBox Nuked", description: "Storage space has been cleared." });
     }
-    setIsClearing(false);
   };
 
   const handleDeleteFile = async (file: DropboxFile) => {
@@ -178,21 +166,21 @@ export default function DropboxPage() {
       <div className="flex h-[60vh] flex-col items-center justify-center space-y-4 text-center">
         <ShieldAlert className="h-16 w-16 text-destructive" />
         <h1 className="text-4xl font-headline uppercase tracking-tighter">Access Denied</h1>
-        <p className="text-muted-foreground max-w-md font-medium">The Bistro DropBox is a restricted asset hub.</p>
+        <p className="text-muted-foreground max-w-md font-medium">Bistro DropBox is restricted to management.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto font-body pb-20">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
         <div className="flex flex-col gap-2">
           <h1 className="font-headline text-4xl sm:text-5xl tracking-wider text-foreground flex items-center gap-4">
             <Files className="h-10 w-10 text-primary" />
-            BISTRO DROPBOX
+            DROPBOX HUB
           </h1>
           <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-[10px] pl-1">
-            SEAMLESS FILE TRANSFER BETWEEN TERMINALS & MOBILE.
+            CROSS-DEVICE ASSET SYNCHRONIZATION
           </p>
         </div>
         
@@ -200,37 +188,31 @@ export default function DropboxPage() {
           <AlertDialogTrigger asChild>
             <Button variant="outline" className="h-12 px-6 font-black uppercase border-2 border-destructive/30 text-destructive hover:bg-destructive/5 gap-2">
               <Trash2 className="h-4 w-4" />
-              Wipe DropBox
+              Clear Hub
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent className="border-4 border-destructive">
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-headline text-destructive text-xl">NUCLEAR CLEANUP?</AlertDialogTitle>
+              <AlertDialogTitle className="font-headline text-destructive text-xl">WIPE SHARED POOL?</AlertDialogTitle>
               <AlertDialogDescription className="font-bold text-foreground">
-                This will PERMANENTLY delete all files currently in the drop box across all devices.
+                This will delete all files currently in the hub. Irreversible.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="font-bold">ABORT</AlertDialogCancel>
-              <AlertDialogAction onClick={handleClear} className="bg-destructive hover:bg-destructive/90 font-black uppercase">Destroy All Files</AlertDialogAction>
+              <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleClear} className="bg-destructive hover:bg-destructive/90 font-black uppercase">Destroy All</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT: UPLOAD ZONE */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-2">
         <div className="lg:col-span-1 space-y-6">
           <Card 
             className={cn(
               "border-4 border-dashed transition-all duration-300 relative min-h-[300px] flex flex-col items-center justify-center p-8 text-center cursor-pointer group",
-              dragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/20 bg-muted/5 hover:border-primary/40",
-              isUploading && "pointer-events-none"
+              isUploading ? "border-primary bg-primary/5 pointer-events-none" : "border-muted hover:border-primary/40 bg-muted/5"
             )}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
           >
             {!isUploading && (
               <input 
@@ -261,11 +243,8 @@ export default function DropboxPage() {
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleCancel();
-                    }}
-                    className="h-9 px-6 font-black uppercase text-[10px] border-destructive/30 text-destructive hover:bg-destructive/5 active:scale-95 transition-all shadow-md"
+                    onClick={handleCancel}
+                    className="h-9 px-6 font-black uppercase text-[10px] border-destructive/30 text-destructive hover:bg-destructive/5 transition-all shadow-md pointer-events-auto"
                 >
                     <X className="mr-1.5 h-3.5 w-3.5" />
                     Cancel Transfer
@@ -277,9 +256,9 @@ export default function DropboxPage() {
                   <CloudUpload className="h-12 w-12 text-primary" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-headline text-lg tracking-tight uppercase">Drop Assets Here</h3>
+                  <h3 className="font-headline text-lg tracking-tight uppercase">Drop Files Here</h3>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase leading-relaxed max-w-[200px]">
-                    Drag files on PC or tap to upload from your phone.
+                    Instant upload for cross-device access.
                   </p>
                 </div>
               </>
@@ -290,29 +269,22 @@ export default function DropboxPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                 <ArrowRightLeft className="h-3.5 w-3.5" />
-                Transfer Workflow
+                Bistro Sync Flow
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
-                <div className="flex flex-col items-center gap-1">
-                  <Laptop className="h-6 w-6 text-primary opacity-40" />
-                  <span className="text-[8px] font-bold uppercase">PC</span>
-                </div>
-                <div className="flex-1 h-[2px] bg-gradient-to-r from-primary/40 via-primary to-primary/40 rounded-full" />
-                <div className="flex flex-col items-center gap-1">
-                  <Smartphone className="h-6 w-6 text-primary opacity-40" />
-                  <span className="text-[8px] font-bold uppercase">Phone</span>
-                </div>
+                <Laptop className="h-6 w-6 text-primary opacity-40" />
+                <div className="flex-1 h-[2px] bg-gradient-to-r from-primary/10 via-primary/40 to-primary/10 rounded-full" />
+                <Smartphone className="h-6 w-6 text-primary opacity-40" />
               </div>
               <p className="text-[10px] font-medium text-muted-foreground italic leading-relaxed">
-                Use this hub to quickly move bills, menu drafts, or promotional assets across your hardware suite.
+                Upload here to instantly see the file on your phone or PC terminal.
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* RIGHT: FILE LIST */}
         <Card className="lg:col-span-2 border-2 shadow-xl overflow-hidden flex flex-col h-[600px]">
           <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between py-4">
             <div className="space-y-1">
@@ -326,7 +298,7 @@ export default function DropboxPage() {
             </div>
             {files && files.length > 0 && (
               <Badge variant="outline" className="font-mono bg-background text-[10px] h-6">
-                {formatFileSize(files.reduce((s, f) => s + f.size, 0))} Total
+                {formatFileSize(files.reduce((s, f) => s + f.size, 0))}
               </Badge>
             )}
           </CardHeader>
@@ -355,8 +327,6 @@ export default function DropboxPage() {
                               <span>{formatFileSize(file.size)}</span>
                               <span className="opacity-30">•</span>
                               <span>{format(new Date(file.uploadedAt), 'MMM d, p')}</span>
-                              <span className="opacity-30">•</span>
-                              <span className="text-primary/60">By {file.uploadedBy.displayName}</span>
                             </div>
                           </div>
                         </div>
@@ -367,7 +337,7 @@ export default function DropboxPage() {
                             size="icon" 
                             className="h-10 w-10 border-2 hover:bg-primary hover:text-white transition-all shadow-sm"
                           >
-                            <a href={file.url} target="_blank" rel="noopener noreferrer">
+                            <a href={file.url} target="_blank" rel="noopener noreferrer" download>
                               <Download className="h-4 w-4" />
                             </a>
                           </Button>
@@ -386,14 +356,14 @@ export default function DropboxPage() {
                 ) : (
                   <div className="py-32 flex flex-col items-center justify-center opacity-30 italic text-center px-10">
                     <History className="h-12 w-12 mb-4" />
-                    <p className="font-headline text-[10px] tracking-widest uppercase">The DropBox is currently empty.</p>
+                    <p className="font-headline text-[10px] tracking-widest uppercase">The DropBox Hub is currently empty.</p>
                   </div>
                 )}
               </div>
             </ScrollArea>
           </CardContent>
           <CardFooter className="bg-muted/10 border-t p-3 justify-center">
-            <p className="text-[8px] font-black uppercase text-muted-foreground tracking-[0.2em]">End-to-End Strategic Asset Synchronization</p>
+            <p className="text-[8px] font-black uppercase text-muted-foreground tracking-[0.2em]">MISSION CONTROL ASSET SYNCHRONIZATION</p>
           </CardFooter>
         </Card>
       </div>

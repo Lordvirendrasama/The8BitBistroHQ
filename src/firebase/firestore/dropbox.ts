@@ -1,69 +1,35 @@
 'use client';
 import { Firestore, collection, addDoc, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
-import { FirebaseStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll, type UploadTask } from 'firebase/storage';
+import { FirebaseStorage, ref, deleteObject, listAll } from 'firebase/storage';
 import type { DropboxFile, LogEntry } from '@/lib/types';
 import type { CustomUser } from '../auth/use-user';
 
 /**
- * Uploads a file to Firebase Storage and records its metadata in Firestore.
- * Requires the initialized instances from the provider to ensure correct bucket connection.
+ * Registers an uploaded file's metadata in Firestore.
  */
-export const uploadDropboxFile = async (
-  storage: FirebaseStorage, 
-  db: Firestore, 
-  file: File, 
-  user: CustomUser, 
-  onTask?: (task: UploadTask) => void
+export const registerDropboxFile = async (
+  db: Firestore,
+  metadata: Omit<DropboxFile, 'id'>,
+  user: CustomUser
 ) => {
   try {
-    const fileId = doc(collection(db, 'dummy')).id;
-    // Standardizing storage path
-    const storageRef = ref(storage, `dropbox/${fileId}_${file.name}`);
-    
-    // 1. Upload to Storage with Resumable Task
-    const task = uploadBytesResumable(storageRef, file);
-    if (onTask) onTask(task);
-
-    // Wait for upload completion
-    const snapshot = await task;
-    
-    // 2. Get permanent URL
-    const downloadUrl = await getDownloadURL(snapshot.ref);
-    
-    // 3. Record metadata in Firestore for front-end visibility
     const dropboxRef = collection(db, 'dropboxFiles');
-    const fileData: Omit<DropboxFile, 'id'> = {
-      name: file.name,
-      url: downloadUrl,
-      type: file.type,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-      uploadedBy: {
-        uid: user.username,
-        displayName: user.displayName
-      }
-    };
-    
-    const docRef = await addDoc(dropboxRef, fileData);
+    const docRef = await addDoc(dropboxRef, metadata);
 
-    // 4. Log the action in system audit
+    // Log the action in system audit
     const logRef = collection(db, 'logs');
     await addDoc(logRef, {
       type: 'DROPBOX_UPLOAD',
-      description: `<strong>${user.displayName}</strong> uploaded file to DropBox: <em>${file.name}</em>.`,
+      description: `<strong>${user.displayName}</strong> uploaded file to DropBox: <em>${metadata.name}</em>.`,
       timestamp: new Date().toISOString(),
       user: { uid: user.username, displayName: user.displayName },
-      details: { fileId: docRef.id, fileName: file.name }
+      details: { fileId: docRef.id, fileName: metadata.name }
     });
 
     return docRef.id;
-  } catch (error: any) {
-    if (error.code === 'storage/canceled') {
-      console.log("Upload aborted by operator.");
-      return null;
-    }
-    console.error("Critical DropBox Sync Error:", error);
-    throw error; 
+  } catch (error) {
+    console.error("Error registering dropbox file:", error);
+    return null;
   }
 };
 
