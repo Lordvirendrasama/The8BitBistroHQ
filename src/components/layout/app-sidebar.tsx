@@ -47,7 +47,9 @@ import {
   Target,
   Calendar,
   Activity,
-  Files
+  Files,
+  ClipboardCheck,
+  CalendarRange
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
@@ -77,7 +79,8 @@ const allNavItems = [
   { href: '/financials/spending', label: 'Spending & Stock', icon: ShoppingBag },
   
   { href: '/staff', icon: ListChecks, label: 'Daily Checklist' },
-  { href: '/shift-reports', icon: FileBarChart, label: 'Shift Reports' },
+  { href: '/attendance', icon: ClipboardCheck, label: 'Attendance Registry' },
+  { href: '/leaves', icon: CalendarRange, label: 'Leaves Tracker' },
   { href: '/users', icon: Users, label: 'User Registry' },
   { href: '/billing-history', icon: Receipt, label: 'Billing Audit' },
   { 
@@ -138,7 +141,7 @@ export function AppSidebar() {
     }
     
     // Restricted routes for staff and guest roles
-    const restrictedHrefs = ['/users', '/analytics', '/settings', '/shift-reports', '/staff'];
+    const restrictedHrefs = ['/users', '/analytics', '/settings', '/attendance', '/leaves', '/staff'];
     
     if (user.role === 'staff' || user.role === 'guest') {
       return filtered.filter(item => !restrictedHrefs.includes(item.href));
