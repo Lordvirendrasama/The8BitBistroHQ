@@ -81,26 +81,20 @@ export default function DropboxPage() {
       
       const file = fileList[i];
       try {
+        // Reset progress for each file in a batch
+        setUploadProgress(0);
+        
         const result = await uploadDropboxFile(storage, db, file, user, (task) => {
           currentTaskRef.current = task;
           
-          // Listen for progress and errors
           task.on('state_changed', 
             (snapshot) => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setUploadProgress(progress);
+              setUploadProgress(progress || 0);
             },
             (error) => {
               console.error("Upload task error:", error);
-              if (error.code !== 'storage/canceled') {
-                toast({ 
-                  variant: 'destructive', 
-                  title: "Transfer Failed", 
-                  description: `Error: ${error.code}. Check Firebase Console.` 
-                });
-              }
-              setIsUploading(false);
-              setUploadProgress(0);
+              // Error is handled in the catch block of the parent async call
             }
           );
         });
@@ -108,11 +102,18 @@ export default function DropboxPage() {
         if (result) successCount++;
       } catch (error: any) {
         console.error("Upload process error:", error);
+        if (error.code !== 'storage/canceled') {
+          toast({ 
+            variant: 'destructive', 
+            title: "Transfer Failed", 
+            description: `Error: ${error.code || 'Network Issue'}.` 
+          });
+        }
       }
     }
 
     if (successCount > 0 && !cancelRequestedRef.current) {
-      toast({ title: "Transfer Successful", description: `${successCount} asset(s) uploaded to the cloud.` });
+      toast({ title: "Sync Complete", description: `${successCount} asset(s) registered in DropBox.` });
     }
     
     setIsUploading(false);
@@ -224,31 +225,39 @@ export default function DropboxPage() {
             className={cn(
               "border-4 border-dashed transition-all duration-300 relative min-h-[300px] flex flex-col items-center justify-center p-8 text-center cursor-pointer group",
               dragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/20 bg-muted/5 hover:border-primary/40",
-              isUploading && "pointer-events-none opacity-50"
+              isUploading && "pointer-events-none"
             )}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <input 
-              type="file" 
-              multiple 
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={(e) => handleUpload(e.target.files)}
-            />
+            {!isUploading && (
+              <input 
+                type="file" 
+                multiple 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={(e) => handleUpload(e.target.files)}
+              />
+            )}
+            
             {isUploading ? (
-              <div className="space-y-4">
-                <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto" />
-                <div className="space-y-2">
-                    <p className="font-black uppercase text-xs tracking-widest animate-pulse">Syncing to Cloud...</p>
-                    {uploadProgress > 0 && (
-                        <div className="w-full max-w-[150px] mx-auto space-y-1">
-                            <Progress value={uploadProgress} className="h-1" />
-                            <p className="text-[8px] font-mono font-bold text-muted-foreground">{Math.round(uploadProgress)}% COMPLETE</p>
-                        </div>
-                    )}
+              <div className="space-y-6 w-full animate-in fade-in zoom-in-95 duration-300">
+                <div className="relative flex items-center justify-center">
+                  <Loader2 className="h-16 w-16 text-primary animate-spin" />
+                  <span className="absolute font-mono font-black text-[10px] text-primary">
+                    {Math.round(uploadProgress)}%
+                  </span>
                 </div>
+                
+                <div className="space-y-3">
+                    <p className="font-black uppercase text-xs tracking-widest animate-pulse text-primary">Syncing to Cloud...</p>
+                    <div className="w-full max-w-[200px] mx-auto space-y-1.5">
+                        <Progress value={uploadProgress} className="h-2 bg-primary/10" />
+                        <p className="text-[9px] font-mono font-black text-muted-foreground tracking-widest">{Math.round(uploadProgress)}% COMPLETE</p>
+                    </div>
+                </div>
+
                 <Button 
                     variant="outline" 
                     size="sm" 
@@ -256,9 +265,9 @@ export default function DropboxPage() {
                         e.stopPropagation();
                         handleCancel();
                     }}
-                    className="h-8 px-4 font-black uppercase text-[10px] border-destructive/30 text-destructive hover:bg-destructive/5 active:scale-95 transition-all"
+                    className="h-9 px-6 font-black uppercase text-[10px] border-destructive/30 text-destructive hover:bg-destructive/5 active:scale-95 transition-all shadow-md"
                 >
-                    <X className="mr-1.5 h-3 w-3" />
+                    <X className="mr-1.5 h-3.5 w-3.5" />
                     Cancel Transfer
                 </Button>
               </div>

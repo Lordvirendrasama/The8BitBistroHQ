@@ -24,10 +24,13 @@ export const uploadDropboxFile = async (
     const task = uploadBytesResumable(storageRef, file);
     if (onTask) onTask(task);
 
+    // Wait for upload completion
     const snapshot = await task;
+    
+    // 2. Get permanent URL
     const downloadUrl = await getDownloadURL(snapshot.ref);
     
-    // 2. Record in Firestore
+    // 3. Record metadata in Firestore for front-end visibility
     const dropboxRef = collection(db, 'dropboxFiles');
     const fileData: Omit<DropboxFile, 'id'> = {
       name: file.name,
@@ -43,7 +46,7 @@ export const uploadDropboxFile = async (
     
     const docRef = await addDoc(dropboxRef, fileData);
 
-    // 3. Log the action
+    // 4. Log the action in system audit
     const logRef = collection(db, 'logs');
     await addDoc(logRef, {
       type: 'DROPBOX_UPLOAD',
@@ -56,11 +59,11 @@ export const uploadDropboxFile = async (
     return docRef.id;
   } catch (error: any) {
     if (error.code === 'storage/canceled') {
-      console.log("Upload cancelled by user.");
+      console.log("Upload aborted by operator.");
       return null;
     }
-    console.error("Error uploading to dropbox:", error);
-    throw error; // Let the component handle UI feedback
+    console.error("Critical DropBox Sync Error:", error);
+    throw error; 
   }
 };
 
