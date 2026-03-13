@@ -11,11 +11,11 @@ interface ProductSalesChartProps {
 }
 
 // STRATEGIC PALETTE: Explicitly mapped to business pillars
-const COLORS = [
-  '#ef0035', // Gaming (Red)
-  '#10b981', // Food (Emerald)
-  '#3b82f6', // Beverages (Blue)
-];
+const COLORS = {
+  Gaming: '#ef0035',    // Red (Primary)
+  Food: '#10b981',      // Emerald
+  Beverages: '#3b82f6', // Blue
+};
 
 export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartProps) {
   const chartData = useMemo(() => {
@@ -26,6 +26,7 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
     };
     
     const gamingPkgIds = new Set(gamingPackages?.map(p => p.id) || []);
+    const gamingNames = new Set(gamingPackages?.map(p => p.name.toLowerCase()) || []);
     
     bills.forEach(bill => {
       // 1. Capture Initial Package Revenue
@@ -37,6 +38,7 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
         
         const isGaming = 
             gamingPkgIds.has(item.itemId) || 
+            gamingNames.has(nameLower) ||
             item.name.startsWith('Time:') || 
             item.name.startsWith('Buy Recharge:') || 
             item.name.startsWith('Recharge:') ||
@@ -87,10 +89,9 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
                 stroke="none"
               >
                 {chartData.map((entry, index) => {
-                  // Map specific colors based on name for tactical consistency
-                  let color = COLORS[0]; // Default Red
-                  if (entry.name === 'Food') color = COLORS[1]; // Emerald
-                  if (entry.name === 'Beverages') color = COLORS[2]; // Blue
+                  let color = COLORS.Gaming;
+                  if (entry.name === 'Food') color = COLORS.Food;
+                  if (entry.name === 'Beverages') color = COLORS.Beverages;
                   
                   return (
                     <Cell 
@@ -106,13 +107,18 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
                 contentStyle={{ 
                     borderRadius: '12px', 
                     border: 'none', 
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
                     backgroundColor: '#1a1a1a',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    fontSize: '10px'
+                    padding: '12px'
                 }}
+                itemStyle={{
+                    color: '#ffffff',
+                    fontWeight: '900',
+                    textTransform: 'uppercase',
+                    fontSize: '12px',
+                    fontFamily: 'monospace'
+                }}
+                labelStyle={{ display: 'none' }}
               />
               <Legend 
                 verticalAlign="bottom" 

@@ -62,6 +62,7 @@ export default function ProductAnalyticsPage() {
     if (!bills) return { menu: [], packages: [], summary: {}, filteredBillsCount: 0, filteredBills: [] };
     
     const gamingPkgIds = new Set(gamingPackages?.map(p => p.id) || []);
+    const gamingNames = new Set(gamingPackages?.map(p => p.name.toLowerCase()) || []);
 
     const filtered = bills.filter(bill => {
         const billDate = new Date(bill.timestamp);
@@ -107,6 +108,7 @@ export default function ProductAnalyticsPage() {
         // SURGICAL DIFFERENTIATION
         const isGaming = 
             gamingPkgIds.has(item.itemId) || 
+            gamingNames.has(nameLower) ||
             item.name.startsWith('Time:') || 
             item.name.startsWith('Buy Recharge:') || 
             item.name.startsWith('Recharge:') ||
