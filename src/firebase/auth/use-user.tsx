@@ -48,12 +48,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (snap.empty) {
             console.log("Seeding initial employees...");
             const initial = [
-                { username: 'Viren', displayName: 'Viren', role: 'admin', pin: '6969', salary: 0, salaryType: 'monthly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/viren/100/100' },
-                { username: 'Abbas', displayName: 'Abbas', role: 'staff', pin: '8888', salary: 100, salaryType: 'hourly', weekOffDay: 5, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/abbas/100/100' },
-                { username: 'Guest', displayName: 'Guest', role: 'guest', pin: '1234', salary: 0, salaryType: 'hourly', weekOffDay: 0, joinDate: new Date().toISOString(), isActive: true, photoURL: 'https://picsum.photos/seed/guest/100/100' }
+                { 
+                  username: 'Viren', 
+                  displayName: 'Viren', 
+                  role: 'admin', 
+                  pin: '6969', 
+                  salary: 0, 
+                  salaryType: 'monthly', 
+                  weekOffDay: 5, 
+                  joinDate: new Date().toISOString(), 
+                  isActive: true, 
+                  photoURL: 'https://picsum.photos/seed/viren/100/100',
+                  workStartTime: '11:00',
+                  workEndTime: '23:00'
+                },
+                { 
+                  username: 'Abbas', 
+                  displayName: 'Abbas', 
+                  role: 'staff', 
+                  pin: '8888', 
+                  salary: 100, 
+                  salaryType: 'hourly', 
+                  weekOffDay: 5, // Friday
+                  joinDate: new Date().toISOString(), 
+                  isActive: true, 
+                  photoURL: 'https://picsum.photos/seed/abbas/100/100',
+                  workStartTime: '11:00',
+                  workEndTime: '23:00' // 12 Hour Shift
+                },
+                { 
+                  username: 'Guest', 
+                  displayName: 'Guest', 
+                  role: 'guest', 
+                  pin: '1234', 
+                  salary: 0, 
+                  salaryType: 'hourly', 
+                  weekOffDay: 0, 
+                  joinDate: new Date().toISOString(), 
+                  isActive: true, 
+                  photoURL: 'https://picsum.photos/seed/guest/100/100',
+                  workStartTime: '11:00',
+                  workEndTime: '23:00'
+                }
             ];
             for (const emp of initial) {
-                // Use username as the ID to avoid duplicates and ensure consistency
                 const empDocRef = doc(db, 'employees', emp.username);
                 await setDoc(empDocRef, emp);
             }

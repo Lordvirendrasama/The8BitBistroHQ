@@ -37,8 +37,12 @@ const calculateAttendanceOnEnd = (logoutTime: Date, empSettings?: Employee) => {
     const expDate = new Date(logoutTime);
     expDate.setHours(expH, expM, 0, 0);
 
-    // If expected end is early morning (e.g. 1 AM) and current logout is late night
-    if (expH < 5 && logoutTime.getHours() >= 18) {
+    // If expected end is 11 PM and current logout is 5 AM (auto logout next morning)
+    if (expH >= 18 && logoutTime.getHours() < 6) {
+        expDate.setDate(expDate.getDate() - 1);
+    }
+    // Opposite: if expected end is early morning (e.g. 1 AM) and current logout is late night
+    else if (expH < 6 && logoutTime.getHours() >= 18) {
         expDate.setDate(expDate.getDate() + 1);
     }
 
@@ -72,7 +76,6 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
         for (const d of activeSnap.docs) {
             const data = d.data() as Shift;
             if (data.date !== businessToday && !data.endTime) {
-                // Auto-close at 5 AM of the next calendar day from its start
                 const sDate = new Date(data.startTime);
                 const autoEndDate = new Date(sDate);
                 autoEndDate.setDate(autoEndDate.getDate() + 1);
@@ -261,7 +264,6 @@ export const startBreak = async (shiftId: string, user: CustomUser) => {
             
             const data = snap.data() as Shift;
             
-            // Check if there is an active break
             const hasActive = data.breaks?.some(b => !b.endTime);
             if (hasActive) return;
 
