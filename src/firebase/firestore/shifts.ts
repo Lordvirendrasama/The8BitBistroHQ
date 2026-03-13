@@ -371,3 +371,27 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
         console.error("Error updating task transactionally: ", e);
     }
 };
+
+export const updateShiftTimes = async (shiftId: string, updates: { startTime: string, endTime?: string | null }, user: CustomUser) => {
+    const db = getFirestore();
+    const shiftRef = doc(db, 'shifts', shiftId);
+    
+    try {
+        const snap = await getDoc(shiftRef);
+        if (!snap.exists()) return false;
+        
+        await updateDoc(shiftRef, updates);
+        
+        await addDoc(collection(db, 'logs'), {
+            type: 'SHIFT_UPDATED',
+            description: `<strong>${user.displayName}</strong> manually adjusted shift times for ID: <strong>${shiftId.slice(0, 8)}</strong>.`,
+            timestamp: new Date().toISOString(),
+            user: { uid: user.username, displayName: user.displayName },
+            details: { shiftId, updates }
+        });
+        return true;
+    } catch (e) {
+        console.error("Error updating shift times:", e);
+        return false;
+    }
+};

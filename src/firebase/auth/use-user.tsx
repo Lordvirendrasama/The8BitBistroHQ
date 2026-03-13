@@ -74,7 +74,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   isActive: true, 
                   photoURL: 'https://picsum.photos/seed/abbas/100/100',
                   workStartTime: '11:00',
-                  workEndTime: '23:00' // 12 Hour Shift
+                  workEndTime: '23:00'
+                },
+                { 
+                  username: 'Didi', 
+                  displayName: 'Didi', 
+                  role: 'staff', 
+                  pin: '1111', 
+                  salary: 100, 
+                  salaryType: 'hourly', 
+                  weekOffDay: 0, 
+                  joinDate: new Date().toISOString(), 
+                  isActive: true, 
+                  photoURL: 'https://picsum.photos/seed/didi/100/100',
+                  workStartTime: '11:00',
+                  workEndTime: '23:00'
                 },
                 { 
                   username: 'Guest', 

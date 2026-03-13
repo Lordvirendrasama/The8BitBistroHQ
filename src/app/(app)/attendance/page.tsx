@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -5,31 +6,44 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Shift } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
+import { useAuth } from '@/firebase/auth/use-user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, differenceInHours, differenceInMinutes } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { CheckCircle2, XCircle, Clock, Wallet, IndianRupee, ShoppingCart, User, AlertCircle, Timer, Coffee, Zap, Moon } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Wallet, IndianRupee, ShoppingCart, User, AlertCircle, Timer, Coffee, Zap, Moon, Edit, Save } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { updateShiftTimes } from '@/firebase/firestore/shifts';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AttendanceRegistryPage() {
   const { db } = useFirebase();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [staffFilter, setStaffFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
+  
+  // Edit State
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const shiftsQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'shifts'), orderBy('startTime', 'desc'));
   }, [db]);
 
-  const { data: allShifts, loading, error } = useCollection<Shift>(shiftsQuery);
+  const { data: allShifts, loading } = useCollection<Shift>(shiftsQuery);
 
   const staffOptions = useMemo(() => {
     if (!allShifts) return [];
-    const staff = new Map<string, string>(); // username -> display name
+    const staff = new Map<string, string>();
     allShifts.forEach(s => {
         if (s.staffId) {
             staff.set(s.staffId.toLowerCase(), s.staffId);
@@ -45,11 +59,9 @@ export default function AttendanceRegistryPage() {
     if (!allShifts) return [];
     return allShifts.filter(shift => {
         const date = new Date(shift.startTime);
-        
         const matchesStaff = staffFilter === 'all' || 
                              shift.staffId?.toLowerCase() === staffFilter.toLowerCase() || 
                              shift.employees?.some(e => e.username.toLowerCase() === staffFilter.toLowerCase());
-        
         const matchesMonth = monthFilter === 'all' || format(date, 'yyyy-MM') === monthFilter;
         return matchesStaff && matchesMonth;
     });
@@ -77,15 +89,45 @@ export default function AttendanceRegistryPage() {
     return `${mins}m`;
   };
 
+  const handleEditClick = (shift: Shift) => {
+    setEditingShift(shift);
+    setEditStart(new Date(shift.startTime).toISOString().slice(0, 16));
+    setEditEnd(shift.endTime ? new Date(shift.endTime).toISOString().slice(0, 16) : '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingShift || !user) return;
+    setIsSubmitting(true);
+    
+    const updates = {
+        startTime: new Date(editStart).toISOString(),
+        endTime: editEnd ? new Date(editEnd).toISOString() : null
+    };
+
+    const success = await updateShiftTimes(editingShift.id, updates, user);
+    if (success) {
+        toast({ title: "Shift Corrected", description: "Audit timestamps updated." });
+        setEditingShift(null);
+    }
+    setIsSubmitting(false);
+  };
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse">Syncing Attendance Records...</div>;
   }
 
+  const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <div>
-        <h1 className="font-headline text-4xl tracking-wider text-foreground">Attendance Registry</h1>
-        <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em]">Official Shift Tracking & Punctuality Audit</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-headline text-4xl tracking-wider text-foreground">Attendance Registry</h1>
+          <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em]">Official Shift Tracking & Punctuality Audit</p>
+        </div>
+        <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] bg-background shadow-sm">
+            {filteredShifts.length} RECORDS FOUND
+        </Badge>
       </div>
 
       <Card className="bg-muted/30 border-dashed border-2">
@@ -116,9 +158,6 @@ export default function AttendanceRegistryPage() {
                     </SelectContent>
                 </Select>
             </div>
-            <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] ml-auto bg-background shadow-sm">
-                {filteredShifts.length} RECORDS FOUND
-            </Badge>
         </CardContent>
       </Card>
 
@@ -137,6 +176,7 @@ export default function AttendanceRegistryPage() {
                 <TableHead className="font-black uppercase text-[10px]">Duration</TableHead>
                 <TableHead className="font-black uppercase text-[10px] text-center">Alerts</TableHead>
                 <TableHead className="font-black uppercase text-[10px] text-right">Accounting</TableHead>
+                {isAdmin && <TableHead className="w-[50px]"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -201,12 +241,6 @@ export default function AttendanceRegistryPage() {
                                 Early Exit ({shift.earlyLeaveMinutes}m)
                             </Badge>
                         ) : null}
-
-                        {shift.workedOnWeeklyOff && (
-                            <Badge className="h-4 text-[7px] uppercase font-black bg-purple-600 tracking-widest">
-                                Worked On Off Day
-                            </Badge>
-                        )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -215,22 +249,48 @@ export default function AttendanceRegistryPage() {
                         <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift Total</span>
                     </div>
                   </TableCell>
+                  {isAdmin && (
+                    <TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEditClick(shift)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
-              {filteredShifts.length === 0 && (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-64 text-center">
-                        <div className="flex flex-col items-center justify-center opacity-30">
-                            <Clock className="h-12 w-12 mb-2" />
-                            <p className="font-headline text-[10px] tracking-widest uppercase">No attendance records found</p>
-                        </div>
-                    </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* EDIT MODAL */}
+      <Dialog open={!!editingShift} onOpenChange={o => !o && setEditingShift(null)}>
+        <DialogContent className="max-w-md font-body">
+            <DialogHeader>
+                <DialogTitle className="font-headline text-xl flex items-center gap-2">
+                    <Edit className="text-primary" />
+                    Correct Shift Times
+                </DialogTitle>
+                <DialogDescription className="font-black text-[9px] uppercase tracking-widest">Manually adjust audit timestamps for record {editingShift?.id.slice(0, 8)}.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Login Timestamp</Label>
+                    <Input type="datetime-local" value={editStart} onChange={e => setEditStart(e.target.value)} className="h-12 font-mono font-bold" />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Logout Timestamp (Optional)</Label>
+                    <Input type="datetime-local" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="h-12 font-mono font-bold" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button disabled={isSubmitting} onClick={handleSaveEdit} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl">
+                    <Save className="mr-2 h-5 w-5" />
+                    {isSubmitting ? 'Updating...' : 'Save Audit Correction'}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

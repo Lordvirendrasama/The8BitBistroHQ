@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getActiveOrStartShift, updateTask } from '@/firebase/firestore/shifts';
 import { StartOfDayTasks } from '@/components/staff/start-of-day-tasks';
 import { GlobalTimerNotifications } from '@/components/notifications/global-timer-notifications';
+import { AttendanceVerificationModal } from '@/components/staff/attendance-verification-modal';
 
 
 export default function AppLayout({ children }: { children: React.Node }) {
@@ -146,6 +147,7 @@ export default function AppLayout({ children }: { children: React.Node }) {
         />
         <main className="p-3 sm:p-6 lg:p-8 bg-background min-h-0 overflow-y-auto">
           <GlobalTimerNotifications />
+          <AttendanceVerificationModal />
           {showTaskNotification && uncompletedMorningTaskCount > 0 && tasksVisible && (
             <StartOfDayTasks
               tasks={shiftTasks}
