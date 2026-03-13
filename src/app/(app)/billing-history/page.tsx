@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -10,10 +9,10 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { format, differenceInMinutes, differenceInSeconds, addSeconds } from 'date-fns';
+import { format, differenceInMinutes, differenceInSeconds, addSeconds, addDays, subDays } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle } from 'lucide-react';
+import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteBill, updateBill } from '@/firebase/firestore/bills';
 import { useToast } from '@/hooks/use-toast';
@@ -139,20 +138,38 @@ export default function BillingHistoryPage() {
                     <p className="mt-1 text-xs sm:text-sm text-muted-foreground uppercase font-black tracking-widest">Historical Station Records & Transparency Ledger.</p>
                 </div>
                  <div className="flex flex-col xs:flex-row gap-3 items-stretch xs:items-center">
-                     <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" className={cn("w-full xs:w-[200px] justify-start text-left font-bold h-10 border-2", !date && "text-muted-foreground")}>
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date ? format(date, "MMM dd, yyyy") : <span>All History</span>}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                            <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                            <div className="p-1 border-t border-border">
-                                <Button variant="ghost" onClick={() => setDate(undefined)} className="w-full text-xs font-bold uppercase">View Full History</Button>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
+                    <div className="flex items-center bg-muted/30 rounded-xl p-1 border-2 border-dashed">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-10 w-10" 
+                            onClick={() => setDate(prev => subDays(prev || new Date(), 1))}
+                        >
+                            <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" className={cn("h-10 px-4 justify-start text-left font-black uppercase text-[10px] tracking-widest", !date && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                    {date ? format(date, "MMM dd, yyyy") : <span>All History</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                                <div className="p-1 border-t border-border">
+                                    <Button variant="ghost" onClick={() => setDate(undefined)} className="w-full text-xs font-bold uppercase">View Full History</Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-10 w-10" 
+                            onClick={() => setDate(prev => addDays(prev || new Date(), 1))}
+                        >
+                            <ChevronRight className="h-5 w-5" />
+                        </Button>
+                    </div>
                     <div className="flex gap-2">
                         <div className="bg-muted/30 border-2 rounded-lg px-4 py-2 flex flex-col justify-center shrink-0">
                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Period Revenue</p>
