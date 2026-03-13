@@ -8,8 +8,8 @@ import type { Leave, Employee } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CalendarRange, User, Search, Clock, Plane, Palmtree, Stethoscope, ChevronRight, Filter, Plus, Trash, Edit, Save } from 'lucide-react';
-import { format, isPast, isFuture, isToday, differenceInDays, startOfDay } from 'date-fns';
+import { CalendarRange, User, Search, Clock, Plane, Palmtree, Stethoscope, ChevronRight, Filter, Plus, Trash, Edit, Save, BarChart3, Calendar } from 'lucide-react';
+import { format, isPast, isFuture, isToday, differenceInDays, startOfDay, startOfMonth, endOfMonth, isWithinInterval, max, min } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +28,9 @@ export default function LeavesTrackerPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Leave | null>(null);
+  
+  // Monthly Audit State
+  const [auditMonth, setAuditMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -43,18 +46,46 @@ export default function LeavesTrackerPage() {
   const leavesQuery = useMemo(() => !db ? null : query(collection(db, 'leaves'), orderBy('startDate', 'desc')), [db]);
   const { data: leaves, loading } = useCollection<Leave>(leavesQuery);
 
+  // Statistics: Global & Monthly
   const stats = useMemo(() => {
-    if (!leaves) return { active: 0, upcoming: 0 };
+    if (!leaves) return { active: 0, upcoming: 0, monthlyTotals: [] as { name: string, days: number }[] };
     const now = startOfDay(new Date());
-    return {
-        active: leaves.filter(l => {
-            const start = startOfDay(new Date(l.startDate));
-            const end = startOfDay(new Date(l.endDate));
-            return now >= start && now <= end;
-        }).length,
-        upcoming: leaves.filter(l => startOfDay(new Date(l.startDate)) > now).length
-    };
-  }, [leaves]);
+    
+    // Global status
+    const active = leaves.filter(l => {
+        const start = startOfDay(new Date(l.startDate));
+        const end = startOfDay(new Date(l.endDate));
+        return now >= start && now <= end;
+    }).length;
+    
+    const upcoming = leaves.filter(l => startOfDay(new Date(l.startDate)) > now).length;
+
+    // Monthly Audit Calculation
+    const auditStart = startOfMonth(new Date(auditMonth + "-01"));
+    const auditEnd = endOfMonth(auditStart);
+    
+    const monthlyMap: Record<string, number> = {};
+    
+    leaves.forEach(leave => {
+        const lStart = startOfDay(new Date(leave.startDate));
+        const lEnd = startOfDay(new Date(leave.endDate));
+        
+        // Calculate overlap with selected month
+        const overlapStart = max([lStart, auditStart]);
+        const overlapEnd = min([lEnd, auditEnd]);
+        
+        if (overlapStart <= overlapEnd) {
+            const daysInMonth = differenceInDays(overlapEnd, overlapStart) + 1;
+            monthlyMap[leave.employeeName] = (monthlyMap[leave.employeeName] || 0) + daysInMonth;
+        }
+    });
+
+    const monthlyTotals = Object.entries(monthlyMap)
+        .map(([name, days]) => ({ name, days }))
+        .sort((a, b) => b.days - a.days);
+
+    return { active, upcoming, monthlyTotals };
+  }, [leaves, auditMonth]);
 
   const filteredLeaves = useMemo(() => {
     if (!leaves) return [];
@@ -65,6 +96,16 @@ export default function LeavesTrackerPage() {
         return matchesSearch && matchesType;
     });
   }, [leaves, searchTerm, typeFilter]);
+
+  const monthOptions = useMemo(() => {
+    const months = new Set<string>();
+    // Always include current month
+    months.add(format(new Date(), 'yyyy-MM'));
+    if (leaves) {
+        leaves.forEach(l => months.add(format(new Date(l.startDate), 'yyyy-MM')));
+    }
+    return Array.from(months).sort().reverse();
+  }, [leaves]);
 
   const handleOpenAdd = () => {
     setEditingLeave(null);
@@ -140,49 +181,105 @@ export default function LeavesTrackerPage() {
     <div className="space-y-8 max-w-7xl mx-auto font-body">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-headline text-4xl tracking-wider text-foreground">Leaves Tracker</h1>
+          <h1 className="font-headline text-4xl tracking-wider text-foreground uppercase">Leaves Tracker</h1>
           <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Unified visibility of staff absences & time-off schedules.</p>
         </div>
         <div className="flex gap-2">
-            <Button onClick={handleOpenAdd} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl bg-primary text-white">
+            <Button onClick={handleOpenAdd} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl bg-primary text-white hover:bg-primary/90">
                 <Plus className="mr-2 h-5 w-5" /> Record Leave
             </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-emerald-500/10 border-2 border-emerald-500/20 rounded-xl px-4 py-4 flex flex-col justify-center shadow-sm">
-            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-1">On Leave Now</p>
-            <p className="text-3xl font-black text-emerald-600 font-mono leading-none">{stats.active}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+            <div className="bg-emerald-500/10 border-2 border-emerald-500/20 rounded-xl px-6 py-6 flex flex-col justify-center shadow-sm">
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-2">On Leave Now</p>
+                <div className="flex items-center gap-3">
+                    <p className="text-4xl font-black text-emerald-600 font-mono leading-none">{stats.active}</p>
+                    <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-600 uppercase font-black text-[8px]">Operators Out</Badge>
+                </div>
+            </div>
+            <div className="bg-primary/5 border-2 border-primary/20 rounded-xl px-6 py-6 flex flex-col justify-center shadow-sm">
+                <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-2">Upcoming Rosters</p>
+                <div className="flex items-center gap-3">
+                    <p className="text-4xl font-black text-primary font-mono leading-none">{stats.upcoming}</p>
+                    <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary uppercase font-black text-[8px]">Scheduled</Badge>
+                </div>
+            </div>
         </div>
-        <div className="bg-primary/5 border-2 border-primary/20 rounded-xl px-4 py-4 flex flex-col justify-center shadow-sm">
-            <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">Upcoming</p>
-            <p className="text-3xl font-black text-primary font-mono leading-none">{stats.upcoming}</p>
-        </div>
+
+        {/* MONTHLY AUDIT CARD */}
+        <Card className="lg:col-span-2 border-2 border-dashed bg-muted/5">
+            <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-primary" />
+                            Monthly Utilization Audit
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest opacity-60">Total days out per operator in selected month.</CardDescription>
+                    </div>
+                    <Select value={auditMonth} onValueChange={setAuditMonth}>
+                        <SelectTrigger className="w-[160px] h-9 border-2 font-black uppercase text-[10px] bg-background">
+                            <Calendar className="mr-2 h-3.5 w-3.5 text-primary" />
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {monthOptions.map(m => (
+                                <SelectItem key={m} value={m} className="text-[10px] font-bold uppercase">
+                                    {format(new Date(m + "-01"), 'MMMM yyyy')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4 pt-2">
+                    {stats.monthlyTotals.map((item, idx) => (
+                        <div key={idx} className="space-y-1.5">
+                            <div className="flex justify-between items-end">
+                                <span className="text-[10px] font-black uppercase tracking-tight">{item.name}</span>
+                                <span className="text-xs font-black font-mono text-primary">{item.days} {item.days === 1 ? 'DAY' : 'DAYS'}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-primary/40 rounded-full" style={{ width: `${Math.min(100, (item.days / 30) * 100)}%` }} />
+                            </div>
+                        </div>
+                    ))}
+                    {stats.monthlyTotals.length === 0 && (
+                        <div className="py-8 text-center opacity-30 italic font-bold uppercase text-[10px] tracking-widest border-2 border-dashed rounded-xl">
+                            No absences detected for {format(new Date(auditMonth + "-01"), 'MMMM yyyy')}.
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
       </div>
 
       <Card className="bg-muted/30 border-dashed border-2">
         <CardContent className="p-4 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px] space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Search Records</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Search Registry</Label>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="NAME OR REASON..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-10 h-10 border-2 font-bold uppercase text-[10px]"
+                        className="pl-10 h-10 border-2 font-bold uppercase text-[10px] bg-background"
                     />
                 </div>
             </div>
             <div className="w-[180px] space-y-1.5">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Leave Type</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="h-10 border-2 font-black uppercase text-[10px]">
+                    <SelectTrigger className="h-10 border-2 font-black uppercase text-[10px] bg-background">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all" className="text-[10px] font-bold uppercase">All Types</SelectItem>
+                        <SelectItem value="all" className="text-[10px] font-bold uppercase">All Categories</SelectItem>
                         <SelectItem value="paid" className="text-[10px] font-bold uppercase">Paid Leave</SelectItem>
                         <SelectItem value="unpaid" className="text-[10px] font-bold uppercase">Unpaid (LWP)</SelectItem>
                         <SelectItem value="sick" className="text-[10px] font-bold uppercase">Sick Leave</SelectItem>
@@ -198,7 +295,7 @@ export default function LeavesTrackerPage() {
                 <CalendarRange className="h-5 w-5 text-primary" />
                 Staff Absence Registry
             </CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase tracking-widest opacity-60">Audit trail of historical and future absences.</CardDescription>
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest opacity-60">Complete history of workforce absences.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
             <ScrollArea className="h-[600px]">
@@ -251,11 +348,11 @@ export default function LeavesTrackerPage() {
                                     <TableCell className="text-right pr-6">
                                         <div className="flex items-center justify-end gap-3">
                                             {isActive ? (
-                                                <Badge className="bg-emerald-600 text-[8px] font-black uppercase animate-pulse">Active</Badge>
+                                                <Badge className="bg-emerald-600 text-[8px] font-black uppercase animate-pulse shadow-md">Active</Badge>
                                             ) : isUpcoming ? (
-                                                <Badge variant="outline" className="border-primary/30 text-primary text-[8px] font-black uppercase">Upcoming</Badge>
+                                                <Badge variant="outline" className="border-primary/30 text-primary text-[8px] font-black uppercase">Scheduled</Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="text-[8px] font-black uppercase opacity-40">Completed</Badge>
+                                                <Badge variant="secondary" className="text-[8px] font-black uppercase opacity-40">History</Badge>
                                             )}
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button variant="ghost" size="icon" onClick={() => handleEditClick(leave)} className="h-8 w-8 text-muted-foreground hover:text-primary">
@@ -270,6 +367,16 @@ export default function LeavesTrackerPage() {
                                 </TableRow>
                             );
                         })}
+                        {filteredLeaves.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={5} className="h-64 text-center">
+                                    <div className="flex flex-col items-center justify-center opacity-30 italic">
+                                        <CalendarRange className="h-12 w-12 mb-2" />
+                                        <p className="font-headline text-[10px] tracking-widest uppercase">Registry Empty</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </ScrollArea>
@@ -322,7 +429,7 @@ export default function LeavesTrackerPage() {
           </div>
           <DialogFooter>
             <Button onClick={handleSave} disabled={isSubmitting || !formData.employeeId} className="w-full h-14 font-black uppercase tracking-widest shadow-xl text-lg">
-                {isSubmitting ? 'Syncing...' : editingLeave ? 'Update Leave Record' : 'Commit Leave Record'}
+                {isSubmitting ? 'Syncing...' : editingLeave ? 'Update Record' : 'Commit Record'}
             </Button>
           </DialogFooter>
         </DialogContent>
