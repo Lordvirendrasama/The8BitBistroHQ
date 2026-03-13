@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { uploadDropboxFile, deleteDropboxFile, clearDropbox } from '@/firebase/firestore/dropbox';
 import type { DropboxFile } from '@/lib/types';
+import type { UploadTask } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
   CloudUpload, 
-  File, 
   Trash2, 
   Download, 
   ShieldAlert, 
@@ -50,8 +50,13 @@ export default function DropboxPage() {
   const { toast } = useToast();
   
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isClearing, setIsClearing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  
+  // Transfer Control Refs
+  const currentTaskRef = useRef<UploadTask | null>(null);
+  const cancelRequestedRef = useRef(false);
 
   // Security: Restricted access
   const isAuthorized = user?.username === 'Viren' || user?.role === 'admin';
@@ -67,18 +72,44 @@ export default function DropboxPage() {
     if (!fileList || fileList.length === 0 || !user) return;
     
     setIsUploading(true);
+    setUploadProgress(0);
+    cancelRequestedRef.current = false;
     let successCount = 0;
 
     for (let i = 0; i < fileList.length; i++) {
+      if (cancelRequestedRef.current) break;
+      
       const file = fileList[i];
-      const result = await uploadDropboxFile(file, user);
+      const result = await uploadDropboxFile(file, user, (task) => {
+        currentTaskRef.current = task;
+        
+        // Listen for progress
+        task.on('state_changed', (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        });
+      });
+
       if (result) successCount++;
     }
 
-    if (successCount > 0) {
+    if (successCount > 0 && !cancelRequestedRef.current) {
       toast({ title: "Transfer Successful", description: `${successCount} asset(s) uploaded to the cloud.` });
     }
+    
     setIsUploading(false);
+    setUploadProgress(0);
+    currentTaskRef.current = null;
+  };
+
+  const handleCancel = () => {
+    if (currentTaskRef.current) {
+      currentTaskRef.current.cancel();
+    }
+    cancelRequestedRef.current = true;
+    setIsUploading(false);
+    setUploadProgress(0);
+    toast({ variant: 'destructive', title: "Transfer Aborted" });
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -191,7 +222,27 @@ export default function DropboxPage() {
             {isUploading ? (
               <div className="space-y-4">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto" />
-                <p className="font-black uppercase text-xs tracking-widest animate-pulse">Syncing to Cloud...</p>
+                <div className="space-y-2">
+                    <p className="font-black uppercase text-xs tracking-widest animate-pulse">Syncing to Cloud...</p>
+                    {uploadProgress > 0 && (
+                        <div className="w-full max-w-[150px] mx-auto space-y-1">
+                            <Progress value={uploadProgress} className="h-1" />
+                            <p className="text-[8px] font-mono font-bold text-muted-foreground">{Math.round(uploadProgress)}% COMPLETE</p>
+                        </div>
+                    )}
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancel();
+                    }}
+                    className="h-8 px-4 font-black uppercase text-[10px] border-destructive/30 text-destructive hover:bg-destructive/5 active:scale-95 transition-all"
+                >
+                    <X className="mr-1.5 h-3 w-3" />
+                    Cancel Transfer
+                </Button>
               </div>
             ) : (
               <>

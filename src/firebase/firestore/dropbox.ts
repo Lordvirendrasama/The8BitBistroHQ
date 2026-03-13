@@ -1,13 +1,14 @@
 'use client';
-import { getFirestore, collection, addDoc, doc, deleteDoc, getDocs, writeBatch, query, orderBy } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
+import { getFirestore, collection, addDoc, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll, type UploadTask } from 'firebase/storage';
 import type { DropboxFile, LogEntry } from '@/lib/types';
 import type { CustomUser } from '../auth/use-user';
 
 /**
  * Uploads a file to Firebase Storage and records its metadata in Firestore.
+ * Supports an optional callback to expose the UploadTask for progress tracking and cancellation.
  */
-export const uploadDropboxFile = async (file: File, user: CustomUser) => {
+export const uploadDropboxFile = async (file: File, user: CustomUser, onTask?: (task: UploadTask) => void) => {
   const db = getFirestore();
   const storage = getStorage();
   
@@ -15,8 +16,11 @@ export const uploadDropboxFile = async (file: File, user: CustomUser) => {
     const fileId = doc(collection(db, 'dummy')).id;
     const storageRef = ref(storage, `dropbox/${fileId}_${file.name}`);
     
-    // 1. Upload to Storage
-    const snapshot = await uploadBytes(storageRef, file);
+    // 1. Upload to Storage with Resumable Task
+    const task = uploadBytesResumable(storageRef, file);
+    if (onTask) onTask(task);
+
+    const snapshot = await task;
     const downloadUrl = await getDownloadURL(snapshot.ref);
     
     // 2. Record in Firestore
@@ -46,7 +50,11 @@ export const uploadDropboxFile = async (file: File, user: CustomUser) => {
     });
 
     return docRef.id;
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'storage/canceled') {
+      console.log("Upload cancelled by user.");
+      return null;
+    }
     console.error("Error uploading to dropbox:", error);
     return null;
   }
