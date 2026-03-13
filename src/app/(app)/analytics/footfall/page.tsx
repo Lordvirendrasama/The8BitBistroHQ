@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
@@ -41,9 +40,11 @@ export default function FootfallAnalyticsPage() {
         
         const hour = date.getHours();
         
-        heatmapMatrix[dayIdx][hour] += 1;
-        dayTotals[DAYS[dayIdx]] += 1;
-        hourTotals[hour] += 1;
+        if (dayIdx >= 0 && dayIdx < 7 && hour >= 0 && hour < 24) {
+            heatmapMatrix[dayIdx][hour] += 1;
+            dayTotals[DAYS[dayIdx]] += 1;
+            hourTotals[hour] += 1;
+        }
     });
 
     const maxInCell = Math.max(...heatmapMatrix.flat());
@@ -114,15 +115,15 @@ export default function FootfallAnalyticsPage() {
                                 {/* Header: Hours */}
                                 <div className="h-8" />
                                 {HOURS.map(h => (
-                                    <div key={h} className="h-8 flex items-center justify-center text-[8px] font-black uppercase text-muted-foreground border-b border-dashed">
+                                    <div key={`hour-head-${h}`} className="h-8 flex items-center justify-center text-[8px] font-black uppercase text-muted-foreground border-b border-dashed">
                                         {h}
                                     </div>
                                 ))}
 
                                 {/* Rows: Days */}
                                 {DAYS.map((day, dIdx) => (
-                                    <>
-                                        <div key={`label-${day}`} className="h-10 flex items-center pr-4 font-black uppercase text-[10px] text-muted-foreground border-r border-dashed">
+                                    <Fragment key={`heatmap-row-${day}`}>
+                                        <div className="h-10 flex items-center pr-4 font-black uppercase text-[10px] text-muted-foreground border-r border-dashed">
                                             {day}
                                         </div>
                                         {HOURS.map(h => {
@@ -140,7 +141,7 @@ export default function FootfallAnalyticsPage() {
                                                 </div>
                                             );
                                         })}
-                                    </>
+                                    </Fragment>
                                 ))}
                             </div>
                         </div>
@@ -251,7 +252,7 @@ export default function FootfallAnalyticsPage() {
                                 <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
                                     {stats.hourChartData.map((entry, index) => {
                                         const hour = parseInt(entry.name);
-                                        return <Cell key={index} fill={hour >= 18 || hour <= 2 ? 'hsl(var(--primary))' : 'hsl(var(--primary)/0.4)'} />;
+                                        return <Cell key={`bar-${index}`} fill={hour >= 18 || hour <= 2 ? 'hsl(var(--primary))' : 'hsl(var(--primary)/0.4)'} />;
                                     })}
                                 </Bar>
                             </BarChart>
