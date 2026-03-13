@@ -41,7 +41,8 @@ import {
   TrendingDown,
   Separator,
   Sparkles,
-  Activity
+  Activity,
+  ChevronRight
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, differenceInCalendarMonths, subDays, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
