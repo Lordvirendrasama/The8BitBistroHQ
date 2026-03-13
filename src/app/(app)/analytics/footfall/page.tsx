@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, Fragment } from 'react';
+import { useMemo, useState, useEffect, Fragment } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
@@ -8,11 +8,12 @@ import type { Bill } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, startOfDay, endOfDay, eachDayOfInterval, subDays } from 'date-fns';
-import { Activity, Clock, Calendar as CalendarIcon, TrendingUp, Users, Info, ChevronRight, BarChart3, FilterX } from 'lucide-react';
+import { Activity, Clock, Calendar as CalendarIcon, TrendingUp, Users, Info, BarChart3, Filter, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/data-management';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -20,6 +21,12 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 export default function FootfallAnalyticsPage() {
   const { db } = useFirebase();
   const [activeTab, setActiveTab] = useState('heatmap');
+  const [selectedPhase, setSelectedPhase] = useState<string>('all_cycles');
+  const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
+
+  useEffect(() => {
+    getAvailableCycles().then(setAvailableCycles);
+  }, []);
 
   const billsQuery = useMemo(() => !db ? null : query(collection(db, 'bills'), orderBy('timestamp', 'desc')), [db]);
   const { data: bills, loading } = useCollection<Bill>(billsQuery);
@@ -27,12 +34,17 @@ export default function FootfallAnalyticsPage() {
   const stats = useMemo(() => {
     if (!bills) return null;
 
+    // Filter bills by phase if applicable
+    const filteredBills = selectedPhase === 'all_cycles' 
+        ? bills 
+        : bills.filter(b => b.cycle === selectedPhase);
+
     // 1. Matrix for Heatmap [Day][Hour]
     const heatmapMatrix: number[][] = Array(7).fill(0).map(() => Array(24).fill(0));
     const dayTotals: Record<string, number> = DAYS.reduce((acc, d) => ({ ...acc, [d]: 0 }), {});
     const hourTotals: Record<number, number> = HOURS.reduce((acc, h) => ({ ...acc, [h]: 0 }), {});
 
-    bills.forEach(bill => {
+    filteredBills.forEach(bill => {
         const date = new Date(bill.timestamp);
         // Correct index mapping: getDay() returns 0 for Sunday
         let dayIdx = date.getDay() - 1;
@@ -53,8 +65,8 @@ export default function FootfallAnalyticsPage() {
     const dayChartData = DAYS.map(d => ({ name: d, count: dayTotals[d] }));
     const hourChartData = HOURS.map(h => ({ name: `${h}:00`, count: hourTotals[h] }));
 
-    return { heatmapMatrix, dayChartData, hourChartData, maxInCell, totalBills: bills.length };
-  }, [bills]);
+    return { heatmapMatrix, dayChartData, hourChartData, maxInCell, totalBills: filteredBills.length };
+  }, [bills, selectedPhase]);
 
   const getHeatmapColor = (count: number, max: number) => {
     if (count === 0) return 'bg-muted/30';
@@ -82,9 +94,30 @@ export default function FootfallAnalyticsPage() {
           <h1 className="font-headline text-4xl tracking-wider text-foreground">Footfall Intelligence</h1>
           <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Global customer behavior & traffic patterns audit.</p>
         </div>
-        <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] bg-background shadow-sm ml-auto">
-            {stats.totalBills.toLocaleString()} SESSIONS ANALYZED
-        </Badge>
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+            <div className="space-y-1">
+                <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest text-right px-1">Select Analysis Phase</p>
+                <Select value={selectedPhase} onValueChange={setSelectedPhase}>
+                    <SelectTrigger className="h-10 w-[240px] border-2 font-black uppercase text-[10px] tracking-tight bg-background">
+                        <Filter className="mr-2 h-3.5 w-3.5 text-primary" />
+                        <SelectValue placeholder="All Cycles" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all_cycles" className="font-bold uppercase text-[10px]">
+                            <span className="flex items-center gap-2"><Globe className="h-3 w-3" /> Global History</span>
+                        </SelectItem>
+                        {availableCycles.map(c => (
+                            <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-[10px]">
+                                {c.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] bg-background shadow-sm">
+                {stats.totalBills.toLocaleString()} SESSIONS ANALYZED
+            </Badge>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -106,7 +139,9 @@ export default function FootfallAnalyticsPage() {
                         <Activity className="h-5 w-5 text-primary" />
                         Global Intensity Matrix
                     </CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Cross-referencing day of week vs hourly throughput.</CardDescription>
+                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">
+                        {selectedPhase === 'all_cycles' ? 'Visualizing trends across entire business history.' : `Analyzing traffic specific to phase: ${selectedPhase}.`}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0 overflow-hidden">
                     <ScrollArea className="w-full">
