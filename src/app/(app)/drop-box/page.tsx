@@ -68,21 +68,18 @@ export default function DropboxPage() {
     if (!fileList || fileList.length === 0 || !user || !storage || !db) return;
     
     setIsUploading(true);
-    setUploadProgress(1); // Set to 1% immediately to show activity
+    setUploadProgress(1);
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
       
       try {
-        // 1. Generate path
         const fileId = doc(collection(db, 'temp')).id;
         const storageRef = ref(storage, `dropbox/${fileId}_${file.name}`);
         
-        // 2. Initialize Resumable Task
         const task = uploadBytesResumable(storageRef, file);
         setActiveTask(task);
 
-        // 3. Wrap task in promise for better lifecycle management
         await new Promise((resolve, reject) => {
           task.on('state_changed', 
             (snapshot) => {
@@ -90,6 +87,12 @@ export default function DropboxPage() {
               setUploadProgress(Math.max(1, Math.round(progress)));
             },
             (error) => {
+              // DETECT CANCELLATION: Handle gracefully without crashing
+              if (error.code === 'storage/canceled') {
+                resolve('canceled');
+                return;
+              }
+
               console.error("Firebase Storage Error Detail:", error);
               
               let errorMessage = error.message;
@@ -97,18 +100,13 @@ export default function DropboxPage() {
                 errorMessage = "Access Denied. Check if Storage is enabled in Firebase Console.";
               } else if (error.code === 'storage/retry-limit-exceeded') {
                 errorMessage = "Connection Timeout. Check your network or firewall.";
-              } else if (error.code === 'storage/canceled') {
-                errorMessage = "Transfer aborted by user.";
               }
               
               reject(new Error(errorMessage));
             },
             async () => {
               try {
-                // 4. Get Public URL
                 const downloadUrl = await getDownloadURL(task.snapshot.ref);
-                
-                // 5. Register in Firestore
                 await registerDropboxFile(db, {
                   name: file.name,
                   url: downloadUrl,
@@ -120,8 +118,7 @@ export default function DropboxPage() {
                     displayName: user.displayName
                   }
                 }, user);
-                
-                resolve(true);
+                resolve('success');
               } catch (regError) {
                 reject(regError);
               }
@@ -130,13 +127,15 @@ export default function DropboxPage() {
         });
 
       } catch (error: any) {
-        console.error("DropBox Sync Failure:", error);
-        toast({ 
-          variant: 'destructive', 
-          title: "Transfer Failed", 
-          description: error.message || "An unexpected error occurred during cloud sync."
-        });
-        // Stop the loop on first failure
+        // Only show error toast if it wasn't a manual cancellation
+        if (error.message !== 'canceled') {
+          console.error("DropBox Sync Failure:", error);
+          toast({ 
+            variant: 'destructive', 
+            title: "Transfer Failed", 
+            description: error.message || "An unexpected error occurred during cloud sync."
+          });
+        }
         break;
       }
     }
@@ -196,7 +195,7 @@ export default function DropboxPage() {
             DROPBOX HUB
           </h1>
           <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-[10px] pl-1">
-            CROSS-DEVICE ASSET SYNCHRONIZATION // BUILD v2.2.7
+            CROSS-DEVICE ASSET SYNCHRONIZATION // BUILD v2.2.8
           </p>
         </div>
         
