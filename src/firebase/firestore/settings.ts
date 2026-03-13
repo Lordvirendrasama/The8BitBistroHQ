@@ -15,7 +15,7 @@ export const getSettings = async (): Promise<Settings> => {
     xpPerLevel: 1000,
     maxLevels: 10,
     pointsPerLevelUp: 100,
-    activeCycle: 'Testing Data 1',
+    activeCycle: 'Launch Live',
     includeFixed: true,
     includeLoan: true,
     includeRent: true,

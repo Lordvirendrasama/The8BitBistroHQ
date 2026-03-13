@@ -42,7 +42,9 @@ import {
   Separator,
   Sparkles,
   Activity,
-  ChevronRight
+  ChevronRight,
+  Filter,
+  Globe
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, differenceInCalendarMonths, subDays, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
@@ -50,11 +52,16 @@ import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { AppUpdatesDropdown } from '@/components/owner/app-updates-dropdown';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/data-management';
 
 export default function OwnerDashboardPage() {
   const { db } = useFirebase();
   const { user } = useAuth();
   const router = useRouter();
+
+  const [selectedPhase, setSelectedPhase] = useState<string>('all_cycles');
+  const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
 
   // ONLY Viren can see this page
   useEffect(() => {
@@ -62,6 +69,10 @@ export default function OwnerDashboardPage() {
       router.push('/dashboard');
     }
   }, [user, router]);
+
+  useEffect(() => {
+    getAvailableCycles().then(setAvailableCycles);
+  }, []);
 
   // 1. Data Subscriptions
   const stationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
@@ -111,9 +122,19 @@ export default function OwnerDashboardPage() {
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
-    // DAILY DATA (For main financials)
-    const dailyBills = bills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
-    const dailyExpenses = expenses.filter(e => e.timestamp && isBusinessToday(e.timestamp));
+    // Apply Phase Filtering
+    const phaseFilteredBills = selectedPhase === 'all_cycles' 
+        ? bills 
+        : bills.filter(b => b.cycle === selectedPhase);
+    
+    const phaseFilteredExpenses = selectedPhase === 'all_cycles'
+        ? expenses
+        : expenses.filter(e => e.cycle === selectedPhase);
+
+    // DAILY DATA (For main financials - always current business day regardless of phase, usually)
+    // However, if we want to see stats for a phase, we should probably still prioritize current day if phase is active
+    const dailyBills = phaseFilteredBills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
+    const dailyExpenses = phaseFilteredExpenses.filter(e => e.timestamp && isBusinessToday(e.timestamp));
     
     // Revenue (Daily)
     const revTotal = dailyBills.reduce((s, b) => s + b.totalAmount, 0);
@@ -124,13 +145,13 @@ export default function OwnerDashboardPage() {
     const revGaming = dailyBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
     const revFood = revTotal - revGaming - revPending;
 
-    // MONTHLY DATA (For Performers)
-    const monthlyBills = bills.filter(b => {
+    // MONTHLY DATA (For Performers) - Filtered by phase
+    const monthlyBills = phaseFilteredBills.filter(b => {
         const d = new Date(b.timestamp);
         return d >= monthStart && d <= monthEnd;
     });
 
-    // Footfall Logic (Recent Bills Volume)
+    // Footfall Logic (Filtered Bills Volume)
     const footfallVolume = dailyBills.length;
     const footfallIntensity = footfallVolume > 15 ? 'HIGH' : footfallVolume > 5 ? 'MODERATE' : 'LOW';
 
@@ -172,7 +193,8 @@ export default function OwnerDashboardPage() {
     const momHourCounts: Record<number, number> = {};
     const momDayCounts: Record<string, number> = {};
     
-    bills.forEach(b => {
+    // Use phase-filtered bills for heatmaps
+    phaseFilteredBills.forEach(b => {
         const d = new Date(b.timestamp);
         const h = d.getHours();
         const day = format(d, 'EEEE');
@@ -223,7 +245,7 @@ export default function OwnerDashboardPage() {
         footfallVolume,
         todayStr
     };
-  }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations]);
+  }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations, selectedPhase]);
 
   if (!stats || !stations) return <div className="p-20 text-center animate-pulse font-headline text-xs uppercase tracking-[0.2em]">Recalibrating Owner Pulse...</div>;
 
@@ -245,6 +267,28 @@ export default function OwnerDashboardPage() {
           <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
             OPERATIONAL COMMAND & CONTROL &bull; CYCLE: {stats.todayStr}
           </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+            <div className="space-y-1">
+                <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest text-right px-1">Analytical Phase</p>
+                <Select value={selectedPhase} onValueChange={setSelectedPhase}>
+                    <SelectTrigger className="h-10 w-[240px] border-2 font-black uppercase text-[10px] tracking-tight bg-background">
+                        <Filter className="mr-2 h-3.5 w-3.5 text-primary" />
+                        <SelectValue placeholder="All Cycles" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all_cycles" className="font-bold uppercase text-[10px]">
+                            <span className="flex items-center gap-2"><Globe className="h-3 w-3" /> Global History</span>
+                        </SelectItem>
+                        {availableCycles.map(c => (
+                            <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-[10px]">
+                                {c.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
       </div>
 
@@ -428,18 +472,18 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      {/* 4. OPERATIONAL INTELLIGENCE HEATMAPS - MONTH-ON-MONTH DATA */}
+      {/* 4. OPERATIONAL INTELLIGENCE HEATMAPS - PHASE DATA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-2 bg-muted/5 overflow-hidden group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
             <CardHeader className="border-b pb-3">
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                         <Clock className="h-4 w-4 text-primary" />
-                        Global Peak Hours
+                        Phase Peak Hours
                     </CardTitle>
-                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">MoM ANALYTICS</Badge>
+                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
                 </div>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows based on full system history.</CardDescription>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows based on selected phase.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
@@ -452,12 +496,12 @@ export default function OwnerDashboardPage() {
                 <div className="flex-1 space-y-3">
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase">
                         <span>Intake Velocity</span>
-                        <span className="text-emerald-600">MONTHLY TREND</span>
+                        <span className="text-emerald-600">TREND</span>
                     </div>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-primary w-[85%] rounded-full shadow-[0_0_10px_rgba(239,0,53,0.3)]" />
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Busiest window identified from month-on-month behavioral data.</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Busiest window identified from behavioral data in this phase.</p>
                 </div>
             </CardContent>
         </Card>
@@ -467,11 +511,11 @@ export default function OwnerDashboardPage() {
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-primary" />
-                        Prime Business Days
+                        Strategic Prime Days
                     </CardTitle>
-                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">MoM ANALYTICS</Badge>
+                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
                 </div>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Highest traffic days identified across all months.</CardDescription>
+                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Highest traffic days identified in selected period.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
@@ -492,7 +536,7 @@ export default function OwnerDashboardPage() {
                             </div>
                         ))}
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Historical high-impact day derived from longitudinal month-on-month data.</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Impact day derived from phase-specific longitudinal data.</p>
                 </div>
             </CardContent>
         </Card>
