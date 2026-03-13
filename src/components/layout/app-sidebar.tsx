@@ -46,7 +46,8 @@ import {
   LayoutDashboard,
   CreditCard,
   Target,
-  Calendar
+  Calendar,
+  Activity
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
@@ -86,6 +87,7 @@ const allNavItems = [
         { href: '/analytics', label: 'Overview', icon: ChartIcon },
         { href: '/analytics/products', label: 'Sales & Rewards', icon: PieChart },
         { href: '/analytics/accounting', label: 'Financial Audit', icon: ReceiptIndianRupee },
+        { href: '/analytics/footfall', label: 'Footfall Intelligence', icon: Activity },
     ]
   },
   { 

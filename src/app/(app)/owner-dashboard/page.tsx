@@ -40,7 +40,8 @@ import {
   LineChart,
   TrendingDown,
   Separator,
-  Sparkles
+  Sparkles,
+  Activity
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, differenceInCalendarMonths, subDays, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
@@ -128,6 +129,10 @@ export default function OwnerDashboardPage() {
         return d >= monthStart && d <= monthEnd;
     });
 
+    // Footfall Logic (Recent Bills Volume)
+    const footfallVolume = dailyBills.length;
+    const footfallIntensity = footfallVolume > 15 ? 'HIGH' : footfallVolume > 5 ? 'MODERATE' : 'LOW';
+
     // Item Analytics (Monthly for volume)
     const foodCounts: Record<string, number> = {};
     const drinkCounts: Record<string, number> = {};
@@ -213,6 +218,8 @@ export default function OwnerDashboardPage() {
         expToday: dailyExpenses.reduce((s, e) => s + e.amount, 0),
         loanBalance: liabilityState.loanBalance,
         rentBalance: liabilityState.rentBalance,
+        footfallIntensity,
+        footfallVolume,
         todayStr
     };
   }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations]);
@@ -312,17 +319,31 @@ export default function OwnerDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-2 bg-muted/5 shadow-sm">
+        {/* FOOTFALL INTENSITY SUMMARY */}
+        <Card className="border-2 bg-muted/5 shadow-sm group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-3 w-3" /> Net Position
-            </CardTitle>
+            <div className="flex justify-between items-center">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Activity className="h-3 w-3" /> Footfall Intensity
+                </CardTitle>
+                <ChevronRight className="h-3 w-3 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className={cn("text-2xl font-black font-mono", (stats.revTotal - stats.expToday) >= 0 ? "text-emerald-600" : "text-destructive")}>
-                ₹{(stats.revTotal - stats.expToday).toLocaleString()}
+            <div className="flex justify-between items-end">
+                <div>
+                    <div className={cn(
+                        "text-3xl font-black font-mono",
+                        stats.footfallIntensity === 'HIGH' ? "text-emerald-600" : stats.footfallIntensity === 'MODERATE' ? "text-amber-600" : "text-muted-foreground"
+                    )}>
+                        {stats.footfallIntensity}
+                    </div>
+                    <p className="text-[9px] font-bold uppercase opacity-50 mt-1">{stats.footfallVolume} Orders Registered</p>
+                </div>
+                <div className="h-10 w-10 rounded-lg bg-background border-2 border-dashed flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 opacity-20" />
+                </div>
             </div>
-            <p className="text-[9px] font-bold uppercase opacity-50 mt-1">Intake - Expenses (Today)</p>
           </CardContent>
         </Card>
       </div>
@@ -408,7 +429,7 @@ export default function OwnerDashboardPage() {
 
       {/* 4. OPERATIONAL INTELLIGENCE HEATMAPS - MONTH-ON-MONTH DATA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-2 bg-muted/5 overflow-hidden">
+        <Card className="border-2 bg-muted/5 overflow-hidden group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
             <CardHeader className="border-b pb-3">
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
@@ -440,7 +461,7 @@ export default function OwnerDashboardPage() {
             </CardContent>
         </Card>
 
-        <Card className="border-2 bg-muted/5 overflow-hidden">
+        <Card className="border-2 bg-muted/5 overflow-hidden group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
             <CardHeader className="border-b pb-3">
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
