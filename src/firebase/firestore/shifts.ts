@@ -95,6 +95,12 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
         const qToday = query(shiftsRef, where('date', '==', businessToday), limit(1));
         const shiftSnapshot = await getDocs(qToday);
 
+        // STRATEGIC TASKS DEFINITION
+        const strategicTasks = [
+            { name: "Verify Abbas Presence", type: 'strategic' as const, ownerOnly: true },
+            { name: "Verify Didi Presence", type: 'strategic' as const, ownerOnly: true }
+        ];
+
         if (!shiftSnapshot.empty) {
             const shiftDoc = shiftSnapshot.docs[0];
             const shiftData = shiftDoc.data() as Shift;
@@ -103,12 +109,19 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             const updates: any = {};
             
             const existingTaskNames = new Set(shiftData.tasks.map(t => t.name));
+            
+            // Sync from Master Tasks
             const newTasksToSync = masterTasks
                 .filter(mt => !existingTaskNames.has(mt.name))
                 .map(mt => ({ name: mt.name, type: mt.type, completed: false, ownerOnly: mt.ownerOnly }));
 
-            if (newTasksToSync.length > 0) {
-                updates.tasks = [...shiftData.tasks, ...newTasksToSync];
+            // Sync Strategic Tasks (Always required for Owner)
+            const newStrategicToSync = strategicTasks
+                .filter(st => !existingTaskNames.has(st.name))
+                .map(st => ({ ...st, completed: false }));
+
+            if (newTasksToSync.length > 0 || newStrategicToSync.length > 0) {
+                updates.tasks = [...shiftData.tasks, ...newTasksToSync, ...newStrategicToSync];
             }
 
             if (!isOwner) {
@@ -150,12 +163,9 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             }));
 
             // INJECT MANDATORY OWNER VERIFICATION TASKS
-            const ownerTasks: ShiftTask[] = [
-                { name: "Verify Abbas Presence", type: 'strategic', completed: false, ownerOnly: true },
-                { name: "Verify Didi Presence", type: 'strategic', completed: false, ownerOnly: true }
-            ];
+            const initialStrategic: ShiftTask[] = strategicTasks.map(st => ({ ...st, completed: false }));
 
-            const combinedTasks = [...dailyTasks, ...ownerTasks];
+            const combinedTasks = [...dailyTasks, ...initialStrategic];
 
             const newShiftRef = doc(collection(db, 'shifts'));
             const newShiftData: Omit<Shift, 'id'> = {
