@@ -7,6 +7,7 @@ export const firebaseConfig = {
   "appId": "1:529984145400:web:1fef8c161e5b2ca229b80d",
   "apiKey": "AIzaSyCmN6MkteozF-6OCk8OJ8Pk_J42-pkGUZg",
   "authDomain": "museview-gag3p.firebaseapp.com",
+  "storageBucket": "museview-gag3p.firebasestorage.app",
   "measurementId": "",
   "messagingSenderId": "529984145400"
 };
