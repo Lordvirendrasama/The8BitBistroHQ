@@ -157,7 +157,10 @@ export type LogEntryType =
     | 'EMPLOYEE_DELETED'
     | 'LEAVE_RECORDED'
     | 'DROPBOX_UPLOAD'
-    | 'DROPBOX_CLEAR';
+    | 'DROPBOX_CLEAR'
+    | 'SHIFT_UPDATED'
+    | 'DEBT_CLEARED'
+    | 'LEAVE_RECORDED';
 
 
 export interface LogEntry {
@@ -270,7 +273,8 @@ export interface ShiftTask {
     name: string;
     completed: boolean;
     completedAt?: string;
-    type: 'start-of-day' | 'end-of-day';
+    type: 'start-of-day' | 'end-of-day' | 'strategic';
+    ownerOnly?: boolean;
     completedBy?: {
         username: string;
         displayName: string;
@@ -309,7 +313,8 @@ export interface Shift {
 export interface Task {
   id: string;
   name: string;
-  type: 'start-of-day' | 'end-of-day';
+  type: 'start-of-day' | 'end-of-day' | 'strategic';
+  ownerOnly?: boolean;
 }
 
 export type TaskFormData = Omit<Task, 'id'>;

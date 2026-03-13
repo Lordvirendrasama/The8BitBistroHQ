@@ -1,4 +1,3 @@
-
 'use client';
 
 import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc } from 'firebase/firestore';
@@ -106,7 +105,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             const existingTaskNames = new Set(shiftData.tasks.map(t => t.name));
             const newTasksToSync = masterTasks
                 .filter(mt => !existingTaskNames.has(mt.name))
-                .map(mt => ({ name: mt.name, type: mt.type, completed: false }));
+                .map(mt => ({ name: mt.name, type: mt.type, completed: false, ownerOnly: mt.ownerOnly }));
 
             if (newTasksToSync.length > 0) {
                 updates.tasks = [...shiftData.tasks, ...newTasksToSync];
@@ -142,11 +141,21 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
 
             const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now, empSettings);
 
+            // Base Tasks from Settings
             const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
                 name: task.name,
                 type: task.type,
-                completed: false
+                completed: false,
+                ownerOnly: task.ownerOnly
             }));
+
+            // INJECT MANDATORY OWNER VERIFICATION TASKS
+            const ownerTasks: ShiftTask[] = [
+                { name: "Verify Abbas Presence", type: 'strategic', completed: false, ownerOnly: true },
+                { name: "Verify Didi Presence", type: 'strategic', completed: false, ownerOnly: true }
+            ];
+
+            const combinedTasks = [...dailyTasks, ...ownerTasks];
 
             const newShiftRef = doc(collection(db, 'shifts'));
             const newShiftData: Omit<Shift, 'id'> = {
@@ -155,7 +164,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 employees: [{ username: user.username, displayName: user.displayName }],
                 startTime: now.toISOString(),
                 status: 'active',
-                tasks: dailyTasks,
+                tasks: combinedTasks,
                 breaks: [],
                 lateMinutes,
                 workedOnWeeklyOff,

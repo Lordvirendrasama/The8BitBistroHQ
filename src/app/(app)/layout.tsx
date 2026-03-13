@@ -1,4 +1,3 @@
-
 'use client';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
@@ -12,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { getActiveOrStartShift, updateTask } from '@/firebase/firestore/shifts';
 import { StartOfDayTasks } from '@/components/staff/start-of-day-tasks';
 import { GlobalTimerNotifications } from '@/components/notifications/global-timer-notifications';
-import { AttendanceVerificationModal } from '@/components/staff/attendance-verification-modal';
 
 
 export default function AppLayout({ children }: { children: React.Node }) {
@@ -36,9 +34,11 @@ export default function AppLayout({ children }: { children: React.Node }) {
                 const shift = await getActiveOrStartShift(user);
                 if (isMounted) {
                     setActiveShift(shift);
-                    // LOGIC: Auto-minimize tasks for Viren (Owner) account only
+                    
+                    // Logic: Auto-minimize tasks for Viren UNLESS there are pending strategic verifications
                     if (user.username === 'Viren') {
-                        setTasksVisible(false);
+                        const hasPendingStrategic = (shift?.tasks || []).some(t => t.type === 'strategic' && !t.completed);
+                        setTasksVisible(hasPendingStrategic);
                     }
                 }
             } catch (error) {
@@ -75,10 +75,16 @@ export default function AppLayout({ children }: { children: React.Node }) {
     return activeShift?.tasks || [];
   }, [activeShift]);
 
-  // Count of uncompleted morning tasks for the header badge and notification visibility
-  const uncompletedMorningTaskCount = useMemo(() => {
-    return shiftTasks.filter(task => task.type === 'start-of-day' && !task.completed).length;
-  }, [shiftTasks]);
+  // Count of uncompleted morning/strategic tasks for visibility
+  const uncompletedTaskCount = useMemo(() => {
+    const isOwner = user?.username === 'Viren';
+    return shiftTasks.filter(task => {
+        if (task.completed) return false;
+        if (task.type === 'start-of-day' && (!task.ownerOnly || isOwner)) return true;
+        if (task.type === 'strategic' && isOwner) return true;
+        return false;
+    }).length;
+  }, [shiftTasks, user]);
 
   const handleTaskToggle = async (task: ShiftTask) => {
     if (!user || !activeShift) return;
@@ -86,7 +92,7 @@ export default function AppLayout({ children }: { children: React.Node }) {
     await updateTask(activeShift.id, task.name, newCompletedStatus, user);
     
     // If a morning task is being unchecked, force the notification to be visible
-    if (!newCompletedStatus && task.type === 'start-of-day') {
+    if (!newCompletedStatus && (task.type === 'start-of-day' || task.type === 'strategic')) {
       setTasksVisible(true);
     }
 
@@ -108,8 +114,8 @@ export default function AppLayout({ children }: { children: React.Node }) {
     });
 
     toast({ 
-      title: "Task Updated", 
-      description: `"${task.name}" marked as ${newCompletedStatus ? 'complete' : 'incomplete'}.` 
+      title: "Audit Updated", 
+      description: `"${task.name}" verified.` 
     });
   };
 
@@ -131,7 +137,7 @@ export default function AppLayout({ children }: { children: React.Node }) {
     );
   }
 
-  // Show task notification for admin, staff, and guests (who now act as staff)
+  // Show task notification for admin, staff, and guests
   const showTaskNotification = user?.role === 'admin' || user?.role === 'staff' || user?.role === 'guest';
 
   return (
@@ -143,12 +149,11 @@ export default function AppLayout({ children }: { children: React.Node }) {
           onTaskToggle={handleTaskToggle}
           tasksVisible={tasksVisible}
           setTasksVisible={setTasksVisible}
-          uncompletedTaskCount={uncompletedMorningTaskCount}
+          uncompletedTaskCount={uncompletedTaskCount}
         />
         <main className="p-3 sm:p-6 lg:p-8 bg-background min-h-0 overflow-y-auto">
           <GlobalTimerNotifications />
-          <AttendanceVerificationModal />
-          {showTaskNotification && uncompletedMorningTaskCount > 0 && tasksVisible && (
+          {showTaskNotification && uncompletedTaskCount > 0 && tasksVisible && (
             <StartOfDayTasks
               tasks={shiftTasks}
               onTaskToggle={handleTaskToggle}
