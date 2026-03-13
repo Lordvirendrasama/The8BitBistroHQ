@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export function DataManagement() {
@@ -80,9 +80,15 @@ export function DataManagement() {
         toast({ variant: 'destructive', title: "New Phase Name Required" });
         return;
     }
+    const dateObj = new Date(transitionDate);
+    if (!isValid(dateObj)) {
+        toast({ variant: 'destructive', title: "Invalid Transition Date" });
+        return;
+    }
+
     setIsSavingCycle(true);
     try {
-        const effectiveDate = new Date(transitionDate).toISOString();
+        const effectiveDate = dateObj.toISOString();
         await sealAndStartNewCycle(currentActiveName, newPhaseName.trim(), effectiveDate);
         logDataAction(`Sealed phase "${currentActiveName}" and started "${newPhaseName.trim()}" at ${effectiveDate}`);
         toast({ title: 'Phase Transition Complete', description: `Launch Phase "${newPhaseName.trim()}" initialized.` });
@@ -170,6 +176,11 @@ export function DataManagement() {
     }
   };
 
+  const safeFormatTransitionDate = () => {
+    const d = new Date(transitionDate);
+    return isValid(d) ? format(d, 'PPP p') : 'Invalid Date';
+  };
+
   return (
     <div className="space-y-8 pb-20 font-body">
         {/* CYCLE TRANSITION CARD */}
@@ -220,7 +231,7 @@ export function DataManagement() {
                                 />
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <Button disabled={isSavingCycle || !newPhaseName} className="h-12 px-8 font-black uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
+                                        <Button disabled={isSavingCycle || !newPhaseName || !isValid(new Date(transitionDate))} className="h-12 px-8 font-black uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
                                             <ArrowRight className="mr-2 h-5 w-5" />
                                             Transition
                                         </Button>
@@ -229,7 +240,7 @@ export function DataManagement() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle className="text-2xl font-black uppercase">Start Launch Phase?</AlertDialogTitle>
                                             <AlertDialogDescription className="text-lg font-medium text-foreground">
-                                                Existing records up to <strong>{format(new Date(transitionDate), 'PPP p')}</strong> will be sealed as <strong>"{currentActiveName}"</strong>. 
+                                                Existing records up to <strong>{safeFormatTransitionDate()}</strong> will be sealed as <strong>"{currentActiveName}"</strong>. 
                                                 New records from that point will be tagged as <strong>"{newPhaseName}"</strong>. 
                                                 <br/><br/>
                                                 <span className="text-primary font-black">MEMBER XP AND LEVELS ARE NOT AFFECTED.</span>
