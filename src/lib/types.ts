@@ -1,4 +1,3 @@
-
 export type MemberTier = 'Red' | 'Green' | 'Gold';
 
 export interface MemberRecharge {
@@ -156,7 +155,9 @@ export type LogEntryType =
     | 'EMPLOYEE_ADDED'
     | 'EMPLOYEE_UPDATED'
     | 'EMPLOYEE_DELETED'
-    | 'LEAVE_RECORDED';
+    | 'LEAVE_RECORDED'
+    | 'DROPBOX_UPLOAD'
+    | 'DROPBOX_CLEAR';
 
 
 export interface LogEntry {
@@ -488,6 +489,19 @@ export interface AppUpdate {
   status: 'pending' | 'completed';
   createdAt: string;
   addedBy: {
+    uid: string;
+    displayName: string;
+  };
+}
+
+export interface DropboxFile {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+  uploadedBy: {
     uid: string;
     displayName: string;
   };

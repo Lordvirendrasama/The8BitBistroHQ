@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -47,13 +46,15 @@ import {
   CreditCard,
   Target,
   Calendar,
-  Activity
+  Activity,
+  Files
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
 const allNavItems = [
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
+  { href: '/drop-box', icon: Files, label: 'Bistro DropBox' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
   
   // Advanced Financials (Grouped for Viren/Admin)
