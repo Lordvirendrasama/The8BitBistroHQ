@@ -1,19 +1,23 @@
 'use client';
-import { getFirestore, collection, addDoc, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll, type UploadTask } from 'firebase/storage';
+import { Firestore, collection, addDoc, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { FirebaseStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll, type UploadTask } from 'firebase/storage';
 import type { DropboxFile, LogEntry } from '@/lib/types';
 import type { CustomUser } from '../auth/use-user';
 
 /**
  * Uploads a file to Firebase Storage and records its metadata in Firestore.
- * Supports an optional callback to expose the UploadTask for progress tracking and cancellation.
+ * Requires the initialized instances from the provider to ensure correct bucket connection.
  */
-export const uploadDropboxFile = async (file: File, user: CustomUser, onTask?: (task: UploadTask) => void) => {
-  const db = getFirestore();
-  const storage = getStorage();
-  
+export const uploadDropboxFile = async (
+  storage: FirebaseStorage, 
+  db: Firestore, 
+  file: File, 
+  user: CustomUser, 
+  onTask?: (task: UploadTask) => void
+) => {
   try {
     const fileId = doc(collection(db, 'dummy')).id;
+    // Standardizing storage path
     const storageRef = ref(storage, `dropbox/${fileId}_${file.name}`);
     
     // 1. Upload to Storage with Resumable Task
@@ -56,17 +60,14 @@ export const uploadDropboxFile = async (file: File, user: CustomUser, onTask?: (
       return null;
     }
     console.error("Error uploading to dropbox:", error);
-    return null;
+    throw error; // Let the component handle UI feedback
   }
 };
 
 /**
  * Deletes a specific file from Storage and Firestore.
  */
-export const deleteDropboxFile = async (fileId: string, storageUrl: string, user: CustomUser) => {
-  const db = getFirestore();
-  const storage = getStorage();
-  
+export const deleteDropboxFile = async (storage: FirebaseStorage, db: Firestore, fileId: string, storageUrl: string, user: CustomUser) => {
   try {
     // 1. Delete from Storage
     const storageRef = ref(storage, storageUrl);
@@ -83,12 +84,9 @@ export const deleteDropboxFile = async (fileId: string, storageUrl: string, user
 };
 
 /**
- * Nuclear option: Wipes all files from the dropbox.
+ * Nuclear option: Wipes all files from the shared pool.
  */
-export const clearDropbox = async (user: CustomUser) => {
-  const db = getFirestore();
-  const storage = getStorage();
-  
+export const clearDropbox = async (storage: FirebaseStorage, db: Firestore, user: CustomUser) => {
   try {
     // 1. Get all files in Firestore
     const snapshot = await getDocs(collection(db, 'dropboxFiles'));

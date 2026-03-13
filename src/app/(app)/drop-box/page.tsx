@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function DropboxPage() {
-  const { db } = useFirebase();
+  const { db, storage } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -69,7 +69,7 @@ export default function DropboxPage() {
   const { data: files, loading } = useCollection<DropboxFile>(filesQuery);
 
   const handleUpload = async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0 || !user) return;
+    if (!fileList || fileList.length === 0 || !user || !storage || !db) return;
     
     setIsUploading(true);
     setUploadProgress(0);
@@ -80,17 +80,35 @@ export default function DropboxPage() {
       if (cancelRequestedRef.current) break;
       
       const file = fileList[i];
-      const result = await uploadDropboxFile(file, user, (task) => {
-        currentTaskRef.current = task;
-        
-        // Listen for progress
-        task.on('state_changed', (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
+      try {
+        const result = await uploadDropboxFile(storage, db, file, user, (task) => {
+          currentTaskRef.current = task;
+          
+          // Listen for progress and errors
+          task.on('state_changed', 
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(progress);
+            },
+            (error) => {
+              console.error("Upload task error:", error);
+              if (error.code !== 'storage/canceled') {
+                toast({ 
+                  variant: 'destructive', 
+                  title: "Transfer Failed", 
+                  description: `Error: ${error.code}. Check Firebase Console.` 
+                });
+              }
+              setIsUploading(false);
+              setUploadProgress(0);
+            }
+          );
         });
-      });
 
-      if (result) successCount++;
+        if (result) successCount++;
+      } catch (error: any) {
+        console.error("Upload process error:", error);
+      }
     }
 
     if (successCount > 0 && !cancelRequestedRef.current) {
@@ -129,9 +147,9 @@ export default function DropboxPage() {
   };
 
   const handleClear = async () => {
-    if (!user) return;
+    if (!user || !db || !storage) return;
     setIsClearing(true);
-    const success = await clearDropbox(user);
+    const success = await clearDropbox(storage, db, user);
     if (success) {
       toast({ title: "DropBox Nuked", description: "All shared assets have been deleted." });
     }
@@ -139,8 +157,8 @@ export default function DropboxPage() {
   };
 
   const handleDeleteFile = async (file: DropboxFile) => {
-    if (!user) return;
-    const success = await deleteDropboxFile(file.id, file.url, user);
+    if (!user || !db || !storage) return;
+    const success = await deleteDropboxFile(storage, db, file.id, file.url, user);
     if (success) {
       toast({ title: "Asset Removed" });
     }
