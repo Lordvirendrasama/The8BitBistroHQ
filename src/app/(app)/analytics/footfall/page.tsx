@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, Fragment } from 'react';
@@ -8,12 +9,15 @@ import type { Bill } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, Clock, Calendar as CalendarIcon, TrendingUp, Users, Info, BarChart3, Filter, Globe } from 'lucide-react';
+import { Activity, Clock, Calendar as CalendarIcon, TrendingUp, Users, Info, BarChart3, Filter, Globe, ChevronRight, Receipt, ReceiptIndianRupee } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, LineChart, Line } from 'recharts';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/data-management';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -21,8 +25,11 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 export default function FootfallAnalyticsPage() {
   const { db } = useFirebase();
   const [activeTab, setActiveTab] = useState('heatmap');
-  const [selectedPhase, setSelectedPhase] = useState<string>('all_cycles');
+  const [selectedPhase, setSelectedPhase] = useState<string>('Launch Live');
   const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
+  
+  // Drill-down State
+  const [selectedCell, setSelectedCell] = useState<{ dayIdx: number, hour: number } | null>(null);
 
   useEffect(() => {
     getAvailableCycles().then(setAvailableCycles);
@@ -43,9 +50,20 @@ export default function FootfallAnalyticsPage() {
     const heatmapMatrix: number[][] = Array(7).fill(0).map(() => Array(24).fill(0));
     const dayTotals: Record<string, number> = DAYS.reduce((acc, d) => ({ ...acc, [d]: 0 }), {});
     const hourTotals: Record<number, number> = HOURS.reduce((acc, h) => ({ ...acc, [h]: 0 }), {});
+    
+    // Growth Trend
+    const monthlyMap: Record<string, number> = {};
+    const yearlyMap: Record<string, number> = {};
 
     filteredBills.forEach(bill => {
         const date = new Date(bill.timestamp);
+        
+        // Month/Year key
+        const monthKey = format(date, 'MMM yyyy');
+        const yearKey = format(date, 'yyyy');
+        monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + 1;
+        yearlyMap[yearKey] = (yearlyMap[yearKey] || 0) + 1;
+
         // Correct index mapping: getDay() returns 0 for Sunday
         let dayIdx = date.getDay() - 1;
         if (dayIdx === -1) dayIdx = 6; // Sunday to index 6
@@ -64,9 +82,30 @@ export default function FootfallAnalyticsPage() {
     // Formatting for charts
     const dayChartData = DAYS.map(d => ({ name: d, count: dayTotals[d] }));
     const hourChartData = HOURS.map(h => ({ name: `${h}:00`, count: hourTotals[h] }));
+    const monthChartData = Object.entries(monthlyMap).map(([name, count]) => ({ name, count }));
+    const yearChartData = Object.entries(yearlyMap).map(([name, count]) => ({ name, count }));
 
-    return { heatmapMatrix, dayChartData, hourChartData, maxInCell, totalBills: filteredBills.length };
+    return { 
+        heatmapMatrix, 
+        dayChartData, 
+        hourChartData, 
+        monthChartData,
+        yearChartData,
+        maxInCell, 
+        totalBills: filteredBills.length,
+        filteredBills 
+    };
   }, [bills, selectedPhase]);
+
+  const drillDownBills = useMemo(() => {
+    if (!selectedCell || !stats) return [];
+    return stats.filteredBills.filter(bill => {
+        const date = new Date(bill.timestamp);
+        let dayIdx = date.getDay() - 1;
+        if (dayIdx === -1) dayIdx = 6;
+        return dayIdx === selectedCell.dayIdx && date.getHours() === selectedCell.hour;
+    });
+  }, [selectedCell, stats]);
 
   const getHeatmapColor = (count: number, max: number) => {
     if (count === 0) return 'bg-muted/30';
@@ -141,6 +180,8 @@ export default function FootfallAnalyticsPage() {
                     </CardTitle>
                     <CardDescription className="text-[10px] font-bold uppercase tracking-widest">
                         {selectedPhase === 'all_cycles' ? 'Visualizing trends across entire business history.' : `Analyzing traffic specific to phase: ${selectedPhase}.`}
+                        <br/>
+                        <span className="text-primary font-black">TIP: Click any cell to audit specific bills from that time window.</span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0 overflow-hidden">
@@ -166,9 +207,11 @@ export default function FootfallAnalyticsPage() {
                                             return (
                                                 <div 
                                                     key={`${day}-${h}`} 
+                                                    onClick={() => count > 0 && setSelectedCell({ dayIdx: dIdx, hour: h })}
                                                     className={cn(
                                                         "h-10 rounded-md transition-all flex items-center justify-center text-[9px] font-bold",
-                                                        getHeatmapColor(count, stats.maxInCell)
+                                                        getHeatmapColor(count, stats.maxInCell),
+                                                        count > 0 ? "cursor-pointer hover:scale-110 hover:z-10 shadow-sm" : ""
                                                     )}
                                                     title={`${day} @ ${h}:00 - ${count} sessions`}
                                                 >
@@ -250,7 +293,7 @@ export default function FootfallAnalyticsPage() {
                         </CardTitle>
                         <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Total bill volume grouped by day.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[350px]">
+                    <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stats.dayChartData}>
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
@@ -274,7 +317,7 @@ export default function FootfallAnalyticsPage() {
                         </CardTitle>
                         <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Average footfall intensity throughout the 24h clock.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[350px]">
+                    <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stats.hourChartData}>
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
@@ -294,9 +337,119 @@ export default function FootfallAnalyticsPage() {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
+
+                <Card className="border-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-emerald-600" />
+                            Monthly Trend
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Longitudinal traffic volume by month.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={stats.monthChartData}>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                                />
+                                <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={4} dot={{ r: 6, fill: 'hsl(var(--primary))' }} activeDot={{ r: 8 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
+                            <Globe className="h-5 w-5 text-blue-600" />
+                            Year-on-Year Capacity
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Macro-level annual throughput.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats.yearChartData}>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                <Tooltip 
+                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                                />
+                                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
             </div>
         </TabsContent>
       </Tabs>
+
+      {/* DRILL DOWN MODAL */}
+      <Dialog open={!!selectedCell} onOpenChange={(open) => !open && setSelectedCell(null)}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl font-body">
+            <DialogHeader className="p-6 bg-muted/10 border-b shrink-0">
+                <DialogTitle className="font-headline text-xl flex items-center gap-3">
+                    <Receipt className="text-primary h-6 w-6" />
+                    Bill Audit: {selectedCell ? `${DAYS[selectedCell.dayIdx]} @ ${selectedCell.hour}:00` : ''}
+                </DialogTitle>
+                <DialogDescription className="font-black text-[10px] uppercase tracking-widest">
+                    Showing {drillDownBills.length} records contributing to this intensity slot.
+                </DialogDescription>
+            </DialogHeader>
+            
+            <ScrollArea className="flex-1 bg-background">
+                <div className="p-4">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/20">
+                                <TableHead className="font-black uppercase text-[10px]">Time</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Station</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Members</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px]">Amount</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {drillDownBills.map((bill) => (
+                                <TableRow key={bill.id} className="hover:bg-muted/5 group">
+                                    <TableCell className="font-mono font-bold text-[10px]">
+                                        {format(new Date(bill.timestamp), 'p')}
+                                    </TableCell>
+                                    <TableCell className="font-black uppercase text-xs">
+                                        {bill.stationName}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-wrap gap-1">
+                                            {bill.members.map(m => (
+                                                <Badge key={m.id} variant="outline" className="text-[8px] h-4 uppercase font-black px-1.5">{m.name}</Badge>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono font-black text-sm text-primary">
+                                        ₹{bill.totalAmount.toLocaleString()}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {drillDownBills.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-48 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No detailed records found for this slot.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </ScrollArea>
+            <div className="p-4 bg-muted/5 border-t">
+                <div className="flex justify-between items-center px-4">
+                    <span className="text-[10px] font-black uppercase text-muted-foreground">Slot Cumulative Revenue</span>
+                    <span className="text-2xl font-black font-mono text-primary">₹{drillDownBills.reduce((s, b) => s + b.totalAmount, 0).toLocaleString()}</span>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

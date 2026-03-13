@@ -9,10 +9,11 @@ import type { Bill, Expense, DateRange, FixedBill, LiabilityState, Settings } fr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ReceiptIndianRupee, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, CheckCircle2, Info, ArrowUpRight, Timer, Landmark, Calendar, History, Percent, Zap } from 'lucide-react';
+import { ReceiptIndianRupee, IndianRupee, ShoppingCart, Download, Calendar as CalendarIcon, Wallet, FilterX, BarChart3, Target, AlertCircle, CheckCircle2, Info, ArrowUpRight, Timer, Landmark, Calendar, History, Percent, Zap, Filter, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComp } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, isSameMonth, differenceInDays, differenceInCalendarMonths, getDaysInMonth } from "date-fns";
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
 export default function AccountingPage() {
   const { db } = useFirebase();
   const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
+  const [selectedPhase, setSelectedPhase] = useState<string>('Launch Live');
   const [isExporting, setIsExporting] = useState(false);
   const [liabilityState, setLiabilityState] = useState<LiabilityState | null>(null);
   const [appSettings, setAppSettings] = useState<Settings | null>(null);
@@ -63,17 +65,21 @@ export default function AccountingPage() {
   const stats = useMemo(() => {
     if (!bills || !expenses || !liabilityState || !fixedBills || !appSettings) return null;
 
-    const filterByDate = (itemDate: string) => {
+    const filterByDateAndPhase = (item: any) => {
+        // Phase Filter
+        if (selectedPhase !== 'all_cycles' && item.cycle !== selectedPhase) return false;
+
+        // Date Range Filter
         if (!dateRange.from) return true;
-        const d = new Date(itemDate);
+        const d = new Date(item.timestamp || item.date || item.purchaseDate);
         if (dateRange.to) {
             return d >= startOfDay(dateRange.from) && d <= endOfDay(dateRange.to);
         }
         return d >= startOfDay(dateRange.from);
     };
 
-    const matchedBills = bills.filter(b => b.timestamp && filterByDate(b.timestamp));
-    const matchedExpenses = expenses.filter(e => e.timestamp && filterByDate(e.timestamp));
+    const matchedBills = bills.filter(filterByDateAndPhase);
+    const matchedExpenses = expenses.filter(filterByDateAndPhase);
 
     const revenue = matchedBills.reduce((sum, b) => sum + b.totalAmount, 0);
     const opSpend = matchedExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -165,30 +171,35 @@ export default function AccountingPage() {
         daysPassed,
         activeBurdens
     };
-  }, [bills, expenses, liabilityState, fixedBills, appSettings, dateRange]);
+  }, [bills, expenses, liabilityState, fixedBills, appSettings, dateRange, selectedPhase]);
 
   const monthlyBreakdown = useMemo(() => {
     if (!bills || !expenses) return [];
+    
+    const filteredBills = selectedPhase === 'all_cycles' ? bills : bills.filter(b => b.cycle === selectedPhase);
+    const filteredExpenses = selectedPhase === 'all_cycles' ? expenses : expenses.filter(e => e.cycle === selectedPhase);
+
     const breakdownMap: Record<string, { monthKey: string, monthName: string, revenue: number, expense: number }> = {};
-    bills.forEach(b => {
+    filteredBills.forEach(b => {
         const d = new Date(b.timestamp);
         const key = format(d, 'yyyy-MM');
         if (!breakdownMap[key]) breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
         breakdownMap[key].revenue += b.totalAmount;
     });
-    expenses.forEach(e => {
+    filteredExpenses.forEach(e => {
         const d = new Date(e.timestamp);
         const key = format(d, 'yyyy-MM');
         if (!breakdownMap[key]) breakdownMap[key] = { monthKey: key, monthName: format(d, 'MMMM yyyy'), revenue: 0, expense: 0 };
         breakdownMap[key].expense += e.amount;
     });
     return Object.values(breakdownMap).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
-  }, [bills, expenses]);
+  }, [bills, expenses, selectedPhase]);
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
         const csv = await exportAccountingLedger({ 
+            cycle: selectedPhase === 'all_cycles' ? undefined : selectedPhase,
             startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
             endDate: dateRange.to ? dateRange.to.toISOString() : undefined
         });
@@ -196,7 +207,7 @@ export default function AccountingPage() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `audit-ledger-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        link.download = `audit-ledger-${selectedPhase}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
         link.click();
     } finally {
         setIsExporting(false);
@@ -222,6 +233,22 @@ export default function AccountingPage() {
           <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Surgical Revenue Reconciliation & Performance Tracking.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+            <Select value={selectedPhase} onValueChange={setSelectedPhase}>
+                <SelectTrigger className="h-12 w-[200px] border-2 font-black uppercase text-[10px] tracking-tight bg-background">
+                    <Filter className="mr-2 h-3.5 w-3.5 text-primary" />
+                    <SelectValue placeholder="All Cycles" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all_cycles" className="font-bold uppercase text-[10px]">
+                        <span className="flex items-center gap-2"><Globe className="h-3 w-3" /> All Eras</span>
+                    </SelectItem>
+                    {availableCycles.map(c => (
+                        <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-[10px]">
+                            {c.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
             <Button onClick={handleExport} disabled={isExporting} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
                 <Download className="mr-2 h-5 w-5" /> Export Audit
             </Button>

@@ -60,7 +60,7 @@ export default function OwnerDashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [selectedPhase, setSelectedPhase] = useState<string>('all_cycles');
+  const [selectedPhase, setSelectedPhase] = useState<string>('Launch Live');
   const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
 
   // ONLY Viren can see this page
