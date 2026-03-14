@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, GripVertical, Save, X, AlertTriangle, Gamepad2, Users } from 'lucide-react';
+import { Trash2, GripVertical, Save, X, AlertTriangle, Gamepad2, Users, Plus } from 'lucide-react';
 import type { Station } from '@/lib/types';
 import { updateStationsBatch, removeStation } from '@/firebase/firestore/stations';
 import { useToast } from '@/hooks/use-toast';
@@ -19,9 +19,10 @@ interface ManageStationsModalProps {
   onOpenChange: (open: boolean) => void;
   stations: Station[];
   type: 'ps5' | 'boardgame';
+  onAdd: () => void;
 }
 
-export function ManageStationsModal({ isOpen, onOpenChange, stations, type }: ManageStationsModalProps) {
+export function ManageStationsModal({ isOpen, onOpenChange, stations, type, onAdd }: ManageStationsModalProps) {
   const { toast } = useToast();
   const [localStations, setLocalStations] = useState<Station[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,13 +77,22 @@ export function ManageStationsModal({ isOpen, onOpenChange, stations, type }: Ma
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 overflow-hidden border-none shadow-2xl font-body">
         <DialogHeader className="p-6 pb-2 bg-muted/10 border-b">
-          <DialogTitle className="flex items-center gap-3 text-xl font-display uppercase tracking-tight">
-            <Icon className="text-primary h-6 w-6" />
-            Manage {type === 'ps5' ? 'Consoles' : 'Tables'}
-          </DialogTitle>
-          <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground mt-1">
-            Rename or reorder units. Drag to rearrange.
-          </DialogDescription>
+          <div className="flex justify-between items-center w-full pr-8">
+            <div className="flex items-center gap-3">
+              <Icon className="text-primary h-6 w-6" />
+              <div className="min-w-0">
+                <DialogTitle className="text-xl font-display uppercase tracking-tight truncate">
+                  Manage {type === 'ps5' ? 'Consoles' : 'Tables'}
+                </DialogTitle>
+                <DialogDescription className="font-bold text-[9px] uppercase text-muted-foreground mt-0.5">
+                  Rename or reorder units. Drag to rearrange.
+                </DialogDescription>
+              </div>
+            </div>
+            <Button size="sm" onClick={onAdd} variant="outline" className="h-8 border-2 font-black uppercase text-[9px] gap-1.5 shrink-0 bg-background hover:bg-primary hover:text-white transition-all">
+              <Plus className="h-3 w-3" /> Add Unit
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">

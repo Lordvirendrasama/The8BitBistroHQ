@@ -149,6 +149,7 @@ function DashboardContent() {
         discount: 0,
         order: maxOrder + 100
     });
+    toast({ title: "Unit Added", description: `${newName} has been created.` });
   };
 
   const handlePauseTimer = (station: Station) => {
@@ -451,11 +452,9 @@ function DashboardContent() {
         let remainingSecondsOnTimer = 0;
 
         if (member.status === 'finished') {
-            // Player was already stopped individually, take their cached values
-            playedSecondsForMember = 0; // Not strictly needed for pool deduction here as it happened in handleStopPlayer
+            playedSecondsForMember = 0;
             remainingSecondsOnTimer = member.remainingSecondsAtStop || 0;
         } else if (member.startTime && member.endTime) {
-            // Player is being stopped NOW during Checkout All
             const totalSessionSeconds = Math.floor((new Date(member.endTime).getTime() - new Date(member.startTime).getTime()) / 1000);
             
             if ((station.status === 'paused' || member.status === 'paused') && member.remainingTimeOnPause != null) {
@@ -562,7 +561,6 @@ function DashboardContent() {
     if (!selectedStation) return;
     const durationToAddInSeconds = pkg.duration;
 
-    // Strategic Logic: Account for Grace Period Consumption
     let graceDeduction = 0;
     if (selectedStation.status === 'finishing' && selectedStation.finishingStartTime) {
         const elapsedMs = Date.now() - new Date(selectedStation.finishingStartTime).getTime();
@@ -578,12 +576,10 @@ function DashboardContent() {
         if ((selectedStation.status === 'paused' || m.status === 'paused') && m.remainingTimeOnPause != null) {
             newRemaining = m.remainingTimeOnPause + durationToAddInSeconds;
         } else {
-            // If finishing, the current endTime is in the past or invalid. We use Date.now() as the anchor.
             const baseTime = (m.endTime && !wasFinished && selectedStation.status !== 'finishing') 
                 ? new Date(m.endTime).getTime() 
                 : Date.now();
             
-            // Deduct the grace period that was already "used" for free
             const effectiveAdd = Math.max(0, durationToAddInSeconds - graceDeduction);
             newEndTime = new Date(baseTime + effectiveAdd * 1000).toISOString();
         }
@@ -626,7 +622,6 @@ function DashboardContent() {
         endTime: latestEndTime 
     };
 
-    // Protocol: Recover station from finishing state if time was added
     if (selectedStation.status === 'finishing') {
         updates.status = 'in-use';
         updates.finishingStartTime = null;
@@ -713,7 +708,6 @@ function DashboardContent() {
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-primary"/> PS5 Consoles</CardTitle>
             <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleManage('ps5')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
-                <Button size="sm" onClick={() => handleAddStation('ps5')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Console</Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -743,7 +737,6 @@ function DashboardContent() {
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Users className="h-5 sm:h-6 w-5 sm:w-6 text-primary" /> Board Games</CardTitle>
             <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
-                <Button size="sm" onClick={() => handleAddStation('boardgame')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Table</Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -785,6 +778,7 @@ function DashboardContent() {
         onOpenChange={setIsManageModalOpen} 
         stations={manageType === 'ps5' ? ps5Stations : boardGameStations} 
         type={manageType}
+        onAdd={() => handleAddStation(manageType)}
       />
 
       <GlobalRechargeModal 
