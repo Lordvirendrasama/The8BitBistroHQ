@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc } from 'firebase/firestore';
@@ -143,7 +144,8 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             }
             return shift;
         } else {
-            if (isOwner) return null;
+            // RELAXED RESTRICTION: Admins can also initialize the day if staff hasn't yet.
+            if (isOwner && user.role !== 'admin') return null;
 
             const now = new Date();
             

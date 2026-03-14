@@ -1,3 +1,4 @@
+
 'use client';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
@@ -11,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getActiveOrStartShift, updateTask } from '@/firebase/firestore/shifts';
 import { StartOfDayTasks } from '@/components/staff/start-of-day-tasks';
 import { GlobalTimerNotifications } from '@/components/notifications/global-timer-notifications';
+import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
+import { getBusinessDate } from '@/lib/utils';
 
 
 export default function AppLayout({ children }: { children: React.Node }) {
@@ -23,52 +26,55 @@ export default function AppLayout({ children }: { children: React.Node }) {
   const [isLoadingShift, setIsLoadingShift] = useState(true);
   const [tasksVisible, setTasksVisible] = useState(true);
 
-  // Effect to get or create the daily shift
+  // Effect to ensure shift is initialized and then listen for changes in real-time
   useEffect(() => {
     let isMounted = true;
 
-    async function initializeShift() {
-        if (user && db && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest')) {
-            setIsLoadingShift(true);
-            try {
-                const shift = await getActiveOrStartShift(user);
-                if (isMounted) {
-                    setActiveShift(shift);
-                    
-                    // Logic: Auto-minimize tasks for Viren UNLESS there are pending strategic verifications
-                    if (user.username === 'Viren') {
-                        const hasPendingStrategic = (shift?.tasks || []).some(t => t.type === 'strategic' && !t.completed);
-                        setTasksVisible(hasPendingStrategic);
-                    }
-                }
-            } catch (error) {
-                console.error("Critical: Failed to load shift data:", error);
-                if (isMounted) {
-                    toast({
-                        variant: 'destructive',
-                        title: "Sync Error",
-                        description: "Could not retrieve daily shift. Check your connection."
-                    });
-                }
-            } finally {
-                if (isMounted) {
-                    setIsLoadingShift(false);
-                }
-            }
-        } else {
-            if (isMounted) {
-                setActiveShift(null);
-                setIsLoadingShift(false);
-            }
-        }
+    if (!user || !db || (user.role !== 'staff' && user.role !== 'admin' && user.role !== 'guest')) {
+        setIsLoadingShift(false);
+        return;
     }
 
-    initializeShift();
+    // 1. Ensure shift is initialized (starts it if missing)
+    getActiveOrStartShift(user).catch(err => {
+        console.error("Initialization error:", err);
+    });
+
+    // 2. Set up real-time listener for the current business day's shift
+    const businessToday = getBusinessDate();
+    const q = query(
+        collection(db, 'shifts'),
+        where('date', '==', businessToday),
+        limit(1)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (!isMounted) return;
+        
+        if (!snapshot.empty) {
+            const shiftDoc = snapshot.docs[0];
+            const shiftData = { id: shiftDoc.id, ...shiftDoc.data() } as Shift;
+            setActiveShift(shiftData);
+            
+            // Strategic Logic: Auto-minimize tasks for Viren unless pending
+            if (user.username === 'Viren') {
+                const hasPendingStrategic = (shiftData.tasks || []).some(t => t.type === 'strategic' && !t.completed);
+                setTasksVisible(hasPendingStrategic);
+            }
+        } else {
+            setActiveShift(null);
+        }
+        setIsLoadingShift(false);
+    }, (error) => {
+        console.error("Shift sync error:", error);
+        if (isMounted) setIsLoadingShift(false);
+    });
 
     return () => {
         isMounted = false;
+        unsubscribe();
     };
-  }, [user, db, toast]);
+  }, [user, db]);
 
   // All relevant tasks for the current shift
   const shiftTasks = useMemo(() => {
@@ -95,23 +101,6 @@ export default function AppLayout({ children }: { children: React.Node }) {
     if (!newCompletedStatus && (task.type === 'start-of-day' || task.type === 'strategic')) {
       setTasksVisible(true);
     }
-
-    // Manually update local state for immediate UI feedback
-    setActiveShift(prev => {
-        if (!prev) return null;
-        const now = new Date().toISOString();
-        const newTasks = (prev.tasks || []).map(t => 
-          t.name === task.name 
-            ? {
-                ...t, 
-                completed: newCompletedStatus, 
-                completedAt: newCompletedStatus ? now : undefined,
-                completedBy: newCompletedStatus ? { username: user.username, displayName: user.displayName } : undefined
-              } 
-            : t
-        );
-        return {...prev, tasks: newTasks};
-    });
 
     toast({ 
       title: "Audit Updated", 
