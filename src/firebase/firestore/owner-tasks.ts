@@ -1,9 +1,34 @@
-
 'use client';
 import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import type { OwnerTask, OwnerTaskFormData, LogEntry } from '@/lib/types';
 import type { CustomUser } from '../auth/use-user';
 import { addMonths } from 'date-fns';
+
+/**
+ * Robustly sanitizes data for Firestore by removing any 'undefined' values.
+ * Firestore accepts 'null' but crashes on 'undefined'.
+ */
+const sanitize = (data: any): any => {
+  if (data === undefined) return null;
+  if (data === null) return null;
+  
+  if (Array.isArray(data)) {
+    return data.map(v => sanitize(v));
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    const clean: any = {};
+    Object.keys(data).forEach(key => {
+      const val = data[key];
+      if (val !== undefined) {
+        clean[key] = sanitize(val);
+      }
+    });
+    return clean;
+  }
+  
+  return data;
+};
 
 export const addOwnerTask = async (taskData: OwnerTaskFormData, user: CustomUser) => {
   const db = getFirestore();
@@ -22,7 +47,7 @@ export const addOwnerTask = async (taskData: OwnerTaskFormData, user: CustomUser
     order: maxOrder + 100 // Incremental spacing
   };
 
-  batch.set(taskRef, fullTask);
+  batch.set(taskRef, sanitize(fullTask));
 
   // Log action
   const logRef = doc(collection(db, 'logs'));
@@ -33,7 +58,7 @@ export const addOwnerTask = async (taskData: OwnerTaskFormData, user: CustomUser
     user: { uid: user.username, displayName: user.displayName },
     details: { taskId: taskRef.id, taskTitle: taskData.title, category: taskData.category, isSeparator: !!taskData.isSeparator }
   };
-  batch.set(logRef, logEntry);
+  batch.set(logRef, sanitize(logEntry));
 
   try {
     await batch.commit();
@@ -54,7 +79,7 @@ export const updateOwnerTask = async (taskId: string, updates: Partial<OwnerTask
     if (!taskSnapshot.exists()) return false;
     
     const taskData = taskSnapshot.data() as OwnerTask;
-    batch.update(taskRef, updates);
+    batch.update(taskRef, sanitize(updates));
 
     // Handle Recurring Task Logic
     if (updates.status === 'completed' && taskData.isRecurring && !taskData.isSeparator) {
@@ -62,16 +87,16 @@ export const updateOwnerTask = async (taskId: string, updates: Partial<OwnerTask
       const newTaskRef = doc(collection(db, 'ownerTasks'));
       const newTaskData: Omit<OwnerTask, 'id'> = {
         title: taskData.title,
-        description: taskData.description,
+        description: taskData.description || '',
         dueDateTime: nextDueDate,
         priority: taskData.priority,
         category: taskData.category,
         status: 'pending',
         isRecurring: true,
         createdAt: new Date().toISOString(),
-        order: taskData.order + 1 // Place right after current
+        order: (taskData.order || 0) + 1 // Place right after current
       };
-      batch.set(newTaskRef, newTaskData);
+      batch.set(newTaskRef, sanitize(newTaskData));
     }
 
     if (updates.status === 'completed') {
@@ -83,7 +108,7 @@ export const updateOwnerTask = async (taskId: string, updates: Partial<OwnerTask
         user: { uid: user.username, displayName: user.displayName },
         details: { taskId }
       };
-      batch.set(logRef, logEntry);
+      batch.set(logRef, sanitize(logEntry));
     }
 
     await batch.commit();
@@ -104,12 +129,12 @@ export const reorderOwnerTasks = async (tasks: OwnerTask[], user: CustomUser) =>
   });
 
   const logRef = doc(collection(db, 'logs'));
-  batch.set(logRef, {
+  batch.set(logRef, sanitize({
     type: 'OWNER_TASK_REORDERED',
     description: `Viren rearranged the strategic checklist.`,
     timestamp: new Date().toISOString(),
     user: { uid: user.username, displayName: user.displayName }
-  });
+  }));
 
   try {
     await batch.commit();

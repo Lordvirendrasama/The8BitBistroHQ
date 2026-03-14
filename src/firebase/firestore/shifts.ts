@@ -1,15 +1,41 @@
-
 'use client';
 
 import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc } from 'firebase/firestore';
 import type { Shift, ShiftTask, LogEntry, Task, ShiftBreak, Employee } from '@/lib/types';
 import type { CustomUser } from '@/firebase/auth/use-user';
 import { getBusinessDate } from '@/lib/utils';
+import { getSettings } from './settings';
 
 // Defaults for shift logic
 const DEFAULT_START_TIME = "11:00"; 
 const LATE_ARRIVAL_THRESHOLD = 10; 
 const DEFAULT_END_TIME = "23:00";   
+
+/**
+ * Robustly sanitizes data for Firestore by removing any 'undefined' values.
+ * Firestore accepts 'null' but crashes on 'undefined'.
+ */
+const sanitize = (data: any): any => {
+  if (data === undefined) return null;
+  if (data === null) return null;
+  
+  if (Array.isArray(data)) {
+    return data.map(v => sanitize(v));
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    const clean: any = {};
+    Object.keys(data).forEach(key => {
+      const val = data[key];
+      if (val !== undefined) {
+        clean[key] = sanitize(val);
+      }
+    });
+    return clean;
+  }
+  
+  return data;
+};
 
 const calculateAttendanceOnStart = (loginTime: Date, empSettings?: Employee) => {
     const expectedStart = empSettings?.workStartTime || DEFAULT_START_TIME;
@@ -69,6 +95,8 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
     const shiftsRef = collection(db, 'shifts');
     
     try {
+        const settings = await getSettings();
+
         // 1. AUTO LOGOUT LOGIC: Find any "active" shifts from PREVIOUS business days and close them at 5 AM
         const qActive = query(shiftsRef, where('status', '==', 'active'));
         const activeSnap = await getDocs(qActive);
@@ -137,7 +165,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             }
 
             if (Object.keys(updates).length > 0) {
-                await updateDoc(shiftDoc.ref, updates);
+                await updateDoc(shiftDoc.ref, sanitize(updates));
                 if (updates.tasks) shift.tasks = updates.tasks;
                 if (updates.employees) shift.employees = updates.employees;
                 if (updates.status) shift.status = updates.status;
@@ -161,7 +189,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 name: task.name,
                 type: task.type,
                 completed: false,
-                ownerOnly: task.ownerOnly
+                ownerOnly: task.ownerOnly || false
             }));
 
             // INJECT MANDATORY OWNER VERIFICATION TASKS
@@ -180,19 +208,21 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 breaks: [],
                 lateMinutes,
                 workedOnWeeklyOff,
+                cycle: settings.activeCycle || 'Live Cycle'
             };
 
             const batch = writeBatch(db);
-            batch.set(newShiftRef, newShiftData);
+            batch.set(newShiftRef, sanitize(newShiftData));
             
             const logRef = doc(collection(db, 'logs'));
-            batch.set(logRef, {
+            batch.set(logRef, sanitize({
                 type: 'SHIFT_START',
                 description: `Shift Master Record created for business day <strong>${businessToday}</strong> by <strong>${user.displayName}</strong>.${lateMinutes > 0 ? ` Marked as <strong>LATE</strong> by ${lateMinutes} mins.` : ''}`,
                 timestamp: now.toISOString(),
                 user: { uid: user.username, displayName: user.displayName },
-                details: { shiftId: newShiftRef.id, lateMinutes, workedOnWeeklyOff }
-            });
+                details: { shiftId: newShiftRef.id, lateMinutes, workedOnWeeklyOff },
+                cycle: settings.activeCycle
+            }));
             
             await batch.commit();
 
@@ -256,16 +286,16 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
             updates.shiftExpenses = totals.shiftExpenses || 0;
         }
 
-        batch.update(shiftRef, updates);
+        batch.update(shiftRef, sanitize(updates));
         
         const logRef = doc(collection(db, 'logs'));
-        batch.set(logRef, {
+        batch.set(logRef, sanitize({
             type: 'SHIFT_END',
             description: `<strong>${user.displayName}</strong> closed the daily shift record.${overtimeMinutes > 0 ? ` Worked <strong>OVERTIME</strong>: ${overtimeMinutes} mins.` : ''}`,
             timestamp: now.toISOString(),
             user: { uid: user.username, displayName: user.displayName },
             details: { shiftId, totals: totals || {}, earlyLeaveMinutes, overtimeMinutes }
-        });
+        }));
 
         await batch.commit();
 
@@ -292,13 +322,13 @@ export const startBreak = async (shiftId: string, user: CustomUser) => {
             transaction.update(shiftRef, { breaks: newBreaks });
             
             const logRef = doc(collection(db, 'logs'));
-            transaction.set(logRef, {
+            transaction.set(logRef, sanitize({
                 type: 'BREAK_START',
                 description: `<strong>${user.displayName}</strong> started a break.`,
                 timestamp: new Date().toISOString(),
                 user: { uid: user.username, displayName: user.displayName },
                 details: { shiftId }
-            });
+            }));
         });
         return true;
     } catch (e) {
@@ -333,13 +363,13 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
             transaction.update(shiftRef, { breaks: updatedBreaks });
             
             const logRef = doc(collection(db, 'logs'));
-            transaction.set(logRef, {
+            transaction.set(logRef, sanitize({
                 type: 'BREAK_END',
                 description: `<strong>${user.displayName}</strong> ended a break.`,
                 timestamp: now.toISOString(),
                 user: { uid: user.username, displayName: user.displayName },
                 details: { shiftId }
-            });
+            }));
         });
         return true;
     } catch (e) {
@@ -377,16 +407,16 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
                 return task;
             });
             
-            transaction.update(shiftRef, { tasks: updatedTasks });
+            transaction.update(shiftRef, sanitize({ tasks: updatedTasks }));
 
             const logRef = doc(collection(db, 'logs'));
-            transaction.set(logRef, {
+            transaction.set(logRef, sanitize({
                 type: 'TASK_COMPLETED',
                 description: `<strong>${user.displayName}</strong> ${completed ? 'completed' : 'un-completed'} task: "${taskName}".`,
                 timestamp: new Date().toISOString(),
                 user: { uid: user.username, displayName: user.displayName },
                 details: { shiftId, taskName, completed }
-            });
+            }));
         });
     } catch (e) {
         console.error("Error updating task transactionally: ", e);
@@ -401,15 +431,15 @@ export const updateShiftTimes = async (shiftId: string, updates: { startTime: st
         const snap = await getDoc(shiftRef);
         if (!snap.exists()) return false;
         
-        await updateDoc(shiftRef, updates);
+        await updateDoc(shiftRef, sanitize(updates));
         
-        await addDoc(collection(db, 'logs'), {
+        await addDoc(collection(db, 'logs'), sanitize({
             type: 'SHIFT_UPDATED',
             description: `<strong>${user.displayName}</strong> manually adjusted shift times for ID: <strong>${shiftId.slice(0, 8)}</strong>.`,
             timestamp: new Date().toISOString(),
             user: { uid: user.username, displayName: user.displayName },
             details: { shiftId, updates }
-        });
+        }));
         return true;
     } catch (e) {
         console.error("Error updating shift times:", e);
