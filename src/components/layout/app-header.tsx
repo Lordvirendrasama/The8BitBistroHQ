@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap } from "lucide-react";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
 import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem } from '@/lib/types';
@@ -286,6 +286,7 @@ const OwnerConsumptionHeader = () => {
   const { db } = useFirebase();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'day' | 'month'>('day');
   const [editingConsumption, setEditingConsumption] = useState<OwnerConsumption | null>(null);
 
   const consumptionQuery = useMemo(() => !db ? null : collection(db, 'ownerConsumption'), [db]);
@@ -300,9 +301,21 @@ const OwnerConsumptionHeader = () => {
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   }, [consumptions]);
 
-  const totalValue = useMemo(() => {
-    return todayConsumptions.reduce((sum, c) => sum + (c.totalValue || 0), 0);
-  }, [todayConsumptions]);
+  const monthConsumptions = useMemo(() => {
+    if (!consumptions) return [];
+    const now = new Date();
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    return consumptions.filter(c => {
+      const d = new Date(c.timestamp);
+      return d >= start && d <= end;
+    }).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }, [consumptions]);
+
+  const dayTotal = useMemo(() => todayConsumptions.reduce((sum, c) => sum + (c.totalValue || 0), 0), [todayConsumptions]);
+  const monthTotal = useMemo(() => monthConsumptions.reduce((sum, c) => sum + (c.totalValue || 0), 0), [monthConsumptions]);
+
+  const displayConsumptions = viewMode === 'day' ? todayConsumptions : monthConsumptions;
 
   const handleEdit = (c: OwnerConsumption) => {
     setEditingConsumption(c);
@@ -316,7 +329,7 @@ const OwnerConsumptionHeader = () => {
 
   return (
     <>
-      <Popover>
+      <Popover onOpenChange={(open) => !open && setViewMode('day')}>
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
@@ -325,7 +338,7 @@ const OwnerConsumptionHeader = () => {
           >
             <Crown className="h-3 sm:h-4 w-3 sm:w-4 fill-current" />
             <div className="flex flex-col items-start leading-tight">
-              <span className="font-mono text-[10px] sm:text-sm">₹{totalValue.toLocaleString()}</span>
+              <span className="font-mono text-[10px] sm:text-sm">₹{dayTotal.toLocaleString()}</span>
             </div>
           </Button>
         </PopoverTrigger>
@@ -335,12 +348,32 @@ const OwnerConsumptionHeader = () => {
               <Crown className="h-4 w-4 fill-current" />
               <h4 className="font-black text-[10px] uppercase tracking-widest">Internal Ledger</h4>
             </div>
-            <Badge variant="outline" className="text-[8px] font-black border-white/30 text-white uppercase">Shadow Cost</Badge>
+            <div className="flex bg-white/10 p-0.5 rounded-lg border border-white/20">
+                <button 
+                    onClick={() => setViewMode('day')}
+                    className={cn(
+                        "px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all",
+                        viewMode === 'day' ? "bg-white text-indigo-600 shadow-sm" : "text-white/60 hover:text-white"
+                    )}
+                >DAY</button>
+                <button 
+                    onClick={() => setViewMode('month')}
+                    className={cn(
+                        "px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all",
+                        viewMode === 'month' ? "bg-white text-indigo-600 shadow-sm" : "text-white/60 hover:text-white"
+                    )}
+                >MONTH</button>
+            </div>
           </div>
           
+          <div className="px-4 py-2 bg-indigo-50 border-b flex justify-between items-center">
+            <span className="text-[9px] font-black uppercase text-indigo-700/60">{viewMode === 'day' ? "Today's Total" : "Monthly Total"}</span>
+            <span className="font-mono font-black text-indigo-600 text-sm">₹{(viewMode === 'day' ? dayTotal : monthTotal).toLocaleString()}</span>
+          </div>
+
           <ScrollArea className="max-h-[300px]">
             <div className="divide-y">
-              {todayConsumptions.length > 0 ? todayConsumptions.map((c) => (
+              {displayConsumptions.length > 0 ? displayConsumptions.map((c) => (
                 <div key={c.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group relative">
                   <div className="flex justify-between items-start pr-8">
                     <div className="space-y-0.5">
@@ -348,7 +381,7 @@ const OwnerConsumptionHeader = () => {
                         {c.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
                       </p>
                       <p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                        <Clock className="h-2.5 w-2.5" /> {format(new Date(c.timestamp), 'p')} • By {c.addedBy.displayName}
+                        <Clock className="h-2.5 w-2.5" /> {format(new Date(c.timestamp), 'MMM d, p')} • By {c.addedBy.displayName}
                       </p>
                     </div>
                     <span className="font-mono font-black text-xs text-indigo-600">₹{c.totalValue}</span>
