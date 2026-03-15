@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { addExpense } from '@/firebase/firestore/expenses';
-import { format, differenceInCalendarMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, differenceInCalendarMonths, startOfMonth, endOfMonth, getDaysInMonth } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -692,7 +692,7 @@ export function AppHeader({
       return Math.max(0, sum);
     }, [bills, stations, packages]);
 
-    const { monthRevenue, businessDayCount, monthName } = useMemo(() => {
+    const { monthRevenue, businessDayCount, monthName, totalDaysInMonth } = useMemo(() => {
       const bDateStr = getBusinessDate(); // respecting 5am boundary
       const parts = bDateStr.split('-');
       const bYear = parseInt(parts[0], 10);
@@ -703,6 +703,7 @@ export function AppHeader({
       const bMonthStart = new Date(bYear, bMonth, 1, 5, 0, 0);
       const nextMonthStart = new Date(bYear, bMonth + 1, 1, 5, 0, 0);
       const mName = format(bDate, 'MMMM');
+      const daysInMonth = getDaysInMonth(bDate);
 
       const total = !bills ? 0 : bills
         .filter(bill => {
@@ -714,9 +715,13 @@ export function AppHeader({
       return { 
         monthRevenue: total, 
         businessDayCount: Math.max(1, bDay),
-        monthName: mName
+        monthName: mName,
+        totalDaysInMonth: daysInMonth
       };
     }, [bills]);
+
+    const dailyAverage = monthRevenue / businessDayCount;
+    const projectedMonthEnd = dailyAverage * totalDaysInMonth;
 
     const handleLogoutClick = async () => {
         if (user && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest') && activeShift) {
@@ -762,7 +767,7 @@ export function AppHeader({
                             </PopoverTrigger>
                             <PopoverContent className="w-56 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
                                 <div className="p-3 bg-muted/20 border-b">
-                                    <h4 className="font-black text-10px uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                         <Activity className="h-3.5 w-3.5 text-emerald-600" />
                                         {monthName} Performance
                                     </h4>
@@ -771,7 +776,13 @@ export function AppHeader({
                                     <div className="flex justify-between items-center">
                                         <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Daily Average</span>
                                         <span className="text-sm font-black font-mono text-emerald-600 tabular-nums">
-                                            ₹{Math.round(monthRevenue / businessDayCount).toLocaleString()}
+                                            ₹{Math.round(dailyAverage).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-dashed">
+                                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
+                                        <span className="text-sm font-black font-mono text-primary tabular-nums">
+                                            ₹{Math.round(projectedMonthEnd).toLocaleString()}
                                         </span>
                                     </div>
                                     <div className="pt-2 border-t border-dashed">
