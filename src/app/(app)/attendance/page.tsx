@@ -83,22 +83,23 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
     
     if (dayShifts.length === 0) return null;
 
-    return dayShifts.map(shift => {
+    // Use a Map to ensure unique entry per user per day
+    const userMap = new Map<string, any>();
+
+    dayShifts.forEach(shift => {
       // Find relevant employees in this shift
       const activeInShift = (shift.employees || []).filter(e => 
         filterStaff === 'all' || e.username.toLowerCase() === filterStaff.toLowerCase()
       );
 
-      if (activeInShift.length === 0) return null;
-
-      return activeInShift.map(emp => {
-        // Find verification task for this employee (strategic tasks injected for owner)
+      activeInShift.forEach(emp => {
+        // Find verification task for this employee
         const taskName = `Verify ${emp.displayName || emp.username} Presence`;
         const verifyTask = (shift.tasks || []).find(t => 
           t.type === 'strategic' && t.name.toLowerCase().includes(emp.username.toLowerCase())
         );
 
-        return {
+        const currentData = {
           shiftId: shift.id,
           taskName: verifyTask?.name || taskName,
           username: emp.username,
@@ -106,9 +107,28 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
           verified: !!verifyTask?.completed,
           result: verifyTask?.verificationResult,
           loginTime: format(new Date(shift.startTime), 'p'),
+          rawStartTime: new Date(shift.startTime).getTime()
         };
+
+        const existing = userMap.get(emp.username);
+
+        if (!existing) {
+          userMap.set(emp.username, currentData);
+        } else {
+          // If we have multiple records, prioritize verified ones
+          if (!existing.verified && currentData.verified) {
+            userMap.set(emp.username, currentData);
+          } else if (existing.verified === currentData.verified) {
+            // If verification status is same, pick the earlier login
+            if (currentData.rawStartTime < existing.rawStartTime) {
+              userMap.set(emp.username, currentData);
+            }
+          }
+        }
       });
-    }).flat().filter(Boolean);
+    });
+
+    return Array.from(userMap.values());
   };
 
   return (
