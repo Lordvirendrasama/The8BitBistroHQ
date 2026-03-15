@@ -294,164 +294,164 @@ export default function AttendanceRegistryPage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto font-body pb-20">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="font-headline text-4xl tracking-wider text-foreground">Attendance Hub</h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em]">Official Punctuality Audit & Visual Attendance Roadmap</p>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="font-headline text-4xl tracking-wider text-foreground">Attendance Hub</h1>
+            <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em]">Official Punctuality Audit & Visual Attendance Roadmap</p>
+          </div>
+          <TabsList className="bg-muted/20 border-2 border-dashed h-12 p-1 rounded-xl">
+              <TabsTrigger value="registry" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background shadow-sm gap-2">
+                  <ClipboardCheck className="h-3.5 w-3.5" /> Registry
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background shadow-sm gap-2">
+                  <CalendarDays className="h-3.5 w-3.5" /> Visual Audit
+              </TabsTrigger>
+          </TabsList>
         </div>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-            <TabsList className="bg-muted/20 border-2 border-dashed h-12 p-1 rounded-xl">
-                <TabsTrigger value="registry" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background shadow-sm gap-2">
-                    <ClipboardCheck className="h-3.5 w-3.5" /> Registry
-                </TabsTrigger>
-                <TabsTrigger value="calendar" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background shadow-sm gap-2">
-                    <CalendarDays className="h-3.5 w-3.5" /> Visual Audit
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
-      </div>
 
-      <TabsContent value="registry" className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-500">
-        <Card className="bg-muted/30 border-dashed border-2">
-            <CardContent className="p-4 flex flex-wrap gap-4 items-end">
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Filter by Staff</Label>
-                    <Select value={staffFilter} onValueChange={setStaffFilter}>
-                        <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
-                            <SelectValue placeholder="All Staff" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className="font-bold uppercase text-[10px]">ALL STAFF</SelectItem>
-                            {staffOptions.map(([username, displayName]) => (
-                                <SelectItem key={username} value={username} className="font-bold uppercase text-[10px]">{displayName.toUpperCase()}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Filter by Month</Label>
-                    <Select value={monthFilter} onValueChange={setMonthFilter}>
-                        <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
-                            <SelectValue placeholder="All Months" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className="font-bold uppercase text-[10px]">ALL HISTORY</SelectItem>
-                            {monthOptions.map(m => <SelectItem key={m} value={m} className="font-bold uppercase text-[10px]">{format(new Date(m + "-01"), 'MMMM yyyy').toUpperCase()}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] ml-auto bg-background shadow-sm">
-                    {filteredShifts.length} RECORDS FOUND
-                </Badge>
-            </CardContent>
-        </Card>
+        <TabsContent value="registry" className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-500">
+          <Card className="bg-muted/30 border-dashed border-2">
+              <CardContent className="p-4 flex flex-wrap gap-4 items-end">
+                  <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Filter by Staff</Label>
+                      <Select value={staffFilter} onValueChange={setStaffFilter}>
+                          <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
+                              <SelectValue placeholder="All Staff" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all" className="font-bold uppercase text-[10px]">ALL STAFF</SelectItem>
+                              {staffOptions.map(([username, displayName]) => (
+                                  <SelectItem key={username} value={username} className="font-bold uppercase text-[10px]">{displayName.toUpperCase()}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Filter by Month</Label>
+                      <Select value={monthFilter} onValueChange={setMonthFilter}>
+                          <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
+                              <SelectValue placeholder="All Months" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all" className="font-bold uppercase text-[10px]">ALL HISTORY</SelectItem>
+                              {monthOptions.map(m => <SelectItem key={m} value={m} className="font-bold uppercase text-[10px]">{format(new Date(m + "-01"), 'MMMM yyyy').toUpperCase()}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] ml-auto bg-background shadow-sm">
+                      {filteredShifts.length} RECORDS FOUND
+                  </Badge>
+              </CardContent>
+          </Card>
 
-        <Card className="border-2 shadow-none overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b">
-            <CardTitle className="text-lg font-black uppercase tracking-tight">Shift Master Table</CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Historical log of logins, logouts, and work hour totals.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-            <Table>
-                <TableHeader className="bg-muted/20">
-                <TableRow>
-                    <TableHead className="font-black uppercase text-[10px]">Date</TableHead>
-                    <TableHead className="font-black uppercase text-[10px]">Staff</TableHead>
-                    <TableHead className="font-black uppercase text-[10px]">Login/Logout</TableHead>
-                    <TableHead className="font-black uppercase text-[10px]">Duration</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-center">Alerts</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-right pr-6">Accounting</TableHead>
-                    {isAdmin && <TableHead className="w-[50px]"></TableHead>}
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {filteredShifts.map((shift) => (
-                    <TableRow key={shift.id} className="group hover:bg-muted/5 transition-colors">
-                    <TableCell>
-                        <p className="font-black text-[11px] uppercase">{format(new Date(shift.startTime), 'MMM dd, yyyy')}</p>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase">{format(new Date(shift.startTime), 'EEEE')}</p>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-2">
-                            <Avatar className="h-7 w-7 border-2 border-primary/10">
-                                <AvatarFallback className="text-[10px] font-black">{shift.employees?.[0]?.displayName?.charAt(0) || shift.staffId?.charAt(0) || 'S'}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-black uppercase text-xs">{shift.employees?.[0]?.displayName || shift.staffId || 'Unknown'}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-600">
-                                <Zap className="h-3 w-3 text-emerald-500 fill-current" />
-                                {format(new Date(shift.startTime), 'p')}
-                            </div>
-                            {shift.endTime ? (
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground">
-                                    <Moon className="h-3 w-3" />
-                                    {format(new Date(shift.endTime), 'p')}
-                                </div>
-                            ) : (
-                                <Badge variant="outline" className="w-fit h-4 text-[7px] animate-pulse uppercase border-emerald-500 text-emerald-600 bg-emerald-500/5">Active</Badge>
-                            )}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-tighter">
-                                <Timer className="h-3 w-3 opacity-40" />
-                                {formatShiftDuration(shift.startTime, shift.endTime)}
-                            </div>
-                            {shift.breaks?.length > 0 && (
-                                <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-amber-600">
-                                    <Coffee className="h-2.5 w-2.5" />
-                                    {calculateTotalBreak(shift.breaks)} Break Total
-                                </div>
-                            )}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex flex-wrap justify-center gap-1">
-                            {shift.lateMinutes ? (
-                                <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black tracking-widest">
-                                    Late ({shift.lateMinutes}m)
-                                </Badge>
-                            ) : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black tracking-widest text-emerald-600 border-emerald-600/30">On Time</Badge>}
-                            
-                            {shift.overtimeMinutes ? (
-                                <Badge className="h-4 text-[7px] uppercase font-black bg-blue-600 tracking-widest">
-                                    OT ({shift.overtimeMinutes}m)
-                                </Badge>
-                            ) : shift.earlyLeaveMinutes ? (
-                                <Badge variant="secondary" className="h-4 text-[7px] uppercase font-black tracking-widest">
-                                    Early Exit ({shift.earlyLeaveMinutes}m)
-                                </Badge>
-                            ) : null}
-                        </div>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                        <div className="flex flex-col items-end">
-                            <span className="font-mono font-black text-xs text-primary">₹{((shift.cashTotal || 0) + (shift.upiTotal || 0)).toLocaleString()}</span>
-                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift Total</span>
-                        </div>
-                    </TableCell>
-                    {isAdmin && (
-                        <TableCell>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEditClick(shift)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                        </TableCell>
-                    )}
-                    </TableRow>
-                ))}
-                </TableBody>
-            </Table>
-            </CardContent>
-        </Card>
-      </TabsContent>
+          <Card className="border-2 shadow-none overflow-hidden">
+              <CardHeader className="bg-muted/10 border-b">
+              <CardTitle className="text-lg font-black uppercase tracking-tight">Shift Master Table</CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Historical log of logins, logouts, and work hour totals.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+              <Table>
+                  <TableHeader className="bg-muted/20">
+                  <TableRow>
+                      <TableHead className="font-black uppercase text-[10px]">Date</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Staff</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Login/Logout</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Duration</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] text-center">Alerts</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] text-right pr-6">Accounting</TableHead>
+                      {isAdmin && <TableHead className="w-[50px]"></TableHead>}
+                  </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                  {filteredShifts.map((shift) => (
+                      <TableRow key={shift.id} className="group hover:bg-muted/5 transition-colors">
+                      <TableCell>
+                          <p className="font-black text-[11px] uppercase">{format(new Date(shift.startTime), 'MMM dd, yyyy')}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">{format(new Date(shift.startTime), 'EEEE')}</p>
+                      </TableCell>
+                      <TableCell>
+                          <div className="flex items-center gap-2">
+                              <Avatar className="h-7 w-7 border-2 border-primary/10">
+                                  <AvatarFallback className="text-[10px] font-black">{shift.employees?.[0]?.displayName?.charAt(0) || shift.staffId?.charAt(0) || 'S'}</AvatarFallback>
+                              </Avatar>
+                              <span className="font-black uppercase text-xs">{shift.employees?.[0]?.displayName || shift.staffId || 'Unknown'}</span>
+                          </div>
+                      </TableCell>
+                      <TableCell>
+                          <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-600">
+                                  <Zap className="h-3 w-3 text-emerald-500 fill-current" />
+                                  {format(new Date(shift.startTime), 'p')}
+                              </div>
+                              {shift.endTime ? (
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground">
+                                      <Moon className="h-3 w-3" />
+                                      {format(new Date(shift.endTime), 'p')}
+                                  </div>
+                              ) : (
+                                  <Badge variant="outline" className="w-fit h-4 text-[7px] animate-pulse uppercase border-emerald-500 text-emerald-600 bg-emerald-500/5">Active</Badge>
+                              )}
+                          </div>
+                      </TableCell>
+                      <TableCell>
+                          <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-tighter">
+                                  <Timer className="h-3 w-3 opacity-40" />
+                                  {formatShiftDuration(shift.startTime, shift.endTime)}
+                              </div>
+                              {shift.breaks?.length > 0 && (
+                                  <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-amber-600">
+                                      <Coffee className="h-2.5 w-2.5" />
+                                      {calculateTotalBreak(shift.breaks)} Break Total
+                                  </div>
+                              )}
+                          </div>
+                      </TableCell>
+                      <TableCell>
+                          <div className="flex flex-wrap justify-center gap-1">
+                              {shift.lateMinutes ? (
+                                  <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black tracking-widest">
+                                      Late ({shift.lateMinutes}m)
+                                  </Badge>
+                              ) : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black tracking-widest text-emerald-600 border-emerald-600/30">On Time</Badge>}
+                              
+                              {shift.overtimeMinutes ? (
+                                  <Badge className="h-4 text-[7px] uppercase font-black bg-blue-600 tracking-widest">
+                                      OT ({shift.overtimeMinutes}m)
+                                  </Badge>
+                              ) : shift.earlyLeaveMinutes ? (
+                                  <Badge variant="secondary" className="h-4 text-[7px] uppercase font-black tracking-widest">
+                                      Early Exit ({shift.earlyLeaveMinutes}m)
+                                  </Badge>
+                              ) : null}
+                          </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                          <div className="flex flex-col items-end">
+                              <span className="font-mono font-black text-xs text-primary">₹{((shift.cashTotal || 0) + (shift.upiTotal || 0)).toLocaleString()}</span>
+                              <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift Total</span>
+                          </div>
+                      </TableCell>
+                      {isAdmin && (
+                          <TableCell>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEditClick(shift)}>
+                                  <Edit className="h-4 w-4" />
+                              </Button>
+                          </TableCell>
+                      )}
+                      </TableRow>
+                  ))}
+                  </TableBody>
+              </Table>
+              </CardContent>
+          </Card>
+        </TabsContent>
 
-      <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-500">
-          <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} />
-      </TabsContent>
+        <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-500">
+            <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} />
+        </TabsContent>
+      </Tabs>
 
       {/* EDIT MODAL */}
       <Dialog open={!!editingShift} onOpenChange={o => !o && setEditingShift(null)}>
