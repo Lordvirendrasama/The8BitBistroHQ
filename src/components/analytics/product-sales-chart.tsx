@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -36,6 +37,7 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
       bill.items.forEach(item => {
         const nameLower = item.name.toLowerCase();
         
+        // SURGICAL DIFFERENTIATION - Including "rent" keyword check
         const isGaming = 
             gamingPkgIds.has(item.itemId) || 
             gamingNames.has(nameLower) ||
@@ -45,7 +47,8 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
             nameLower.includes('hour') || 
             nameLower.includes('offer') ||
             nameLower.includes('package') ||
-            nameLower.includes('pass');
+            nameLower.includes('pass') ||
+            nameLower.includes('rent');
 
         if (isGaming) {
             categoryRevenue['Gaming'] += (item.price * item.quantity);

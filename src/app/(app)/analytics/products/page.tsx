@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -105,7 +106,7 @@ export default function ProductAnalyticsPage() {
       bill.items.forEach(item => {
         const nameLower = item.name.toLowerCase();
         
-        // SURGICAL DIFFERENTIATION
+        // SURGICAL DIFFERENTIATION - Recognizing "rent" as Gaming revenue
         const isGaming = 
             gamingPkgIds.has(item.itemId) || 
             gamingNames.has(nameLower) ||
@@ -115,7 +116,8 @@ export default function ProductAnalyticsPage() {
             nameLower.includes('hour') || 
             nameLower.includes('offer') ||
             nameLower.includes('package') ||
-            nameLower.includes('pass');
+            nameLower.includes('pass') ||
+            nameLower.includes('rent');
 
         if (isGaming) {
             const pkgName = item.name.replace(/^(Time: |Buy Recharge: |Recharge: )/i, '').split('(')[0].trim();
