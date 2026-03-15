@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
-import type { Shift } from '@/lib/types';
+import type { Shift, ShiftTask } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,11 +28,6 @@ import {
   CheckCircle2, 
   XCircle, 
   Clock, 
-  Wallet, 
-  IndianRupee, 
-  ShoppingCart, 
-  User, 
-  AlertCircle, 
   Timer, 
   Coffee, 
   Zap, 
@@ -45,7 +40,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   ClipboardCheck,
-  Search
+  X
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,18 +49,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { updateShiftTimes } from '@/firebase/firestore/shifts';
+import { updateShiftTimes, updateTask } from '@/firebase/firestore/shifts';
 import { useToast } from '@/hooks/use-toast';
 
-function AttendanceCalendar({ shifts, staffOptions }: { shifts: Shift[], staffOptions: [string, string][] }) {
+function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], staffOptions: [string, string][], user: any }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filterStaff, setFilterStaff] = useState('all');
+  const { toast } = useToast();
+
+  const isOwner = user?.username === 'Viren';
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
     return eachDayOfInterval({ start, end });
   }, [currentMonth]);
+
+  const handleVerify = async (shiftId: string, taskName: string, result: 'yes' | 'no' | null) => {
+    if (!isOwner) return;
+    
+    // If result is null, it means we are "un-completing" or resetting
+    await updateTask(shiftId, taskName, result !== null, user, result || undefined);
+    
+    toast({ 
+        title: result ? "Attendance Verified" : "Audit Reset", 
+        description: result ? `Marked as ${result.toUpperCase()}.` : "Verification removed."
+    });
+  };
 
   const getDayStatus = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -75,7 +85,7 @@ function AttendanceCalendar({ shifts, staffOptions }: { shifts: Shift[], staffOp
 
     return dayShifts.map(shift => {
       // Find relevant employees in this shift
-      const activeInShift = shift.employees.filter(e => 
+      const activeInShift = (shift.employees || []).filter(e => 
         filterStaff === 'all' || e.username.toLowerCase() === filterStaff.toLowerCase()
       );
 
@@ -83,14 +93,17 @@ function AttendanceCalendar({ shifts, staffOptions }: { shifts: Shift[], staffOp
 
       return activeInShift.map(emp => {
         // Find verification task for this employee (strategic tasks injected for owner)
-        const verifyTask = shift.tasks.find(t => 
+        const taskName = `Verify ${emp.displayName || emp.username} Presence`;
+        const verifyTask = (shift.tasks || []).find(t => 
           t.type === 'strategic' && t.name.toLowerCase().includes(emp.username.toLowerCase())
         );
 
         return {
+          shiftId: shift.id,
+          taskName: verifyTask?.name || taskName,
           username: emp.username,
           displayName: emp.displayName,
-          verified: verifyTask?.completed,
+          verified: !!verifyTask?.completed,
           result: verifyTask?.verificationResult,
           loginTime: format(new Date(shift.startTime), 'p'),
         };
@@ -135,7 +148,7 @@ function AttendanceCalendar({ shifts, staffOptions }: { shifts: Shift[], staffOp
 
           return (
             <div key={i} className={cn(
-              "min-h-[140px] p-2 bg-background flex flex-col gap-1 transition-all",
+              "min-h-[160px] p-2 bg-background flex flex-col gap-1 transition-all",
               !isCurrent && "opacity-20 bg-muted/10 pointer-events-none",
               isTodayDate && "ring-2 ring-inset ring-primary/20 bg-primary/[0.02]"
             )}>
@@ -147,21 +160,51 @@ function AttendanceCalendar({ shifts, staffOptions }: { shifts: Shift[], staffOp
                   {format(day, 'd')}
                 </span>
               </div>
-              <div className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
+              <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 {status?.map((s: any, idx) => (
                   <div key={idx} className={cn(
-                    "p-2 rounded-lg border-2 text-[9px] font-black uppercase leading-tight flex items-center justify-between gap-1 shadow-sm",
+                    "p-2 rounded-lg border-2 text-[9px] font-black uppercase leading-tight flex flex-col gap-2 shadow-sm",
                     s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" :
                     s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" :
                     "bg-background border-muted text-muted-foreground"
                   )}>
-                    <div className="flex flex-col truncate">
-                      <span className="truncate">{s.displayName}</span>
-                      <span className="text-[7px] font-mono opacity-60 tracking-tighter">IN: {s.loginTime}</span>
+                    <div className="flex items-center justify-between gap-1">
+                        <div className="flex flex-col truncate">
+                            <span className="truncate">{s.displayName}</span>
+                            <span className="text-[7px] font-mono opacity-60 tracking-tighter">IN: {s.loginTime}</span>
+                        </div>
+                        {s.result === 'yes' ? <UserCheck className="h-3 w-3 shrink-0 text-emerald-600" /> :
+                        s.result === 'no' ? <UserX className="h-3 w-3 shrink-0 text-destructive" /> :
+                        <Clock className="h-3 w-3 shrink-0 opacity-40 animate-pulse" />}
                     </div>
-                    {s.result === 'yes' ? <UserCheck className="h-3 w-3 shrink-0 text-emerald-600" /> :
-                     s.result === 'no' ? <UserX className="h-3 w-3 shrink-0 text-destructive" /> :
-                     <Clock className="h-3 w-3 shrink-0 opacity-40 animate-pulse" />}
+
+                    {isOwner && (
+                        <div className="flex gap-1 pt-1 border-t border-current border-dashed opacity-80 hover:opacity-100 transition-opacity">
+                            {!s.verified ? (
+                                <>
+                                    <button 
+                                        onClick={() => handleVerify(s.shiftId, s.taskName, 'yes')}
+                                        className="flex-1 py-1 bg-emerald-600 text-white rounded font-black text-[7px] hover:bg-emerald-700 transition-colors"
+                                    >
+                                        YES
+                                    </button>
+                                    <button 
+                                        onClick={() => handleVerify(s.shiftId, s.taskName, 'no')}
+                                        className="flex-1 py-1 bg-destructive text-white rounded font-black text-[7px] hover:bg-destructive/90 transition-colors"
+                                    >
+                                        NO
+                                    </button>
+                                </>
+                            ) : (
+                                <button 
+                                    onClick={() => handleVerify(s.shiftId, s.taskName, null)}
+                                    className="w-full py-1 bg-muted text-muted-foreground rounded font-black text-[7px] flex items-center justify-center gap-1 hover:bg-muted/80 transition-colors"
+                                >
+                                    <X className="h-2 w-2" /> RESET AUDIT
+                                </button>
+                            )}
+                        </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -449,7 +492,7 @@ export default function AttendanceRegistryPage() {
         </TabsContent>
 
         <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-500">
-            <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} />
+            <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} user={user} />
         </TabsContent>
       </Tabs>
 
