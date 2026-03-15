@@ -11,7 +11,7 @@ import { ProductSalesChart } from '@/components/analytics/product-sales-chart';
 import { RewardRedemptionChart } from '@/components/analytics/reward-redemption-chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Utensils, Gift, TrendingUp, Gamepad2, Pizza, Coffee, CalendarIcon, Clock, FilterX } from 'lucide-react';
+import { Utensils, Gift, TrendingUp, Gamepad2, Pizza, Coffee, CalendarIcon, Clock, FilterX, BarChart3, LayoutGrid } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -166,14 +166,14 @@ export default function ProductAnalyticsPage() {
   }
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-20 font-body">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-headline text-4xl tracking-wider text-foreground">
             SALES & REWARDS
           </h1>
           <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-widest">
-            Track performance across menu items, gaming packages, and perks.
+            Unified performance audit for bistro menu and gaming packages.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={resetFilters} className="font-black uppercase text-[10px] border-2">
@@ -268,20 +268,18 @@ export default function ProductAnalyticsPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="menu" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 h-12 bg-muted/20 p-1 border-2 border-dashed rounded-xl">
-          <TabsTrigger value="menu" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Utensils className="h-3.5 w-3.5" /> Bistro Orders
-          </TabsTrigger>
-          <TabsTrigger value="packages" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Gamepad2 className="h-3.5 w-3.5" /> Gaming Sessions
+      <Tabs defaultValue="unified" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8 h-12 bg-muted/20 p-1 border-2 border-dashed rounded-xl">
+          <TabsTrigger value="unified" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <LayoutGrid className="h-3.5 w-3.5" /> Unified Sales Audit
           </TabsTrigger>
           <TabsTrigger value="rewards" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Gift className="h-3.5 w-3.5" /> Loyalty Rewards
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="menu" className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-300">
+        <TabsContent value="unified" className="space-y-12 animate-in fade-in slide-in-from-left-2 duration-300">
+            {/* TOP ROW: REVENUE PILLAR + TOP FOOD */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ProductSalesChart bills={stats.filteredBills} gamingPackages={gamingPackages || []} />
                 <Card className="border-2 shadow-xl">
@@ -290,7 +288,7 @@ export default function ProductAnalyticsPage() {
                             <TrendingUp className="text-primary h-5 w-5" />
                             Top Selling Menu Items
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Performance based on selected filters.</CardDescription>
+                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Bistro Food & Beverage performance.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
                         <Table>
@@ -324,16 +322,15 @@ export default function ProductAnalyticsPage() {
                     </CardContent>
                 </Card>
             </div>
-        </TabsContent>
 
-        <TabsContent value="packages" className="space-y-8 animate-in fade-in slide-in-from-right-2 duration-300">
+            {/* BOTTOM ROW: GAMING PACKAGE PERFORMANCE */}
             <Card className="border-2 shadow-xl">
                 <CardHeader className="bg-muted/10 border-b">
                     <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                         <Gamepad2 className="text-primary h-5 w-5" />
                         Gaming Package Performance
                     </CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Popularity of session offers in the selected period.</CardDescription>
+                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Volume audit for console sessions and table passes.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
