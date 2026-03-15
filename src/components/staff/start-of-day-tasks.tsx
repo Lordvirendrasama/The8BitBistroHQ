@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ListChecks, Minus, Sun, ShieldCheck, UserCheck, UserX, Clock } from 'lucide-react';
+import { ListChecks, Minus, Sun, ShieldCheck, UserCheck, UserX, Clock, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where } from 'firebase/firestore';
@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface StartOfDayTasksProps {
   tasks: ShiftTask[];
-  onTaskToggle: (task: ShiftTask) => void;
+  onTaskToggle: (task: ShiftTask, result?: 'yes' | 'no') => void;
   onMinimize: () => void;
   employees: { displayName: string, username: string }[];
 }
@@ -43,10 +43,10 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
 
   // Strategic Verification Tasks (specifically for Viren)
   const strategicTasks = useMemo(() => 
-    tasks.filter(t => t.type === 'strategic' && !t.completed && t.ownerOnly),
-  [tasks]);
+    tasks.filter(t => t.type === 'strategic' && (!t.ownerOnly || isOwner)),
+  [tasks, isOwner]);
 
-  if (sodTasks.length === 0 && strategicTasks.length === 0) {
+  if (sodTasks.length === 0 && strategicTasks.filter(t => !t.completed).length === 0) {
     return null;
   }
 
@@ -74,46 +74,98 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
 
   const TaskItem = ({ task }: { task: ShiftTask }) => {
     const liveStatus = task.type === 'strategic' ? getLiveStatus(task.name) : null;
+    const isStrategic = task.type === 'strategic';
 
     return (
-        <div className="flex items-start space-x-3 group py-2 px-1">
-        <Checkbox
-            id={`global-card-${task.name}`}
-            checked={task.completed}
-            onCheckedChange={() => onTaskToggle(task)}
-            className="mt-0.5 h-5 w-5"
-        />
-        <div className="flex-1 min-w-0">
-            <Label
-                htmlFor={`global-card-${task.name}`}
-                className="text-sm font-bold transition-colors cursor-pointer block leading-tight hover:text-primary"
-            >
-                {task.name}
-            </Label>
-            
-            {/* Live Verification Metadata for Owner */}
-            {liveStatus && (
-                <div className="mt-1.5 flex items-center gap-2">
-                    {liveStatus.present ? (
-                        <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-500/20 text-[9px] font-black uppercase">
-                            <UserCheck className="h-2.5 w-2.5" />
-                            LIVE: IN AT {liveStatus.time}
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1.5 bg-destructive/5 text-destructive px-2 py-0.5 rounded-full border border-destructive/20 text-[9px] font-black uppercase">
-                            <UserX className="h-2.5 w-2.5" />
-                            NO RECORD FOUND
+        <div className="flex flex-col space-y-3 group py-3 px-2 border-b last:border-0 border-muted/20">
+            <div className="flex items-start gap-3">
+                {!isStrategic && (
+                    <Checkbox
+                        id={`global-card-${task.name}`}
+                        checked={task.completed}
+                        onCheckedChange={() => onTaskToggle(task)}
+                        className="mt-0.5 h-5 w-5"
+                    />
+                )}
+                <div className="flex-1 min-w-0">
+                    <Label
+                        htmlFor={!isStrategic ? `global-card-${task.name}` : undefined}
+                        className={cn(
+                            "text-sm font-bold transition-colors cursor-pointer block leading-tight hover:text-primary",
+                            task.completed && !isStrategic && 'text-muted-foreground line-through opacity-50'
+                        )}
+                    >
+                        {task.name}
+                    </Label>
+                    
+                    {/* Live Verification Metadata for Owner */}
+                    {liveStatus && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                            {liveStatus.present ? (
+                                <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-500/20 text-[9px] font-black uppercase">
+                                    <UserCheck className="h-2.5 w-2.5" />
+                                    LIVE: IN AT {liveStatus.time}
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 bg-destructive/5 text-destructive px-2 py-0.5 rounded-full border border-destructive/20 text-[9px] font-black uppercase">
+                                    <UserX className="h-2.5 w-2.5" />
+                                    NO RECORD FOUND
+                                </div>
+                            )}
                         </div>
                     )}
+
+                    {isAdmin && !isStrategic && !task.ownerOnly && (
+                        <p className="text-[9px] text-destructive/80 font-bold uppercase mt-1 tracking-tighter">
+                            (Pending: {employeeNames})
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {isStrategic && !task.completed && (
+                <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                    <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1 h-8 text-[10px] font-black uppercase tracking-widest border-emerald-500/30 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+                        onClick={() => onTaskToggle(task, 'yes')}
+                    >
+                        YES
+                    </Button>
+                    <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1 h-8 text-[10px] font-black uppercase tracking-widest border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+                        onClick={() => onTaskToggle(task, 'no')}
+                    >
+                        NO
+                    </Button>
                 </div>
             )}
 
-            {isAdmin && !task.ownerOnly && (
-                <p className="text-[9px] text-destructive/80 font-bold uppercase mt-1 tracking-tighter">
-                    (Pending: {employeeNames})
-                </p>
+            {isStrategic && task.completed && (
+                <div className="flex items-center justify-between bg-muted/20 rounded-lg p-2 border border-dashed animate-in fade-in duration-300">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className={cn("h-3.5 w-3.5", task.verificationResult === 'yes' ? "text-emerald-500" : "text-destructive")} />
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Verified:</span>
+                        <Badge variant="outline" className={cn(
+                            "text-[9px] font-black uppercase h-4 px-1.5",
+                            task.verificationResult === 'yes' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
+                        )}>
+                            {task.verificationResult?.toUpperCase()}
+                        </Badge>
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-muted-foreground hover:text-primary rounded-full"
+                        onClick={() => onTaskToggle(task)}
+                    >
+                        <X className="h-3 w-3" />
+                    </Button>
+                </div>
             )}
-        </div>
         </div>
     );
   };

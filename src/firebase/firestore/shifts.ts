@@ -27,6 +27,7 @@ const sanitize = (data: any): any => {
     const clean: any = {};
     Object.keys(data).forEach(key => {
       const val = data[key];
+      // Skip undefined keys entirely to prevent Firestore crash
       if (val !== undefined) {
         clean[key] = sanitize(val);
       }
@@ -378,7 +379,7 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
     }
 };
 
-export const updateTask = async (shiftId: string, taskName: string, completed: boolean, user: CustomUser): Promise<void> => {
+export const updateTask = async (shiftId: string, taskName: string, completed: boolean, user: CustomUser, verificationResult?: 'yes' | 'no'): Promise<void> => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
     
@@ -394,6 +395,7 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
                     const newTask: any = { 
                         ...task, 
                         completed, 
+                        verificationResult
                     };
                     if (completed) {
                         newTask.completedAt = new Date().toISOString();
@@ -401,6 +403,7 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
                     } else {
                         delete newTask.completedAt;
                         delete newTask.completedBy;
+                        delete newTask.verificationResult;
                     }
                     return newTask;
                 }
@@ -412,10 +415,10 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
             const logRef = doc(collection(db, 'logs'));
             transaction.set(logRef, sanitize({
                 type: 'TASK_COMPLETED',
-                description: `<strong>${user.displayName}</strong> ${completed ? 'completed' : 'un-completed'} task: "${taskName}".`,
+                description: `<strong>${user.displayName}</strong> ${completed ? 'completed' : 'un-completed'} task: "${taskName}".${verificationResult ? ` Result: <strong>${verificationResult.toUpperCase()}</strong>` : ''}`,
                 timestamp: new Date().toISOString(),
                 user: { uid: user.username, displayName: user.displayName },
-                details: { shiftId, taskName, completed }
+                details: { shiftId, taskName, completed, verificationResult }
             }));
         });
     } catch (e) {

@@ -1,4 +1,3 @@
-
 'use client';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
@@ -92,10 +91,10 @@ export default function AppLayout({ children }: { children: React.Node }) {
     }).length;
   }, [shiftTasks, user]);
 
-  const handleTaskToggle = async (task: ShiftTask) => {
+  const handleTaskToggle = async (task: ShiftTask, result?: 'yes' | 'no') => {
     if (!user || !activeShift) return;
-    const newCompletedStatus = !task.completed;
-    await updateTask(activeShift.id, task.name, newCompletedStatus, user);
+    const newCompletedStatus = result ? true : !task.completed;
+    await updateTask(activeShift.id, task.name, newCompletedStatus, user, result);
     
     // If a morning task is being unchecked, force the notification to be visible
     if (!newCompletedStatus && (task.type === 'start-of-day' || task.type === 'strategic')) {

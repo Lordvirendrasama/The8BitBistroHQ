@@ -275,6 +275,7 @@ export interface ShiftTask {
     completedAt?: string;
     type: 'start-of-day' | 'end-of-day' | 'strategic';
     ownerOnly?: boolean;
+    verificationResult?: 'yes' | 'no';
     completedBy?: {
         username: string;
         displayName: string;

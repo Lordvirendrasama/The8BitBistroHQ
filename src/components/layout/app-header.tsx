@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -630,7 +629,7 @@ const OwnerTaskDropdown = () => {
 
 interface AppHeaderProps {
   activeShift: Shift | null;
-  onTaskToggle: (task: ShiftTask) => void;
+  onTaskToggle: (task: ShiftTask, result?: 'yes' | 'no') => void;
   tasksVisible: boolean;
   setTasksVisible: (visible: boolean) => void;
   uncompletedTaskCount: number;
