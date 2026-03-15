@@ -58,8 +58,9 @@ export function BillModal({
 
   const categories = useMemo(() => {
     const cats = Array.from(new Set(foodItems.map(item => item.category))).sort();
+    if (searchTerm) return [...cats, "Gaming"];
     return ["Hot Items", ...cats, "Gaming"];
-  }, [foodItems]);
+  }, [foodItems, searchTerm]);
 
   useEffect(() => {
     if (categories.length > 0 && !activeCategory) {
@@ -69,7 +70,6 @@ export function BillModal({
 
   const hotItems = useMemo(() => {
     if (!recentBills) {
-        // Fallback to basic slicing if bills aren't loaded
         return {
             gaming: gamingPackages.filter(p => !p.isAddTimePackage && !p.isRechargePack).slice(0, 3),
             food: foodItems.slice(0, 6)
@@ -80,7 +80,6 @@ export function BillModal({
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' });
     const currentTime = now.toTimeString().slice(0, 5);
 
-    // 1. Calculate popularity from bills
     const itemPopularity: Record<string, number> = {};
     recentBills.forEach(bill => {
         bill.items.forEach(item => {
@@ -94,11 +93,8 @@ export function BillModal({
         }
     });
 
-    // 2. Filter Gaming Packages by Availability (specifically for Priority Offers)
     const availableGaming = gamingPackages.filter(pkg => {
         if (pkg.isAddTimePackage || pkg.isRechargePack) return false;
-        
-        // If it's a priority offer, check day/time constraints
         if (pkg.isPriorityOffer) {
             let isAvailable = true;
             if (pkg.availableDays && pkg.availableDays.length > 0 && !pkg.availableDays.includes(currentDay)) isAvailable = false;
@@ -106,17 +102,12 @@ export function BillModal({
             if (isAvailable && pkg.endTime && currentTime > pkg.endTime) isAvailable = false;
             return isAvailable;
         }
-        
-        // Non-priority offers are standard walk-ins, always show them in the general pool
         return true;
     });
 
-    // 3. Sort and pick top items
     const sortedGaming = [...availableGaming].sort((a, b) => {
-        // Boost priority offers to the very top if available
         if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
         if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
-        // Then by sales volume
         return (itemPopularity[b.id] || 0) - (itemPopularity[a.id] || 0);
     });
 
@@ -347,40 +338,42 @@ export function BillModal({
                 <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 md:px-5 md:py-4 scroll-smooth">
                     <div className="space-y-8 md:space-y-10 pb-16">
                         
-                        {/* HOT ITEMS SECTION */}
-                        <div key="Hot-Items" id="category-section-Hot-Items" className="space-y-2 md:space-y-3">
-                            <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
-                                <Flame className="h-3 w-3 fill-current" /> TOP PICKS
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
-                                {hotItems.gaming.map(pkg => (
-                                    <button 
-                                        key={pkg.id} 
-                                        onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
-                                        className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
-                                    >
-                                        <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
-                                        <div className="flex justify-between items-end">
-                                            <span className="font-mono font-black text-xs md:text-base">₹{pkg.price}</span>
-                                            <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                    </button>
-                                ))}
-                                {hotItems.food.map(food => (
-                                    <button 
-                                        key={food.id} 
-                                        onClick={() => handleAddItem(food)}
-                                        className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
-                                    >
-                                        <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{food.name}</p>
-                                        <div className="flex justify-between items-end">
-                                            <span className="font-mono font-black text-xs md:text-base">₹{food.price}</span>
-                                            <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                    </button>
-                                ))}
+                        {/* HOT ITEMS SECTION (ONLY SHOW IF NOT SEARCHING) */}
+                        {!searchTerm && (
+                            <div key="Hot-Items" id="category-section-Hot-Items" className="space-y-2 md:space-y-3">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
+                                    <Flame className="h-3 w-3 fill-current" /> TOP PICKS
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
+                                    {hotItems.gaming.map(pkg => (
+                                        <button 
+                                            key={pkg.id} 
+                                            onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
+                                            className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                        >
+                                            <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                            <div className="flex justify-between items-end">
+                                                <span className="font-mono font-black text-xs md:text-base">₹{pkg.price}</span>
+                                                <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                    {hotItems.food.map(food => (
+                                        <button 
+                                            key={food.id} 
+                                            onClick={() => handleAddItem(food)}
+                                            className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                        >
+                                            <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{food.name}</p>
+                                            <div className="flex justify-between items-end">
+                                                <span className="font-mono font-black text-xs md:text-base">₹{food.price}</span>
+                                                <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* FOOD CATEGORIES */}
                         {categories.filter(c => c !== 'Hot Items' && c !== 'Gaming').map((category) => {
