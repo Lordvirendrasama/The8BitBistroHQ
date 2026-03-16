@@ -64,9 +64,10 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
         setStep('review-bill');
         setIsClosing(false);
         setSearchTerm('');
-        if (station.members.length > 0) {
-            setContactName(station.members[0].name);
-            const member = allMembers.find(m => m.id && m.id === station.members[0].id);
+        const members = station.members || [];
+        if (members.length > 0) {
+            setContactName(members[0].name);
+            const member = allMembers.find(m => m.id && m.id === members[0].id);
             setContactPhone(member?.phone || '');
         }
     }
@@ -87,9 +88,10 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
   const initialPackageInfo = useMemo(() => {
     if (!station || !station.packageName || station.packageName === 'Walk-in Order') return null;
+    const members = station.members || [];
     const hasItemizedSessionItems = billItems.some(i => {
         const nameLower = i.name.toLowerCase();
-        return (station.members.some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) || nameLower.startsWith('time:') || nameLower.startsWith('buy recharge:') || nameLower.startsWith('recharge:'));
+        return (members.some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) || nameLower.startsWith('time:') || nameLower.startsWith('buy recharge:') || nameLower.startsWith('recharge:'));
     });
     if (hasItemizedSessionItems) return null;
     if (billItems.some(i => i.name === station.packageName)) return null;
@@ -98,7 +100,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
     const pkg = gamingPackages.find(p => p.name.toLowerCase().trim() === pureName.toLowerCase());
     const price = isRechargeUsed ? 0 : (pkg?.price || 0);
-    const playerCount = station.members.length > 0 ? station.members.length : 1;
+    const playerCount = members.length > 0 ? members.length : 1;
     return { name: station.packageName, purePackage: pkg, total: price * playerCount, isExistingRecharge: isRechargeUsed, isNewRechargePurchase: isRechargeBought };
   }, [station, gamingPackages, billItems]);
 
@@ -113,12 +115,12 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
   const finalBillTotal = Math.max(0, foodSubtotal + timePackageTotal + (initialPackageInfo?.total || 0) - discount);
   
-  const totalPlayersInSession = station?.members.length || 1;
+  const totalPlayersInSession = (station?.members || []).length || 1;
   const billPerMember = finalBillTotal / totalPlayersInSession;
 
   const realMembersInSession = useMemo(() => {
     if (!station) return [];
-    return station.members.filter(m => m.id && !m.id.startsWith('guest-')).map(am => allMembers.find(m => m.id === am.id)).filter(m => !!m) as Member[];
+    return (station.members || []).filter(m => m.id && !m.id.startsWith('guest-')).map(am => allMembers.find(m => m.id === am.id)).filter(m => !!m) as Member[];
   }, [station, allMembers]);
 
   const handleUpdateQuantityByIndex = (index: number, delta: number) => {
@@ -130,7 +132,6 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
   const handleAddItem = (food: FoodItem) => {
     if (!station) return;
-    // FIX: Check both ID and Name to avoid merging per-player session entries
     const existingIndex = billItems.findIndex(i => i.itemId === food.id && i.name === food.name);
     let updatedItems: BillItem[];
     if (existingIndex > -1) { 
@@ -178,7 +179,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
         amount: diff, 
         originalAmount: finalBillTotal, 
         description: `Pending for ${station.name}`, 
-        memberId: (station.members[0]?.id && station.members[0]?.id.startsWith('guest-')) ? undefined : station.members[0]?.id 
+        memberId: ((station.members || [])[0]?.id && (station.members || [])[0]?.id.startsWith('guest-')) ? undefined : (station.members || [])[0]?.id 
       }, user);
     } else if (diff < 0) {
       await recordDebt({ 
@@ -188,7 +189,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
         amount: Math.abs(diff), 
         originalAmount: finalBillTotal, 
         description: `Overpayment change for ${station.name}`, 
-        memberId: (station.members[0]?.id && station.members[0]?.id.startsWith('guest-')) ? undefined : station.members[0]?.id 
+        memberId: ((station.members || [])[0]?.id && (station.members || [])[0]?.id.startsWith('guest-')) ? undefined : (station.members || [])[0]?.id 
       }, user);
     }
 
@@ -259,12 +260,12 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                     <div className="space-y-3 p-4 sm:p-6">
                         <div className="rounded-xl border-2 border-dashed bg-green-500/5 p-3 space-y-2">
                             {realMembersInSession.map((member, idx) => {
-                                const assignedMember = station.members.find(sm => sm.id === member.id);
+                                const assignedMember = (station.members || []).find(sm => sm.id === member.id);
                                 const isProvidingRecharge = !!assignedMember?.rechargeId;
                                 const isPurchaser = idx === 0 && initialPackageInfo?.isNewRechargePurchase;
                                 const currentBalanceSeconds = (member.recharges || []).filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0).reduce((sum, r) => sum + r.remainingDuration, 0);
                                 const newPackDuration = isPurchaser ? (initialPackageInfo?.purePackage?.duration || 0) : 0;
-                                const totalGroupManSeconds = playedSecondsPerPlayer * station.members.length;
+                                const totalGroupManSeconds = playedSecondsPerPlayer * (station.members || []).length;
                                 const deduction = (isProvidingRecharge || isPurchaser) ? totalGroupManSeconds : 0;
                                 const previewBalance = Math.max(0, (currentBalanceSeconds + newPackDuration) - deduction);
                                 const hasAnyBalanceContext = currentBalanceSeconds > 0 || isPurchaser;
@@ -285,7 +286,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                     </div>
                 )}
                 {step === 'payment-method' && <div className="grid grid-cols-2 gap-3 p-4 sm:p-6 my-2"><Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-green-500 uppercase tracking-tighter" onClick={() => handleCheckout('cash')}><Banknote className="h-8 w-8 text-green-600" /> Cash</Button><Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-primary uppercase tracking-tighter" onClick={() => handleCheckout('upi')}><Smartphone className="h-8 w-8 text-primary" /> UPI</Button><Button variant="outline" className="h-14 flex gap-2 font-bold uppercase border-dashed border-2 text-[10px]" onClick={() => setStep('split-details')}><Layers className="h-4 w-4 text-amber-500" /> Split</Button><Button variant="outline" className="h-14 flex gap-2 font-bold uppercase border-dashed border-2 text-[10px]" onClick={() => setStep('pending-details')}><FileWarning className="h-4 w-4 text-destructive" /> Pending</Button></div>}
-                {step === 'split-details' && <div className="space-y-4 p-4 sm:p-6 my-2"><div className="space-y-4"><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Cash Portion (₹)</Label><Input type="number" value={splitCash} onChange={e => { setSplitCash(e.target.value); setSplitUpi((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">UPI Portion (₹)</Label><Input type="number" value={splitUpi} onChange={e => { setUpiTotal(e.target.value); setSplitCash((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div></div></div>}
+                {step === 'split-details' && <div className="space-y-4 p-4 sm:p-6 my-2"><div className="space-y-4"><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Cash Portion (₹)</Label><Input type="number" value={splitCash} onChange={e => { setSplitCash(e.target.value); setSplitUpi((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">UPI Portion (₹)</Label><Input type="number" value={splitUpi} onChange={e => { setSplitUpi(e.target.value); setSplitCash((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div></div></div>}
                 {step === 'pending-details' && <div className="space-y-4 p-4 sm:p-6 my-2"><div className="grid gap-3"><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Collected Now (₹)</Label><Input type="number" value={paidNow} onChange={e => setPaidNow(e.target.value)} className="h-12 text-xl font-mono font-bold border-2"/></div><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Customer Name</Label><Input value={contactName} onChange={e => setContactName(e.target.value)} className="h-10 font-bold uppercase text-xs"/></div><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Phone Number</Label><Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} className="h-10 font-bold font-mono text-xs"/></div></div></div>}
             </ScrollArea>
 

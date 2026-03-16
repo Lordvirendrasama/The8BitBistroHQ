@@ -103,7 +103,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   const isFinishing = station.status === 'finishing';
 
   const activeMembers = useMemo(() => 
-    station.members.filter(m => m.status !== 'finished'), 
+    (station.members || []).filter(m => m.status !== 'finished'), 
   [station.members]);
 
   const activeWithTimers = useMemo(() => activeMembers.filter(m => !!m.endTime), [activeMembers]);
@@ -313,10 +313,10 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
         <Popover open={isManageOpen} onOpenChange={setIsManageOpen}>
             <div className="h-14 flex items-center justify-center">
-            {(isRunning || isPaused || isFinishing) && station.members.length > 0 ? (
+            {(isRunning || isPaused || isFinishing) && (station.members || []).length > 0 ? (
                 <PopoverTrigger asChild>
                     <button className="flex -space-x-3 hover:scale-105 transition-transform cursor-pointer focus:outline-none">
-                        {station.members.map((member) => (
+                        {(station.members || []).map((member) => (
                             <div 
                                 key={member.id} 
                                 className={cn(
@@ -351,15 +351,15 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
             </div>
 
-            {(isRunning || isPaused || isFinishing) && station.members.length > 0 && (
+            {(isRunning || isPaused || isFinishing) && (station.members || []).length > 0 && (
                 <PopoverContent className="w-80 p-0 overflow-hidden shadow-2xl border-2 font-body" align="center">
                     <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session Audit</p>
-                        <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary uppercase">{station.members.length} Players</Badge>
+                        <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary uppercase">{(station.members || []).length} Players</Badge>
                     </div>
                     <ScrollArea className="max-h-72">
                         <div className="divide-y">
-                            {station.members.map(member => {
+                            {(station.members || []).map(member => {
                                 const leftEarly = member.status === 'finished' && (member.remainingSecondsAtStop || 0) > 60;
                                 return (
                                     <div key={member.id} className="p-3 flex items-center justify-between hover:bg-muted/5 transition-colors">
@@ -401,7 +401,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                                         className="h-8 px-3 text-[10px] font-bold uppercase shadow-sm shrink-0"
                                                         onClick={() => {
                                                             onStopPlayer?.(station.id, member.id);
-                                                            if (station.members.filter(m => m.status !== 'finished').length <= 1) {
+                                                            if ((station.members || []).filter(m => m.status !== 'finished').length <= 1) {
                                                                 setIsManageOpen(false);
                                                             }
                                                         }}

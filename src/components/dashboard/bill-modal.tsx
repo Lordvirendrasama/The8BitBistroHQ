@@ -88,7 +88,7 @@ export function BillModal({
         if (bill.packageName) {
             const pkg = gamingPackages.find(p => p.name === bill.packageName || bill.packageName?.includes(p.name));
             if (pkg) {
-                itemPopularity[pkg.id] = (itemPopularity[pkg.id] || 0) + (bill.members?.length || 1);
+                itemPopularity[pkg.id] = (itemPopularity[pkg.id] || 0) + ((bill.members || []).length || 1);
             }
         }
     });
@@ -189,7 +189,7 @@ export function BillModal({
         const nameLower = i.name.toLowerCase();
         const pkgNameLower = station.packageName!.toLowerCase();
         return (
-            station.members.some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) ||
+            (station.members || []).some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) ||
             nameLower.startsWith('time:') ||
             nameLower.startsWith('buy recharge:') ||
             nameLower.startsWith('recharge:') ||
@@ -203,7 +203,7 @@ export function BillModal({
     const pkg = gamingPackages.find(p => p.name.toLowerCase() === pureName.toLowerCase());
     if (!pkg) return 0;
 
-    const numberOfPlayers = station.members.length > 0 ? station.members.length : 1;
+    const numberOfPlayers = (station.members || []).length > 0 ? station.members.length : 1;
     const capacity = pkg.playerCapacity || 1;
     return pkg.price * Math.ceil(numberOfPlayers / capacity);
   }, [station, gamingPackages, billItems]);
@@ -241,7 +241,7 @@ export function BillModal({
                         </DialogDescription>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
-                        {station.members.map(m => (
+                        {(station.members || []).map(m => (
                             <Badge key={m.id} variant="outline" className="h-5 md:h-7 gap-1 pl-1 pr-2 rounded-full bg-muted/50 border-primary/20">
                                 <Avatar className="h-3.5 w-3.5 md:h-5 md:w-5 border-none"><AvatarFallback className="text-[6px] md:text-[9px]">{m.name[0]}</AvatarFallback></Avatar>
                                 <span className="font-black text-[6px] md:text-[9px] uppercase truncate max-w-[45px]">{m.name}</span>
