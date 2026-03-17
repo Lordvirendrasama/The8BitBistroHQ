@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { Member, AssignedMember, Station, GamingPackage, MemberRecharge, BillItem } from '@/lib/types';
@@ -94,12 +93,12 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
   }, [isOpen]);
 
   const filteredMembers = useMemo(() => {
-    const existingIds = new Set(station.members.map(m => m.id));
+    const existingIds = new Set((station?.members || []).map(m => m.id));
     const available = members.filter(m => !existingIds.has(m.id));
     if (!searchTerm) return available.slice(0, 10);
     const term = searchTerm.toLowerCase();
     return available.filter(m => m.name.toLowerCase().includes(term) || m.username.toLowerCase().includes(term)).slice(0, 15);
-  }, [members, searchTerm, station.members]);
+  }, [members, searchTerm, station?.members]);
 
   const getMemberActiveRecharges = (memberId: string) => {
     const member = members.find(m => m.id === memberId);
@@ -169,7 +168,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:max-w-md h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0 bg-muted/5 border-b">
-          <DialogTitle className="font-display text-xl text-emerald-600 uppercase tracking-tight">JOIN SESSION: {station.name}</DialogTitle>
+          <DialogTitle className="font-display text-xl text-emerald-600 uppercase tracking-tight">JOIN SESSION: {station?.name}</DialogTitle>
           <DialogDescription className="text-xs font-bold uppercase text-muted-foreground">Add another player to the active timer.</DialogDescription>
         </DialogHeader>
 
