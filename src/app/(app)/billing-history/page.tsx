@@ -284,6 +284,26 @@ export default function BillingHistoryPage() {
                                                                     <TableCell className="text-right px-3 font-mono">- ₹{bill.discount.toLocaleString()}</TableCell>
                                                                 </TableRow>
                                                             )}
+                                                            {bill.paymentMethod === 'split' && (
+                                                                <>
+                                                                    <TableRow className="text-[9px] text-muted-foreground border-t border-dashed">
+                                                                        <TableCell className="px-3 uppercase font-bold flex items-center gap-1.5">
+                                                                            <Banknote className="h-2.5 w-2.5" />
+                                                                            Cash Portion
+                                                                        </TableCell>
+                                                                        <TableCell></TableCell>
+                                                                        <TableCell className="text-right px-3 font-mono font-bold">₹{(bill.cashAmount || 0).toLocaleString()}</TableCell>
+                                                                    </TableRow>
+                                                                    <TableRow className="text-[9px] text-muted-foreground">
+                                                                        <TableCell className="px-3 uppercase font-bold flex items-center gap-1.5">
+                                                                            <Smartphone className="h-2.5 w-2.5" />
+                                                                            UPI Portion
+                                                                        </TableCell>
+                                                                        <TableCell></TableCell>
+                                                                        <TableCell className="text-right px-3 font-mono font-bold">₹{(bill.upiAmount || 0).toLocaleString()}</TableCell>
+                                                                    </TableRow>
+                                                                </>
+                                                            )}
                                                             <TableRow className="font-black border-t-2 bg-muted/30">
                                                                 <TableCell className="px-3 uppercase tracking-widest text-[10px]">Grand Total</TableCell>
                                                                 <TableCell colSpan={2} className="text-right px-3 font-mono text-base text-primary">₹{(bill.totalAmount || 0).toLocaleString()}</TableCell>
