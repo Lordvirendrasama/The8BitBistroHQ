@@ -113,10 +113,10 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
           result: verifyTask?.verificationResult,
           loginTime: format(new Date(shift.startTime), 'p'),
           rawStartTime: new Date(shift.startTime).getTime(),
-          logoutTime: shift.endTime ? format(new Date(shift.endTime), 'p') : null, // Added logoutTime
-          rawEndTime: shift.endTime ? new Date(shift.endTime).getTime() : null, // Added rawEndTime
-          originalShift: shift, // Keep the original shift object for full data
-          employeeId: emp.id // Assuming employee has an id
+          logoutTime: shift.endTime ? format(new Date(shift.endTime), 'p') : null,
+          rawEndTime: shift.endTime ? new Date(shift.endTime).getTime() : null,
+          originalShift: shift,
+          employeeId: emp.id
         };
 
         const existing = userMap.get(emp.username);
@@ -140,7 +140,7 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
 
   const handleEditAttendanceClick = (record: any) => {
     setSelectedAttendanceForEdit(record);
-    setEditStatus(record.result);
+    setEditStatus(record.result || null);
     setEditLoginTime(record.rawStartTime ? format(new Date(record.rawStartTime), 'HH:mm') : '');
     setEditLogoutTime(record.rawEndTime ? format(new Date(record.rawEndTime), 'HH:mm') : '');
     setIsEditAttendanceModalOpen(true);
@@ -171,7 +171,7 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
       user
     );
 
-    const taskName = `Verify ${selectedAttendanceForEdit.displayName || selectedAttendanceForEdit.username} Presence`;
+    const taskName = selectedAttendanceForEdit.taskName;
     const taskUpdateSuccess = await updateTask(
       selectedAttendanceForEdit.shiftId,
       taskName,
@@ -247,59 +247,54 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 {status?.map((s: any, idx) => (
-                  <div key={idx} className={cn(
-                    "p-2 rounded-lg border-2 text-[9px] font-black uppercase leading-tight flex flex-col gap-2 shadow-sm relative",
-                    s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" :
-                    s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" :
-                    "bg-background border-muted text-muted-foreground"
-                  )}>
-                    {isOwner && (
-                      <button
-                        className="absolute top-1 right-1 p-1 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-primary transition-colors z-10"
-                        onClick={() => handleEditAttendanceClick(s)}
-                        aria-label="Edit attendance"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </button>
+                  <button 
+                    key={idx} 
+                    onClick={() => isOwner && handleEditAttendanceClick(s)}
+                    className={cn(
+                      "w-full p-2 rounded-lg border-2 text-[9px] font-black uppercase leading-tight flex flex-col gap-2 shadow-sm relative text-left hover:scale-[1.02] active:scale-100 transition-all",
+                      s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" :
+                      s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" :
+                      "bg-background border-muted text-muted-foreground"
                     )}
+                  >
                     <div className="flex items-center justify-between gap-1">
                         <div className="flex flex-col truncate">
                             <span className="truncate">{s.displayName}</span>
                             <span className="text-[7px] font-mono opacity-60 tracking-tighter">IN: {s.loginTime}</span>
                         </div>
-                        {s.result === 'yes' ? <UserCheck className="h-3 w-3 shrink-0 text-emerald-600" /> :
-                        s.result === 'no' ? <UserX className="h-3 w-3 shrink-0 text-destructive" /> :
-                        <Clock className="h-3 w-3 shrink-0 opacity-40 animate-pulse" />}
+                        {s.result === 'yes' ? <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> :
+                        s.result === 'no' ? <UserX className="h-3.5 w-3.5 shrink-0 text-destructive" /> :
+                        <Clock className="h-3.5 w-3.5 shrink-0 opacity-40 animate-pulse" />}
                     </div>
 
                     {isOwner && (
                         <div className="flex gap-1 pt-1 border-t border-current border-dashed opacity-80 hover:opacity-100 transition-opacity">
                             {!s.verified ? (
                                 <>
-                                    <button 
-                                        onClick={() => handleVerify(s.shiftId, s.taskName, 'yes')}
-                                        className="flex-1 py-1 bg-emerald-600 text-white rounded font-black text-[7px] hover:bg-emerald-700 transition-colors"
+                                    <div 
+                                        onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'yes'); }}
+                                        className="flex-1 py-1 bg-emerald-600 text-white rounded font-black text-[7px] text-center hover:bg-emerald-700 transition-colors"
                                     >
                                         YES
-                                    </button>
-                                    <button 
-                                        onClick={() => handleVerify(s.shiftId, s.taskName, 'no')}
-                                        className="flex-1 py-1 bg-destructive text-white rounded font-black text-[7px] hover:bg-destructive/90 transition-colors"
+                                    </div>
+                                    <div 
+                                        onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'no'); }}
+                                        className="flex-1 py-1 bg-destructive text-white rounded font-black text-[7px] text-center hover:bg-destructive/90 transition-colors"
                                     >
                                         NO
-                                    </button>
+                                    </div>
                                 </>
                             ) : (
-                                <button 
-                                    onClick={() => handleVerify(s.shiftId, s.taskName, null)}
+                                <div 
+                                    onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, null); }}
                                     className="w-full py-1 bg-muted text-muted-foreground rounded font-black text-[7px] flex items-center justify-center gap-1 hover:bg-muted/80 transition-colors"
                                 >
                                     <X className="h-2 w-2" /> RESET AUDIT
-                                </button>
+                                </div>
                             )}
                         </div>
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
