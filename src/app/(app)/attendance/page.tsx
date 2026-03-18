@@ -59,6 +59,15 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
 
   const isOwner = user?.username === 'Viren';
 
+  // State for Edit Attendance Modal
+  const [isEditAttendanceModalOpen, setIsEditAttendanceModalOpen] = useState(false);
+  const [selectedAttendanceForEdit, setSelectedAttendanceForEdit] = useState<any | null>(null);
+  const [editStatus, setEditStatus] = useState<'yes' | 'no' | null>(null);
+  const [editLoginTime, setEditLoginTime] = useState('');
+  const [editLogoutTime, setEditLogoutTime] = useState('');
+  const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
+
+
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -68,7 +77,6 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
   const handleVerify = async (shiftId: string, taskName: string, result: 'yes' | 'no' | null) => {
     if (!isOwner) return;
     
-    // If result is null, it means we are "un-completing" or resetting
     await updateTask(shiftId, taskName, result !== null, user, result || undefined);
     
     toast({ 
@@ -83,17 +91,14 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
     
     if (dayShifts.length === 0) return null;
 
-    // Use a Map to ensure unique entry per user per day
     const userMap = new Map<string, any>();
 
     dayShifts.forEach(shift => {
-      // Find relevant employees in this shift
       const activeInShift = (shift.employees || []).filter(e => 
         filterStaff === 'all' || e.username.toLowerCase() === filterStaff.toLowerCase()
       );
 
       activeInShift.forEach(emp => {
-        // Find verification task for this employee
         const taskName = `Verify ${emp.displayName || emp.username} Presence`;
         const verifyTask = (shift.tasks || []).find(t => 
           t.type === 'strategic' && t.name.toLowerCase().includes(emp.username.toLowerCase())
@@ -107,7 +112,11 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
           verified: !!verifyTask?.completed,
           result: verifyTask?.verificationResult,
           loginTime: format(new Date(shift.startTime), 'p'),
-          rawStartTime: new Date(shift.startTime).getTime()
+          rawStartTime: new Date(shift.startTime).getTime(),
+          logoutTime: shift.endTime ? format(new Date(shift.endTime), 'p') : null, // Added logoutTime
+          rawEndTime: shift.endTime ? new Date(shift.endTime).getTime() : null, // Added rawEndTime
+          originalShift: shift, // Keep the original shift object for full data
+          employeeId: emp.id // Assuming employee has an id
         };
 
         const existing = userMap.get(emp.username);
@@ -115,11 +124,9 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
         if (!existing) {
           userMap.set(emp.username, currentData);
         } else {
-          // If we have multiple records, prioritize verified ones
           if (!existing.verified && currentData.verified) {
             userMap.set(emp.username, currentData);
           } else if (existing.verified === currentData.verified) {
-            // If verification status is same, pick the earlier login
             if (currentData.rawStartTime < existing.rawStartTime) {
               userMap.set(emp.username, currentData);
             }
@@ -130,6 +137,64 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
 
     return Array.from(userMap.values());
   };
+
+  const handleEditAttendanceClick = (record: any) => {
+    setSelectedAttendanceForEdit(record);
+    setEditStatus(record.result);
+    setEditLoginTime(record.rawStartTime ? format(new Date(record.rawStartTime), 'HH:mm') : '');
+    setEditLogoutTime(record.rawEndTime ? format(new Date(record.rawEndTime), 'HH:mm') : '');
+    setIsEditAttendanceModalOpen(true);
+  };
+
+  const handleSaveAttendanceEdit = async () => {
+    if (!selectedAttendanceForEdit || !user) return;
+
+    setIsSavingAttendanceEdit(true);
+
+    const originalShift = selectedAttendanceForEdit.originalShift;
+    const shiftDate = format(new Date(originalShift.startTime), 'yyyy-MM-dd');
+
+    const newStartTime = editLoginTime
+      ? new Date(`${shiftDate}T${editLoginTime}:00`).toISOString()
+      : originalShift.startTime;
+
+    const newEndTime = editLogoutTime && editStatus !== 'no'
+      ? new Date(`${shiftDate}T${editLogoutTime}:00`).toISOString()
+      : null;
+
+    const shiftUpdateSuccess = await updateShiftTimes(
+      selectedAttendanceForEdit.shiftId,
+      {
+        startTime: newStartTime,
+        endTime: newEndTime,
+      },
+      user
+    );
+
+    const taskName = `Verify ${selectedAttendanceForEdit.displayName || selectedAttendanceForEdit.username} Presence`;
+    const taskUpdateSuccess = await updateTask(
+      selectedAttendanceForEdit.shiftId,
+      taskName,
+      editStatus === 'yes' || editStatus === 'no',
+      user,
+      editStatus === 'yes' ? 'yes' : (editStatus === 'no' ? 'no' : undefined)
+    );
+
+
+    if (shiftUpdateSuccess && taskUpdateSuccess) {
+      toast({ title: 'Attendance Updated', description: 'Calendar record has been successfully adjusted.' });
+      setIsEditAttendanceModalOpen(false);
+      setSelectedAttendanceForEdit(null);
+    } else {
+      toast({
+        title: 'Update Failed',
+        description: 'There was an error updating the attendance record.',
+        variant: 'destructive',
+      });
+    }
+    setIsSavingAttendanceEdit(false);
+  };
+
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -183,11 +248,20 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
               <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 {status?.map((s: any, idx) => (
                   <div key={idx} className={cn(
-                    "p-2 rounded-lg border-2 text-[9px] font-black uppercase leading-tight flex flex-col gap-2 shadow-sm",
+                    "p-2 rounded-lg border-2 text-[9px] font-black uppercase leading-tight flex flex-col gap-2 shadow-sm relative",
                     s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" :
                     s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" :
                     "bg-background border-muted text-muted-foreground"
                   )}>
+                    {isOwner && (
+                      <button
+                        className="absolute top-1 right-1 p-1 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-primary transition-colors z-10"
+                        onClick={() => handleEditAttendanceClick(s)}
+                        aria-label="Edit attendance"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </button>
+                    )}
                     <div className="flex items-center justify-between gap-1">
                         <div className="flex flex-col truncate">
                             <span className="truncate">{s.displayName}</span>
@@ -247,6 +321,69 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
           <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Pending verification</span>
         </div>
       </div>
+
+      {/* EDIT ATTENDANCE MODAL */}
+      <Dialog open={isEditAttendanceModalOpen} onOpenChange={setIsEditAttendanceModalOpen}>
+        <DialogContent className="max-w-md font-body border-4 border-primary/20">
+            <DialogHeader>
+                <DialogTitle className="font-headline text-xl flex items-center gap-2">
+                    <Edit className="text-primary" />
+                    Edit Attendance
+                </DialogTitle>
+                <DialogDescription className="font-black text-[9px] uppercase tracking-widest">
+                    Adjust attendance record for {selectedAttendanceForEdit?.displayName} on {format(new Date(selectedAttendanceForEdit?.originalShift.startTime || new Date()), 'MMM dd, yyyy')}.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Attendance Status</Label>
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant={editStatus === 'yes' ? 'default' : 'outline'}
+                            onClick={() => setEditStatus('yes')}
+                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
+                        >
+                            <CheckCircle2 className="h-4 w-4" /> Yes
+                        </Button>
+                        <Button
+                            variant={editStatus === 'no' ? 'destructive' : 'outline'}
+                            onClick={() => setEditStatus('no')}
+                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
+                        >
+                            <XCircle className="h-4 w-4" /> No
+                        </Button>
+                    </div>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Login Time</Label>
+                    <Input
+                        type="time"
+                        value={editLoginTime}
+                        onChange={e => setEditLoginTime(e.target.value)}
+                        className="h-12 font-mono font-bold border-2"
+                        disabled={editStatus === 'no'}
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Logout Time (Optional)</Label>
+                    <Input
+                        type="time"
+                        value={editLogoutTime}
+                        onChange={e => setEditLogoutTime(e.target.value)}
+                        className="h-12 font-mono font-bold border-2"
+                        disabled={editStatus === 'no'}
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button disabled={isSavingAttendanceEdit} onClick={handleSaveAttendanceEdit} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl">
+                    <Save className="mr-2 h-5 w-5" />
+                    {isSavingAttendanceEdit ? 'Saving...' : 'Save Changes'}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
@@ -260,7 +397,6 @@ export default function AttendanceRegistryPage() {
   const [staffFilter, setStaffFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
   
-  // Edit State
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
