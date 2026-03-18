@@ -173,8 +173,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             }
             return shift;
         } else {
-            // RELAXED RESTRICTION: Admins can also initialize the day if staff hasn't yet.
-            if (isOwner && user.role !== 'admin') return null;
+            if (isOwner) return null;
 
             const now = new Date();
             
@@ -389,9 +388,14 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
             if (!shiftDoc.exists()) {
                 throw "Shift document not found!";
             }
-            const currentTasks = shiftDoc.data().tasks as ShiftTask[];
-            const updatedTasks = currentTasks.map(task => {
+            
+            const shiftData = shiftDoc.data() as Shift;
+            const currentTasks = shiftData.tasks || [];
+            
+            let taskFound = false;
+            let updatedTasks = currentTasks.map(task => {
                 if (task.name === taskName) {
+                    taskFound = true;
                     const newTask: any = { 
                         ...task, 
                         completed, 
@@ -409,6 +413,20 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
                 }
                 return task;
             });
+
+            // FAIL-SAFE: If the task wasn't found (likely a strategic task missing from an older shift document)
+            if (!taskFound && taskName.startsWith('Verify ')) {
+                const newTask: ShiftTask = {
+                    name: taskName,
+                    type: 'strategic',
+                    ownerOnly: true,
+                    completed,
+                    verificationResult,
+                    completedAt: completed ? new Date().toISOString() : undefined,
+                    completedBy: completed ? { username: user.username, displayName: user.displayName } : undefined
+                };
+                updatedTasks = [...updatedTasks, newTask];
+            }
             
             transaction.update(shiftRef, sanitize({ tasks: updatedTasks }));
 

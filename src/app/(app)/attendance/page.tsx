@@ -77,12 +77,14 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
   const handleVerify = async (shiftId: string, taskName: string, result: 'yes' | 'no' | null) => {
     if (!isOwner) return;
     
-    await updateTask(shiftId, taskName, result !== null, user, result || undefined);
+    const success = await updateTask(shiftId, taskName, result !== null, user, result || undefined);
     
-    toast({ 
-        title: result ? "Attendance Verified" : "Audit Reset", 
-        description: result ? `Marked as ${result.toUpperCase()}.` : "Verification removed."
-    });
+    if (success) {
+        toast({ 
+            title: result ? "Attendance Verified" : "Audit Reset", 
+            description: result ? `Marked as ${result.toUpperCase()}.` : "Verification removed."
+        });
+    }
   };
 
   const getDayStatus = (date: Date) => {
@@ -99,6 +101,7 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
       );
 
       activeInShift.forEach(emp => {
+        // Robust strategic task identification
         const taskName = `Verify ${emp.displayName || emp.username} Presence`;
         const verifyTask = (shift.tasks || []).find(t => 
           t.type === 'strategic' && t.name.toLowerCase().includes(emp.username.toLowerCase())
@@ -124,6 +127,7 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
         if (!existing) {
           userMap.set(emp.username, currentData);
         } else {
+          // Prioritize verified records or earliest logins
           if (!existing.verified && currentData.verified) {
             userMap.set(emp.username, currentData);
           } else if (existing.verified === currentData.verified) {
