@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
-import type { Shift, ShiftTask } from '@/lib/types';
+import type { Shift, ShiftTask, Employee } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +40,9 @@ import {
   ChevronLeft, 
   ChevronRight, 
   ClipboardCheck,
-  X
+  X,
+  PlusCircle,
+  UserPlus
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -49,10 +51,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { updateShiftTimes, updateTask } from '@/firebase/firestore/shifts';
+import { updateShiftTimes, updateTask, manuallyCreateShift } from '@/firebase/firestore/shifts';
 import { useToast } from '@/hooks/use-toast';
 
-function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], staffOptions: [string, string][], user: any }) {
+function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts: Shift[], staffOptions: [string, string][], user: any, employees: Employee[] }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filterStaff, setFilterStaff] = useState('all');
   const { toast } = useToast();
@@ -66,6 +68,17 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
   const [editLoginTime, setEditLoginTime] = useState('');
   const [editLogoutTime, setEditLogoutTime] = useState('');
   const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
+
+  // State for Add Attendance Modal
+  const [isAddAttendanceModalOpen, setIsAddAttendanceModalOpen] = useState(false);
+  const [isAddingAttendance, setIsAddingAttendance] = useState(false);
+  const [addFormData, setAddFormData] = useState({
+    username: '',
+    date: new Date().toISOString().slice(0, 10),
+    loginTime: '11:00',
+    logoutTime: '23:00',
+    status: 'yes' as 'yes' | 'no'
+  });
 
 
   const days = useMemo(() => {
@@ -199,10 +212,46 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
     setIsSavingAttendanceEdit(false);
   };
 
+  const handleManualAddAttendance = async () => {
+    const emp = employees.find(e => e.username === addFormData.username);
+    if (!emp || !user) return;
+
+    setIsAddingAttendance(true);
+    
+    const startTimeISO = new Date(`${addFormData.date}T${addFormData.loginTime}:00`).toISOString();
+    const endTimeISO = addFormData.logoutTime 
+        ? new Date(`${addFormData.date}T${addFormData.logoutTime}:00`).toISOString() 
+        : null;
+
+    const success = await manuallyCreateShift({
+        username: emp.username,
+        displayName: emp.displayName,
+        date: addFormData.date,
+        startTime: startTimeISO,
+        endTime: endTimeISO,
+        status: addFormData.status
+    }, user);
+
+    if (success) {
+        toast({ title: "Attendance Logged", description: `Manual record created for ${emp.displayName}.` });
+        setIsAddAttendanceModalOpen(false);
+        setAddFormData({
+            username: '',
+            date: new Date().toISOString().slice(0, 10),
+            loginTime: '11:00',
+            logoutTime: '23:00',
+            status: 'yes'
+        });
+    } else {
+        toast({ variant: 'destructive', title: "Sync Error", description: "Failed to create manual record." });
+    }
+    setIsAddingAttendance(false);
+  };
+
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
+      <div className="flex flex-col lg:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-5 w-5" /></Button>
           <h2 className="font-headline text-lg sm:text-xl min-w-[200px] text-center uppercase tracking-tight">
@@ -210,10 +259,15 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
           </h2>
           <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-5 w-5" /></Button>
         </div>
-        <div className="flex items-center gap-3">
-            <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 hidden sm:block">Filter Operator:</Label>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+            {isOwner && (
+                <Button onClick={() => setIsAddAttendanceModalOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest shadow-lg bg-emerald-600 hover:bg-emerald-700">
+                    <PlusCircle className="mr-2 h-4 w-4" /> ADD ATTENDANCE
+                </Button>
+            )}
+            <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 hidden sm:block">Filter:</Label>
             <Select value={filterStaff} onValueChange={setFilterStaff}>
-                <SelectTrigger className="w-[200px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
+                <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
                     <SelectValue placeholder="All Staff" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,7 +280,7 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-muted border-2 rounded-xl overflow-hidden shadow-inner">
+      <div className="grid grid-cols-7 gap-px bg-muted border-2 rounded-xl overflow-hidden shadow-inner overflow-x-auto min-w-[800px]">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
           <div key={d} className="bg-muted/50 py-3 text-center text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground border-b">{d}</div>
         ))}
@@ -383,6 +437,92 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
         </DialogContent>
       </Dialog>
 
+      {/* ADD ATTENDANCE MODAL */}
+      <Dialog open={isAddAttendanceModalOpen} onOpenChange={setIsAddAttendanceModalOpen}>
+        <DialogContent className="max-w-md font-body border-4 border-emerald-500/20">
+            <DialogHeader>
+                <DialogTitle className="font-headline text-xl flex items-center gap-2">
+                    <UserPlus className="text-emerald-600" />
+                    Manual Entry
+                </DialogTitle>
+                <DialogDescription className="font-black text-[9px] uppercase tracking-widest">
+                    Create a historical shift record for an operator.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Select Operator</Label>
+                    <Select value={addFormData.username} onValueChange={v => setAddFormData(p => ({...p, username: v}))}>
+                        <SelectTrigger className="h-12 border-2 font-bold uppercase text-[10px]">
+                            <SelectValue placeholder="PICK OPERATOR" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {employees.filter(e => e.isActive).map(e => (
+                                <SelectItem key={e.username} value={e.username} className="font-bold text-[10px] uppercase">
+                                    {e.displayName.toUpperCase()}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Target Date</Label>
+                    <Input
+                        type="date"
+                        value={addFormData.date}
+                        onChange={e => setAddFormData(p => ({...p, date: e.target.value}))}
+                        className="h-12 font-bold border-2"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">In Time</Label>
+                        <Input
+                            type="time"
+                            value={addFormData.loginTime}
+                            onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))}
+                            className="h-12 font-mono font-bold border-2"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Out Time</Label>
+                        <Input
+                            type="time"
+                            value={addFormData.logoutTime}
+                            onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))}
+                            className="h-12 font-mono font-bold border-2"
+                        />
+                    </div>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Initial Audit Status</Label>
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant={addFormData.status === 'yes' ? 'default' : 'outline'}
+                            onClick={() => setAddFormData(p => ({...p, status: 'yes'}))}
+                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
+                        >
+                            <CheckCircle2 className="h-4 w-4" /> Present
+                        </Button>
+                        <Button
+                            variant={addFormData.status === 'no' ? 'destructive' : 'outline'}
+                            onClick={() => setAddFormData(p => ({...p, status: 'no'}))}
+                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
+                        >
+                            <XCircle className="h-4 w-4" /> Absent
+                        </Button>
+                    </div>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl bg-emerald-600 hover:bg-emerald-700">
+                    <Save className="mr-2 h-5 w-5" />
+                    {isAddingAttendance ? 'Syncing...' : 'Commit Record'}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
@@ -407,6 +547,9 @@ export default function AttendanceRegistryPage() {
   }, [db]);
 
   const { data: allShifts, loading } = useCollection<Shift>(shiftsQuery);
+
+  const employeesQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
+  const { data: employees } = useCollection<Employee>(employeesQuery);
 
   const staffOptions = useMemo(() => {
     if (!allShifts) return [];
@@ -647,7 +790,7 @@ export default function AttendanceRegistryPage() {
         </TabsContent>
 
         <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-500">
-            <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} user={user} />
+            <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} user={user} employees={employees || []} />
         </TabsContent>
       </Tabs>
 

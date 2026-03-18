@@ -469,3 +469,65 @@ export const updateShiftTimes = async (shiftId: string, updates: { startTime: st
         return false;
     }
 };
+
+/**
+ * Manually creates a shift record for a specific date and employee.
+ * Primarily used by the Owner to backfill or fix missed attendance.
+ */
+export const manuallyCreateShift = async (data: { 
+    username: string, 
+    displayName: string, 
+    date: string, 
+    startTime: string, 
+    endTime?: string | null,
+    status: 'yes' | 'no' 
+}, user: CustomUser) => {
+    const db = getFirestore();
+    const settings = await getSettings();
+    const batch = writeBatch(db);
+    
+    const shiftRef = doc(collection(db, 'shifts'));
+    
+    // Create pre-verified strategic task
+    const strategicTask: ShiftTask = {
+        name: `Verify ${data.displayName} Presence`,
+        type: 'strategic',
+        ownerOnly: true,
+        completed: true,
+        verificationResult: data.status,
+        completedAt: new Date().toISOString(),
+        completedBy: { username: user.username, displayName: user.displayName }
+    };
+
+    const shiftData: Omit<Shift, 'id'> = {
+        date: data.date,
+        staffId: data.username,
+        employees: [{ username: data.username, displayName: data.displayName }],
+        startTime: data.startTime,
+        endTime: data.endTime || undefined,
+        status: 'completed', // Manual shifts are archived immediately
+        tasks: [strategicTask],
+        breaks: [],
+        cycle: settings.activeCycle || 'Live Cycle'
+    };
+
+    batch.set(shiftRef, sanitize(shiftData));
+    
+    // Log manual creation in system audit
+    const logRef = doc(collection(db, 'logs'));
+    batch.set(logRef, sanitize({
+        type: 'DATA_ACTION',
+        description: `<strong>${user.displayName}</strong> manually created attendance record for <strong>${data.displayName}</strong> on ${data.date}. Status: <strong>${data.status.toUpperCase()}</strong>.`,
+        timestamp: new Date().toISOString(),
+        user: { uid: user.username, displayName: user.displayName },
+        details: { shiftId: shiftRef.id, ...data }
+    }));
+
+    try {
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Error manually creating shift:", error);
+        return false;
+    }
+};
