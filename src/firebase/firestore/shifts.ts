@@ -379,7 +379,7 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
     }
 };
 
-export const updateTask = async (shiftId: string, taskName: string, completed: boolean, user: CustomUser, verificationResult?: 'yes' | 'no'): Promise<void> => {
+export const updateTask = async (shiftId: string, taskName: string, completed: boolean, user: CustomUser, verificationResult?: 'yes' | 'no'): Promise<boolean> => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
     
@@ -421,8 +421,10 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
                 details: { shiftId, taskName, completed, verificationResult }
             }));
         });
+        return true;
     } catch (e) {
         console.error("Error updating task transactionally: ", e);
+        return false;
     }
 };
 

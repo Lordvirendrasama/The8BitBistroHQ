@@ -158,7 +158,7 @@ function AttendanceCalendar({ shifts, staffOptions, user }: { shifts: Shift[], s
       ? new Date(`${shiftDate}T${editLoginTime}:00`).toISOString()
       : originalShift.startTime;
 
-    const newEndTime = editLogoutTime && editStatus !== 'no'
+    const newEndTime = (editLogoutTime && editStatus !== 'no')
       ? new Date(`${shiftDate}T${editLogoutTime}:00`).toISOString()
       : null;
 
