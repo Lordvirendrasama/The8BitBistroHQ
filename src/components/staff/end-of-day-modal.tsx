@@ -127,7 +127,7 @@ export function EndOfDayModal({
   const variance = totalEntered - totalExpected;
 
   const handleConfirm = () => {
-    onConfirmLogout({ cashTotal: enteredCash, upiTotal: enteredUpi, shiftExpenses: enteredExpenses }, false);
+    onConfirmLogout({ cashTotal: enteredCash, upiTotal: enteredUpi, shiftExpenses: enteredExpenses }, !allTasksCompleted);
   };
   
   const handleLogoutAnyway = () => {
@@ -359,7 +359,6 @@ export function EndOfDayModal({
           <Button
             variant="destructive"
             onClick={handleConfirm}
-            disabled={!allTasksCompleted}
             className="h-12 sm:h-14 uppercase font-black tracking-[0.2em] flex-[2] shadow-xl text-[10px] sm:text-xs"
           >
             END SHIFT & LOGOUT

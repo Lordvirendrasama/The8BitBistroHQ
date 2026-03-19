@@ -33,11 +33,13 @@ import {
   Trash2,
   Zap,
   Moon,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { 
   AlertDialog, 
@@ -56,8 +58,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { updateShiftTimes, updateTask, manuallyCreateShift } from '@/firebase/firestore/shifts';
 import { clearAttendanceData } from '@/firebase/firestore/data-management';
 import { useToast } from '@/hooks/use-toast';
+ 
+const toLocalISOString = (date: Date) => {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+};
 
-function AttendanceCalendar({ shifts, filterStaff, user }: { shifts: Shift[], filterStaff: string, user: any }) {
+function AttendanceCalendar({ shifts, filterStaff, user, onAddClick }: { shifts: Shift[], filterStaff: string, user: any, onAddClick?: (date: Date) => void }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const { toast } = useToast();
 
@@ -164,9 +171,10 @@ function AttendanceCalendar({ shifts, filterStaff, user }: { shifts: Shift[], fi
           const isCurrent = isSameMonth(day, currentMonth);
           const status = getDayStatus(day);
           return (
-            <div key={i} className={cn("min-h-[160px] p-2 bg-background flex flex-col gap-1 transition-all", !isCurrent && "opacity-20 pointer-events-none", isToday(day) && "ring-2 ring-inset ring-primary/20 bg-primary/[0.02]")}>
+            <div key={i} className={cn("min-h-[160px] p-2 bg-background flex flex-col gap-1 transition-all group", !isCurrent && "opacity-20 pointer-events-none", isToday(day) && "ring-2 ring-inset ring-primary/20 bg-primary/[0.02]")}>
               <div className="flex justify-between items-start mb-1">
                 <span className={cn("text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full", isToday(day) ? "bg-primary text-white" : "text-muted-foreground")}>{format(day, 'd')}</span>
+                {isOwner && onAddClick && <Button variant="ghost" size="icon" onClick={() => onAddClick(day)} className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"><Plus className="h-3 w-3" /></Button>}
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 {status?.map((s: any, idx) => (
@@ -226,6 +234,9 @@ export default function AttendanceRegistryPage() {
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
+  const [editCash, setEditCash] = useState('');
+  const [editUpi, setEditUpi] = useState('');
+  const [editTasks, setEditTasks] = useState<ShiftTask[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Manual Add State
@@ -233,7 +244,7 @@ export default function AttendanceRegistryPage() {
   const [isAddingAttendance, setIsAddingAttendance] = useState(false);
   const [addFormData, setAddFormData] = useState({
     username: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: toLocalISOString(new Date()).slice(0, 10),
     loginTime: '11:00',
     logoutTime: '23:00',
     status: 'yes' as 'yes' | 'no'
@@ -320,14 +331,23 @@ export default function AttendanceRegistryPage() {
 
   const handleEditClick = (shift: Shift) => {
     setEditingShift(shift);
-    setEditStart(new Date(shift.startTime).toISOString().slice(0, 16));
-    setEditEnd(shift.endTime ? new Date(shift.endTime).toISOString().slice(0, 16) : '');
+    setEditStart(toLocalISOString(new Date(shift.startTime)));
+    setEditEnd(shift.endTime ? toLocalISOString(new Date(shift.endTime)) : '');
+    setEditCash(shift.cashTotal?.toString() || '0');
+    setEditUpi(shift.upiTotal?.toString() || '0');
+    setEditTasks(shift.tasks || []);
   };
 
   const handleSaveEdit = async () => {
     if (!editingShift || !user) return;
     setIsSubmitting(true);
-    const success = await updateShiftTimes(editingShift.id, { startTime: new Date(editStart).toISOString(), endTime: editEnd ? new Date(editEnd).toISOString() : null }, user);
+    const success = await updateShiftTimes(editingShift.id, { 
+        startTime: new Date(editStart).toISOString(), 
+        endTime: editEnd ? new Date(editEnd).toISOString() : null,
+        cashTotal: Number(editCash),
+        upiTotal: Number(editUpi),
+        tasks: editTasks
+    }, user);
     if (success) { toast({ title: "Updated" }); setEditingShift(null); }
     setIsSubmitting(false);
   };
@@ -416,6 +436,7 @@ export default function AttendanceRegistryPage() {
                       <TableHead className="font-black uppercase text-[10px]">Operator</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Logins</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Alerts</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Tasks</TableHead>
                       <TableHead className="text-right font-black uppercase text-[10px]">Pool</TableHead>
                       {isAdmin && <TableHead className="w-[50px]"></TableHead>}
                   </TableRow>
@@ -437,13 +458,26 @@ export default function AttendanceRegistryPage() {
                               {shift.wasForceExited && <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">FORCE</Badge>}
                           </div>
                       </TableCell>
+                      <TableCell>
+                          {(() => {
+                              const pendingCount = (shift.tasks || []).filter(t => !t.completed).length;
+                              if (pendingCount === 0) {
+                                  return <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600 border-emerald-500/30">ALL DONE</Badge>;
+                              }
+                              return (
+                                  <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-destructive border-destructive/30 bg-destructive/5 gap-1">
+                                      <AlertTriangle className="h-2 w-2" /> {pendingCount} PENDING
+                                  </Badge>
+                              );
+                          })()}
+                      </TableCell>
                       <TableCell className="text-right pr-6 font-mono font-black text-xs text-primary">₹{((shift.cashTotal || 0) + (shift.upiTotal || 0)).toLocaleString()}</TableCell>
                       {isAdmin && <TableCell><Button variant="ghost" size="icon" onClick={() => handleEditClick(shift)}><Edit className="h-4 w-4" /></Button></TableCell>}
                       </TableRow>
                   ))}
                   {filteredShifts.length === 0 && (
                       <TableRow>
-                          <TableCell colSpan={6} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No matching records found.</TableCell>
+                          <TableCell colSpan={7} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No matching records found.</TableCell>
                       </TableRow>
                   )}
                   </TableBody>
@@ -452,7 +486,15 @@ export default function AttendanceRegistryPage() {
         </TabsContent>
 
         <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-300">
-            <AttendanceCalendar shifts={allShifts || []} filterStaff={staffFilter} user={user} />
+            <AttendanceCalendar 
+                shifts={allShifts || []} 
+                filterStaff={staffFilter} 
+                user={user} 
+                onAddClick={(date) => {
+                    setAddFormData(p => ({ ...p, date: format(date, 'yyyy-MM-dd') }));
+                    setIsAddAttendanceModalOpen(true);
+                }}
+            />
         </TabsContent>
       </Tabs>
 
@@ -460,8 +502,55 @@ export default function AttendanceRegistryPage() {
         <DialogContent className="max-md font-body">
             <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Correct Times</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
-                <Input type="datetime-local" value={editStart} onChange={e => setEditStart(e.target.value)} className="h-12 font-mono" />
-                <Input type="datetime-local" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="h-12 font-mono" />
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Start Time</Label><Input type="datetime-local" value={editStart} onChange={e => setEditStart(e.target.value)} className="h-12 font-mono" /></div>
+                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">End Time</Label><Input type="datetime-local" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="h-12 font-mono" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Cash Total</Label><Input type="number" value={editCash} onChange={e => setEditCash(e.target.value)} className="h-12 font-mono font-bold" /></div>
+                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">UPI Total</Label><Input type="number" value={editUpi} onChange={e => setEditUpi(e.target.value)} className="h-12 font-mono font-bold" /></div>
+                </div>
+
+                {editTasks.length > 0 && isAdmin && (
+                    <div className="space-y-3 pt-4 border-t border-dashed">
+                        <Label className="text-[10px] font-black uppercase opacity-50 pl-1">Compliance Audit (Manual Override)</Label>
+                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            {editTasks.map((task, idx) => (
+                                <div key={idx} className="flex items-start space-x-3 group">
+                                    <Checkbox 
+                                        id={`edit-task-${idx}`} 
+                                        checked={task.completed} 
+                                        onCheckedChange={(checked) => {
+                                            const newTasks = [...editTasks];
+                                            newTasks[idx] = { 
+                                                ...task, 
+                                                completed: !!checked,
+                                                completedAt: checked ? new Date().toISOString() : undefined,
+                                                completedBy: checked ? { username: user.username, displayName: user.displayName } : undefined
+                                            };
+                                            setEditTasks(newTasks);
+                                        }}
+                                        className="mt-0.5 h-4 w-4 border-2"
+                                    />
+                                    <div className="flex-1">
+                                        <Label 
+                                            htmlFor={`edit-task-${idx}`} 
+                                            className={cn(
+                                                "text-xs font-bold uppercase cursor-pointer transition-all", 
+                                                task.completed ? "text-muted-foreground line-through opacity-50" : "text-foreground"
+                                            )}
+                                        >
+                                            {task.name}
+                                        </Label>
+                                        {task.completed && task.completedBy && (
+                                            <p className="text-[8px] font-medium text-emerald-600 uppercase mt-0.5">Verified by {task.completedBy.displayName}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
             <DialogFooter><Button disabled={isSubmitting} onClick={handleSaveEdit} className="w-full h-12 font-black uppercase">Update Audit</Button></DialogFooter>
         </DialogContent>

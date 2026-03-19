@@ -371,7 +371,7 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
     }
 };
 
-export const updateShiftTimes = async (shiftId: string, updates: { startTime: string, endTime?: string | null }, user: CustomUser) => {
+export const updateShiftTimes = async (shiftId: string, updates: { startTime: string, endTime?: string | null, cashTotal?: number, upiTotal?: number, shiftExpenses?: number, tasks?: ShiftTask[] }, user: CustomUser) => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
     try {
