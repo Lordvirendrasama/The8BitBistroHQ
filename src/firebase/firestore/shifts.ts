@@ -388,19 +388,21 @@ export const manuallyCreateShift = async (data: {
 }, user: CustomUser) => {
     const db = getFirestore();
     const settings = await getSettings();
-    const shiftRef = doc(collection(db, 'shifts'));
+    
     const strategicTask: ShiftTask = {
         name: `Verify ${data.displayName} Presence`,
         type: 'strategic', ownerOnly: true, completed: true, verificationResult: data.status,
         completedAt: new Date().toISOString(),
         completedBy: { username: user.username, displayName: user.displayName }
     };
+    
     const shiftData: Omit<Shift, 'id'> = {
         date: data.date, staffId: data.username,
         employees: [{ username: data.username, displayName: data.displayName }],
         startTime: data.startTime, endTime: data.endTime || undefined,
         status: 'completed', tasks: [strategicTask], breaks: [], cycle: settings.activeCycle || 'Live Cycle'
     };
+    
     try {
         await addDoc(collection(db, 'shifts'), sanitize(shiftData));
         return true;

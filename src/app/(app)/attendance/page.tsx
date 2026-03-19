@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -10,8 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   format, 
-  differenceInHours, 
-  differenceInMinutes, 
   startOfMonth, 
   endOfMonth, 
   eachDayOfInterval, 
@@ -23,33 +22,23 @@ import {
   isToday
 } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
-  CheckCircle2, 
-  XCircle, 
   Clock, 
-  Timer, 
-  Coffee, 
-  Zap, 
-  Moon, 
-  Edit, 
-  Save, 
-  CalendarDays, 
   UserCheck, 
   UserX, 
   ChevronLeft, 
   ChevronRight, 
-  ClipboardCheck,
-  X,
   PlusCircle,
-  UserPlus,
-  AlertTriangle,
-  Trash2
+  Edit,
+  Trash2,
+  Zap,
+  Moon,
+  Plus
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -68,9 +57,8 @@ import { updateShiftTimes, updateTask, manuallyCreateShift } from '@/firebase/fi
 import { clearAttendanceData } from '@/firebase/firestore/data-management';
 import { useToast } from '@/hooks/use-toast';
 
-function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts: Shift[], staffOptions: [string, string][], user: any, employees: Employee[] }) {
+function AttendanceCalendar({ shifts, filterStaff, user }: { shifts: Shift[], filterStaff: string, user: any }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [filterStaff, setFilterStaff] = useState('all');
   const { toast } = useToast();
 
   const isOwner = user?.username === 'Viren';
@@ -81,16 +69,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
   const [editLoginTime, setEditLoginTime] = useState('');
   const [editLogoutTime, setEditLogoutTime] = useState('');
   const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
-
-  const [isAddAttendanceModalOpen, setIsAddAttendanceModalOpen] = useState(false);
-  const [isAddingAttendance, setIsAddingAttendance] = useState(false);
-  const [addFormData, setAddFormData] = useState({
-    username: '',
-    date: new Date().toISOString().slice(0, 10),
-    loginTime: '11:00',
-    logoutTime: '23:00',
-    status: 'yes' as 'yes' | 'no'
-  });
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -114,17 +92,19 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
 
     const results: any[] = [];
     dayShifts.forEach(shift => {
-      const emp = (shift.employees || [])[0] || { username: shift.staffId, displayName: shift.staffId };
-      if (!emp.username) return; // Safety check
-      if (filterStaff !== 'all' && emp.username.toLowerCase() !== filterStaff.toLowerCase()) return;
+      const staffUsername = shift.staffId || (shift.employees && shift.employees[0]?.username);
+      const staffDisplayName = (shift.employees && shift.employees[0]?.displayName) || shift.staffId || 'Unknown';
+      
+      if (!staffUsername) return; 
+      if (filterStaff !== 'all' && staffUsername.toLowerCase() !== filterStaff.toLowerCase()) return;
 
       const verifyTask = (shift.tasks || []).find(t => t.type === 'strategic');
 
       results.push({
         shiftId: shift.id,
-        taskName: verifyTask?.name || `Verify ${emp.displayName} Presence`,
-        username: emp.username,
-        displayName: emp.displayName,
+        taskName: verifyTask?.name || `Verify ${staffDisplayName} Presence`,
+        username: staffUsername,
+        displayName: staffDisplayName,
         verified: !!verifyTask?.completed,
         result: verifyTask?.verificationResult,
         loginTime: shift.startTime ? format(new Date(shift.startTime), 'p') : 'N/A',
@@ -165,18 +145,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
     setIsSavingAttendanceEdit(false);
   };
 
-  const handleManualAddAttendance = async () => {
-    const emp = employees.find(e => e.username === addFormData.username);
-    if (!emp || !user) return;
-    setIsAddingAttendance(true);
-    const success = await manuallyCreateShift({ ...addFormData, displayName: emp.displayName }, user);
-    if (success) {
-        toast({ title: "Logged" });
-        setIsAddAttendanceModalOpen(false);
-    }
-    setIsAddingAttendance(false);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
@@ -185,16 +153,7 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
           <h2 className="font-headline text-lg uppercase">{format(currentMonth, 'MMMM yyyy')}</h2>
           <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight /></Button>
         </div>
-        <div className="flex gap-3">
-            {isOwner && <Button onClick={() => setIsAddAttendanceModalOpen(true)} className="font-black uppercase text-[10px]"><PlusCircle className="mr-2 h-4 w-4" /> ADD</Button>}
-            <Select value={filterStaff} onValueChange={setFilterStaff}>
-                <SelectTrigger className="w-[180px] text-[10px] font-bold uppercase"><SelectValue placeholder="Filter Staff" /></SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">ALL STAFF</SelectItem>
-                    {staffOptions.map(([u, d]) => <SelectItem key={u} value={u}>{d.toUpperCase()}</SelectItem>)}
-                </SelectContent>
-            </Select>
-        </div>
+        <p className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Visual Presence Audit</p>
       </div>
 
       <div className="grid grid-cols-7 gap-px bg-muted border-2 rounded-xl overflow-hidden shadow-inner overflow-x-auto min-w-[800px]">
@@ -251,24 +210,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
             <DialogFooter><Button disabled={isSavingAttendanceEdit} onClick={handleSaveAttendanceEdit} className="w-full h-14 font-black uppercase tracking-widest text-lg">Save Changes</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={isAddAttendanceModalOpen} onOpenChange={setIsAddAttendanceModalOpen}>
-        <DialogContent className="max-w-md font-body">
-            <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Manual Entry</DialogTitle></DialogHeader>
-            <div className="space-y-4 py-4">
-                <Select value={addFormData.username} onValueChange={v => setAddFormData(p => ({...p, username: v}))}>
-                    <SelectTrigger className="h-12 font-bold uppercase"><SelectValue placeholder="PICK OPERATOR" /></SelectTrigger>
-                    <SelectContent>{employees.filter(e => e.isActive).map(e => <SelectItem key={e.username} value={e.username} className="font-bold">{e.displayName.toUpperCase()}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input type="date" value={addFormData.date} onChange={e => setAddFormData(p => ({...p, date: e.target.value}))} className="h-12 font-bold" />
-                <div className="grid grid-cols-2 gap-4">
-                    <Input type="time" value={addFormData.loginTime} onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))} className="h-12 font-mono" />
-                    <Input type="time" value={addFormData.logoutTime} onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))} className="h-12 font-mono" />
-                </div>
-            </div>
-            <DialogFooter><Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-black uppercase tracking-widest text-lg">Commit Record</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -287,6 +228,17 @@ export default function AttendanceRegistryPage() {
   const [editEnd, setEditEnd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Manual Add State
+  const [isAddAttendanceModalOpen, setIsAddAttendanceModalOpen] = useState(false);
+  const [isAddingAttendance, setIsAddingAttendance] = useState(false);
+  const [addFormData, setAddFormData] = useState({
+    username: '',
+    date: new Date().toISOString().slice(0, 10),
+    loginTime: '11:00',
+    logoutTime: '23:00',
+    status: 'yes' as 'yes' | 'no'
+  });
+
   const shiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), orderBy('startTime', 'desc')), [db]);
   const { data: allShifts, loading } = useCollection<Shift>(shiftsQuery);
 
@@ -298,7 +250,8 @@ export default function AttendanceRegistryPage() {
     const staffMap = new Map<string, string>();
     allShifts.forEach(s => {
       if (s.staffId) {
-        staffMap.set(s.staffId.toLowerCase(), s.staffId);
+        const displayName = (s.employees && s.employees[0]?.displayName) || s.staffId;
+        staffMap.set(s.staffId.toLowerCase(), displayName);
       }
     });
     return Array.from(staffMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
@@ -312,6 +265,58 @@ export default function AttendanceRegistryPage() {
         return matchesStaff && matchesMonth;
     });
   }, [allShifts, staffFilter, monthFilter]);
+
+  const handleManualAddAttendance = async () => {
+    const emp = employees?.find(e => e.username === addFormData.username);
+    if (!emp || !user) {
+        toast({ variant: 'destructive', title: "Operator Missing", description: "Please pick an operator from the registry." });
+        return;
+    }
+    setIsAddingAttendance(true);
+    
+    try {
+        const [year, month, day] = addFormData.date.split('-').map(Number);
+        const start = new Date(year, month - 1, day);
+        const [sh, sm] = addFormData.loginTime.split(':').map(Number);
+        start.setHours(sh, sm, 0, 0);
+        const startIso = start.toISOString();
+
+        let endIso = null;
+        if (addFormData.logoutTime) {
+            const end = new Date(year, month - 1, day);
+            const [eh, em] = addFormData.logoutTime.split(':').map(Number);
+            end.setHours(eh, em, 0, 0);
+            if (end < start) end.setDate(end.getDate() + 1);
+            endIso = end.toISOString();
+        }
+
+        const success = await manuallyCreateShift({ 
+            username: addFormData.username,
+            date: addFormData.date,
+            status: addFormData.status,
+            displayName: emp.displayName,
+            startTime: startIso,
+            endTime: endIso
+        }, user);
+
+        if (success) {
+            toast({ title: "Logged", description: `Attendance record created for ${emp.displayName}.` });
+            setIsAddAttendanceModalOpen(false);
+            setAddFormData({
+                username: '',
+                date: new Date().toISOString().slice(0, 10),
+                loginTime: '11:00',
+                logoutTime: '23:00',
+                status: 'yes'
+            });
+        }
+    } catch (error) {
+        console.error("Manual add failed:", error);
+        toast({ variant: 'destructive', title: "Creation Failed" });
+    } finally {
+        setIsAddingAttendance(false);
+    }
+  };
 
   const handleEditClick = (shift: Shift) => {
     setEditingShift(shift);
@@ -353,40 +358,56 @@ export default function AttendanceRegistryPage() {
   const isOwner = user?.username === 'Viren';
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-20">
+    <div className="space-y-8 max-w-7xl mx-auto pb-20 font-body">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-4">
             <h1 className="font-headline text-4xl uppercase tracking-wider">Attendance Hub</h1>
             {isOwner && (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all font-black uppercase text-[10px] gap-2">
-                            <Trash2 className="h-3.5 w-3.5" /> Wipe History
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="border-4 border-destructive">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="font-headline text-destructive text-xl">NUCLEAR WIPEOUT?</AlertDialogTitle>
-                            <AlertDialogDescription className="font-bold text-foreground">
-                                This will permanently delete ALL shift records and attendance data. This action is irreversible and will break current session tracking if shifts are active.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleWipeAll} className="bg-destructive hover:bg-destructive/90 font-black uppercase">Destroy Records</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                <div className="flex gap-2">
+                    <Button onClick={() => setIsAddAttendanceModalOpen(true)} size="sm" className="h-8 px-4 font-black uppercase text-[10px] gap-2 shadow-lg">
+                        <Plus className="h-3.5 w-3.5" /> ADD LOG
+                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all font-black uppercase text-[10px] gap-2">
+                                <Trash2 className="h-3.5 w-3.5" /> Wipe History
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="border-4 border-destructive font-body">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="font-headline text-destructive text-xl">NUCLEAR WIPEOUT?</AlertDialogTitle>
+                                <AlertDialogDescription className="font-bold text-foreground">
+                                    This will permanently delete ALL shift records and attendance data. This action is irreversible.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleWipeAll} className="bg-destructive hover:bg-destructive/90 font-black uppercase">Destroy Records</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             )}
           </div>
-          <TabsList className="bg-muted/20 border-2 border-dashed h-12 p-1 rounded-xl">
-              <TabsTrigger value="registry" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background">Registry</TabsTrigger>
-              <TabsTrigger value="calendar" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background">Visual Audit</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-3">
+              <Select value={staffFilter} onValueChange={setStaffFilter}>
+                  <SelectTrigger className="w-[160px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
+                      <SelectValue placeholder="Filter Staff" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">ALL OPERATORS</SelectItem>
+                      {staffOptions.map(([u, d]) => <SelectItem key={u} value={u}>{d.toUpperCase()}</SelectItem>)}
+                  </SelectContent>
+              </Select>
+              <TabsList className="bg-muted/20 border-2 border-dashed h-10 p-1 rounded-xl">
+                  <TabsTrigger value="registry" className="font-black uppercase text-[9px] tracking-widest px-4 h-full data-[state=active]:bg-background">Registry</TabsTrigger>
+                  <TabsTrigger value="calendar" className="font-black uppercase text-[9px] tracking-widest px-4 h-full data-[state=active]:bg-background">Visual Audit</TabsTrigger>
+              </TabsList>
+          </div>
         </div>
 
-        <TabsContent value="registry" className="space-y-8">
+        <TabsContent value="registry" className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-300">
           <Card className="border-2 shadow-none overflow-hidden">
               <Table>
                   <TableHeader className="bg-muted/20">
@@ -403,7 +424,7 @@ export default function AttendanceRegistryPage() {
                   {filteredShifts.map((shift) => (
                       <TableRow key={shift.id} className="hover:bg-muted/5 transition-colors group">
                       <TableCell className="font-black uppercase text-[10px]">{format(new Date(shift.startTime), 'MMM dd, yyyy')}</TableCell>
-                      <TableCell className="font-black uppercase text-xs">{(shift.employees || [])[0]?.displayName || shift.staffId}</TableCell>
+                      <TableCell className="font-black uppercase text-xs">{(shift.employees || [])[0]?.displayName || shift.staffId || 'Unknown'}</TableCell>
                       <TableCell>
                           <div className="flex flex-col text-[10px] font-bold uppercase text-emerald-600">
                               <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 fill-current" /> {format(new Date(shift.startTime), 'p')}</span>
@@ -420,24 +441,76 @@ export default function AttendanceRegistryPage() {
                       {isAdmin && <TableCell><Button variant="ghost" size="icon" onClick={() => handleEditClick(shift)}><Edit className="h-4 w-4" /></Button></TableCell>}
                       </TableRow>
                   ))}
+                  {filteredShifts.length === 0 && (
+                      <TableRow>
+                          <TableCell colSpan={6} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No matching records found.</TableCell>
+                      </TableRow>
+                  )}
                   </TableBody>
               </Table>
           </Card>
         </TabsContent>
 
-        <TabsContent value="calendar">
-            <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} user={user} employees={employees || []} />
+        <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-300">
+            <AttendanceCalendar shifts={allShifts || []} filterStaff={staffFilter} user={user} />
         </TabsContent>
       </Tabs>
 
       <Dialog open={!!editingShift} onOpenChange={o => !o && setEditingShift(null)}>
-        <DialogContent className="max-w-md font-body">
+        <DialogContent className="max-md font-body">
             <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Correct Times</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
                 <Input type="datetime-local" value={editStart} onChange={e => setEditStart(e.target.value)} className="h-12 font-mono" />
                 <Input type="datetime-local" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="h-12 font-mono" />
             </div>
             <DialogFooter><Button disabled={isSubmitting} onClick={handleSaveEdit} className="w-full h-12 font-black uppercase">Update Audit</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddAttendanceModalOpen} onOpenChange={setIsAddAttendanceModalOpen}>
+        <DialogContent className="max-w-md font-body">
+            <DialogHeader>
+                <DialogTitle className="font-headline text-lg uppercase">Manual Entry</DialogTitle>
+                <DialogDescription className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Construct a historical attendance record.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Target Operator</Label>
+                    <Select value={addFormData.username} onValueChange={v => setAddFormData(p => ({...p, username: v}))}>
+                        <SelectTrigger className="h-12 font-bold uppercase border-2"><SelectValue placeholder="PICK OPERATOR" /></SelectTrigger>
+                        <SelectContent>{employees?.filter(e => e.isActive).map(e => <SelectItem key={e.username} value={e.username} className="font-bold">{e.displayName.toUpperCase()}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+                
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Presence Verification</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Button variant={addFormData.status === 'yes' ? 'default' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'yes'}))} className="h-12 font-black uppercase text-[10px] border-2">PRESENT</Button>
+                        <Button variant={addFormData.status === 'no' ? 'destructive' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'no'}))} className="h-12 font-black uppercase text-[10px] border-2">ABSENT</Button>
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Business Date</Label>
+                    <Input type="date" value={addFormData.date} onChange={e => setAddFormData(p => ({...p, date: e.target.value}))} className="h-12 font-bold border-2" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Login Time</Label>
+                        <Input type="time" value={addFormData.loginTime} onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Logout Time</Label>
+                        <Input type="time" value={addFormData.logoutTime} onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
+                    </div>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl">
+                    {isAddingAttendance ? 'Saving...' : 'Commit Record'}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
