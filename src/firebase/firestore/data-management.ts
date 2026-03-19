@@ -1,4 +1,3 @@
-
 'use client';
 import { getFirestore, collection, getDocs, writeBatch, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Member, LogEntry, Bill, Expense } from '@/lib/types';
@@ -511,4 +510,24 @@ export const deleteAllData = async (): Promise<void> => {
         }
         if (batchCount > 0) await batch.commit();
     }
+};
+
+/**
+ * Nuclear option: Wipes all documents in the shifts collection.
+ */
+export const clearAttendanceData = async (): Promise<void> => {
+    const db = getFirestore();
+    const snapshot = await getDocs(collection(db, 'shifts'));
+    let batch = writeBatch(db);
+    let batchCount = 0;
+    for (const docSnap of snapshot.docs) {
+        batch.delete(docSnap.ref);
+        batchCount++;
+        if (batchCount >= 400) {
+            await batch.commit();
+            batch = writeBatch(db);
+            batchCount = 0;
+        }
+    }
+    if (batchCount > 0) await batch.commit();
 };

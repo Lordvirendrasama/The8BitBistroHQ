@@ -43,16 +43,29 @@ import {
   X,
   PlusCircle,
   UserPlus,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { updateShiftTimes, updateTask, manuallyCreateShift } from '@/firebase/firestore/shifts';
+import { clearAttendanceData } from '@/firebase/firestore/data-management';
 import { useToast } from '@/hooks/use-toast';
 
 function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts: Shift[], staffOptions: [string, string][], user: any, employees: Employee[] }) {
@@ -314,6 +327,15 @@ export default function AttendanceRegistryPage() {
     setIsSubmitting(false);
   };
 
+  const handleWipeAll = async () => {
+    try {
+        await clearAttendanceData();
+        toast({ title: "Attendance Nuked", description: "All shift records have been erased." });
+    } catch (error) {
+        toast({ variant: 'destructive', title: "Wipe Failed" });
+    }
+  };
+
   const monthOptions = useMemo(() => {
     if (!allShifts) return [];
     const months = new Set<string>();
@@ -328,12 +350,36 @@ export default function AttendanceRegistryPage() {
   if (loading) return <div className="flex h-screen items-center justify-center animate-pulse uppercase font-black text-xs">Syncing Registry...</div>;
 
   const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
+  const isOwner = user?.username === 'Viren';
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex justify-between items-center mb-8">
-          <div><h1 className="font-headline text-4xl uppercase tracking-wider">Attendance Hub</h1></div>
+          <div className="flex items-center gap-4">
+            <h1 className="font-headline text-4xl uppercase tracking-wider">Attendance Hub</h1>
+            {isOwner && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all font-black uppercase text-[10px] gap-2">
+                            <Trash2 className="h-3.5 w-3.5" /> Wipe History
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="border-4 border-destructive">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="font-headline text-destructive text-xl">NUCLEAR WIPEOUT?</AlertDialogTitle>
+                            <AlertDialogDescription className="font-bold text-foreground">
+                                This will permanently delete ALL shift records and attendance data. This action is irreversible and will break current session tracking if shifts are active.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleWipeAll} className="bg-destructive hover:bg-destructive/90 font-black uppercase">Destroy Records</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+          </div>
           <TabsList className="bg-muted/20 border-2 border-dashed h-12 p-1 rounded-xl">
               <TabsTrigger value="registry" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background">Registry</TabsTrigger>
               <TabsTrigger value="calendar" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background">Visual Audit</TabsTrigger>
