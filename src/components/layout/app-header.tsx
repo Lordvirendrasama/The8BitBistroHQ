@@ -673,7 +673,8 @@ export function AppHeader({
             const isItemized = (station.currentBill || []).some(item => 
               item.name === station.packageName || 
               item.name.startsWith(`Time: ${station.packageName}`) ||
-              item.name.startsWith(`Buy Recharge: ${station.packageName}`)
+              item.name.startsWith(`Buy Recharge: ${station.packageName}`) ||
+              item.name.startsWith(`Recharge: ${station.packageName}`)
             );
             if (!isItemized) {
               const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
@@ -724,12 +725,11 @@ export function AppHeader({
     const projectedMonthEnd = dailyAverage * totalDaysInMonth;
 
     /**
-     * Refined Logout Trigger:
-     * - Staff/Admins: Open settlement modal (ends shift).
-     * - Viren: Simple session logout (stays on dashboard).
+     * UNIFIED LOGOUT PROTOCOL (v2.7.5):
+     * - All roles (Staff, Admin, Owner) now trigger the settlement modal if a shift is active.
      */
     const handleLogoutClick = async () => {
-        if (user && user.username !== 'Viren' && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest') && activeShift) {
+        if (user && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest' || user.username === 'Viren') && activeShift) {
             setIsEndOfDayModalOpen(true);
         } else {
             await logout();
@@ -844,7 +844,7 @@ export function AppHeader({
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive font-bold text-xs uppercase h-10 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
                                 <LogOut className="mr-2 h-4 w-4" /> 
-                                {user?.username === 'Viren' ? 'Logout Console' : 'End Shift & Exit'}
+                                End Shift & Exit
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
