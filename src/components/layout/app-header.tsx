@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -5,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
-import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem } from '@/lib/types';
+import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem, GamingPackage } from '@/lib/types';
 import { EndOfDayModal } from '@/components/staff/end-of-day-modal';
 import { AdminNotifications } from '@/components/admin/notifications';
 import { PendingNotifications } from '@/components/layout/pending-notifications';
@@ -32,6 +32,7 @@ import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
+import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save } from "lucide-react";
 
 const HeaderTimer = ({ station }: { station: Station }) => {
   const [remainingTime, setRemainingTime] = useState(0);
@@ -722,8 +723,13 @@ export function AppHeader({
     const dailyAverage = monthRevenue / businessDayCount;
     const projectedMonthEnd = dailyAverage * totalDaysInMonth;
 
+    /**
+     * Refined Logout Trigger:
+     * - Staff/Admins: Open settlement modal (ends shift).
+     * - Viren: Simple session logout (stays on dashboard).
+     */
     const handleLogoutClick = async () => {
-        if (user && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest') && activeShift) {
+        if (user && user.username !== 'Viren' && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest') && activeShift) {
             setIsEndOfDayModalOpen(true);
         } else {
             await logout();
@@ -837,7 +843,8 @@ export function AppHeader({
                                 <ShieldCheck className="mr-2 h-4 w-4" /> Switch Profile
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive font-bold text-xs uppercase h-10 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
-                                <LogOut className="mr-2 h-4 w-4" /> End Shift & Exit
+                                <LogOut className="mr-2 h-4 w-4" /> 
+                                {user?.username === 'Viren' ? 'Logout Console' : 'End Shift & Exit'}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

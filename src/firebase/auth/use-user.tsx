@@ -147,8 +147,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   };
 
+  /**
+   * Refined Logout: Distinguishes between session clear and shift settlement.
+   */
   const logout = async (totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number; }, forceLogout?: boolean) => {
-    if (user && (user.role === 'staff' || user.role === 'admin' || user.role === 'guest')) {
+    // Only attempt to end shift if totals are provided OR if it's a force end.
+    // This prevents Viren from ending Abbas's shift when he just wants to logout.
+    if (user && user.username !== 'Viren' && (totals || forceLogout)) {
       try {
         const db = getFirestore();
         const q = query(
