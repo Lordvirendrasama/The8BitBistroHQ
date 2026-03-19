@@ -28,6 +28,7 @@ const sanitize = (data: any): any => {
     const clean: any = {};
     Object.keys(data).forEach(key => {
       const val = data[key];
+      // Skip undefined keys entirely to prevent Firestore crash
       if (val !== undefined) {
         clean[key] = sanitize(val);
       }
@@ -88,176 +89,190 @@ const calculateAttendanceOnEnd = (logoutTime: Date, empSettings?: Employee) => {
 
 /**
  * ATOMIC DESIGN: Gets the current user's active shift or starts a brand new one.
- * No longer shares documents between users.
+ * Uses a user-specific "Lock" document to prevent double creation.
  */
 export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | null> => {
     const db = getFirestore();
     const businessToday = getBusinessDate(); 
     const now = new Date();
     
-    const shiftsRef = collection(db, 'shifts');
+    const lockRef = doc(db, 'user_active_shift', user.username);
     
     try {
         const settings = await getSettings();
 
-        // 1. Find ANY active shifts for THIS SPECIFIC USER
-        const qActive = query(
-            shiftsRef, 
-            where('staffId', '==', user.username), 
-            where('status', '==', 'active')
-        );
-        const activeSnap = await getDocs(qActive);
-        
-        // 2. Handle existing active shifts
-        if (!activeSnap.empty) {
-            const shiftDoc = activeSnap.docs[0];
-            const shiftData = shiftDoc.data() as Shift;
+        const resultShiftId = await runTransaction(db, async (transaction) => {
+            const lockSnap = await transaction.get(lockRef);
             
-            // Check if it's from a previous business day or too long
-            const startTime = new Date(shiftData.startTime);
-            const durationMs = now.getTime() - startTime.getTime();
-            const maxDurationMs = MAX_SHIFT_DURATION_HOURS * 60 * 60 * 1000;
-            
-            if (shiftData.date !== businessToday || durationMs > maxDurationMs) {
-                // AUTO-CLOSE stale shift
-                const cappedEnd = new Date(startTime.getTime() + Math.min(durationMs, maxDurationMs));
-                await updateDoc(shiftDoc.ref, {
-                    endTime: cappedEnd.toISOString(),
-                    status: 'completed',
-                    note: 'Auto-closed on new login'
-                });
-                // Continue to create a new one below
-            } else {
-                // Return valid existing shift
-                return { id: shiftDoc.id, ...shiftData };
+            // 1. If a lock exists, check if it's still valid
+            if (lockSnap.exists()) {
+                const lockData = lockSnap.data();
+                const activeId = lockData.shiftId;
+                
+                if (activeId) {
+                    const shiftRef = doc(db, 'shifts', activeId);
+                    const shiftSnap = await transaction.get(shiftRef);
+                    
+                    if (shiftSnap.exists()) {
+                        const shiftData = shiftSnap.data() as Shift;
+                        const startTime = new Date(shiftData.startTime);
+                        const durationMs = now.getTime() - startTime.getTime();
+                        const maxDurationMs = MAX_SHIFT_DURATION_HOURS * 60 * 60 * 1000;
+
+                        // If it's the same business day and not too long, resume it
+                        if (shiftData.status === 'active' && shiftData.date === businessToday && durationMs < maxDurationMs) {
+                            return activeId;
+                        }
+
+                        // Otherwise, AUTO-CLOSE stale shift
+                        const cappedEnd = new Date(startTime.getTime() + Math.min(durationMs, maxDurationMs));
+                        transaction.update(shiftRef, {
+                            endTime: cappedEnd.toISOString(),
+                            status: 'completed',
+                            note: 'Auto-closed on new session initialization'
+                        });
+                    }
+                }
             }
+
+            // 2. No valid active shift found, START A NEW ONE
+            const empsRef = collection(db, 'employees');
+            const empQ = query(empsRef, where('username', '==', user.username), limit(1));
+            const empSnap = await getDocs(empQ);
+            const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
+
+            const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now, empSettings);
+
+            // Fetch master tasks
+            const masterTasksRef = collection(db, 'tasks');
+            const masterTasksSnapshot = await getDocs(masterTasksRef);
+            const masterTasks = masterTasksSnapshot.docs.map(doc => doc.data() as Task);
+
+            const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
+                name: task.name,
+                type: task.type,
+                completed: false,
+                ownerOnly: task.ownerOnly || false
+            }));
+
+            // Add verification task
+            if (user.username !== 'Viren') {
+                dailyTasks.push({
+                    name: `Verify ${user.displayName} Presence`,
+                    type: 'strategic',
+                    ownerOnly: true,
+                    completed: false
+                });
+            }
+
+            const newShiftRef = doc(collection(db, 'shifts'));
+            const newShiftData: Omit<Shift, 'id'> = {
+                date: businessToday,
+                staffId: user.username,
+                employees: [{ username: user.username, displayName: user.displayName }],
+                startTime: now.toISOString(),
+                status: 'active',
+                tasks: dailyTasks,
+                breaks: [],
+                lateMinutes,
+                workedOnWeeklyOff,
+                cycle: settings.activeCycle || 'Live Cycle'
+            };
+
+            transaction.set(newShiftRef, sanitize(newShiftData));
+            
+            // Update the lock pointer
+            transaction.set(lockRef, { shiftId: newShiftRef.id, updatedAt: now.toISOString() });
+
+            // Create log entry
+            const logRef = doc(collection(db, 'logs'));
+            transaction.set(logRef, sanitize({
+                type: 'SHIFT_START',
+                description: `Started new atomic shift for <strong>${user.displayName}</strong>.`,
+                timestamp: now.toISOString(),
+                user: { uid: user.username, displayName: user.displayName },
+                details: { shiftId: newShiftRef.id },
+                cycle: settings.activeCycle
+            }));
+
+            return newShiftRef.id;
+        });
+
+        // Fetch the final shift to return
+        if (resultShiftId) {
+            const finalSnap = await getDoc(doc(db, 'shifts', resultShiftId));
+            if (finalSnap.exists()) return { id: finalSnap.id, ...finalSnap.data() } as Shift;
         }
-
-        // 3. START A NEW ATOMIC SHIFT
-        const empsRef = collection(db, 'employees');
-        const empQ = query(empsRef, where('username', '==', user.username), limit(1));
-        const empSnap = await getDocs(empQ);
-        const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
-
-        const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now, empSettings);
-
-        // Fetch master tasks
-        const masterTasksRef = collection(db, 'tasks');
-        const masterTasksSnapshot = await getDocs(masterTasksRef);
-        const masterTasks = masterTasksSnapshot.docs.map(doc => doc.data() as Task);
-
-        const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
-            name: task.name,
-            type: task.type,
-            completed: false,
-            ownerOnly: task.ownerOnly || false
-        }));
-
-        // Add verification task for this specific session if not owner
-        if (user.username !== 'Viren') {
-            dailyTasks.push({
-                name: `Verify ${user.displayName} Presence`,
-                type: 'strategic',
-                ownerOnly: true,
-                completed: false
-            });
-        }
-
-        const newShiftRef = doc(collection(db, 'shifts'));
-        const newShiftData: Omit<Shift, 'id'> = {
-            date: businessToday,
-            staffId: user.username,
-            employees: [{ username: user.username, displayName: user.displayName }],
-            startTime: now.toISOString(),
-            status: 'active',
-            tasks: dailyTasks,
-            breaks: [],
-            lateMinutes,
-            workedOnWeeklyOff,
-            cycle: settings.activeCycle || 'Live Cycle'
-        };
-
-        const batch = writeBatch(db);
-        batch.set(newShiftRef, sanitize(newShiftData));
-        
-        const logRef = doc(collection(db, 'logs'));
-        batch.set(logRef, sanitize({
-            type: 'SHIFT_START',
-            description: `Started new shift for <strong>${user.displayName}</strong> on ${businessToday}.`,
-            timestamp: now.toISOString(),
-            user: { uid: user.username, displayName: user.displayName },
-            details: { shiftId: newShiftRef.id, lateMinutes, workedOnWeeklyOff },
-            cycle: settings.activeCycle
-        }));
-        
-        await batch.commit();
-        return { id: newShiftRef.id, ...newShiftData };
+        return null;
 
     } catch (e) {
-        console.error("Error in Atomic Shift Engine:", e);
+        console.error("Error in Shift Session Engine:", e);
         return null;
     }
 };
 
 export const endShift = async (shiftId: string, user: CustomUser, totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number; }, forceEnd?: boolean): Promise<void> => {
     const db = getFirestore();
-    const batch = writeBatch(db);
     const shiftRef = doc(db, 'shifts', shiftId);
+    const lockRef = doc(db, 'user_active_shift', user.username);
 
     try {
-        const shiftDoc = await getDoc(shiftRef);
-        if (!shiftDoc.exists()) return;
+        await runTransaction(db, async (transaction) => {
+            const shiftDoc = await transaction.get(shiftRef);
+            if (!shiftDoc.exists()) return;
 
-        const now = new Date();
-        const empsRef = collection(db, 'employees');
-        const empQ = query(empsRef, where('username', '==', user.username), limit(1));
-        const empSnap = await getDocs(empQ);
-        const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
+            const now = new Date();
+            const empsRef = collection(db, 'employees');
+            const empQ = query(empsRef, where('username', '==', user.username), limit(1));
+            const empSnap = await getDocs(empQ);
+            const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
 
-        const { earlyLeaveMinutes, overtimeMinutes } = calculateAttendanceOnEnd(now, empSettings);
+            const { earlyLeaveMinutes, overtimeMinutes } = calculateAttendanceOnEnd(now, empSettings);
 
-        if (forceEnd) {
-            const shiftData = shiftDoc.data() as Shift;
-            const incompleteTasks = (shiftData.tasks || []).filter(t => !t.completed);
-            if (incompleteTasks.length > 0) {
-                const incompleteTaskNames = incompleteTasks.map(t => `"${t.name}"`).join(', ');
-                const notificationRef = doc(collection(db, 'adminNotifications'));
-                batch.set(notificationRef, {
-                    message: `<strong>${user.displayName}</strong> force-exited with ${incompleteTasks.length} pending tasks: ${incompleteTaskNames}.`,
-                    type: 'INCOMPLETE_SHIFT',
-                    isRead: false,
-                    timestamp: now.toISOString(),
-                    triggeredBy: { username: user.username, displayName: user.displayName, role: user.role }
-                });
+            if (forceEnd) {
+                const shiftData = shiftDoc.data() as Shift;
+                const incompleteTasks = (shiftData.tasks || []).filter(t => !t.completed);
+                if (incompleteTasks.length > 0) {
+                    const incompleteTaskNames = incompleteTasks.map(t => `"${t.name}"`).join(', ');
+                    const notificationRef = doc(collection(db, 'adminNotifications'));
+                    transaction.set(notificationRef, {
+                        message: `<strong>${user.displayName}</strong> force-exited with ${incompleteTasks.length} pending tasks: ${incompleteTaskNames}.`,
+                        type: 'INCOMPLETE_SHIFT',
+                        isRead: false,
+                        timestamp: now.toISOString(),
+                        triggeredBy: { username: user.username, displayName: user.displayName, role: user.role }
+                    });
+                }
             }
-        }
 
-        const updates: any = {
-            endTime: now.toISOString(),
-            status: 'completed',
-            earlyLeaveMinutes,
-            overtimeMinutes,
-            wasForceExited: !!forceEnd
-        };
+            const updates: any = {
+                endTime: now.toISOString(),
+                status: 'completed',
+                earlyLeaveMinutes,
+                overtimeMinutes,
+                wasForceExited: !!forceEnd
+            };
 
-        if (totals) {
-            updates.cashTotal = totals.cashTotal || 0;
-            updates.upiTotal = totals.upiTotal || 0;
-            updates.shiftExpenses = totals.shiftExpenses || 0;
-        }
+            if (totals) {
+                updates.cashTotal = totals.cashTotal || 0;
+                updates.upiTotal = totals.upiTotal || 0;
+                updates.shiftExpenses = totals.shiftExpenses || 0;
+            }
 
-        batch.update(shiftRef, sanitize(updates));
-        
-        const logRef = doc(collection(db, 'logs'));
-        batch.set(logRef, sanitize({
-            type: 'SHIFT_END',
-            description: `<strong>${user.displayName}</strong> ended their atomic shift session.${forceEnd ? ' (FORCE EXIT)' : ''}`,
-            timestamp: now.toISOString(),
-            user: { uid: user.username, displayName: user.displayName },
-            details: { shiftId, totals: totals || {}, earlyLeaveMinutes, overtimeMinutes, wasForceExited: !!forceEnd }
-        }));
-
-        await batch.commit();
+            transaction.update(shiftRef, sanitize(updates));
+            
+            // CLEAR THE SESSION LOCK
+            transaction.delete(lockRef);
+            
+            const logRef = doc(collection(db, 'logs'));
+            transaction.set(logRef, sanitize({
+                type: 'SHIFT_END',
+                description: `<strong>${user.displayName}</strong> settled their shift.${forceEnd ? ' (FORCE EXIT)' : ''}`,
+                timestamp: now.toISOString(),
+                user: { uid: user.username, displayName: user.displayName },
+                details: { shiftId, wasForceExited: !!forceEnd }
+            }));
+        });
     } catch (e) {
         console.error("Error ending atomic shift:", e);
     }
