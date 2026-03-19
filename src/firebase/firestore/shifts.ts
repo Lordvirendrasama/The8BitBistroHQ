@@ -10,6 +10,7 @@ import { getSettings } from './settings';
 const DEFAULT_START_TIME = "11:00"; 
 const LATE_ARRIVAL_THRESHOLD = 10; 
 const DEFAULT_END_TIME = "23:00";   
+const MAX_SHIFT_DURATION_HOURS = 20;
 
 /**
  * Robustly sanitizes data for Firestore by removing any 'undefined' values.
@@ -98,22 +99,29 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
     try {
         const settings = await getSettings();
 
-        // 1. AUTO LOGOUT LOGIC: Find any "active" shifts from PREVIOUS business days and close them at 5 AM
+        // 1. HARDENED AUTO LOGOUT LOGIC: Find any "active" shifts that are from PREVIOUS days OR > 20 hours
         const qActive = query(shiftsRef, where('status', '==', 'active'));
         const activeSnap = await getDocs(qActive);
+        const now = new Date();
+        const maxDurationMs = MAX_SHIFT_DURATION_HOURS * 60 * 60 * 1000;
         
         for (const d of activeSnap.docs) {
             const data = d.data() as Shift;
-            if (data.date !== businessToday && !data.endTime) {
-                const sDate = new Date(data.startTime);
-                const autoEndDate = new Date(sDate);
-                autoEndDate.setDate(autoEndDate.getDate() + 1);
-                autoEndDate.setHours(5, 0, 0, 0);
+            const startTime = new Date(data.startTime);
+            const durationMs = now.getTime() - startTime.getTime();
+            
+            const isFromPastDay = data.date !== businessToday;
+            const isTooLong = durationMs > maxDurationMs;
+
+            if ((isFromPastDay || isTooLong) && !data.endTime) {
+                // Cap end time at exactly 20 hours after start, or at least ensure it's in the past
+                const cappedEnd = new Date(startTime.getTime() + maxDurationMs);
+                const finalEnd = cappedEnd > now ? now : cappedEnd;
                 
                 await updateDoc(d.ref, {
-                    endTime: autoEndDate.toISOString(),
+                    endTime: finalEnd.toISOString(),
                     status: 'completed',
-                    note: 'Auto-closed at 5 AM boundary'
+                    note: isTooLong ? `Auto-closed: Exceeded ${MAX_SHIFT_DURATION_HOURS}h limit` : 'Auto-closed: Past business day'
                 });
             }
         }
@@ -219,7 +227,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 type: 'SHIFT_START',
                 description: `Shift Master Record created for business day <strong>${businessToday}</strong> by <strong>${user.displayName}</strong>.${lateMinutes > 0 ? ` Marked as <strong>LATE</strong> by ${lateMinutes} mins.` : ''}`,
                 timestamp: now.toISOString(),
-                user: { uid: user.username, displayName: user.displayName },
+                user: { user: user.username, displayName: user.displayName },
                 details: { shiftId: newShiftRef.id, lateMinutes, workedOnWeeklyOff },
                 cycle: settings.activeCycle
             }));
