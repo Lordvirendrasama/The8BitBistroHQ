@@ -102,6 +102,7 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
     const results: any[] = [];
     dayShifts.forEach(shift => {
       const emp = (shift.employees || [])[0] || { username: shift.staffId, displayName: shift.staffId };
+      if (!emp.username) return; // Safety check
       if (filterStaff !== 'all' && emp.username.toLowerCase() !== filterStaff.toLowerCase()) return;
 
       const verifyTask = (shift.tasks || []).find(t => t.type === 'strategic');
@@ -113,8 +114,8 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
         displayName: emp.displayName,
         verified: !!verifyTask?.completed,
         result: verifyTask?.verificationResult,
-        loginTime: format(new Date(shift.startTime), 'p'),
-        rawStartTime: new Date(shift.startTime).getTime(),
+        loginTime: shift.startTime ? format(new Date(shift.startTime), 'p') : 'N/A',
+        rawStartTime: shift.startTime ? new Date(shift.startTime).getTime() : null,
         logoutTime: shift.endTime ? format(new Date(shift.endTime), 'p') : null,
         rawEndTime: shift.endTime ? new Date(shift.endTime).getTime() : null,
         originalShift: shift,
@@ -155,8 +156,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
     const emp = employees.find(e => e.username === addFormData.username);
     if (!emp || !user) return;
     setIsAddingAttendance(true);
-    const sTime = new Date(`${addFormData.date}T${addFormData.loginTime}:00`).toISOString();
-    const eTime = addFormData.logoutTime ? new Date(`${addFormData.date}T${addFormData.logoutTime}:00`).toISOString() : null;
     const success = await manuallyCreateShift({ ...addFormData, displayName: emp.displayName }, user);
     if (success) {
         toast({ title: "Logged" });
@@ -225,7 +224,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
         })}
       </div>
 
-      {/* MODALS (Simplified for clarity) */}
       <Dialog open={isEditAttendanceModalOpen} onOpenChange={setIsEditAttendanceModalOpen}>
         <DialogContent className="max-w-md font-body">
             <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Edit Attendance</DialogTitle></DialogHeader>
@@ -285,15 +283,19 @@ export default function AttendanceRegistryPage() {
   const staffOptions = useMemo(() => {
     if (!allShifts) return [];
     const staffMap = new Map<string, string>();
-    allShifts.forEach(s => staffMap.set(s.staffId.toLowerCase(), s.staffId));
+    allShifts.forEach(s => {
+      if (s.staffId) {
+        staffMap.set(s.staffId.toLowerCase(), s.staffId);
+      }
+    });
     return Array.from(staffMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [allShifts]);
 
   const filteredShifts = useMemo(() => {
     if (!allShifts) return [];
     return allShifts.filter(s => {
-        const matchesStaff = staffFilter === 'all' || s.staffId.toLowerCase() === staffFilter.toLowerCase();
-        const matchesMonth = monthFilter === 'all' || format(new Date(s.startTime), 'yyyy-MM') === monthFilter;
+        const matchesStaff = staffFilter === 'all' || (s.staffId && s.staffId.toLowerCase() === staffFilter.toLowerCase());
+        const matchesMonth = monthFilter === 'all' || (s.startTime && format(new Date(s.startTime), 'yyyy-MM') === monthFilter);
         return matchesStaff && matchesMonth;
     });
   }, [allShifts, staffFilter, monthFilter]);
@@ -315,7 +317,11 @@ export default function AttendanceRegistryPage() {
   const monthOptions = useMemo(() => {
     if (!allShifts) return [];
     const months = new Set<string>();
-    allShifts.forEach(s => months.add(format(new Date(s.startTime), 'yyyy-MM')));
+    allShifts.forEach(s => {
+      if (s.startTime) {
+        months.add(format(new Date(s.startTime), 'yyyy-MM'));
+      }
+    });
     return Array.from(months).sort().reverse();
   }, [allShifts]);
 
