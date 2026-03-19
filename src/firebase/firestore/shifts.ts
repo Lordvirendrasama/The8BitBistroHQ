@@ -28,7 +28,6 @@ const sanitize = (data: any): any => {
     const clean: any = {};
     Object.keys(data).forEach(key => {
       const val = data[key];
-      // Skip undefined keys entirely to prevent Firestore crash
       if (val !== undefined) {
         clean[key] = sanitize(val);
       }
@@ -65,11 +64,9 @@ const calculateAttendanceOnEnd = (logoutTime: Date, empSettings?: Employee) => {
     const expDate = new Date(logoutTime);
     expDate.setHours(expH, expM, 0, 0);
 
-    // If expected end is 11 PM and current logout is 5 AM (auto logout next morning)
     if (expH >= 18 && logoutTime.getHours() < 6) {
         expDate.setDate(expDate.getDate() - 1);
     }
-    // Opposite: if expected end is early morning (e.g. 1 AM) and current logout is late night
     else if (expH < 6 && logoutTime.getHours() >= 18) {
         expDate.setDate(expDate.getDate() + 1);
     }
@@ -89,167 +86,118 @@ const calculateAttendanceOnEnd = (logoutTime: Date, empSettings?: Employee) => {
     return { earlyLeaveMinutes, overtimeMinutes };
 };
 
+/**
+ * ATOMIC DESIGN: Gets the current user's active shift or starts a brand new one.
+ * No longer shares documents between users.
+ */
 export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | null> => {
     const db = getFirestore();
     const businessToday = getBusinessDate(); 
-    const isOwner = user.username === 'Viren';
+    const now = new Date();
     
     const shiftsRef = collection(db, 'shifts');
     
     try {
         const settings = await getSettings();
 
-        // 1. HARDENED AUTO LOGOUT LOGIC: Find any "active" shifts that are from PREVIOUS days OR > 20 hours
-        const qActive = query(shiftsRef, where('status', '==', 'active'));
+        // 1. Find ANY active shifts for THIS SPECIFIC USER
+        const qActive = query(
+            shiftsRef, 
+            where('staffId', '==', user.username), 
+            where('status', '==', 'active')
+        );
         const activeSnap = await getDocs(qActive);
-        const now = new Date();
-        const maxDurationMs = MAX_SHIFT_DURATION_HOURS * 60 * 60 * 1000;
         
-        for (const d of activeSnap.docs) {
-            const data = d.data() as Shift;
-            const startTime = new Date(data.startTime);
-            const durationMs = now.getTime() - startTime.getTime();
+        // 2. Handle existing active shifts
+        if (!activeSnap.empty) {
+            const shiftDoc = activeSnap.docs[0];
+            const shiftData = shiftDoc.data() as Shift;
             
-            const isFromPastDay = data.date !== businessToday;
-            const isTooLong = durationMs > maxDurationMs;
-
-            if ((isFromPastDay || isTooLong) && !data.endTime) {
-                // Cap end time at exactly 20 hours after start, or at least ensure it's in the past
-                const cappedEnd = new Date(startTime.getTime() + maxDurationMs);
-                const finalEnd = cappedEnd > now ? now : cappedEnd;
-                
-                await updateDoc(d.ref, {
-                    endTime: finalEnd.toISOString(),
+            // Check if it's from a previous business day or too long
+            const startTime = new Date(shiftData.startTime);
+            const durationMs = now.getTime() - startTime.getTime();
+            const maxDurationMs = MAX_SHIFT_DURATION_HOURS * 60 * 60 * 1000;
+            
+            if (shiftData.date !== businessToday || durationMs > maxDurationMs) {
+                // AUTO-CLOSE stale shift
+                const cappedEnd = new Date(startTime.getTime() + Math.min(durationMs, maxDurationMs));
+                await updateDoc(shiftDoc.ref, {
+                    endTime: cappedEnd.toISOString(),
                     status: 'completed',
-                    note: isTooLong ? `Auto-closed: Exceeded ${MAX_SHIFT_DURATION_HOURS}h limit` : 'Auto-closed: Past business day'
+                    note: 'Auto-closed on new login'
                 });
+                // Continue to create a new one below
+            } else {
+                // Return valid existing shift
+                return { id: shiftDoc.id, ...shiftData };
             }
         }
 
+        // 3. START A NEW ATOMIC SHIFT
+        const empsRef = collection(db, 'employees');
+        const empQ = query(empsRef, where('username', '==', user.username), limit(1));
+        const empSnap = await getDocs(empQ);
+        const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
+
+        const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now, empSettings);
+
+        // Fetch master tasks
         const masterTasksRef = collection(db, 'tasks');
         const masterTasksSnapshot = await getDocs(masterTasksRef);
         const masterTasks = masterTasksSnapshot.docs.map(doc => doc.data() as Task);
 
-        const qToday = query(shiftsRef, where('date', '==', businessToday), limit(1));
-        const shiftSnapshot = await getDocs(qToday);
+        const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
+            name: task.name,
+            type: task.type,
+            completed: false,
+            ownerOnly: task.ownerOnly || false
+        }));
 
-        if (!shiftSnapshot.empty) {
-            const shiftDoc = shiftSnapshot.docs[0];
-            const shiftData = shiftDoc.data() as Shift;
-            const shift = { id: shiftDoc.id, ...shiftData } as Shift;
-
-            const updates: any = {};
-            
-            // Add user to employees list if not present
-            const currentEmployees = [...(shift.employees || [])];
-            const userIsListed = currentEmployees.some(e => e.username === user.username);
-            if (!userIsListed) {
-                currentEmployees.push({ username: user.username, displayName: user.displayName });
-                updates.employees = currentEmployees;
-            }
-
-            const existingTaskNames = new Set(shiftData.tasks.map(t => t.name));
-            
-            // Sync from Master Tasks (Morning/End of Day)
-            const newTasksToSync = masterTasks
-                .filter(mt => !existingTaskNames.has(mt.name))
-                .map(mt => ({ name: mt.name, type: mt.type, completed: false, ownerOnly: mt.ownerOnly }));
-
-            // DYNAMIC STRATEGIC TASKS: Ensure every non-Viren employee in the roster has a verification task
-            const dynamicStrategic = currentEmployees
-                .filter(emp => emp.username !== 'Viren')
-                .map(emp => ({
-                    name: `Verify ${emp.displayName || emp.username} Presence`,
-                    type: 'strategic' as const,
-                    ownerOnly: true,
-                    completed: false
-                }))
-                .filter(st => !existingTaskNames.has(st.name));
-
-            if (newTasksToSync.length > 0 || dynamicStrategic.length > 0) {
-                updates.tasks = [...shiftData.tasks, ...newTasksToSync, ...dynamicStrategic];
-            }
-
-            if (shift.status === 'completed' && !shift.endTime) {
-                updates.status = 'active';
-            }
-
-            if (Object.keys(updates).length > 0) {
-                await updateDoc(shiftDoc.ref, sanitize(updates));
-                if (updates.tasks) shift.tasks = updates.tasks;
-                if (updates.employees) shift.employees = updates.employees;
-                if (updates.status) shift.status = updates.status;
-            }
-            return shift;
-        } else {
-            const now = new Date();
-            
-            const empsRef = collection(db, 'employees');
-            const empQ = query(empsRef, where('username', '==', user.username), limit(1));
-            const empSnap = await getDocs(empQ);
-            const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
-
-            const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now, empSettings);
-
-            const currentEmployees = [{ username: user.username, displayName: user.displayName }];
-
-            // Base Tasks from Settings
-            const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
-                name: task.name,
-                type: task.type,
-                completed: false,
-                ownerOnly: task.ownerOnly || false
-            }));
-
-            // Generate initial strategic verification for the starting employee (if not Viren)
-            const initialStrategic: ShiftTask[] = currentEmployees
-                .filter(emp => emp.username !== 'Viren')
-                .map(emp => ({
-                    name: `Verify ${emp.displayName || emp.username} Presence`,
-                    type: 'strategic' as const,
-                    ownerOnly: true,
-                    completed: false
-                }));
-
-            const combinedTasks = [...dailyTasks, ...initialStrategic];
-
-            const newShiftRef = doc(collection(db, 'shifts'));
-            const newShiftData: Omit<Shift, 'id'> = {
-                date: businessToday,
-                staffId: user.username,
-                employees: currentEmployees,
-                startTime: now.toISOString(),
-                status: 'active',
-                tasks: combinedTasks,
-                breaks: [],
-                lateMinutes,
-                workedOnWeeklyOff,
-                cycle: settings.activeCycle || 'Live Cycle'
-            };
-
-            const batch = writeBatch(db);
-            batch.set(newShiftRef, sanitize(newShiftData));
-            
-            const logRef = doc(collection(db, 'logs'));
-            batch.set(logRef, sanitize({
-                type: 'SHIFT_START',
-                description: `Shift Master Record created for business day <strong>${businessToday}</strong> by <strong>${user.displayName}</strong>.${lateMinutes > 0 ? ` Marked as <strong>LATE</strong> by ${lateMinutes} mins.` : ''}`,
-                timestamp: now.toISOString(),
-                user: { uid: user.username, displayName: user.displayName },
-                details: { shiftId: newShiftRef.id, lateMinutes, workedOnWeeklyOff },
-                cycle: settings.activeCycle
-            }));
-            
-            await batch.commit();
-
-            return { id: newShiftRef.id, ...newShiftData };
+        // Add verification task for this specific session if not owner
+        if (user.username !== 'Viren') {
+            dailyTasks.push({
+                name: `Verify ${user.displayName} Presence`,
+                type: 'strategic',
+                ownerOnly: true,
+                completed: false
+            });
         }
+
+        const newShiftRef = doc(collection(db, 'shifts'));
+        const newShiftData: Omit<Shift, 'id'> = {
+            date: businessToday,
+            staffId: user.username,
+            employees: [{ username: user.username, displayName: user.displayName }],
+            startTime: now.toISOString(),
+            status: 'active',
+            tasks: dailyTasks,
+            breaks: [],
+            lateMinutes,
+            workedOnWeeklyOff,
+            cycle: settings.activeCycle || 'Live Cycle'
+        };
+
+        const batch = writeBatch(db);
+        batch.set(newShiftRef, sanitize(newShiftData));
+        
+        const logRef = doc(collection(db, 'logs'));
+        batch.set(logRef, sanitize({
+            type: 'SHIFT_START',
+            description: `Started new shift for <strong>${user.displayName}</strong> on ${businessToday}.`,
+            timestamp: now.toISOString(),
+            user: { uid: user.username, displayName: user.displayName },
+            details: { shiftId: newShiftRef.id, lateMinutes, workedOnWeeklyOff },
+            cycle: settings.activeCycle
+        }));
+        
+        await batch.commit();
+        return { id: newShiftRef.id, ...newShiftData };
+
     } catch (e) {
-        console.error("Error getting or starting shift:", e);
+        console.error("Error in Atomic Shift Engine:", e);
         return null;
     }
 };
-
 
 export const endShift = async (shiftId: string, user: CustomUser, totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number; }, forceEnd?: boolean): Promise<void> => {
     const db = getFirestore();
@@ -258,8 +206,9 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
 
     try {
         const shiftDoc = await getDoc(shiftRef);
+        if (!shiftDoc.exists()) return;
+
         const now = new Date();
-        
         const empsRef = collection(db, 'employees');
         const empQ = query(empsRef, where('username', '==', user.username), limit(1));
         const empSnap = await getDocs(empQ);
@@ -267,24 +216,18 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
 
         const { earlyLeaveMinutes, overtimeMinutes } = calculateAttendanceOnEnd(now, empSettings);
 
-        if (forceEnd && shiftDoc.exists()) {
+        if (forceEnd) {
             const shiftData = shiftDoc.data() as Shift;
             const incompleteTasks = (shiftData.tasks || []).filter(t => !t.completed);
             if (incompleteTasks.length > 0) {
                 const incompleteTaskNames = incompleteTasks.map(t => `"${t.name}"`).join(', ');
-                const message = `<strong>${user.displayName}</strong> ended the shift with ${incompleteTasks.length} incomplete task(s): ${incompleteTaskNames}.`;
-                
                 const notificationRef = doc(collection(db, 'adminNotifications'));
                 batch.set(notificationRef, {
-                    message,
+                    message: `<strong>${user.displayName}</strong> force-exited with ${incompleteTasks.length} pending tasks: ${incompleteTaskNames}.`,
                     type: 'INCOMPLETE_SHIFT',
                     isRead: false,
                     timestamp: now.toISOString(),
-                    triggeredBy: {
-                        username: user.username,
-                        displayName: user.displayName,
-                        role: user.role,
-                    }
+                    triggeredBy: { username: user.username, displayName: user.displayName, role: user.role }
                 });
             }
         }
@@ -308,44 +251,30 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
         const logRef = doc(collection(db, 'logs'));
         batch.set(logRef, sanitize({
             type: 'SHIFT_END',
-            description: `<strong>${user.displayName}</strong> closed the daily shift record.${forceEnd ? ' (FORCE EXIT)' : ''}${overtimeMinutes > 0 ? ` Worked <strong>OVERTIME</strong>: ${overtimeMinutes} mins.` : ''}`,
+            description: `<strong>${user.displayName}</strong> ended their atomic shift session.${forceEnd ? ' (FORCE EXIT)' : ''}`,
             timestamp: now.toISOString(),
             user: { uid: user.username, displayName: user.displayName },
             details: { shiftId, totals: totals || {}, earlyLeaveMinutes, overtimeMinutes, wasForceExited: !!forceEnd }
         }));
 
         await batch.commit();
-
     } catch (e) {
-        console.error("Error ending shift: ", e);
+        console.error("Error ending atomic shift:", e);
     }
 };
 
 export const startBreak = async (shiftId: string, user: CustomUser) => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
-    
     try {
         await runTransaction(db, async (transaction) => {
             const snap = await transaction.get(shiftRef);
             if (!snap.exists()) return;
-            
             const data = snap.data() as Shift;
-            
             const hasActive = data.breaks?.some(b => !b.endTime);
             if (hasActive) return;
-
             const newBreaks = [...(data.breaks || []), { startTime: new Date().toISOString() }];
             transaction.update(shiftRef, { breaks: newBreaks });
-            
-            const logRef = doc(collection(db, 'logs'));
-            transaction.set(logRef, sanitize({
-                type: 'BREAK_START',
-                description: `<strong>${user.displayName}</strong> started a break.`,
-                timestamp: new Date().toISOString(),
-                user: { uid: user.username, displayName: user.displayName },
-                details: { shiftId }
-            }));
         });
         return true;
     } catch (e) {
@@ -357,18 +286,14 @@ export const startBreak = async (shiftId: string, user: CustomUser) => {
 export const endBreak = async (shiftId: string, user: CustomUser) => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
-    
     try {
         await runTransaction(db, async (transaction) => {
             const snap = await transaction.get(shiftRef);
             if (!snap.exists()) return;
-            
             const data = snap.data() as Shift;
             const now = new Date();
-            
             const hasActive = data.breaks?.some(b => !b.endTime);
             if (!hasActive) return;
-
             const updatedBreaks = data.breaks.map(b => {
                 if (!b.endTime) {
                     const duration = Math.floor((now.getTime() - new Date(b.startTime).getTime()) / 1000);
@@ -376,17 +301,7 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
                 }
                 return b;
             });
-            
             transaction.update(shiftRef, { breaks: updatedBreaks });
-            
-            const logRef = doc(collection(db, 'logs'));
-            transaction.set(logRef, sanitize({
-                type: 'BREAK_END',
-                description: `<strong>${user.displayName}</strong> ended a break.`,
-                timestamp: now.toISOString(),
-                user: { uid: user.username, displayName: user.displayName },
-                details: { shiftId }
-            }));
         });
         return true;
     } catch (e) {
@@ -398,13 +313,10 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
 export const updateTask = async (shiftId: string, taskName: string, completed: boolean, user: CustomUser, verificationResult?: 'yes' | 'no'): Promise<boolean> => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
-    
     try {
         await runTransaction(db, async (transaction) => {
             const shiftDoc = await transaction.get(shiftRef);
-            if (!shiftDoc.exists()) {
-                throw "Shift document not found!";
-            }
+            if (!shiftDoc.exists()) throw "Shift not found";
             
             const shiftData = shiftDoc.data() as Shift;
             const currentTasks = shiftData.tasks || [];
@@ -413,11 +325,7 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
             let updatedTasks = currentTasks.map(task => {
                 if (task.name === taskName) {
                     taskFound = true;
-                    const newTask: any = { 
-                        ...task, 
-                        completed, 
-                        verificationResult
-                    };
+                    const newTask: any = { ...task, completed, verificationResult };
                     if (completed) {
                         newTask.completedAt = new Date().toISOString();
                         newTask.completedBy = { username: user.username, displayName: user.displayName };
@@ -431,34 +339,19 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
                 return task;
             });
 
-            // FAIL-SAFE: If the task wasn't found (likely a strategic task missing from an older shift document)
             if (!taskFound && taskName.startsWith('Verify ')) {
-                const newTask: ShiftTask = {
-                    name: taskName,
-                    type: 'strategic',
-                    ownerOnly: true,
-                    completed,
-                    verificationResult,
+                updatedTasks = [...updatedTasks, {
+                    name: taskName, type: 'strategic', ownerOnly: true, completed, verificationResult,
                     completedAt: completed ? new Date().toISOString() : undefined,
                     completedBy: completed ? { username: user.username, displayName: user.displayName } : undefined
-                };
-                updatedTasks = [...updatedTasks, newTask];
+                }];
             }
             
             transaction.update(shiftRef, sanitize({ tasks: updatedTasks }));
-
-            const logRef = doc(collection(db, 'logs'));
-            transaction.set(logRef, sanitize({
-                type: 'TASK_COMPLETED',
-                description: `<strong>${user.displayName}</strong> ${completed ? 'completed' : 'un-completed'} task: "${taskName}".${verificationResult ? ` Result: <strong>${verificationResult.toUpperCase()}</strong>` : ''}`,
-                timestamp: new Date().toISOString(),
-                user: { uid: user.username, displayName: user.displayName },
-                details: { shiftId, taskName, completed, verificationResult }
-            }));
         });
         return true;
     } catch (e) {
-        console.error("Error updating task transactionally: ", e);
+        console.error("Error updating task:", e);
         return false;
     }
 };
@@ -466,20 +359,8 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
 export const updateShiftTimes = async (shiftId: string, updates: { startTime: string, endTime?: string | null }, user: CustomUser) => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
-    
     try {
-        const snap = await getDoc(shiftRef);
-        if (!snap.exists()) return false;
-        
         await updateDoc(shiftRef, sanitize(updates));
-        
-        await addDoc(collection(db, 'logs'), sanitize({
-            type: 'SHIFT_UPDATED',
-            description: `<strong>${user.displayName}</strong> manually adjusted shift times for ID: <strong>${shiftId.slice(0, 8)}</strong>.`,
-            timestamp: new Date().toISOString(),
-            user: { uid: user.username, displayName: user.displayName },
-            details: { shiftId, updates }
-        }));
         return true;
     } catch (e) {
         console.error("Error updating shift times:", e);
@@ -487,64 +368,29 @@ export const updateShiftTimes = async (shiftId: string, updates: { startTime: st
     }
 };
 
-/**
- * Manually creates a shift record for a specific date and employee.
- * Primarily used by the Owner to backfill or fix missed attendance.
- */
 export const manuallyCreateShift = async (data: { 
-    username: string, 
-    displayName: string, 
-    date: string, 
-    startTime: string, 
-    endTime?: string | null,
-    status: 'yes' | 'no' 
+    username: string, displayName: string, date: string, startTime: string, endTime?: string | null, status: 'yes' | 'no' 
 }, user: CustomUser) => {
     const db = getFirestore();
     const settings = await getSettings();
-    const batch = writeBatch(db);
-    
     const shiftRef = doc(collection(db, 'shifts'));
-    
-    // Create pre-verified strategic task
     const strategicTask: ShiftTask = {
         name: `Verify ${data.displayName} Presence`,
-        type: 'strategic',
-        ownerOnly: true,
-        completed: true,
-        verificationResult: data.status,
+        type: 'strategic', ownerOnly: true, completed: true, verificationResult: data.status,
         completedAt: new Date().toISOString(),
         completedBy: { username: user.username, displayName: user.displayName }
     };
-
     const shiftData: Omit<Shift, 'id'> = {
-        date: data.date,
-        staffId: data.username,
+        date: data.date, staffId: data.username,
         employees: [{ username: data.username, displayName: data.displayName }],
-        startTime: data.startTime,
-        endTime: data.endTime || undefined,
-        status: 'completed', // Manual shifts are archived immediately
-        tasks: [strategicTask],
-        breaks: [],
-        cycle: settings.activeCycle || 'Live Cycle'
+        startTime: data.startTime, endTime: data.endTime || undefined,
+        status: 'completed', tasks: [strategicTask], breaks: [], cycle: settings.activeCycle || 'Live Cycle'
     };
-
-    batch.set(shiftRef, sanitize(shiftData));
-    
-    // Log manual creation in system audit
-    const logRef = doc(collection(db, 'logs'));
-    batch.set(logRef, sanitize({
-        type: 'DATA_ACTION',
-        description: `<strong>${user.displayName}</strong> manually created attendance record for <strong>${data.displayName}</strong> on ${data.date}. Status: <strong>${data.status.toUpperCase()}</strong>.`,
-        timestamp: new Date().toISOString(),
-        user: { uid: user.username, displayName: user.displayName },
-        details: { shiftId: shiftRef.id, ...data }
-    }));
-
     try {
-        await batch.commit();
+        await addDoc(collection(db, 'shifts'), sanitize(shiftData));
         return true;
     } catch (error) {
-        console.error("Error manually creating shift:", error);
+        console.error("Error creating manual shift:", error);
         return false;
     }
 };

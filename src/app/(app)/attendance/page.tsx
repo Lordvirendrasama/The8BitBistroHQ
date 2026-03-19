@@ -23,7 +23,7 @@ import {
   isToday
 } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -62,7 +62,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
 
   const isOwner = user?.username === 'Viren';
 
-  // State for Edit Attendance Modal
   const [isEditAttendanceModalOpen, setIsEditAttendanceModalOpen] = useState(false);
   const [selectedAttendanceForEdit, setSelectedAttendanceForEdit] = useState<any | null>(null);
   const [editStatus, setEditStatus] = useState<'yes' | 'no' | null>(null);
@@ -70,7 +69,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
   const [editLogoutTime, setEditLogoutTime] = useState('');
   const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
 
-  // State for Add Attendance Modal
   const [isAddAttendanceModalOpen, setIsAddAttendanceModalOpen] = useState(false);
   const [isAddingAttendance, setIsAddingAttendance] = useState(false);
   const [addFormData, setAddFormData] = useState({
@@ -81,7 +79,6 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
     status: 'yes' as 'yes' | 'no'
   });
 
-
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -90,14 +87,9 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
 
   const handleVerify = async (shiftId: string, taskName: string, result: 'yes' | 'no' | null) => {
     if (!isOwner) return;
-    
     const success = await updateTask(shiftId, taskName, result !== null, user, result || undefined);
-    
     if (success) {
-        toast({ 
-            title: result ? "Attendance Verified" : "Audit Reset", 
-            description: result ? `Marked as ${result.toUpperCase()}.` : "Verification removed."
-        });
+        toast({ title: result ? "Verified" : "Reset", description: result ? `Marked as ${result.toUpperCase()}.` : "Reset." });
     }
   };
 
@@ -108,33 +100,25 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
     if (dayShifts.length === 0) return null;
 
     const results: any[] = [];
-
     dayShifts.forEach(shift => {
-      const activeInShift = (shift.employees || []).filter(e => 
-        filterStaff === 'all' || e.username.toLowerCase() === filterStaff.toLowerCase()
-      );
+      const emp = (shift.employees || [])[0] || { username: shift.staffId, displayName: shift.staffId };
+      if (filterStaff !== 'all' && emp.username.toLowerCase() !== filterStaff.toLowerCase()) return;
 
-      activeInShift.forEach(emp => {
-        // Find specific strategic task for this user in this shift
-        const verifyTask = (shift.tasks || []).find(t => 
-          t.type === 'strategic' && t.name.toLowerCase().includes(emp.username.toLowerCase())
-        );
+      const verifyTask = (shift.tasks || []).find(t => t.type === 'strategic');
 
-        results.push({
-          shiftId: shift.id,
-          taskName: verifyTask?.name || `Verify ${emp.displayName || emp.username} Presence`,
-          username: emp.username,
-          displayName: emp.displayName,
-          verified: !!verifyTask?.completed,
-          result: verifyTask?.verificationResult,
-          loginTime: format(new Date(shift.startTime), 'p'),
-          rawStartTime: new Date(shift.startTime).getTime(),
-          logoutTime: shift.endTime ? format(new Date(shift.endTime), 'p') : null,
-          rawEndTime: shift.endTime ? new Date(shift.endTime).getTime() : null,
-          originalShift: shift,
-          employeeId: emp.id,
-          wasForceExited: !!shift.wasForceExited
-        });
+      results.push({
+        shiftId: shift.id,
+        taskName: verifyTask?.name || `Verify ${emp.displayName} Presence`,
+        username: emp.username,
+        displayName: emp.displayName,
+        verified: !!verifyTask?.completed,
+        result: verifyTask?.verificationResult,
+        loginTime: format(new Date(shift.startTime), 'p'),
+        rawStartTime: new Date(shift.startTime).getTime(),
+        logoutTime: shift.endTime ? format(new Date(shift.endTime), 'p') : null,
+        rawEndTime: shift.endTime ? new Date(shift.endTime).getTime() : null,
+        originalShift: shift,
+        wasForceExited: !!shift.wasForceExited
       });
     });
 
@@ -151,49 +135,18 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
 
   const handleSaveAttendanceEdit = async () => {
     if (!selectedAttendanceForEdit || !user) return;
-
     setIsSavingAttendanceEdit(true);
-
     const originalShift = selectedAttendanceForEdit.originalShift;
     const shiftDate = format(new Date(originalShift.startTime), 'yyyy-MM-dd');
+    const newStartTime = editLoginTime ? new Date(`${shiftDate}T${editLoginTime}:00`).toISOString() : originalShift.startTime;
+    const newEndTime = (editLogoutTime && editStatus !== 'no') ? new Date(`${shiftDate}T${editLogoutTime}:00`).toISOString() : null;
 
-    const newStartTime = editLoginTime
-      ? new Date(`${shiftDate}T${editLoginTime}:00`).toISOString()
-      : originalShift.startTime;
+    const sSuccess = await updateShiftTimes(selectedAttendanceForEdit.shiftId, { startTime: newStartTime, endTime: newEndTime }, user);
+    const tSuccess = await updateTask(selectedAttendanceForEdit.shiftId, selectedAttendanceForEdit.taskName, editStatus === 'yes' || editStatus === 'no', user, editStatus || undefined);
 
-    const newEndTime = (editLogoutTime && editStatus !== 'no')
-      ? new Date(`${shiftDate}T${editLogoutTime}:00`).toISOString()
-      : null;
-
-    const shiftUpdateSuccess = await updateShiftTimes(
-      selectedAttendanceForEdit.shiftId,
-      {
-        startTime: newStartTime,
-        endTime: newEndTime,
-      },
-      user
-    );
-
-    const taskName = selectedAttendanceForEdit.taskName;
-    const taskUpdateSuccess = await updateTask(
-      selectedAttendanceForEdit.shiftId,
-      taskName,
-      editStatus === 'yes' || editStatus === 'no',
-      user,
-      editStatus === 'yes' ? 'yes' : (editStatus === 'no' ? 'no' : undefined)
-    );
-
-
-    if (shiftUpdateSuccess && taskUpdateSuccess) {
-      toast({ title: 'Attendance Updated', description: 'Calendar record has been successfully adjusted.' });
+    if (sSuccess && tSuccess) {
+      toast({ title: 'Updated' });
       setIsEditAttendanceModalOpen(false);
-      setSelectedAttendanceForEdit(null);
-    } else {
-      toast({
-        title: 'Update Failed',
-        description: 'There was an error updating the attendance record.',
-        variant: 'destructive',
-      });
     }
     setIsSavingAttendanceEdit(false);
   };
@@ -201,66 +154,32 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
   const handleManualAddAttendance = async () => {
     const emp = employees.find(e => e.username === addFormData.username);
     if (!emp || !user) return;
-
     setIsAddingAttendance(true);
-    
-    const startTimeISO = new Date(`${addFormData.date}T${addFormData.loginTime}:00`).toISOString();
-    const endTimeISO = addFormData.logoutTime 
-        ? new Date(`${addFormData.date}T${addFormData.logoutTime}:00`).toISOString() 
-        : null;
-
-    const success = await manuallyCreateShift({
-        username: emp.username,
-        displayName: emp.displayName,
-        date: addFormData.date,
-        startTime: startTimeISO,
-        endTime: endTimeISO,
-        status: addFormData.status
-    }, user);
-
+    const sTime = new Date(`${addFormData.date}T${addFormData.loginTime}:00`).toISOString();
+    const eTime = addFormData.logoutTime ? new Date(`${addFormData.date}T${addFormData.logoutTime}:00`).toISOString() : null;
+    const success = await manuallyCreateShift({ ...addFormData, displayName: emp.displayName }, user);
     if (success) {
-        toast({ title: "Attendance Logged", description: `Manual record created for ${emp.displayName}.` });
+        toast({ title: "Logged" });
         setIsAddAttendanceModalOpen(false);
-        setAddFormData({
-            username: '',
-            date: new Date().toISOString().slice(0, 10),
-            loginTime: '11:00',
-            logoutTime: '23:00',
-            status: 'yes'
-        });
-    } else {
-        toast({ variant: 'destructive', title: "Sync Error", description: "Failed to create manual record." });
     }
     setIsAddingAttendance(false);
   };
 
-
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex flex-col lg:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-5 w-5" /></Button>
-          <h2 className="font-headline text-lg sm:text-xl min-w-[200px] text-center uppercase tracking-tight">
-            {format(currentMonth, 'MMMM yyyy')}
-          </h2>
-          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-5 w-5" /></Button>
+          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft /></Button>
+          <h2 className="font-headline text-lg uppercase">{format(currentMonth, 'MMMM yyyy')}</h2>
+          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight /></Button>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-            {isOwner && (
-                <Button onClick={() => setIsAddAttendanceModalOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest shadow-lg bg-emerald-600 hover:bg-emerald-700">
-                    <PlusCircle className="mr-2 h-4 w-4" /> ADD ATTENDANCE
-                </Button>
-            )}
-            <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 hidden sm:block">Filter:</Label>
+        <div className="flex gap-3">
+            {isOwner && <Button onClick={() => setIsAddAttendanceModalOpen(true)} className="font-black uppercase text-[10px]"><PlusCircle className="mr-2 h-4 w-4" /> ADD</Button>}
             <Select value={filterStaff} onValueChange={setFilterStaff}>
-                <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
-                    <SelectValue placeholder="All Staff" />
-                </SelectTrigger>
+                <SelectTrigger className="w-[180px] text-[10px] font-bold uppercase"><SelectValue placeholder="Filter Staff" /></SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all" className="font-bold text-[10px] uppercase">ALL STAFF</SelectItem>
-                    {staffOptions.map(([username, displayName]) => (
-                        <SelectItem key={username} value={username} className="font-bold text-[10px] uppercase">{displayName.toUpperCase()}</SelectItem>
-                    ))}
+                    <SelectItem value="all">ALL STAFF</SelectItem>
+                    {staffOptions.map(([u, d]) => <SelectItem key={u} value={u}>{d.toUpperCase()}</SelectItem>)}
                 </SelectContent>
             </Select>
         </div>
@@ -268,79 +187,33 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
 
       <div className="grid grid-cols-7 gap-px bg-muted border-2 rounded-xl overflow-hidden shadow-inner overflow-x-auto min-w-[800px]">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-          <div key={d} className="bg-muted/50 py-3 text-center text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground border-b">{d}</div>
+          <div key={d} className="bg-muted/50 py-3 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b">{d}</div>
         ))}
         {days.map((day, i) => {
           const isCurrent = isSameMonth(day, currentMonth);
           const status = getDayStatus(day);
-          const isTodayDate = isToday(day);
-
           return (
-            <div key={i} className={cn(
-              "min-h-[160px] p-2 bg-background flex flex-col gap-1 transition-all",
-              !isCurrent && "opacity-20 bg-muted/10 pointer-events-none",
-              isTodayDate && "ring-2 ring-inset ring-primary/20 bg-primary/[0.02]"
-            )}>
+            <div key={i} className={cn("min-h-[160px] p-2 bg-background flex flex-col gap-1 transition-all", !isCurrent && "opacity-20 pointer-events-none", isToday(day) && "ring-2 ring-inset ring-primary/20 bg-primary/[0.02]")}>
               <div className="flex justify-between items-start mb-1">
-                <span className={cn(
-                  "text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full",
-                  isTodayDate ? "bg-primary text-white shadow-lg" : "text-muted-foreground"
-                )}>
-                  {format(day, 'd')}
-                </span>
+                <span className={cn("text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full", isToday(day) ? "bg-primary text-white" : "text-muted-foreground")}>{format(day, 'd')}</span>
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 {status?.map((s: any, idx) => (
-                  <button 
-                    key={idx} 
-                    onClick={() => isOwner && handleEditAttendanceClick(s)}
-                    className={cn(
-                      "w-full p-2 rounded-lg border-2 text-[9px] font-black uppercase leading-tight flex flex-col gap-2 shadow-sm relative text-left hover:scale-[1.02] active:scale-100 transition-all",
-                      s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" :
-                      s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" :
-                      "bg-background border-muted text-muted-foreground"
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                        <div className="flex flex-col truncate">
-                            <span className="truncate">{s.displayName}</span>
-                            <span className="text-[7px] font-mono opacity-60 tracking-tighter">IN: {s.loginTime}</span>
-                        </div>
-                        {s.result === 'yes' ? <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> :
-                        s.result === 'no' ? <UserX className="h-3.5 w-3.5 shrink-0 text-destructive" /> :
-                        <Clock className="h-3.5 w-3.5 shrink-0 opacity-40 animate-pulse" />}
+                  <button key={idx} onClick={() => isOwner && handleEditAttendanceClick(s)} className={cn("w-full p-2 rounded-lg border-2 text-[9px] font-black uppercase text-left transition-all", s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-muted text-muted-foreground")}>
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="truncate">{s.displayName}</span>
+                        {s.result === 'yes' ? <UserCheck className="h-3 w-3" /> : s.result === 'no' ? <UserX className="h-3 w-3" /> : <Clock className="h-3 w-3 opacity-40" />}
                     </div>
-
-                    {s.wasForceExited && (
-                        <div className="flex items-center gap-1 bg-destructive/10 text-destructive px-1.5 py-0.5 rounded text-[7px] font-black w-fit">
-                            <AlertTriangle className="h-2 w-2" /> FORCE EXIT
-                        </div>
-                    )}
-
+                    <p className="text-[7px] font-mono opacity-60">IN: {s.loginTime}</p>
                     {isOwner && (
-                        <div className="flex gap-1 pt-1 border-t border-current border-dashed opacity-80 hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 pt-1 border-t border-dashed border-current mt-1">
                             {!s.verified ? (
                                 <>
-                                    <div 
-                                        onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'yes'); }}
-                                        className="flex-1 py-1 bg-emerald-600 text-white rounded font-black text-[7px] text-center hover:bg-emerald-700 transition-colors"
-                                    >
-                                        YES
-                                    </div>
-                                    <div 
-                                        onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'no'); }}
-                                        className="flex-1 py-1 bg-destructive text-white rounded font-black text-[7px] text-center hover:bg-destructive/90 transition-colors"
-                                    >
-                                        NO
-                                    </div>
+                                    <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'yes'); }} className="flex-1 py-1 bg-emerald-600 text-white rounded text-center">YES</div>
+                                    <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'no'); }} className="flex-1 py-1 bg-destructive text-white rounded text-center">NO</div>
                                 </>
                             ) : (
-                                <div 
-                                    onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, null); }}
-                                    className="w-full py-1 bg-muted text-muted-foreground rounded font-black text-[7px] flex items-center justify-center gap-1 hover:bg-muted/80 transition-colors"
-                                >
-                                    <X className="h-2 w-2" /> RESET AUDIT
-                                </div>
+                                <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, null); }} className="w-full py-1 bg-muted text-muted-foreground rounded flex justify-center items-center gap-1">RESET</div>
                             )}
                         </div>
                     )}
@@ -351,170 +224,40 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
           );
         })}
       </div>
-      
-      <div className="flex flex-wrap justify-center gap-6 p-5 bg-muted/10 border-2 border-dashed rounded-2xl">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-md bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center"><UserCheck className="h-2 w-2 text-emerald-600"/></div>
-          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Audit Verified YES</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-md bg-destructive/20 border-2 border-destructive/40 flex items-center justify-center"><UserX className="h-2 w-2 text-destructive"/></div>
-          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Audit Verified NO</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-md bg-background border-2 border-muted flex items-center justify-center"><Clock className="h-2 w-2 text-muted-foreground opacity-40"/></div>
-          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Pending verification</span>
-        </div>
-      </div>
 
-      {/* EDIT ATTENDANCE MODAL */}
+      {/* MODALS (Simplified for clarity) */}
       <Dialog open={isEditAttendanceModalOpen} onOpenChange={setIsEditAttendanceModalOpen}>
-        <DialogContent className="max-w-md font-body border-4 border-primary/20">
-            <DialogHeader>
-                <DialogTitle className="font-headline text-xl flex items-center gap-2">
-                    <Edit className="text-primary" />
-                    Edit Attendance
-                </DialogTitle>
-                <DialogDescription className="font-black text-[9px] uppercase tracking-widest text-muted-foreground">
-                    Adjust attendance record for {selectedAttendanceForEdit?.displayName} on {format(new Date(selectedAttendanceForEdit?.originalShift.startTime || new Date()), 'MMM dd, yyyy')}.
-                </DialogDescription>
-            </DialogHeader>
+        <DialogContent className="max-w-md font-body">
+            <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Edit Attendance</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Attendance Status</Label>
-                    <div className="flex items-center gap-4">
-                        <Button
-                            variant={editStatus === 'yes' ? 'default' : 'outline'}
-                            onClick={() => setEditStatus('yes')}
-                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
-                        >
-                            <CheckCircle2 className="h-4 w-4" /> Yes
-                        </Button>
-                        <Button
-                            variant={editStatus === 'no' ? 'destructive' : 'outline'}
-                            onClick={() => setEditStatus('no')}
-                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
-                        >
-                            <XCircle className="h-4 w-4" /> No
-                        </Button>
-                    </div>
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Login Time</Label>
-                    <Input
-                        type="time"
-                        value={editLoginTime}
-                        onChange={e => setEditLoginTime(e.target.value)}
-                        className="h-12 font-mono font-bold border-2"
-                        disabled={editStatus === 'no'}
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Logout Time (Optional)</Label>
-                    <Input
-                        type="time"
-                        value={editLogoutTime}
-                        onChange={e => setEditLogoutTime(e.target.value)}
-                        className="h-12 font-mono font-bold border-2"
-                        disabled={editStatus === 'no'}
-                    />
-                </div>
-            </div>
-            <DialogFooter>
-                <Button disabled={isSavingAttendanceEdit} onClick={handleSaveAttendanceEdit} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl">
-                    <Save className="mr-2 h-5 w-5" />
-                    {isSavingAttendanceEdit ? 'Saving...' : 'Save Changes'}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ADD ATTENDANCE MODAL */}
-      <Dialog open={isAddAttendanceModalOpen} onOpenChange={setIsAddAttendanceModalOpen}>
-        <DialogContent className="max-w-md font-body border-4 border-emerald-500/20">
-            <DialogHeader>
-                <DialogTitle className="font-headline text-xl flex items-center gap-2">
-                    <UserPlus className="text-emerald-600" />
-                    Manual Entry
-                </DialogTitle>
-                <DialogDescription className="font-black text-[9px] uppercase tracking-widest text-muted-foreground">
-                    Create a historical shift record for an operator.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Select Operator</Label>
-                    <Select value={addFormData.username} onValueChange={v => setAddFormData(p => ({...p, username: v}))}>
-                        <SelectTrigger className="h-12 border-2 font-bold uppercase text-[10px]">
-                            <SelectValue placeholder="PICK OPERATOR" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {employees.filter(e => e.isActive).map(e => (
-                                <SelectItem key={e.username} value={e.username} className="font-bold text-[10px] uppercase">
-                                    {e.displayName.toUpperCase()}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Target Date</Label>
-                    <Input
-                        type="date"
-                        value={addFormData.date}
-                        onChange={e => setAddFormData(p => ({...p, date: e.target.value}))}
-                        className="h-12 font-bold border-2"
-                    />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">In Time</Label>
-                        <Input
-                            type="time"
-                            value={addFormData.loginTime}
-                            onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))}
-                            className="h-12 font-mono font-bold border-2"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Out Time</Label>
-                        <Input
-                            type="time"
-                            value={addFormData.logoutTime}
-                            onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))}
-                            className="h-12 font-mono font-bold border-2"
-                        />
-                    </div>
+                    <Button variant={editStatus === 'yes' ? 'default' : 'outline'} onClick={() => setEditStatus('yes')} className="h-12 font-black uppercase">PRESENT</Button>
+                    <Button variant={editStatus === 'no' ? 'destructive' : 'outline'} onClick={() => setEditStatus('no')} className="h-12 font-black uppercase">ABSENT</Button>
                 </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Initial Audit Status</Label>
-                    <div className="flex items-center gap-4">
-                        <Button
-                            variant={addFormData.status === 'yes' ? 'default' : 'outline'}
-                            onClick={() => setAddFormData(p => ({...p, status: 'yes'}))}
-                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
-                        >
-                            <CheckCircle2 className="h-4 w-4" /> Present
-                        </Button>
-                        <Button
-                            variant={addFormData.status === 'no' ? 'destructive' : 'outline'}
-                            onClick={() => setAddFormData(p => ({...p, status: 'no'}))}
-                            className="flex-1 h-12 font-black uppercase tracking-widest gap-2"
-                        >
-                            <XCircle className="h-4 w-4" /> Absent
-                        </Button>
-                    </div>
-                </div>
+                <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50">Login Time</Label><Input type="time" value={editLoginTime} onChange={e => setEditLoginTime(e.target.value)} className="h-12 font-mono font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50">Logout Time</Label><Input type="time" value={editLogoutTime} onChange={e => setEditLogoutTime(e.target.value)} className="h-12 font-mono font-bold" /></div>
             </div>
-            <DialogFooter>
-                <Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl bg-emerald-600 hover:bg-emerald-700">
-                    <Save className="mr-2 h-5 w-5" />
-                    {isAddingAttendance ? 'Syncing...' : 'Commit Record'}
-                </Button>
-            </DialogFooter>
+            <DialogFooter><Button disabled={isSavingAttendanceEdit} onClick={handleSaveAttendanceEdit} className="w-full h-14 font-black uppercase tracking-widest text-lg">Save Changes</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isAddAttendanceModalOpen} onOpenChange={setIsAddAttendanceModalOpen}>
+        <DialogContent className="max-w-md font-body">
+            <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Manual Entry</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-4">
+                <Select value={addFormData.username} onValueChange={v => setAddFormData(p => ({...p, username: v}))}>
+                    <SelectTrigger className="h-12 font-bold uppercase"><SelectValue placeholder="PICK OPERATOR" /></SelectTrigger>
+                    <SelectContent>{employees.filter(e => e.isActive).map(e => <SelectItem key={e.username} value={e.username} className="font-bold">{e.displayName.toUpperCase()}</SelectItem>)}</SelectContent>
+                </Select>
+                <Input type="date" value={addFormData.date} onChange={e => setAddFormData(p => ({...p, date: e.target.value}))} className="h-12 font-bold" />
+                <div className="grid grid-cols-2 gap-4">
+                    <Input type="time" value={addFormData.loginTime} onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))} className="h-12 font-mono" />
+                    <Input type="time" value={addFormData.logoutTime} onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))} className="h-12 font-mono" />
+                </div>
+            </div>
+            <DialogFooter><Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-black uppercase tracking-widest text-lg">Commit Record</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -533,11 +276,7 @@ export default function AttendanceRegistryPage() {
   const [editEnd, setEditEnd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const shiftsQuery = useMemo(() => {
-    if (!db) return null;
-    return query(collection(db, 'shifts'), orderBy('startTime', 'desc'));
-  }, [db]);
-
+  const shiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), orderBy('startTime', 'desc')), [db]);
   const { data: allShifts, loading } = useCollection<Shift>(shiftsQuery);
 
   const employeesQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
@@ -545,63 +284,19 @@ export default function AttendanceRegistryPage() {
 
   const staffOptions = useMemo(() => {
     if (!allShifts) return [];
-    const staff = new Map<string, string>();
-    allShifts.forEach(s => {
-        if (s.staffId) {
-            staff.set(s.staffId.toLowerCase(), s.staffId);
-        }
-        s.employees?.forEach(e => {
-            staff.set(e.username.toLowerCase(), e.displayName || e.username);
-        });
-    });
-    return Array.from(staff.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    const staffMap = new Map<string, string>();
+    allShifts.forEach(s => staffMap.set(s.staffId.toLowerCase(), s.staffId));
+    return Array.from(staffMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [allShifts]);
 
-  // Flatten shifts to show one row per employee, per shift
-  const tableEntries = useMemo(() => {
+  const filteredShifts = useMemo(() => {
     if (!allShifts) return [];
-    
-    const entries: any[] = [];
-    
-    allShifts.forEach(shift => {
-        (shift.employees || []).forEach(emp => {
-            const matchesStaff = staffFilter === 'all' || 
-                                 emp.username.toLowerCase() === staffFilter.toLowerCase();
-            const matchesMonth = monthFilter === 'all' || format(new Date(shift.startTime), 'yyyy-MM') === monthFilter;
-            
-            if (matchesStaff && matchesMonth) {
-                entries.push({
-                    ...shift,
-                    displayEmp: emp
-                });
-            }
-        });
+    return allShifts.filter(s => {
+        const matchesStaff = staffFilter === 'all' || s.staffId.toLowerCase() === staffFilter.toLowerCase();
+        const matchesMonth = monthFilter === 'all' || format(new Date(s.startTime), 'yyyy-MM') === monthFilter;
+        return matchesStaff && matchesMonth;
     });
-    
-    return entries.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }, [allShifts, staffFilter, monthFilter]);
-
-  const monthOptions = useMemo(() => {
-    if (!allShifts) return [];
-    const months = new Set<string>();
-    allShifts.forEach(s => months.add(format(new Date(s.startTime), 'yyyy-MM')));
-    return Array.from(months).sort().reverse();
-  }, [allShifts]);
-
-  const formatShiftDuration = (start: string, end?: string) => {
-    if (!end) return "Ongoing";
-    const s = new Date(start);
-    const e = new Date(end);
-    const hours = differenceInHours(e, s);
-    const mins = differenceInMinutes(e, s) % 60;
-    return `${hours}h ${mins}m`;
-  };
-
-  const calculateTotalBreak = (breaks: any[] = []) => {
-    const totalSeconds = breaks.reduce((sum, b) => sum + (b.durationSeconds || 0), 0);
-    const mins = Math.floor(totalSeconds / 60);
-    return `${mins}m`;
-  };
 
   const handleEditClick = (shift: Shift) => {
     setEditingShift(shift);
@@ -612,229 +307,85 @@ export default function AttendanceRegistryPage() {
   const handleSaveEdit = async () => {
     if (!editingShift || !user) return;
     setIsSubmitting(true);
-    
-    const updates = {
-        startTime: new Date(editStart).toISOString(),
-        endTime: editEnd ? new Date(editEnd).toISOString() : null
-    };
-
-    const success = await updateShiftTimes(editingShift.id, updates, user);
-    if (success) {
-        toast({ title: "Shift Corrected", description: "Audit timestamps updated." });
-        setEditingShift(null);
-    }
+    const success = await updateShiftTimes(editingShift.id, { startTime: new Date(editStart).toISOString(), endTime: editEnd ? new Date(editEnd).toISOString() : null }, user);
+    if (success) { toast({ title: "Updated" }); setEditingShift(null); }
     setIsSubmitting(false);
   };
 
-  if (loading) {
-    return (
-        <div className="flex flex-col h-screen items-center justify-center gap-4 opacity-50">
-            <Timer className="h-10 w-10 animate-spin text-primary" />
-            <p className="font-headline text-[10px] tracking-widest uppercase">Querying Attendance Registry...</p>
-        </div>
-    );
-  }
+  const monthOptions = useMemo(() => {
+    if (!allShifts) return [];
+    const months = new Set<string>();
+    allShifts.forEach(s => months.add(format(new Date(s.startTime), 'yyyy-MM')));
+    return Array.from(months).sort().reverse();
+  }, [allShifts]);
+
+  if (loading) return <div className="flex h-screen items-center justify-center animate-pulse uppercase font-black text-xs">Syncing Registry...</div>;
 
   const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto font-body pb-20">
+    <div className="space-y-8 max-w-7xl mx-auto pb-20">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="font-headline text-4xl tracking-wider text-foreground">Attendance Hub</h1>
-            <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em]">Official Punctuality Audit & Visual Attendance Roadmap</p>
-          </div>
+        <div className="flex justify-between items-center mb-8">
+          <div><h1 className="font-headline text-4xl uppercase tracking-wider">Attendance Hub</h1></div>
           <TabsList className="bg-muted/20 border-2 border-dashed h-12 p-1 rounded-xl">
-              <TabsTrigger value="registry" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background shadow-sm gap-2">
-                  <ClipboardCheck className="h-3.5 w-3.5" /> Registry
-              </TabsTrigger>
-              <TabsTrigger value="calendar" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background shadow-sm gap-2">
-                  <CalendarDays className="h-3.5 w-3.5" /> Visual Audit
-              </TabsTrigger>
+              <TabsTrigger value="registry" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background">Registry</TabsTrigger>
+              <TabsTrigger value="calendar" className="font-black uppercase text-[10px] tracking-widest px-6 h-full data-[state=active]:bg-background">Visual Audit</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="registry" className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-500">
-          <Card className="bg-muted/30 border-dashed border-2">
-              <CardContent className="p-4 flex flex-wrap gap-4 items-end">
-                  <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Filter by Staff</Label>
-                      <Select value={staffFilter} onValueChange={setStaffFilter}>
-                          <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
-                              <SelectValue placeholder="All Staff" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="all" className="font-bold uppercase text-[10px]">ALL STAFF</SelectItem>
-                              {staffOptions.map(([username, displayName]) => (
-                                  <SelectItem key={username} value={username} className="font-bold uppercase text-[10px]">{displayName.toUpperCase()}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Filter by Month</Label>
-                      <Select value={monthFilter} onValueChange={setMonthFilter}>
-                          <SelectTrigger className="w-[180px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
-                              <SelectValue placeholder="All Months" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="all" className="font-bold uppercase text-[10px]">ALL HISTORY</SelectItem>
-                              {monthOptions.map(m => <SelectItem key={m} value={m} className="font-bold uppercase text-[10px]">{format(new Date(m + "-01"), 'MMMM yyyy').toUpperCase()}</SelectItem>)}
-                          </SelectContent>
-                      </Select>
-                  </div>
-                  <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] ml-auto bg-background shadow-sm">
-                      {tableEntries.length} RECORDS FOUND
-                  </Badge>
-              </CardContent>
-          </Card>
-
+        <TabsContent value="registry" className="space-y-8">
           <Card className="border-2 shadow-none overflow-hidden">
-              <CardHeader className="bg-muted/10 border-b">
-              <CardTitle className="text-lg font-black uppercase tracking-tight">Shift Master Table</CardTitle>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Historical log of individual logins, logouts, and work hour totals.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
               <Table>
                   <TableHeader className="bg-muted/20">
                   <TableRow>
                       <TableHead className="font-black uppercase text-[10px]">Date</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Operator</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Login/Logout</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Duration</TableHead>
-                      <TableHead className="font-black uppercase text-[10px] text-center">Alerts</TableHead>
-                      <TableHead className="font-black uppercase text-[10px] text-right pr-6">Shift Accounting</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Logins</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Alerts</TableHead>
+                      <TableHead className="text-right font-black uppercase text-[10px]">Pool</TableHead>
                       {isAdmin && <TableHead className="w-[50px]"></TableHead>}
                   </TableRow>
                   </TableHeader>
                   <TableBody>
-                  {tableEntries.map((entry, eIdx) => (
-                      <TableRow key={`${entry.id}-${entry.displayEmp.username}-${eIdx}`} className="group hover:bg-muted/5 transition-colors">
+                  {filteredShifts.map((shift) => (
+                      <TableRow key={shift.id} className="hover:bg-muted/5 transition-colors group">
+                      <TableCell className="font-black uppercase text-[10px]">{format(new Date(shift.startTime), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell className="font-black uppercase text-xs">{(shift.employees || [])[0]?.displayName || shift.staffId}</TableCell>
                       <TableCell>
-                          <p className="font-black text-[11px] uppercase">{format(new Date(entry.startTime), 'MMM dd, yyyy')}</p>
-                          <p className="text-[9px] font-bold text-muted-foreground uppercase">{format(new Date(entry.startTime), 'EEEE')}</p>
-                      </TableCell>
-                      <TableCell>
-                          <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8 border-2 border-primary/10">
-                                  <AvatarFallback className="text-[10px] font-black">{entry.displayEmp.displayName?.charAt(0) || entry.displayEmp.username?.charAt(0) || 'S'}</AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col">
-                                  <span className="font-black uppercase text-xs">
-                                      {entry.displayEmp.displayName || entry.displayEmp.username}
-                                  </span>
-                                  <span className="text-[8px] font-bold text-muted-foreground uppercase">@{entry.displayEmp.username}</span>
-                              </div>
+                          <div className="flex flex-col text-[10px] font-bold uppercase text-emerald-600">
+                              <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 fill-current" /> {format(new Date(shift.startTime), 'p')}</span>
+                              {shift.endTime && <span className="text-muted-foreground flex items-center gap-1.5 mt-1"><Moon className="h-3 w-3" /> {format(new Date(shift.endTime), 'p')}</span>}
                           </div>
                       </TableCell>
                       <TableCell>
-                          <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-600">
-                                  <Zap className="h-3 w-3 text-emerald-500 fill-current" />
-                                  {format(new Date(entry.startTime), 'p')}
-                              </div>
-                              {entry.endTime ? (
-                                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground">
-                                      <Moon className="h-3 w-3" />
-                                      {format(new Date(entry.endTime), 'p')}
-                                  </div>
-                              ) : (
-                                  <Badge variant="outline" className="w-fit h-4 text-[7px] animate-pulse uppercase border-emerald-500 text-emerald-600 bg-emerald-500/5">Active</Badge>
-                              )}
+                          <div className="flex gap-1">
+                              {shift.lateMinutes ? <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">LATE</Badge> : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600">ON TIME</Badge>}
+                              {shift.wasForceExited && <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">FORCE</Badge>}
                           </div>
                       </TableCell>
-                      <TableCell>
-                          <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-tighter">
-                                  <Timer className="h-3 w-3 opacity-40" />
-                                  {formatShiftDuration(entry.startTime, entry.endTime)}
-                              </div>
-                              {entry.breaks?.length > 0 && (
-                                  <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-amber-600">
-                                      <Coffee className="h-2.5 w-2.5" />
-                                      {calculateTotalBreak(entry.breaks)} Break Total
-                                  </div>
-                              )}
-                          </div>
-                      </TableCell>
-                      <TableCell>
-                          <div className="flex flex-wrap justify-center gap-1">
-                              {entry.lateMinutes ? (
-                                  <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black tracking-widest">
-                                      Late ({entry.lateMinutes}m)
-                                  </Badge>
-                              ) : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black tracking-widest text-emerald-600 border-emerald-600/30">On Time</Badge>}
-                              
-                              {entry.overtimeMinutes ? (
-                                  <Badge className="h-4 text-[7px] uppercase font-black bg-blue-600 tracking-widest">
-                                      OT ({entry.overtimeMinutes}m)
-                                  </Badge>
-                              ) : entry.earlyLeaveMinutes ? (
-                                  <Badge variant="secondary" className="h-4 text-[7px] uppercase font-black tracking-widest">
-                                      Early Exit ({entry.earlyLeaveMinutes}m)
-                                  </Badge>
-                              ) : null}
-
-                              {entry.wasForceExited && (
-                                <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black tracking-widest gap-1">
-                                    <AlertTriangle className="h-2 w-2" /> FORCE
-                                </Badge>
-                              )}
-                          </div>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                          <div className="flex flex-col items-end">
-                              <span className="font-mono font-black text-xs text-primary">₹{((entry.cashTotal || 0) + (entry.upiTotal || 0)).toLocaleString()}</span>
-                              <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift Pool Total</span>
-                          </div>
-                      </TableCell>
-                      {isAdmin && (
-                          <TableCell>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEditClick(entry)}>
-                                  <Edit className="h-4 w-4" />
-                              </Button>
-                          </TableCell>
-                      )}
+                      <TableCell className="text-right pr-6 font-mono font-black text-xs text-primary">₹{((shift.cashTotal || 0) + (shift.upiTotal || 0)).toLocaleString()}</TableCell>
+                      {isAdmin && <TableCell><Button variant="ghost" size="icon" onClick={() => handleEditClick(shift)}><Edit className="h-4 w-4" /></Button></TableCell>}
                       </TableRow>
                   ))}
                   </TableBody>
               </Table>
-              </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-500">
+        <TabsContent value="calendar">
             <AttendanceCalendar shifts={allShifts || []} staffOptions={staffOptions} user={user} employees={employees || []} />
         </TabsContent>
       </Tabs>
 
-      {/* EDIT MODAL */}
       <Dialog open={!!editingShift} onOpenChange={o => !o && setEditingShift(null)}>
-        <DialogContent className="max-w-md font-body border-4 border-primary/20">
-            <DialogHeader>
-                <DialogTitle className="font-headline text-xl flex items-center gap-2">
-                    <Edit className="text-primary" />
-                    Correct Shift Times
-                </DialogTitle>
-                <DialogDescription className="font-black text-[9px] uppercase tracking-widest text-muted-foreground">Manually adjust audit timestamps for record {editingShift?.id.slice(0, 8)}.</DialogDescription>
-            </DialogHeader>
+        <DialogContent className="max-w-md font-body">
+            <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Correct Times</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Login Timestamp</Label>
-                    <Input type="datetime-local" value={editStart} onChange={e => setEditStart(e.target.value)} className="h-12 font-mono font-bold border-2" />
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground px-1">Logout Timestamp (Optional)</Label>
-                    <Input type="datetime-local" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="h-12 font-mono font-bold border-2" />
-                </div>
+                <Input type="datetime-local" value={editStart} onChange={e => setEditStart(e.target.value)} className="h-12 font-mono" />
+                <Input type="datetime-local" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="h-12 font-mono" />
             </div>
-            <DialogFooter>
-                <Button disabled={isSubmitting} onClick={handleSaveEdit} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl">
-                    <Save className="mr-2 h-5 w-5" />
-                    {isSubmitting ? 'Updating...' : 'Save Audit Correction'}
-                </Button>
-            </DialogFooter>
+            <DialogFooter><Button disabled={isSubmitting} onClick={handleSaveEdit} className="w-full h-12 font-black uppercase">Update Audit</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
