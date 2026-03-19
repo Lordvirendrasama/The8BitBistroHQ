@@ -285,7 +285,8 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
             endTime: now.toISOString(),
             status: 'completed',
             earlyLeaveMinutes,
-            overtimeMinutes
+            overtimeMinutes,
+            wasForceExited: !!forceEnd
         };
 
         if (totals) {
@@ -299,10 +300,10 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
         const logRef = doc(collection(db, 'logs'));
         batch.set(logRef, sanitize({
             type: 'SHIFT_END',
-            description: `<strong>${user.displayName}</strong> closed the daily shift record.${overtimeMinutes > 0 ? ` Worked <strong>OVERTIME</strong>: ${overtimeMinutes} mins.` : ''}`,
+            description: `<strong>${user.displayName}</strong> closed the daily shift record.${forceEnd ? ' (FORCE EXIT)' : ''}${overtimeMinutes > 0 ? ` Worked <strong>OVERTIME</strong>: ${overtimeMinutes} mins.` : ''}`,
             timestamp: now.toISOString(),
             user: { uid: user.username, displayName: user.displayName },
-            details: { shiftId, totals: totals || {}, earlyLeaveMinutes, overtimeMinutes }
+            details: { shiftId, totals: totals || {}, earlyLeaveMinutes, overtimeMinutes, wasForceExited: !!forceEnd }
         }));
 
         await batch.commit();

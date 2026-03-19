@@ -309,6 +309,7 @@ export interface Shift {
     upiTotal?: number;
     shiftExpenses?: number;
     cycle?: string;
+    wasForceExited?: boolean;
 }
 
 export interface Task {

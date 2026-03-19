@@ -1,4 +1,3 @@
-
 'use client';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { logUserLogin } from '@/firebase/firestore/logs';
@@ -149,10 +148,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   /**
    * Refined Logout: Distinguishes between session clear and shift settlement.
+   * Treats "forceLogout" as a complete system exit.
    */
-  const logout = async (totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number; }, forceLogout?: boolean) => {
+  const logout = async (totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number }, forceLogout?: boolean) => {
     // Only attempt to end shift if totals are provided OR if it's a force end.
-    // This prevents Viren from ending Abbas's shift when he just wants to logout.
     if (user && user.username !== 'Viren' && (totals || forceLogout)) {
       try {
         const db = getFirestore();

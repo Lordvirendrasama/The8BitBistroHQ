@@ -42,7 +42,8 @@ import {
   ClipboardCheck,
   X,
   PlusCircle,
-  UserPlus
+  UserPlus,
+  AlertTriangle
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -132,7 +133,8 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
           logoutTime: shift.endTime ? format(new Date(shift.endTime), 'p') : null,
           rawEndTime: shift.endTime ? new Date(shift.endTime).getTime() : null,
           originalShift: shift,
-          employeeId: emp.id
+          employeeId: emp.id,
+          wasForceExited: !!shift.wasForceExited
         };
 
         const existing = userMap.get(emp.username);
@@ -324,6 +326,12 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
                         s.result === 'no' ? <UserX className="h-3.5 w-3.5 shrink-0 text-destructive" /> :
                         <Clock className="h-3.5 w-3.5 shrink-0 opacity-40 animate-pulse" />}
                     </div>
+
+                    {s.wasForceExited && (
+                        <div className="flex items-center gap-1 bg-destructive/10 text-destructive px-1.5 py-0.5 rounded text-[7px] font-black w-fit">
+                            <AlertTriangle className="h-2 w-2" /> FORCE EXIT
+                        </div>
+                    )}
 
                     {isOwner && (
                         <div className="flex gap-1 pt-1 border-t border-current border-dashed opacity-80 hover:opacity-100 transition-opacity">
@@ -766,6 +774,12 @@ export default function AttendanceRegistryPage() {
                                       Early Exit ({shift.earlyLeaveMinutes}m)
                                   </Badge>
                               ) : null}
+
+                              {shift.wasForceExited && (
+                                <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black tracking-widest gap-1">
+                                    <AlertTriangle className="h-2 w-2" /> FORCE
+                                </Badge>
+                              )}
                           </div>
                       </TableCell>
                       <TableCell className="text-right pr-6">
