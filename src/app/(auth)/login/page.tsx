@@ -10,9 +10,9 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
-import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw, IndianRupee, TrendingUp } from 'lucide-react';
+import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw, IndianRupee, TrendingUp, Circle } from 'lucide-react';
 import { cn, isBusinessToday } from '@/lib/utils';
-import type { GamingPackage, Employee, Bill, Station } from '@/lib/types';
+import type { GamingPackage, Employee, Bill, Station, Shift } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -50,6 +50,9 @@ export default function LoginPage() {
 
   const stationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
   const { data: stations } = useCollection<Station>(stationsQuery);
+
+  const activeShiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), where('status', '==', 'active')), [db]);
+  const { data: activeShifts } = useCollection<Shift>(activeShiftsQuery);
 
   // Sort Employees: Viren first, then Admins, then alphabetical
   const employees = useMemo(() => {
@@ -343,21 +346,31 @@ export default function LoginPage() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-4xl">
-            {employees?.map(emp => (
-                <Button key={emp.id} onClick={() => handleLoginAttempt(emp)} variant="outline" className={cn(
-                    "group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm",
-                    emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : ""
-                )}>
-                    <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
-                        {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Users className="h-12 w-12" /> : <User className="h-12 w-12" />}
-                    </div>
-                    {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
-                     emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
-                     <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
-                    <span className="font-headline text-[10px] tracking-tight uppercase">{emp.displayName}</span>
-                    <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">{emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}</span>
-                </Button>
-            ))}
+            {employees?.map(emp => {
+                const isOnline = activeShifts?.some(s => s.staffId === emp.username);
+                
+                return (
+                    <Button key={emp.id} onClick={() => handleLoginAttempt(emp)} variant="outline" className={cn(
+                        "group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm",
+                        emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : ""
+                    )}>
+                        {isOnline && (
+                            <Badge className="absolute top-2 left-2 bg-emerald-500 hover:bg-emerald-500 text-white text-[7px] font-black h-4 px-1.5 border-none shadow-sm animate-pulse flex items-center gap-1">
+                                <Circle className="h-1.5 w-1.5 fill-current" />
+                                ONLINE
+                            </Badge>
+                        )}
+                        <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
+                            {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Users className="h-12 w-12" /> : <User className="h-12 w-12" />}
+                        </div>
+                        {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
+                        emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
+                        <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
+                        <span className="font-headline text-[10px] tracking-tight uppercase">{emp.displayName}</span>
+                        <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">{emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}</span>
+                    </Button>
+                );
+            })}
             {(!employees || employees.length === 0) && (
                 <div className="col-span-full py-12 flex flex-col items-center gap-4 opacity-50 bg-card/20 rounded-3xl border-2 border-dashed">
                     <RefreshCcw className="h-10 w-10 animate-spin text-muted-foreground" />
