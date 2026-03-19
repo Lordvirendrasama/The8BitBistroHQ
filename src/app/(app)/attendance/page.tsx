@@ -107,7 +107,7 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
     
     if (dayShifts.length === 0) return null;
 
-    const userMap = new Map<string, any>();
+    const results: any[] = [];
 
     dayShifts.forEach(shift => {
       const activeInShift = (shift.employees || []).filter(e => 
@@ -115,15 +115,14 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
       );
 
       activeInShift.forEach(emp => {
-        // Robust strategic task identification
-        const taskName = `Verify ${emp.displayName || emp.username} Presence`;
+        // Find specific strategic task for this user in this shift
         const verifyTask = (shift.tasks || []).find(t => 
           t.type === 'strategic' && t.name.toLowerCase().includes(emp.username.toLowerCase())
         );
 
-        const currentData = {
+        results.push({
           shiftId: shift.id,
-          taskName: verifyTask?.name || taskName,
+          taskName: verifyTask?.name || `Verify ${emp.displayName || emp.username} Presence`,
           username: emp.username,
           displayName: emp.displayName,
           verified: !!verifyTask?.completed,
@@ -135,26 +134,11 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
           originalShift: shift,
           employeeId: emp.id,
           wasForceExited: !!shift.wasForceExited
-        };
-
-        const existing = userMap.get(emp.username);
-
-        if (!existing) {
-          userMap.set(emp.username, currentData);
-        } else {
-          // Prioritize verified records or earliest logins
-          if (!existing.verified && currentData.verified) {
-            userMap.set(emp.username, currentData);
-          } else if (existing.verified === currentData.verified) {
-            if (currentData.rawStartTime < existing.rawStartTime) {
-              userMap.set(emp.username, currentData);
-            }
-          }
-        }
+        });
       });
     });
 
-    return Array.from(userMap.values());
+    return results;
   };
 
   const handleEditAttendanceClick = (record: any) => {
@@ -391,7 +375,7 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
                     <Edit className="text-primary" />
                     Edit Attendance
                 </DialogTitle>
-                <DialogDescription className="font-black text-[9px] uppercase tracking-widest">
+                <DialogDescription className="font-black text-[9px] uppercase tracking-widest text-muted-foreground">
                     Adjust attendance record for {selectedAttendanceForEdit?.displayName} on {format(new Date(selectedAttendanceForEdit?.originalShift.startTime || new Date()), 'MMM dd, yyyy')}.
                 </DialogDescription>
             </DialogHeader>
@@ -453,7 +437,7 @@ function AttendanceCalendar({ shifts, staffOptions, user, employees }: { shifts:
                     <UserPlus className="text-emerald-600" />
                     Manual Entry
                 </DialogTitle>
-                <DialogDescription className="font-black text-[9px] uppercase tracking-widest">
+                <DialogDescription className="font-black text-[9px] uppercase tracking-widest text-muted-foreground">
                     Create a historical shift record for an operator.
                 </DialogDescription>
             </DialogHeader>
@@ -573,16 +557,28 @@ export default function AttendanceRegistryPage() {
     return Array.from(staff.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [allShifts]);
 
-  const filteredShifts = useMemo(() => {
+  // Flatten shifts to show one row per employee, per shift
+  const tableEntries = useMemo(() => {
     if (!allShifts) return [];
-    return allShifts.filter(shift => {
-        const date = new Date(shift.startTime);
-        const matchesStaff = staffFilter === 'all' || 
-                             shift.staffId?.toLowerCase() === staffFilter.toLowerCase() || 
-                             shift.employees?.some(e => e.username.toLowerCase() === staffFilter.toLowerCase());
-        const matchesMonth = monthFilter === 'all' || format(date, 'yyyy-MM') === monthFilter;
-        return matchesStaff && matchesMonth;
+    
+    const entries: any[] = [];
+    
+    allShifts.forEach(shift => {
+        (shift.employees || []).forEach(emp => {
+            const matchesStaff = staffFilter === 'all' || 
+                                 emp.username.toLowerCase() === staffFilter.toLowerCase();
+            const matchesMonth = monthFilter === 'all' || format(new Date(shift.startTime), 'yyyy-MM') === monthFilter;
+            
+            if (matchesStaff && matchesMonth) {
+                entries.push({
+                    ...shift,
+                    displayEmp: emp
+                });
+            }
+        });
     });
+    
+    return entries.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }, [allShifts, staffFilter, monthFilter]);
 
   const monthOptions = useMemo(() => {
@@ -689,7 +685,7 @@ export default function AttendanceRegistryPage() {
                       </Select>
                   </div>
                   <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] ml-auto bg-background shadow-sm">
-                      {filteredShifts.length} RECORDS FOUND
+                      {tableEntries.length} RECORDS FOUND
                   </Badge>
               </CardContent>
           </Card>
@@ -697,41 +693,38 @@ export default function AttendanceRegistryPage() {
           <Card className="border-2 shadow-none overflow-hidden">
               <CardHeader className="bg-muted/10 border-b">
               <CardTitle className="text-lg font-black uppercase tracking-tight">Shift Master Table</CardTitle>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Historical log of logins, logouts, and work hour totals.</CardDescription>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Historical log of individual logins, logouts, and work hour totals.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
               <Table>
                   <TableHeader className="bg-muted/20">
                   <TableRow>
                       <TableHead className="font-black uppercase text-[10px]">Date</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Staff</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Operator</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Login/Logout</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Duration</TableHead>
                       <TableHead className="font-black uppercase text-[10px] text-center">Alerts</TableHead>
-                      <TableHead className="font-black uppercase text-[10px] text-right pr-6">Accounting</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] text-right pr-6">Shift Accounting</TableHead>
                       {isAdmin && <TableHead className="w-[50px]"></TableHead>}
                   </TableRow>
                   </TableHeader>
                   <TableBody>
-                  {filteredShifts.map((shift) => (
-                      <TableRow key={shift.id} className="group hover:bg-muted/5 transition-colors">
+                  {tableEntries.map((entry, eIdx) => (
+                      <TableRow key={`${entry.id}-${entry.displayEmp.username}-${eIdx}`} className="group hover:bg-muted/5 transition-colors">
                       <TableCell>
-                          <p className="font-black text-[11px] uppercase">{format(new Date(shift.startTime), 'MMM dd, yyyy')}</p>
-                          <p className="text-[9px] font-bold text-muted-foreground uppercase">{format(new Date(shift.startTime), 'EEEE')}</p>
+                          <p className="font-black text-[11px] uppercase">{format(new Date(entry.startTime), 'MMM dd, yyyy')}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">{format(new Date(entry.startTime), 'EEEE')}</p>
                       </TableCell>
                       <TableCell>
                           <div className="flex items-center gap-2">
-                              <div className="flex -space-x-2 overflow-hidden">
-                                  {shift.employees?.map((emp, eIdx) => (
-                                      <Avatar key={eIdx} className="h-7 w-7 border-2 border-background shadow-sm">
-                                          <AvatarFallback className="text-[8px] font-black">{emp.displayName?.charAt(0) || emp.username?.charAt(0) || 'S'}</AvatarFallback>
-                                      </Avatar>
-                                  ))}
-                              </div>
+                              <Avatar className="h-8 w-8 border-2 border-primary/10">
+                                  <AvatarFallback className="text-[10px] font-black">{entry.displayEmp.displayName?.charAt(0) || entry.displayEmp.username?.charAt(0) || 'S'}</AvatarFallback>
+                              </Avatar>
                               <div className="flex flex-col">
                                   <span className="font-black uppercase text-xs">
-                                      {shift.employees?.map(e => e.displayName || e.username).join(' + ') || shift.staffId || 'Unknown'}
+                                      {entry.displayEmp.displayName || entry.displayEmp.username}
                                   </span>
+                                  <span className="text-[8px] font-bold text-muted-foreground uppercase">@{entry.displayEmp.username}</span>
                               </div>
                           </div>
                       </TableCell>
@@ -739,12 +732,12 @@ export default function AttendanceRegistryPage() {
                           <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-600">
                                   <Zap className="h-3 w-3 text-emerald-500 fill-current" />
-                                  {format(new Date(shift.startTime), 'p')}
+                                  {format(new Date(entry.startTime), 'p')}
                               </div>
-                              {shift.endTime ? (
+                              {entry.endTime ? (
                                   <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground">
                                       <Moon className="h-3 w-3" />
-                                      {format(new Date(shift.endTime), 'p')}
+                                      {format(new Date(entry.endTime), 'p')}
                                   </div>
                               ) : (
                                   <Badge variant="outline" className="w-fit h-4 text-[7px] animate-pulse uppercase border-emerald-500 text-emerald-600 bg-emerald-500/5">Active</Badge>
@@ -755,35 +748,35 @@ export default function AttendanceRegistryPage() {
                           <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-tighter">
                                   <Timer className="h-3 w-3 opacity-40" />
-                                  {formatShiftDuration(shift.startTime, shift.endTime)}
+                                  {formatShiftDuration(entry.startTime, entry.endTime)}
                               </div>
-                              {shift.breaks?.length > 0 && (
+                              {entry.breaks?.length > 0 && (
                                   <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-amber-600">
                                       <Coffee className="h-2.5 w-2.5" />
-                                      {calculateTotalBreak(shift.breaks)} Break Total
+                                      {calculateTotalBreak(entry.breaks)} Break Total
                                   </div>
                               )}
                           </div>
                       </TableCell>
                       <TableCell>
                           <div className="flex flex-wrap justify-center gap-1">
-                              {shift.lateMinutes ? (
+                              {entry.lateMinutes ? (
                                   <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black tracking-widest">
-                                      Late ({shift.lateMinutes}m)
+                                      Late ({entry.lateMinutes}m)
                                   </Badge>
                               ) : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black tracking-widest text-emerald-600 border-emerald-600/30">On Time</Badge>}
                               
-                              {shift.overtimeMinutes ? (
+                              {entry.overtimeMinutes ? (
                                   <Badge className="h-4 text-[7px] uppercase font-black bg-blue-600 tracking-widest">
-                                      OT ({shift.overtimeMinutes}m)
+                                      OT ({entry.overtimeMinutes}m)
                                   </Badge>
-                              ) : shift.earlyLeaveMinutes ? (
+                              ) : entry.earlyLeaveMinutes ? (
                                   <Badge variant="secondary" className="h-4 text-[7px] uppercase font-black tracking-widest">
-                                      Early Exit ({shift.earlyLeaveMinutes}m)
+                                      Early Exit ({entry.earlyLeaveMinutes}m)
                                   </Badge>
                               ) : null}
 
-                              {shift.wasForceExited && (
+                              {entry.wasForceExited && (
                                 <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black tracking-widest gap-1">
                                     <AlertTriangle className="h-2 w-2" /> FORCE
                                 </Badge>
@@ -792,13 +785,13 @@ export default function AttendanceRegistryPage() {
                       </TableCell>
                       <TableCell className="text-right pr-6">
                           <div className="flex flex-col items-end">
-                              <span className="font-mono font-black text-xs text-primary">₹{((shift.cashTotal || 0) + (shift.upiTotal || 0)).toLocaleString()}</span>
-                              <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift Total</span>
+                              <span className="font-mono font-black text-xs text-primary">₹{((entry.cashTotal || 0) + (entry.upiTotal || 0)).toLocaleString()}</span>
+                              <span className="text-[8px] font-bold text-muted-foreground uppercase">Shift Pool Total</span>
                           </div>
                       </TableCell>
                       {isAdmin && (
                           <TableCell>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEditClick(shift)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEditClick(entry)}>
                                   <Edit className="h-4 w-4" />
                               </Button>
                           </TableCell>
@@ -824,7 +817,7 @@ export default function AttendanceRegistryPage() {
                     <Edit className="text-primary" />
                     Correct Shift Times
                 </DialogTitle>
-                <DialogDescription className="font-black text-[9px] uppercase tracking-widest">Manually adjust audit timestamps for record {editingShift?.id.slice(0, 8)}.</DialogDescription>
+                <DialogDescription className="font-black text-[9px] uppercase tracking-widest text-muted-foreground">Manually adjust audit timestamps for record {editingShift?.id.slice(0, 8)}.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="space-y-1.5">
