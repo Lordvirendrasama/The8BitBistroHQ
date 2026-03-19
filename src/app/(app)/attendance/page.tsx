@@ -721,10 +721,18 @@ export default function AttendanceRegistryPage() {
                       </TableCell>
                       <TableCell>
                           <div className="flex items-center gap-2">
-                              <Avatar className="h-7 w-7 border-2 border-primary/10">
-                                  <AvatarFallback className="text-[10px] font-black">{shift.employees?.[0]?.displayName?.charAt(0) || shift.staffId?.charAt(0) || 'S'}</AvatarFallback>
-                              </Avatar>
-                              <span className="font-black uppercase text-xs">{shift.employees?.[0]?.displayName || shift.staffId || 'Unknown'}</span>
+                              <div className="flex -space-x-2 overflow-hidden">
+                                  {shift.employees?.map((emp, eIdx) => (
+                                      <Avatar key={eIdx} className="h-7 w-7 border-2 border-background shadow-sm">
+                                          <AvatarFallback className="text-[8px] font-black">{emp.displayName?.charAt(0) || emp.username?.charAt(0) || 'S'}</AvatarFallback>
+                                      </Avatar>
+                                  ))}
+                              </div>
+                              <div className="flex flex-col">
+                                  <span className="font-black uppercase text-xs">
+                                      {shift.employees?.map(e => e.displayName || e.username).join(' + ') || shift.staffId || 'Unknown'}
+                                  </span>
+                              </div>
                           </div>
                       </TableCell>
                       <TableCell>

@@ -133,12 +133,6 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
         const qToday = query(shiftsRef, where('date', '==', businessToday), limit(1));
         const shiftSnapshot = await getDocs(qToday);
 
-        // STRATEGIC TASKS DEFINITION
-        const strategicTasks = [
-            { name: "Verify Abbas Presence", type: 'strategic' as const, ownerOnly: true },
-            { name: "Verify Didi Presence", type: 'strategic' as const, ownerOnly: true }
-        ];
-
         if (!shiftSnapshot.empty) {
             const shiftDoc = shiftSnapshot.docs[0];
             const shiftData = shiftDoc.data() as Shift;
@@ -146,29 +140,36 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
 
             const updates: any = {};
             
+            // Add user to employees list if not present
+            const currentEmployees = [...(shift.employees || [])];
+            const userIsListed = currentEmployees.some(e => e.username === user.username);
+            if (!userIsListed) {
+                currentEmployees.push({ username: user.username, displayName: user.displayName });
+                updates.employees = currentEmployees;
+            }
+
             const existingTaskNames = new Set(shiftData.tasks.map(t => t.name));
             
-            // Sync from Master Tasks
+            // Sync from Master Tasks (Morning/End of Day)
             const newTasksToSync = masterTasks
                 .filter(mt => !existingTaskNames.has(mt.name))
                 .map(mt => ({ name: mt.name, type: mt.type, completed: false, ownerOnly: mt.ownerOnly }));
 
-            // Sync Strategic Tasks (Always required for Owner)
-            const newStrategicToSync = strategicTasks
-                .filter(st => !existingTaskNames.has(st.name))
-                .map(st => ({ ...st, completed: false }));
+            // DYNAMIC STRATEGIC TASKS: Ensure every non-Viren employee in the roster has a verification task
+            const dynamicStrategic = currentEmployees
+                .filter(emp => emp.username !== 'Viren')
+                .map(emp => ({
+                    name: `Verify ${emp.displayName || emp.username} Presence`,
+                    type: 'strategic' as const,
+                    ownerOnly: true,
+                    completed: false
+                }))
+                .filter(st => !existingTaskNames.has(st.name));
 
-            if (newTasksToSync.length > 0 || newStrategicToSync.length > 0) {
-                updates.tasks = [...shiftData.tasks, ...newTasksToSync, ...newStrategicToSync];
+            if (newTasksToSync.length > 0 || dynamicStrategic.length > 0) {
+                updates.tasks = [...shiftData.tasks, ...newTasksToSync, ...dynamicStrategic];
             }
 
-            if (!isOwner) {
-                const userIsListed = shift.employees.some(e => e.username === user.username);
-                if (!userIsListed) {
-                    updates.employees = [...shift.employees, { username: user.username, displayName: user.displayName }];
-                }
-            }
-            
             if (shift.status === 'completed' && !shift.endTime) {
                 updates.status = 'active';
             }
@@ -181,8 +182,6 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             }
             return shift;
         } else {
-            if (isOwner) return null;
-
             const now = new Date();
             
             const empsRef = collection(db, 'employees');
@@ -192,6 +191,8 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
 
             const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(now, empSettings);
 
+            const currentEmployees = [{ username: user.username, displayName: user.displayName }];
+
             // Base Tasks from Settings
             const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
                 name: task.name,
@@ -200,8 +201,15 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 ownerOnly: task.ownerOnly || false
             }));
 
-            // INJECT MANDATORY OWNER VERIFICATION TASKS
-            const initialStrategic: ShiftTask[] = strategicTasks.map(st => ({ ...st, completed: false }));
+            // Generate initial strategic verification for the starting employee (if not Viren)
+            const initialStrategic: ShiftTask[] = currentEmployees
+                .filter(emp => emp.username !== 'Viren')
+                .map(emp => ({
+                    name: `Verify ${emp.displayName || emp.username} Presence`,
+                    type: 'strategic' as const,
+                    ownerOnly: true,
+                    completed: false
+                }));
 
             const combinedTasks = [...dailyTasks, ...initialStrategic];
 
@@ -209,7 +217,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             const newShiftData: Omit<Shift, 'id'> = {
                 date: businessToday,
                 staffId: user.username,
-                employees: [{ username: user.username, displayName: user.displayName }],
+                employees: currentEmployees,
                 startTime: now.toISOString(),
                 status: 'active',
                 tasks: combinedTasks,
@@ -227,7 +235,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 type: 'SHIFT_START',
                 description: `Shift Master Record created for business day <strong>${businessToday}</strong> by <strong>${user.displayName}</strong>.${lateMinutes > 0 ? ` Marked as <strong>LATE</strong> by ${lateMinutes} mins.` : ''}`,
                 timestamp: now.toISOString(),
-                user: { user: user.username, displayName: user.displayName },
+                user: { uid: user.username, displayName: user.displayName },
                 details: { shiftId: newShiftRef.id, lateMinutes, workedOnWeeklyOff },
                 cycle: settings.activeCycle
             }));
