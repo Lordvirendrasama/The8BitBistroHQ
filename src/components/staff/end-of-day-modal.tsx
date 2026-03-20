@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Moon, IndianRupee, Wallet, ListChecks, TrendingUp, AlertTriangle, User, Phone, Info, MinusCircle, PlusCircle, Clock } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Input } from '../ui/input';
 import { useAuth } from '@/firebase/auth/use-user';
 import { cn, isBusinessToday } from '@/lib/utils';
@@ -66,21 +67,29 @@ export function EndOfDayModal({
   const debtsQuery = useMemo(() => !db ? null : query(collection(db, 'debts'), where('status', '==', 'pending')), [db]);
   const { data: debts } = useCollection<Debt>(debtsQuery);
 
-  const isLoggingOutEarly = useMemo(() => {
-    if (!employeeSettings?.workEndTime) return false;
-    const [h, m] = employeeSettings.workEndTime.split(':').map(Number);
-    const now = new Date();
-    const target = new Date();
-    target.setHours(h, m, 0, 0);
+  const { isLoggingOutEarly, timeLeft, targetEndTime } = useMemo(() => {
+    if (!activeShift?.startTime) return { isLoggingOutEarly: false, timeLeft: null, targetEndTime: null };
     
-    // If target time is small (e.g. 1 AM) and current time is late night (e.g. 11 PM), 
-    // it technically means the next calendar day.
-    if (h < 5 && now.getHours() >= 18) {
-        target.setDate(target.getDate() + 1);
+    const start = new Date(activeShift.startTime);
+    const target = new Date(start.getTime() + 12 * 60 * 60 * 1000); // 12 hours later
+    const now = new Date();
+
+    const isEarly = now < target;
+    let timeLeftStr = null;
+    
+    if (isEarly) {
+        const diffMs = target.getTime() - now.getTime();
+        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        timeLeftStr = `${diffHrs}h ${diffMins}m`;
     }
 
-    return now < target;
-  }, [employeeSettings]);
+    return { 
+        isLoggingOutEarly: isEarly, 
+        timeLeft: timeLeftStr, 
+        targetEndTime: format(target, 'HH:mm')
+    };
+  }, [activeShift]);
 
   const systemTally = useMemo(() => {
     if (!bills) return { cash: 0, upi: 0, pending: 0, activeDebtors: [] as Debt[] };
@@ -155,7 +164,7 @@ export function EndOfDayModal({
                     <AlertTriangle className="h-6 w-6 text-destructive" />
                     <div className="space-y-0.5">
                         <p className="font-black uppercase text-xs text-destructive">Early Exit Alert</p>
-                        <p className="text-[10px] font-bold text-foreground">You are logging out early. Scheduled shift ends at {employeeSettings?.workEndTime || '23:00'}.</p>
+                        <p className="text-[10px] font-bold text-foreground">You are logging out early. Your 12-hour shift ends at {targetEndTime}. <span className="text-destructive font-black ml-1 animate-pulse">({timeLeft} left to finish)</span></p>
                     </div>
                 </div>
             )}

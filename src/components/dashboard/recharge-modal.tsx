@@ -104,7 +104,7 @@ export function RechargeModal({ isOpen, onOpenChange, member }: RechargeModalPro
                     <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-30">
                         <Zap className="h-8 w-8 mb-2" />
                         <p className="text-[10px] font-black uppercase">No Recharge Packs Configured</p>
-                        <p className="text-[8px] font-bold">Add them in Settings > Recharge Packs</p>
+                        <p className="text-[8px] font-bold">Add them in Settings &gt; Recharge Packs</p>
                     </div>
                   )}
                 </RadioGroup>

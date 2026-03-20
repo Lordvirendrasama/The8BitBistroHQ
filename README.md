@@ -26,7 +26,7 @@ git config --global user.name "Your Name"
 1. Open **`package.json`**.
 2. Click the **Play icon** (▶️) next to the **`"deploy"`** script.
 
-It will now automatically commit as **"Build v1.4.5"** (and future versions) and push to GitHub without asking for a password.
+It will now automatically commit as **"Build v1.0.1"** (and future versions) and push to GitHub without asking for a password.
 
 ---
 

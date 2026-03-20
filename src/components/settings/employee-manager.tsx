@@ -49,7 +49,10 @@ export function EmployeeManager() {
     joinDate: new Date().toISOString().slice(0, 10),
     pin: '',
     workStartTime: '11:00',
-    workEndTime: '23:00'
+    workEndTime: '23:00',
+    workingDaysPerWeek: 6,
+    overtimeMultiplier: 1.5,
+    isActive: true
   });
 
   const empQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
@@ -67,7 +70,9 @@ export function EmployeeManager() {
       joinDate: emp.joinDate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
       pin: emp.pin || '',
       workStartTime: emp.workStartTime || '11:00',
-      workEndTime: emp.workEndTime || '23:00'
+      workEndTime: emp.workEndTime || '23:00',
+      workingDaysPerWeek: emp.workingDaysPerWeek ?? 6,
+      overtimeMultiplier: emp.overtimeMultiplier ?? 1.5
     });
     setModalOpen(true);
   };
@@ -89,7 +94,7 @@ export function EmployeeManager() {
     setFormData({ 
         username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', 
         weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '',
-        workStartTime: '11:00', workEndTime: '23:00'
+        workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true
     });
   };
 
@@ -217,6 +222,18 @@ export function EmployeeManager() {
                 </Select>
               </div>
             </div>
+            {formData.salaryType === 'monthly' && (
+              <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Working Days / Week</Label>
+                  <Input type="number" min={1} max={7} value={formData.workingDaysPerWeek || ''} onChange={e => setFormData({...formData, workingDaysPerWeek: Number(e.target.value)})} className="font-mono" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Overtime Multiplier</Label>
+                  <Input type="number" step="0.1" value={formData.overtimeMultiplier || ''} onChange={e => setFormData({...formData, overtimeMultiplier: Number(e.target.value)})} className="font-mono" />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase text-muted-foreground">Weekly Off Day</Label>

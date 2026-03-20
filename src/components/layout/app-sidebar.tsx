@@ -56,7 +56,6 @@ import { APP_VERSION } from '@/lib/version';
 const allNavItems = [
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
-  { href: '/drop-box', icon: Files, label: 'Bistro DropBox' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
   
   // Advanced Financials (Grouped for Viren/Admin)
@@ -79,8 +78,15 @@ const allNavItems = [
   { href: '/financials/spending', label: 'Spending & Stock', icon: ShoppingBag },
   
   { href: '/staff', icon: ListChecks, label: 'Daily Checklist' },
-  { href: '/attendance', icon: ClipboardCheck, label: 'Attendance Registry' },
-  { href: '/leaves', icon: CalendarRange, label: 'Leaves Tracker' },
+  { 
+    label: 'Attendance Hub', 
+    icon: ClipboardCheck, 
+    href: '/attendance', 
+    subItems: [
+        { href: '/attendance', label: 'Attendance Registry', icon: ClipboardCheck },
+        { href: '/leaves', label: 'Leaves Tracker', icon: CalendarRange },
+    ]
+  },
   { href: '/users', icon: Users, label: 'User Registry' },
   { href: '/billing-history', icon: Receipt, label: 'Billing Audit' },
   { 

@@ -1,6 +1,6 @@
 'use client';
 
-import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, doc, updateDoc, writeBatch, query, where, getDocs, limit, orderBy, runTransaction, DocumentReference, getDoc, deleteDoc } from 'firebase/firestore';
 import type { Shift, ShiftTask, LogEntry, Task, ShiftBreak, Employee } from '@/lib/types';
 import type { CustomUser } from '@/firebase/auth/use-user';
 import { getBusinessDate } from '@/lib/utils';
@@ -371,11 +371,41 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
     }
 };
 
-export const updateShiftTimes = async (shiftId: string, updates: { startTime: string, endTime?: string | null, cashTotal?: number, upiTotal?: number, shiftExpenses?: number, tasks?: ShiftTask[] }, user: CustomUser) => {
+export const updateShiftTimes = async (shiftId: string, updates: any, user: CustomUser) => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
+    
     try {
-        await updateDoc(shiftRef, sanitize(updates));
+        const shiftSnap = await getDoc(shiftRef);
+        if (!shiftSnap.exists()) return false;
+        const shiftData = shiftSnap.data() as Shift;
+        
+        const staffId = shiftData.staffId || (shiftData.employees ? shiftData.employees[0]?.username : null);
+        let empSettings: Employee | undefined;
+        
+        if (staffId) {
+            const empsRef = collection(db, 'employees');
+            const empQ = query(empsRef, where('username', '==', staffId), limit(1));
+            const empSnap = await getDocs(empQ);
+            if (!empSnap.empty) {
+                empSettings = empSnap.docs[0].data() as Employee;
+            }
+        }
+
+        const finalUpdates = { ...updates };
+        
+        if (updates.startTime) {
+            const { lateMinutes } = calculateAttendanceOnStart(new Date(updates.startTime), empSettings);
+            finalUpdates.lateMinutes = lateMinutes;
+        }
+        
+        if (updates.endTime) {
+            const { earlyLeaveMinutes, overtimeMinutes } = calculateAttendanceOnEnd(new Date(updates.endTime), empSettings);
+            finalUpdates.earlyLeaveMinutes = earlyLeaveMinutes;
+            finalUpdates.overtimeMinutes = overtimeMinutes;
+        }
+
+        await updateDoc(shiftRef, sanitize(finalUpdates));
         return true;
     } catch (e) {
         console.error("Error updating shift times:", e);
@@ -389,6 +419,22 @@ export const manuallyCreateShift = async (data: {
     const db = getFirestore();
     const settings = await getSettings();
     
+    // Fetch employee settings for late arrival calculation
+    const empsRef = collection(db, 'employees');
+    const empQ = query(empsRef, where('username', '==', data.username), limit(1));
+    const empSnap = await getDocs(empQ);
+    const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
+    
+    const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(new Date(data.startTime), empSettings);
+    let earlyLeaveMinutes = 0;
+    let overtimeMinutes = 0;
+    
+    if (data.endTime) {
+        const result = calculateAttendanceOnEnd(new Date(data.endTime), empSettings);
+        earlyLeaveMinutes = result.earlyLeaveMinutes;
+        overtimeMinutes = result.overtimeMinutes;
+    }
+
     const strategicTask: ShiftTask = {
         name: `Verify ${data.displayName} Presence`,
         type: 'strategic', ownerOnly: true, completed: true, verificationResult: data.status,
@@ -400,7 +446,12 @@ export const manuallyCreateShift = async (data: {
         date: data.date, staffId: data.username,
         employees: [{ username: data.username, displayName: data.displayName }],
         startTime: data.startTime, endTime: data.endTime || undefined,
-        status: 'completed', tasks: [strategicTask], breaks: [], cycle: settings.activeCycle || 'Live Cycle'
+        status: 'completed', tasks: [strategicTask], breaks: [], 
+        cycle: settings.activeCycle || 'Live Cycle',
+        lateMinutes,
+        earlyLeaveMinutes,
+        overtimeMinutes,
+        workedOnWeeklyOff
     };
     
     try {
@@ -408,6 +459,17 @@ export const manuallyCreateShift = async (data: {
         return true;
     } catch (error) {
         console.error("Error creating manual shift:", error);
+        return false;
+    }
+};
+
+export const deleteShift = async (shiftId: string) => {
+    const db = getFirestore();
+    try {
+        await deleteDoc(doc(db, 'shifts', shiftId));
+        return true;
+    } catch (error) {
+        console.error("Error deleting shift:", error);
         return false;
     }
 };

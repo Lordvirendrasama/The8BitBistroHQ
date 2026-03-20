@@ -156,8 +156,6 @@ export type LogEntryType =
     | 'EMPLOYEE_UPDATED'
     | 'EMPLOYEE_DELETED'
     | 'LEAVE_RECORDED'
-    | 'DROPBOX_UPLOAD'
-    | 'DROPBOX_CLEAR'
     | 'SHIFT_UPDATED'
     | 'DEBT_CLEARED'
     | 'LEAVE_RECORDED';
@@ -471,6 +469,8 @@ export interface Employee {
   salary: number;
   salaryType: 'monthly' | 'hourly';
   weekOffDay: number; // 0-6 (Sun-Sat)
+  workingDaysPerWeek?: number; // Added for salary calculation
+  overtimeMultiplier?: number; // Added for salary calculation
   joinDate: string;
   photoURL?: string;
   isActive: boolean;
@@ -501,15 +501,4 @@ export interface AppUpdate {
   };
 }
 
-export interface DropboxFile {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  size: number;
-  uploadedAt: string;
-  uploadedBy: {
-    uid: string;
-    displayName: string;
-  };
-}
+

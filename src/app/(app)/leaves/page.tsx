@@ -64,7 +64,7 @@ export default function LeavesTrackerPage() {
     const auditStart = startOfMonth(new Date(auditMonth + "-01"));
     const auditEnd = endOfMonth(auditStart);
     
-    const monthlyMap: Record<string, number> = {};
+    const monthlyMap: Record<string, { unpaid: number, other: number }> = {};
     
     leaves.forEach(leave => {
         const lStart = startOfDay(new Date(leave.startDate));
@@ -76,13 +76,19 @@ export default function LeavesTrackerPage() {
         
         if (overlapStart <= overlapEnd) {
             const daysInMonth = differenceInDays(overlapEnd, overlapStart) + 1;
-            monthlyMap[leave.employeeName] = (monthlyMap[leave.employeeName] || 0) + daysInMonth;
+            if (!monthlyMap[leave.employeeName]) monthlyMap[leave.employeeName] = { unpaid: 0, other: 0 };
+            
+            if (leave.type === 'unpaid') {
+                monthlyMap[leave.employeeName].unpaid += daysInMonth;
+            } else {
+                monthlyMap[leave.employeeName].other += daysInMonth;
+            }
         }
     });
 
     const monthlyTotals = Object.entries(monthlyMap)
-        .map(([name, days]) => ({ name, days }))
-        .sort((a, b) => b.days - a.days);
+        .map(([name, counts]) => ({ name, unpaid: counts.unpaid, other: counts.other, total: counts.unpaid + counts.other }))
+        .sort((a, b) => b.total - a.total);
 
     return { active, upcoming, monthlyTotals };
   }, [leaves, auditMonth]);
@@ -238,13 +244,22 @@ export default function LeavesTrackerPage() {
             <CardContent>
                 <div className="space-y-4 pt-2">
                     {stats.monthlyTotals.map((item, idx) => (
-                        <div key={idx} className="space-y-1.5">
+                        <div key={idx} className="space-y-1.5 hover:bg-muted/5 p-2 -mx-2 rounded-lg transition-colors">
                             <div className="flex justify-between items-end">
                                 <span className="text-[10px] font-black uppercase tracking-tight">{item.name}</span>
-                                <span className="text-xs font-black font-mono text-primary">{item.days} {item.days === 1 ? 'DAY' : 'DAYS'}</span>
+                                <div className="text-right">
+                                    <span className="text-xs font-black font-mono text-primary">{item.total} {item.total === 1 ? 'DAY' : 'DAYS'} TOTAL</span>
+                                    {item.total > 0 && (
+                                        <div className="flex justify-end gap-2 text-[8px] font-bold uppercase opacity-60">
+                                            {item.unpaid > 0 && <span className="text-red-500">{item.unpaid} UNPAID</span>}
+                                            {item.other > 0 && <span className="text-emerald-500">{item.other} PAID/SICK</span>}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                <div className="h-full bg-primary/40 rounded-full" style={{ width: `${Math.min(100, (item.days / 30) * 100)}%` }} />
+                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden flex">
+                                {item.other > 0 && <div className="h-full bg-emerald-500/80" style={{ width: `${(item.other / Math.max(30, item.total)) * 100}%` }} />}
+                                {item.unpaid > 0 && <div className="h-full bg-red-500/80" style={{ width: `${(item.unpaid / Math.max(30, item.total)) * 100}%` }} />}
                             </div>
                         </div>
                     ))}

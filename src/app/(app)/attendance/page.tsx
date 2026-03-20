@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
-import type { Shift, ShiftTask, Employee } from '@/lib/types';
+import type { Shift, ShiftTask, Employee, Leave } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,9 @@ import {
   Zap,
   Moon,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  DollarSign,
+  Plane
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -55,8 +57,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { updateShiftTimes, updateTask, manuallyCreateShift } from '@/firebase/firestore/shifts';
+import { updateShiftTimes, updateTask, manuallyCreateShift, deleteShift } from '@/firebase/firestore/shifts';
 import { clearAttendanceData } from '@/firebase/firestore/data-management';
+import { recordLeave } from '@/firebase/firestore/leaves';
+import { SalaryCalculator } from '@/components/attendance/salary-calculator';
 import { useToast } from '@/hooks/use-toast';
  
 const toLocalISOString = (date: Date) => {
@@ -64,18 +68,11 @@ const toLocalISOString = (date: Date) => {
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
 };
 
-function AttendanceCalendar({ shifts, filterStaff, user, onAddClick }: { shifts: Shift[], filterStaff: string, user: any, onAddClick?: (date: Date) => void }) {
+function AttendanceCalendar({ shifts, leaves, filterStaff, user, onAddClick, onEditClick }: { shifts: Shift[], leaves: Leave[], filterStaff: string, user: any, onAddClick?: (date: Date) => void, onEditClick?: (s: any) => void }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const { toast } = useToast();
 
   const isOwner = user?.username === 'Viren';
-
-  const [isEditAttendanceModalOpen, setIsEditAttendanceModalOpen] = useState(false);
-  const [selectedAttendanceForEdit, setSelectedAttendanceForEdit] = useState<any | null>(null);
-  const [editStatus, setEditStatus] = useState<'yes' | 'no' | null>(null);
-  const [editLoginTime, setEditLoginTime] = useState('');
-  const [editLogoutTime, setEditLogoutTime] = useState('');
-  const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -95,9 +92,33 @@ function AttendanceCalendar({ shifts, filterStaff, user, onAddClick }: { shifts:
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayShifts = shifts.filter(s => s.date === dateStr);
     
-    if (dayShifts.length === 0) return null;
-
     const results: any[] = [];
+
+    // Process Overlapping Leaves First
+    const overlappingLeaves = leaves.filter(l => {
+        const s = new Date(l.startDate);
+        const e = new Date(l.endDate);
+        const d = new Date(date);
+        s.setHours(0,0,0,0);
+        e.setHours(0,0,0,0);
+        d.setHours(0,0,0,0);
+        return d >= s && d <= e;
+    });
+
+    overlappingLeaves.forEach(leave => {
+        const isMismatched = filterStaff !== 'all' && leave.employeeName.toLowerCase() !== filterStaff.toLowerCase();
+        if (isMismatched) return;
+        
+        results.push({
+            isLeave: true,
+            leaveId: leave.id,
+            displayName: leave.employeeName,
+            type: leave.type,
+            reason: leave.reason,
+            status: leave.status
+        });
+    });
+
     dayShifts.forEach(shift => {
       const staffUsername = shift.staffId || (shift.employees && shift.employees[0]?.username);
       const staffDisplayName = (shift.employees && shift.employees[0]?.displayName) || shift.staffId || 'Unknown';
@@ -123,33 +144,7 @@ function AttendanceCalendar({ shifts, filterStaff, user, onAddClick }: { shifts:
       });
     });
 
-    return results;
-  };
-
-  const handleEditAttendanceClick = (record: any) => {
-    setSelectedAttendanceForEdit(record);
-    setEditStatus(record.result || null);
-    setEditLoginTime(record.rawStartTime ? format(new Date(record.rawStartTime), 'HH:mm') : '');
-    setEditLogoutTime(record.rawEndTime ? format(new Date(record.rawEndTime), 'HH:mm') : '');
-    setIsEditAttendanceModalOpen(true);
-  };
-
-  const handleSaveAttendanceEdit = async () => {
-    if (!selectedAttendanceForEdit || !user) return;
-    setIsSavingAttendanceEdit(true);
-    const originalShift = selectedAttendanceForEdit.originalShift;
-    const shiftDate = format(new Date(originalShift.startTime), 'yyyy-MM-dd');
-    const newStartTime = editLoginTime ? new Date(`${shiftDate}T${editLoginTime}:00`).toISOString() : originalShift.startTime;
-    const newEndTime = (editLogoutTime && editStatus !== 'no') ? new Date(`${shiftDate}T${editLogoutTime}:00`).toISOString() : null;
-
-    const sSuccess = await updateShiftTimes(selectedAttendanceForEdit.shiftId, { startTime: newStartTime, endTime: newEndTime }, user);
-    const tSuccess = await updateTask(selectedAttendanceForEdit.shiftId, selectedAttendanceForEdit.taskName, editStatus === 'yes' || editStatus === 'no', user, editStatus || undefined);
-
-    if (sSuccess && tSuccess) {
-      toast({ title: 'Updated' });
-      setIsEditAttendanceModalOpen(false);
-    }
-    setIsSavingAttendanceEdit(false);
+    return results.length > 0 ? results : null;
   };
 
   return (
@@ -177,47 +172,47 @@ function AttendanceCalendar({ shifts, filterStaff, user, onAddClick }: { shifts:
                 {isOwner && onAddClick && <Button variant="ghost" size="icon" onClick={() => onAddClick(day)} className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"><Plus className="h-3 w-3" /></Button>}
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-                {status?.map((s: any, idx) => (
-                  <button key={idx} onClick={() => isOwner && handleEditAttendanceClick(s)} className={cn("w-full p-2 rounded-lg border-2 text-[9px] font-black uppercase text-left transition-all", s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-muted text-muted-foreground")}>
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="truncate">{s.displayName}</span>
-                        {s.result === 'yes' ? <UserCheck className="h-3 w-3" /> : s.result === 'no' ? <UserX className="h-3 w-3" /> : <Clock className="h-3 w-3 opacity-40" />}
-                    </div>
-                    <p className="text-[7px] font-mono opacity-60">IN: {s.loginTime}</p>
-                    {isOwner && (
-                        <div className="flex gap-1 pt-1 border-t border-dashed border-current mt-1">
-                            {!s.verified ? (
-                                <>
-                                    <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'yes'); }} className="flex-1 py-1 bg-emerald-600 text-white rounded text-center">YES</div>
-                                    <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'no'); }} className="flex-1 py-1 bg-destructive text-white rounded text-center">NO</div>
-                                </>
-                            ) : (
-                                <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, null); }} className="w-full py-1 bg-muted text-muted-foreground rounded flex justify-center items-center gap-1">RESET</div>
-                            )}
+                {status?.map((s: any, idx) => {
+                  if (s.isLeave) {
+                      return (
+                          <div key={idx} className={cn("w-full p-2 rounded-lg border-2 border-dashed text-[9px] font-black uppercase text-left transition-all", s.type === 'paid' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.type === 'sick' ? "bg-amber-500/10 border-amber-500/20 text-amber-700" : "bg-red-500/10 border-red-500/20 text-red-700")}>
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span className="truncate">{s.displayName}</span>
+                                  <Plane className="h-3 w-3 opacity-60" />
+                              </div>
+                              <p className="text-[7px] font-mono opacity-80">{s.type} LEAVE ({s.status})</p>
+                              {s.reason && <p className="text-[7px] font-mono opacity-50 mt-0.5 truncate">{s.reason}</p>}
+                          </div>
+                      );
+                  }
+
+                  return (
+                      <button key={idx} onClick={() => isOwner && onEditClick?.(s)} className={cn("w-full p-2 rounded-lg border-2 text-[9px] font-black uppercase text-left transition-all", s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-muted text-muted-foreground")}>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="truncate">{s.displayName}</span>
+                            {s.result === 'yes' ? <UserCheck className="h-3 w-3" /> : s.result === 'no' ? <UserX className="h-3 w-3" /> : <Clock className="h-3 w-3 opacity-40" />}
                         </div>
-                    )}
-                  </button>
-                ))}
+                        <p className="text-[7px] font-mono opacity-60">IN: {s.loginTime}</p>
+                        {isOwner && (
+                            <div className="flex gap-1 pt-1 border-t border-dashed border-current mt-1">
+                                {!s.verified ? (
+                                    <>
+                                        <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'yes'); }} className="flex-1 py-1 bg-emerald-600 text-white rounded text-center">YES</div>
+                                        <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, 'no'); }} className="flex-1 py-1 bg-destructive text-white rounded text-center">NO</div>
+                                    </>
+                                ) : (
+                                    <div onClick={(e) => { e.stopPropagation(); handleVerify(s.shiftId, s.taskName, null); }} className="w-full py-1 bg-muted text-muted-foreground rounded flex justify-center items-center gap-1">RESET</div>
+                                )}
+                            </div>
+                        )}
+                      </button>
+                  );
+                })}
               </div>
             </div>
           );
         })}
       </div>
-
-      <Dialog open={isEditAttendanceModalOpen} onOpenChange={setIsEditAttendanceModalOpen}>
-        <DialogContent className="max-w-md font-body">
-            <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Edit Attendance</DialogTitle></DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <Button variant={editStatus === 'yes' ? 'default' : 'outline'} onClick={() => setEditStatus('yes')} className="h-12 font-black uppercase">PRESENT</Button>
-                    <Button variant={editStatus === 'no' ? 'destructive' : 'outline'} onClick={() => setEditStatus('no')} className="h-12 font-black uppercase">ABSENT</Button>
-                </div>
-                <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50">Login Time</Label><Input type="time" value={editLoginTime} onChange={e => setEditLoginTime(e.target.value)} className="h-12 font-mono font-bold" /></div>
-                <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50">Logout Time</Label><Input type="time" value={editLogoutTime} onChange={e => setEditLogoutTime(e.target.value)} className="h-12 font-mono font-bold" /></div>
-            </div>
-            <DialogFooter><Button disabled={isSavingAttendanceEdit} onClick={handleSaveAttendanceEdit} className="w-full h-14 font-black uppercase tracking-widest text-lg">Save Changes</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -231,13 +226,41 @@ export default function AttendanceRegistryPage() {
   const [staffFilter, setStaffFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
   
-  const [editingShift, setEditingShift] = useState<Shift | null>(null);
-  const [editStart, setEditStart] = useState('');
-  const [editEnd, setEditEnd] = useState('');
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+  const [editStatus, setEditStatus] = useState<'yes' | 'no' | 'leave' | null>(null);
+  const [editLeaveType, setEditLeaveType] = useState<'paid' | 'unpaid' | 'sick'>('paid');
+  const [editLeaveReason, setEditLeaveReason] = useState('');
+  
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
   const [editCash, setEditCash] = useState('');
   const [editUpi, setEditUpi] = useState('');
   const [editTasks, setEditTasks] = useState<ShiftTask[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const auditFlags = useMemo(() => {
+    if (!editStartTime || editStatus === 'leave') return { isLate: false, isShortShift: false, shiftDurationHours: 0 };
+    
+    // Check Late Login (After 11:10 AM)
+    const [h, m] = editStartTime.split(':').map(Number);
+    const loginMinutes = h * 60 + m;
+    const isLate = loginMinutes > (11 * 60 + 10);
+    
+    // Check 12-Hour Shift
+    let isShortShift = false;
+    let shiftDurationHours = 0;
+    if (editStartDate && editStartTime && editEndDate && editEndTime) {
+        const start = new Date(`${editStartDate}T${editStartTime}:00`);
+        const end = new Date(`${editEndDate}T${editEndTime}:00`);
+        const durationMs = end.getTime() - start.getTime();
+        shiftDurationHours = Math.round((durationMs / (1000 * 60 * 60)) * 10) / 10;
+        isShortShift = shiftDurationHours > 0 && shiftDurationHours < 12;
+    }
+    
+    return { isLate, isShortShift, shiftDurationHours };
+  }, [editStartTime, editStartDate, editEndDate, editEndTime, editStatus]);
 
   // Manual Add State
   const [isAddAttendanceModalOpen, setIsAddAttendanceModalOpen] = useState(false);
@@ -247,11 +270,18 @@ export default function AttendanceRegistryPage() {
     date: toLocalISOString(new Date()).slice(0, 10),
     loginTime: '11:00',
     logoutTime: '23:00',
-    status: 'yes' as 'yes' | 'no'
+    status: 'yes' as 'yes' | 'no' | 'leave',
+    leaveType: 'paid' as 'paid' | 'unpaid' | 'sick',
+    leaveReason: ''
   });
+  
+  const [isSalaryCalculatorOpen, setIsSalaryCalculatorOpen] = useState(false);
 
   const shiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), orderBy('startTime', 'desc')), [db]);
   const { data: allShifts, loading } = useCollection<Shift>(shiftsQuery);
+
+  const leavesQuery = useMemo(() => !db ? null : collection(db, 'leaves'), [db]);
+  const { data: allLeaves } = useCollection<Leave>(leavesQuery);
 
   const employeesQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
   const { data: employees } = useCollection<Employee>(employeesQuery);
@@ -286,40 +316,79 @@ export default function AttendanceRegistryPage() {
     setIsAddingAttendance(true);
     
     try {
-        const [year, month, day] = addFormData.date.split('-').map(Number);
-        const start = new Date(year, month - 1, day);
-        const [sh, sm] = addFormData.loginTime.split(':').map(Number);
-        start.setHours(sh, sm, 0, 0);
-        const startIso = start.toISOString();
+        if (addFormData.status === 'leave') {
+            await recordLeave({
+                employeeId: emp.id,
+                employeeName: emp.displayName,
+                startDate: addFormData.date,
+                endDate: addFormData.date,
+                type: addFormData.leaveType,
+                reason: addFormData.leaveReason || (addFormData.leaveType.toUpperCase() + ' LEAVE'),
+                status: 'approved'
+            });
 
-        let endIso = null;
-        if (addFormData.logoutTime) {
-            const end = new Date(year, month - 1, day);
-            const [eh, em] = addFormData.logoutTime.split(':').map(Number);
-            end.setHours(eh, em, 0, 0);
-            if (end < start) end.setDate(end.getDate() + 1);
-            endIso = end.toISOString();
-        }
+            // Reconcile manual absent shift to balance visual registry
+            const [year, month, day] = addFormData.date.split('-').map(Number);
+            const start = new Date(year, month - 1, day, 11, 0, 0, 0);
+            await manuallyCreateShift({ 
+                username: addFormData.username,
+                date: addFormData.date,
+                status: 'no',
+                displayName: emp.displayName,
+                startTime: start.toISOString(),
+                endTime: null
+            }, user);
 
-        const success = await manuallyCreateShift({ 
-            username: addFormData.username,
-            date: addFormData.date,
-            status: addFormData.status,
-            displayName: emp.displayName,
-            startTime: startIso,
-            endTime: endIso
-        }, user);
-
-        if (success) {
-            toast({ title: "Logged", description: `Attendance record created for ${emp.displayName}.` });
+            toast({ title: "Logged", description: `Leave recorded for ${emp.displayName}.` });
             setIsAddAttendanceModalOpen(false);
             setAddFormData({
                 username: '',
                 date: new Date().toISOString().slice(0, 10),
                 loginTime: '11:00',
                 logoutTime: '23:00',
-                status: 'yes'
+                status: 'yes',
+                leaveType: 'paid',
+                leaveReason: ''
             });
+
+        } else {
+            const [year, month, day] = addFormData.date.split('-').map(Number);
+            const start = new Date(year, month - 1, day);
+            const [sh, sm] = addFormData.loginTime.split(':').map(Number);
+            start.setHours(sh, sm, 0, 0);
+            const startIso = start.toISOString();
+
+            let endIso = null;
+            if (addFormData.logoutTime) {
+                const end = new Date(year, month - 1, day);
+                const [eh, em] = addFormData.logoutTime.split(':').map(Number);
+                end.setHours(eh, em, 0, 0);
+                if (end < start) end.setDate(end.getDate() + 1);
+                endIso = end.toISOString();
+            }
+
+            const success = await manuallyCreateShift({ 
+                username: addFormData.username,
+                date: addFormData.date,
+                status: addFormData.status as 'yes' | 'no',
+                displayName: emp.displayName,
+                startTime: startIso,
+                endTime: endIso
+            }, user);
+
+            if (success) {
+                toast({ title: "Logged", description: `Attendance record created for ${emp.displayName}.` });
+                setIsAddAttendanceModalOpen(false);
+                setAddFormData({
+                    username: '',
+                    date: new Date().toISOString().slice(0, 10),
+                    loginTime: '11:00',
+                    logoutTime: '23:00',
+                    status: 'yes',
+                    leaveType: 'paid',
+                    leaveReason: ''
+                });
+            }
         }
     } catch (error) {
         console.error("Manual add failed:", error);
@@ -329,26 +398,99 @@ export default function AttendanceRegistryPage() {
     }
   };
 
-  const handleEditClick = (shift: Shift) => {
-    setEditingShift(shift);
-    setEditStart(toLocalISOString(new Date(shift.startTime)));
-    setEditEnd(shift.endTime ? toLocalISOString(new Date(shift.endTime)) : '');
+  const handleEditClick = (record: any) => {
+    const isCalendar = !!record.originalShift;
+    const shift = isCalendar ? record.originalShift : record;
+    
+    setEditingRecord({ isCalendar, shift, record });
+    
+    const verifyTask = (shift.tasks || []).find((t: any) => t.type === 'strategic');
+    setEditStatus(verifyTask ? (verifyTask.verificationResult as any) : null);
+    
+    if (shift.startTime) {
+        const d = new Date(shift.startTime);
+        setEditStartDate(format(d, 'yyyy-MM-dd'));
+        setEditStartTime(format(d, 'HH:mm'));
+    } else {
+        setEditStartDate('');
+        setEditStartTime('');
+    }
+    
+    if (shift.endTime) {
+        const d = new Date(shift.endTime);
+        setEditEndDate(format(d, 'yyyy-MM-dd'));
+        setEditEndTime(format(d, 'HH:mm'));
+    } else {
+        setEditEndDate('');
+        setEditEndTime('');
+    }
     setEditCash(shift.cashTotal?.toString() || '0');
     setEditUpi(shift.upiTotal?.toString() || '0');
     setEditTasks(shift.tasks || []);
+    
+    setEditLeaveType('paid');
+    setEditLeaveReason('');
   };
 
   const handleSaveEdit = async () => {
-    if (!editingShift || !user) return;
+    if (!editingRecord || !user) return;
     setIsSubmitting(true);
-    const success = await updateShiftTimes(editingShift.id, { 
-        startTime: new Date(editStart).toISOString(), 
-        endTime: editEnd ? new Date(editEnd).toISOString() : null,
-        cashTotal: Number(editCash),
-        upiTotal: Number(editUpi),
-        tasks: editTasks
-    }, user);
-    if (success) { toast({ title: "Updated" }); setEditingShift(null); }
+    
+    const { shift } = editingRecord;
+    const shiftDate = format(new Date(shift.startTime), 'yyyy-MM-dd');
+    const staffUsername = shift.staffId || shift.employees?.[0]?.username || 'unknown';
+    const displayName = shift.employees?.[0]?.displayName || staffUsername;
+    
+    if (editStatus === 'leave') {
+        const leaveSuccess = await recordLeave({
+            employeeId: staffUsername,
+            employeeName: displayName,
+            startDate: shiftDate,
+            endDate: shiftDate,
+            type: editLeaveType,
+            reason: editLeaveReason || (editLeaveType.toUpperCase() + ' LEAVE (UPDATE AUDIT)'),
+            status: 'approved'
+        });
+        
+        if (leaveSuccess) {
+            const verifyTask = (shift.tasks || []).find((t: any) => t.type === 'strategic');
+            if (verifyTask) await updateTask(shift.id, verifyTask.name, true, user, 'no');
+            toast({ title: 'Leave Recorded' });
+            setEditingRecord(null);
+        }
+    } else {
+        const newStartTime = (editStartDate && editStartTime) ? new Date(`${editStartDate}T${editStartTime}:00`).toISOString() : shift.startTime;
+        const newEndTime = (editEndDate && editEndTime) ? new Date(`${editEndDate}T${editEndTime}:00`).toISOString() : null;
+
+        const sSuccess = await updateShiftTimes(shift.id, { 
+            startTime: newStartTime, 
+            endTime: newEndTime,
+            cashTotal: Number(editCash),
+            upiTotal: Number(editUpi),
+            tasks: editTasks
+        }, user);
+        
+        let tSuccess = true;
+        const verifyTask = (shift.tasks || []).find((t: any) => t.type === 'strategic');
+        if (verifyTask && editStatus && editStatus !== 'leave') {
+            tSuccess = await updateTask(shift.id, verifyTask.name, true, user, editStatus);
+        }
+
+        if (sSuccess && tSuccess) {
+          toast({ title: 'Updated' });
+          setEditingRecord(null);
+        }
+    }
+    
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteShift = async () => {
+    if (!editingRecord || !window.confirm("Are you sure you want to permanently delete this login record?")) return;
+    setIsSubmitting(true);
+    const success = await deleteShift(editingRecord.shift.id);
+    if (success) { toast({ title: "Record Deleted" }); setEditingRecord(null); }
+    else { toast({ variant: 'destructive', title: "Delete Failed" }); }
     setIsSubmitting(false);
   };
 
@@ -387,6 +529,9 @@ export default function AttendanceRegistryPage() {
                 <div className="flex gap-2">
                     <Button onClick={() => setIsAddAttendanceModalOpen(true)} size="sm" className="h-8 px-4 font-black uppercase text-[10px] gap-2 shadow-lg">
                         <Plus className="h-3.5 w-3.5" /> ADD LOG
+                    </Button>
+                    <Button onClick={() => setIsSalaryCalculatorOpen(true)} size="sm" className="h-8 px-4 font-black uppercase text-[10px] gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700">
+                        <DollarSign className="h-3.5 w-3.5" /> PAYROLL
                     </Button>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -488,71 +633,115 @@ export default function AttendanceRegistryPage() {
         <TabsContent value="calendar" className="animate-in fade-in slide-in-from-right-2 duration-300">
             <AttendanceCalendar 
                 shifts={allShifts || []} 
+                leaves={allLeaves || []}
                 filterStaff={staffFilter} 
                 user={user} 
                 onAddClick={(date) => {
                     setAddFormData(p => ({ ...p, date: format(date, 'yyyy-MM-dd') }));
                     setIsAddAttendanceModalOpen(true);
                 }}
+                onEditClick={handleEditClick}
             />
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!editingShift} onOpenChange={o => !o && setEditingShift(null)}>
-        <DialogContent className="max-md font-body">
-            <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Correct Times</DialogTitle></DialogHeader>
+      <Dialog open={!!editingRecord} onOpenChange={o => !o && setEditingRecord(null)}>
+        <DialogContent className="max-w-md font-body">
+            <DialogHeader><DialogTitle className="font-headline text-lg uppercase">Update Audit</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Start Time</Label><Input type="datetime-local" value={editStart} onChange={e => setEditStart(e.target.value)} className="h-12 font-mono" /></div>
-                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">End Time</Label><Input type="datetime-local" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="h-12 font-mono" /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Cash Total</Label><Input type="number" value={editCash} onChange={e => setEditCash(e.target.value)} className="h-12 font-mono font-bold" /></div>
-                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">UPI Total</Label><Input type="number" value={editUpi} onChange={e => setEditUpi(e.target.value)} className="h-12 font-mono font-bold" /></div>
+
+                <div className="space-y-1.5 border-b pb-4">
+                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Presence Verification</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                        <Button variant={editStatus === 'yes' ? 'default' : 'outline'} onClick={() => setEditStatus('yes')} className="h-10 font-black uppercase text-[10px] border-2">PRESENT</Button>
+                        <Button variant={editStatus === 'no' ? 'destructive' : 'outline'} onClick={() => setEditStatus('no')} className="h-10 font-black uppercase text-[10px] border-2">ABSENT</Button>
+                        <Button variant={editStatus === 'leave' ? 'secondary' : 'outline'} onClick={() => setEditStatus('leave')} className="h-10 font-black uppercase text-[10px] border-2 bg-muted/60">LEAVE (OFF)</Button>
+                    </div>
                 </div>
 
-                {editTasks.length > 0 && isAdmin && (
-                    <div className="space-y-3 pt-4 border-t border-dashed">
-                        <Label className="text-[10px] font-black uppercase opacity-50 pl-1">Compliance Audit (Manual Override)</Label>
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                            {editTasks.map((task, idx) => (
-                                <div key={idx} className="flex items-start space-x-3 group">
-                                    <Checkbox 
-                                        id={`edit-task-${idx}`} 
-                                        checked={task.completed} 
-                                        onCheckedChange={(checked) => {
-                                            const newTasks = [...editTasks];
-                                            newTasks[idx] = { 
-                                                ...task, 
-                                                completed: !!checked,
-                                                completedAt: checked ? new Date().toISOString() : undefined,
-                                                completedBy: checked ? { username: user.username, displayName: user.displayName } : undefined
-                                            };
-                                            setEditTasks(newTasks);
-                                        }}
-                                        className="mt-0.5 h-4 w-4 border-2"
-                                    />
-                                    <div className="flex-1">
-                                        <Label 
-                                            htmlFor={`edit-task-${idx}`} 
-                                            className={cn(
-                                                "text-xs font-bold uppercase cursor-pointer transition-all", 
-                                                task.completed ? "text-muted-foreground line-through opacity-50" : "text-foreground"
-                                            )}
-                                        >
-                                            {task.name}
-                                        </Label>
-                                        {task.completed && task.completedBy && (
-                                            <p className="text-[8px] font-medium text-emerald-600 uppercase mt-0.5">Verified by {task.completedBy.displayName}</p>
-                                        )}
-                                    </div>
+                {editStatus === 'leave' ? (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Leave Category</Label><Select value={editLeaveType} onValueChange={(v: any) => setEditLeaveType(v)}><SelectTrigger className="h-12 border-2 uppercase font-bold text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="paid" className="font-bold text-xs uppercase">Paid Leave</SelectItem><SelectItem value="unpaid" className="font-bold text-xs uppercase">Unpaid (LWP)</SelectItem><SelectItem value="sick" className="font-bold text-xs uppercase">Sick Leave</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Reason / Memo</Label><Input value={editLeaveReason} onChange={e => setEditLeaveReason(e.target.value)} placeholder="e.g. SICK LEAVE" className="h-12 font-bold uppercase text-xs border-2" /></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Start Date</Label>
+                                <Input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className="h-12 font-mono border-2" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between pr-1">
+                                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Start Time</Label>
+                                    {auditFlags.isLate && <span className="text-[8px] font-black text-destructive uppercase animate-pulse flex items-center gap-1"><AlertTriangle className="h-2 w-2" /> LATE LOGIN</span>}
                                 </div>
-                            ))}
+                                <Input type="time" value={editStartTime} onChange={e => setEditStartTime(e.target.value)} className={cn("h-12 font-mono border-2", auditFlags.isLate && "border-destructive/50 bg-destructive/5")} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-50 pl-1">End Date</Label>
+                                <Input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} className="h-12 font-mono border-2" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between pr-1">
+                                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">End Time</Label>
+                                    {auditFlags.isShortShift && <span className="text-[8px] font-black text-amber-600 uppercase flex items-center gap-1"><Zap className="h-2 w-2" /> {auditFlags.shiftDurationHours} HRS</span>}
+                                </div>
+                                <Input type="time" value={editEndTime} onChange={e => setEditEndTime(e.target.value)} className={cn("h-12 font-mono border-2", auditFlags.isShortShift && "border-amber-500/50 bg-amber-500/5")} />
+                            </div>
                         </div>
                     </div>
+                    {auditFlags.isShortShift && (
+                        <div className="px-3 py-2 bg-amber-50 border-2 border-amber-200/50 rounded-lg flex items-center gap-3">
+                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                            <p className="text-[10px] font-bold text-amber-700 uppercase leading-tight">Wait! Shift is only {auditFlags.shiftDurationHours} hours. Verify if employee completed the full 12-hour session.</p>
+                        </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Cash Total</Label><Input type="number" value={editCash} onChange={e => setEditCash(e.target.value)} className="h-12 font-mono font-bold border-2" /></div>
+                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">UPI Total</Label><Input type="number" value={editUpi} onChange={e => setEditUpi(e.target.value)} className="h-12 font-mono font-bold border-2" /></div>
+                    </div>
+
+                    {editTasks.length > 0 && isAdmin && (
+                        <div className="space-y-3 pt-4 border-t border-dashed">
+                            <Label className="text-[10px] font-black uppercase opacity-50 pl-1">Compliance Audit</Label>
+                            <div className="space-y-3 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                                {editTasks.map((task, idx) => (
+                                    <div key={idx} className="flex items-start space-x-3">
+                                        <Checkbox 
+                                            id={`edit-task-${idx}`} 
+                                            checked={task.completed} 
+                                            onCheckedChange={(checked) => {
+                                                const newTasks = [...editTasks];
+                                                newTasks[idx] = { 
+                                                    ...task, 
+                                                    completed: !!checked,
+                                                    completedAt: checked ? new Date().toISOString() : undefined,
+                                                    completedBy: checked ? { username: user.username, displayName: user.displayName } : undefined
+                                                };
+                                                setEditTasks(newTasks);
+                                            }}
+                                            className="mt-0.5 h-4 w-4 border-2"
+                                        />
+                                        <div className="flex-1">
+                                            <Label htmlFor={`edit-task-${idx}`} className={cn("text-xs font-bold uppercase cursor-pointer transition-all", task.completed ? "text-muted-foreground line-through opacity-50" : "text-foreground")}>{task.name}</Label>
+                                            {task.completed && task.completedBy && <p className="text-[8px] font-medium text-emerald-600 uppercase mt-0.5">Verified by {task.completedBy.displayName}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                  </>
                 )}
             </div>
-            <DialogFooter><Button disabled={isSubmitting} onClick={handleSaveEdit} className="w-full h-12 font-black uppercase">Update Audit</Button></DialogFooter>
+            <DialogFooter className="flex w-full gap-2 sm:justify-between items-center sm:space-x-0">
+                <Button disabled={isSubmitting} variant="destructive" onClick={handleDeleteShift} className="h-12 w-12 shrink-0 p-0"><Trash2 className="h-5 w-5" /></Button>
+                <Button disabled={isSubmitting} onClick={handleSaveEdit} className="h-12 flex-1 font-black uppercase tracking-widest shadow-xl">Update Audit</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -573,9 +762,10 @@ export default function AttendanceRegistryPage() {
                 
                 <div className="space-y-1.5">
                     <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Presence Verification</Label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-2">
                         <Button variant={addFormData.status === 'yes' ? 'default' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'yes'}))} className="h-12 font-black uppercase text-[10px] border-2">PRESENT</Button>
                         <Button variant={addFormData.status === 'no' ? 'destructive' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'no'}))} className="h-12 font-black uppercase text-[10px] border-2">ABSENT</Button>
+                        <Button variant={addFormData.status === 'leave' ? 'secondary' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'leave'}))} className="h-12 font-black uppercase text-[10px] border-2 bg-muted/60">LEAVE (OFF)</Button>
                     </div>
                 </div>
 
@@ -584,16 +774,36 @@ export default function AttendanceRegistryPage() {
                     <Input type="date" value={addFormData.date} onChange={e => setAddFormData(p => ({...p, date: e.target.value}))} className="h-12 font-bold border-2" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {addFormData.status === 'leave' ? (
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Login Time</Label>
-                        <Input type="time" value={addFormData.loginTime} onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
+                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Leave Category</Label>
+                        <Select value={addFormData.leaveType} onValueChange={(v: any) => setAddFormData(p => ({...p, leaveType: v}))}>
+                            <SelectTrigger className="h-12 border-2 uppercase font-bold text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="paid" className="font-bold text-xs uppercase">Paid Leave</SelectItem>
+                                <SelectItem value="unpaid" className="font-bold text-xs uppercase">Unpaid (LWP)</SelectItem>
+                                <SelectItem value="sick" className="font-bold text-xs uppercase">Sick Leave</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Logout Time</Label>
-                        <Input type="time" value={addFormData.logoutTime} onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
+                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Reason / Memo</Label>
+                        <Input value={addFormData.leaveReason} onChange={e => setAddFormData(p => ({...p, leaveReason: e.target.value}))} placeholder="e.g. SICK LEAVE" className="h-12 font-bold uppercase text-xs border-2" />
                     </div>
-                </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Login Time</Label>
+                          <Input type="time" value={addFormData.loginTime} onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
+                      </div>
+                      <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Logout Time</Label>
+                          <Input type="time" value={addFormData.logoutTime} onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
+                      </div>
+                  </div>
+                )}
             </div>
             <DialogFooter>
                 <Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl">
@@ -602,6 +812,8 @@ export default function AttendanceRegistryPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <SalaryCalculator open={isSalaryCalculatorOpen} onOpenChange={setIsSalaryCalculatorOpen} />
     </div>
   );
 }
