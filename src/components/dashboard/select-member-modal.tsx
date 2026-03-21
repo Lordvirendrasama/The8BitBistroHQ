@@ -187,8 +187,9 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                   name: `Recharge: Combined Balance`, 
                   duration: balance, 
                   price: 0, 
-                  reminderDuration: Math.min(3600, balance) // Default to 1 hour or full balance
+                  reminderDuration: balance // Default to full balance to match registry
               };
+
           } else {
               const pkgId = isBuy 
                 ? (item as GamingPackage).id 
@@ -229,8 +230,12 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
           if (!configToUse || !configToUse.name) return null;
 
+          const isMemberUsingRecharge = configToUse.mode === 'recharge' || configToUse.rechargeId === 'pool';
           const durationSeconds = configToUse.reminderDuration || configToUse.duration || 0;
+          
+          // For members using recharges, the session end time should match their total pool balance
           const endTime = durationSeconds > 0 ? new Date(now.getTime() + durationSeconds * 1000).toISOString() : null;
+
           
           return { 
               ...p, 

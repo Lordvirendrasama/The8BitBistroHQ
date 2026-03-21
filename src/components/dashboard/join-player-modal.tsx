@@ -113,7 +113,8 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
   };
 
   const handleAddGuest = () => {
-    const guest: AssignedMember = { id: `guest-${Date.now()}`, name: 'Guest', avatarUrl: GUEST_AVATAR };
+    const guestId = `guest-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const guest: AssignedMember = { id: guestId, name: 'Guest', avatarUrl: GUEST_AVATAR };
     setSelectedMember(guest);
     setStep('configuration');
   };

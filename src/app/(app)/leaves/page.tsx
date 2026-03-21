@@ -48,7 +48,7 @@ export default function LeavesTrackerPage() {
 
   // Statistics: Global & Monthly
   const stats = useMemo(() => {
-    if (!leaves) return { active: 0, upcoming: 0, monthlyTotals: [] as { name: string, days: number }[] };
+    if (!leaves) return { active: 0, upcoming: 0, monthlyTotals: [] as { name: string, unpaid: number, other: number, total: number }[] };
     const now = startOfDay(new Date());
     
     // Global status

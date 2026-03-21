@@ -12,6 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { updateStation } from '@/firebase/firestore/stations';
+import { Zap } from 'lucide-react';
+import type { Member } from '@/lib/types';
+
 
 interface TimerCardProps {
   station: Station;
@@ -21,9 +24,12 @@ interface TimerCardProps {
   onOpenEditTimeModal: (station: Station) => void;
   onOpenMoveModal?: (station: Station) => void;
   onStopPlayer?: (stationId: string, playerId: string) => void;
-  onOpenJoinModal?: (stationId: string) => void;
+  onOpenJoinModal?: (station: Station) => void;
   onTogglePlayerTimer?: (stationId: string, playerId: string) => void;
+  allMembers?: Member[];
 }
+
+
 
 const formatTime = (ms: number) => {
     if (ms < 0) ms = 0;
@@ -40,12 +46,16 @@ const formatTime = (ms: number) => {
 
 const IndividualPlayerTimer = ({ 
     member, 
-    stationStatus 
+    stationStatus,
+    allMembers
 }: { 
     member: AssignedMember, 
-    stationStatus: StationStatus 
+    stationStatus: StationStatus,
+    allMembers?: Member[]
 }) => {
     const [rem, setRem] = useState(0);
+    const [poolRem, setPoolRem] = useState<number | null>(null);
+
     const isRunning = stationStatus === 'in-use' && member.status !== 'paused';
     const isPaused = stationStatus === 'paused' || member.status === 'paused';
 
@@ -55,43 +65,77 @@ const IndividualPlayerTimer = ({
             return;
         }
 
-        if (isPaused) {
-            setRem((member.remainingTimeOnPause ?? 0) * 1000);
-            return;
-        }
-
-        if (!member.endTime || !isRunning) {
-            setRem(0);
-            return;
-        }
-
-        const endTs = new Date(member.endTime).getTime();
         const update = () => {
-            const diff = endTs - Date.now();
-            setRem(diff > 0 ? diff : 0);
+            // Big Session Timer
+            if (isPaused) {
+                setRem((member.remainingTimeOnPause ?? 0) * 1000);
+            } else if (!member.endTime || !isRunning) {
+                setRem(0);
+            } else {
+                const endTs = new Date(member.endTime).getTime();
+                const diff = endTs - Date.now();
+                setRem(diff > 0 ? diff : 0);
+            }
+
+            // Pool Balance Lookup
+            const memberData = allMembers?.find(m => m.id === member.id);
+            if (memberData && memberData.recharges) {
+                const totalPool = memberData.recharges
+                    .filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                    .reduce((sum: number, r) => sum + r.remainingDuration, 0);
+
+                if (isRunning && member.startTime) {
+                    const now = Date.now();
+                    const startTs = new Date(member.startTime).getTime();
+                    const elapsed = Math.max(0, (now - startTs) / 1000);
+                    
+                    // The member's account balance is the total pool minus what they've played so far
+                    setPoolRem(Math.max(0, totalPool - elapsed));
+                } else if (isPaused && member.startTime) {
+                    // For paused sessions, we need to know how much was played before pause
+                    // Station tracks remainingTimeOnPause, so elapsed = TotalPotential - remaining
+                    // But easier: the state already captured it in the station doc if paused.
+                    // For now, if paused, we just show the static pool because it's "safe".
+                    // However, we can improve this if needed.
+                    setPoolRem(totalPool);
+                } else {
+                    setPoolRem(totalPool);
+                }
+            } else {
+                setPoolRem(null);
+            }
         };
 
         update();
         const interval = setInterval(update, 1000);
         return () => clearInterval(interval);
-    }, [member, isRunning, isPaused]);
+    }, [member, isRunning, isPaused, allMembers]);
 
     if (member.status === 'finished' || !member.endTime) return null;
 
     return (
-        <span className={cn(
-            "font-mono font-bold text-xs ml-auto mr-3 px-2 py-0.5 rounded border shadow-sm",
-            member.status === 'paused' ? "text-blue-600 bg-blue-500/10 border-blue-500/20" :
-            rem <= 0 ? "text-destructive bg-destructive/10 border-destructive/20 animate-pulse" : 
-            rem < 5 * 60 * 1000 ? "text-yellow-600 bg-yellow-500/10 border-yellow-500/20" : 
-            "text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
-        )}>
-            {formatTime(rem)}
-        </span>
+        <div className="flex flex-col items-end ml-auto mr-3 gap-0.5">
+            <span className={cn(
+                "font-mono font-bold text-xs px-2 py-0.5 rounded border shadow-sm",
+                member.status === 'paused' ? "text-blue-600 bg-blue-500/10 border-blue-500/20" :
+                rem <= 0 ? "text-destructive bg-destructive/10 border-destructive/20 animate-pulse" : 
+                rem < 5 * 60 * 1000 ? "text-yellow-600 bg-yellow-500/10 border-yellow-500/20" : 
+                "text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
+            )}>
+                {formatTime(rem)}
+            </span>
+            {poolRem !== null && (
+                <span className="text-[8px] font-black uppercase tracking-tighter text-muted-foreground/50 flex items-center gap-1">
+                    <Zap className="h-2 w-2 fill-current" /> {formatTime(poolRem * 1000)} Account
+                </span>
+            )}
+        </div>
     );
 };
 
-export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer }: TimerCardProps) {
+
+export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer, allMembers }: TimerCardProps) {
+
   const [minRemaining, setMinRemaining] = useState(0);
   const [maxRemaining, setMaxRemaining] = useState(0);
   const [graceRemaining, setGraceRemaining] = useState(0);
@@ -155,8 +199,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             return;
         }
 
-        const minTs = new Date(minEnd).getTime();
-        const maxTs = new Date(maxEnd).getTime();
+        const minTs = new Date(minEnd as string).getTime();
+        const maxTs = new Date(maxEnd as string).getTime();
 
         setMinRemaining(Math.max(0, minTs - now));
         setMaxRemaining(Math.max(0, maxTs - now));
@@ -204,14 +248,48 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 {station.name}
             </CardTitle>
             {shortestMember ? (
-                <span className="text-[10px] font-bold uppercase text-primary tracking-normal flex items-center gap-1.5 bg-background/80 border border-primary/10 px-2 py-0.5 rounded-full w-fit shadow-sm">
-                    <User className="h-2.5 w-2.5" />
-                    {shortestMember.name}
-                </span>
+                <>
+                    <span className="text-[10px] font-bold uppercase text-primary tracking-normal flex items-center gap-1.5 bg-background/80 border border-primary/10 px-2 py-0.5 rounded-full w-fit shadow-sm">
+                        <User className="h-2.5 w-2.5" />
+                        {shortestMember.name}
+                    </span>
+                    {(() => {
+                        const memberData = allMembers?.find(m => m.id === shortestMember.id);
+                        if (!memberData || !memberData.recharges) return null;
+                        const balance = memberData.recharges
+                            .filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                            .reduce((sum: number, r) => sum + r.remainingDuration, 0);
+                        
+                        if (balance <= 0) return null;
+
+                    // Calculate ticking balance (Pool Balance - Elapsed Time)
+                    let displayBalance = balance;
+                    const assignedPlayer = station.members.find(m => m.id === shortestMember.id && m.status !== 'finished');
+                    if (assignedPlayer && assignedPlayer.startTime && station.status === 'in-use' && assignedPlayer.status !== 'paused') {
+                        const now = Date.now();
+                        const startTs = new Date(assignedPlayer.startTime).getTime();
+                        const elapsedSeconds = Math.max(0, (now - startTs) / 1000);
+                        displayBalance = Math.max(0, balance - elapsedSeconds);
+                    } else if (assignedPlayer && (station.status === 'paused' || assignedPlayer.status === 'paused')) {
+                        // For paused sessions, we estimate the balance from what's in the DB
+                        // Note: In a perfect sync, we'd use the station's elapsed time, 
+                        // but since the DB isn't updated until checkout, balance is the old value.
+                        displayBalance = balance;
+                    }
+
+                        return (
+                            <div className="flex items-center gap-1 text-[9px] font-black text-yellow-600 bg-yellow-500/5 px-2 py-0.5 rounded-full border border-yellow-500/10 animate-in fade-in zoom-in-95 duration-500">
+                               <Zap className="h-2.5 w-2.5 fill-current" />
+                               <span className="font-mono">{formatTime(displayBalance * 1000)} ACCOUNT</span>
+                            </div>
+                        );
+                    })()}
+                </>
             ) : station.status !== 'available' && (
                 <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest opacity-60">Food Only Order</span>
             )}
         </div>
+
         <div className="flex flex-col items-end gap-1">
             <Badge variant={isRunning || isPaused || isFinishing ? 'default' : 'secondary'} className={cn(
                 "font-bold uppercase text-[10px] tracking-tight",
@@ -383,7 +461,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                         </div>
                                         
                                         <div className="flex items-center gap-2">
-                                            {!isFinishing && <IndividualPlayerTimer member={member} stationStatus={station.status} />}
+                                            {!isFinishing && <IndividualPlayerTimer member={member} stationStatus={station.status} allMembers={allMembers} />}
+
 
                                             {member.status !== 'finished' && !isFinishing && (
                                                 <div className="flex gap-1">
@@ -476,7 +555,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                           <Timer className="h-3.5 w-3.5" />
                           <span className="text-[8px] font-bold uppercase leading-none">Time</span>
                       </Button>
-                      <Button onClick={() => onOpenJoinModal?.(station.id)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
+                      <Button onClick={() => onOpenJoinModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
                           <UserPlus className="h-3.5 w-3.5"/>
                           <span className="text-[8px] font-bold uppercase leading-none">Join</span>
                       </Button>

@@ -1,11 +1,12 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
-import type { Member } from '@/lib/types';
+import type { Member, Station } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
+
 import { deleteMember } from '@/firebase/firestore/members';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,8 +69,14 @@ export default function UserManagementPage() {
     return query(collection(db, 'members'), orderBy('joinDate', 'desc'));
   }, [db]);
   
+  const stationsQuery = useMemo(() => {
+    if (!db) return null;
+    return collection(db, 'stations');
+  }, [db]);
 
   const { data: members, loading, error } = useCollection<Member>(membersQuery);
+  const { data: stations } = useCollection<Station>(stationsQuery);
+
   
   const filteredMembers = useMemo(() => {
     if (!members) return [];
@@ -148,9 +155,11 @@ export default function UserManagementPage() {
   const formatDuration = (sec: number) => {
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
+    const s = Math.floor(sec % 60);
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    return `${m}m ${s}s`;
   };
+
 
   const handleSendBroadcast = async () => {
     if (broadcastMessage.trim() === '') {
@@ -218,6 +227,102 @@ export default function UserManagementPage() {
         </Button>
     </TableHead>
   );
+
+  const RealTimeBalance = ({ member }: { member: Member }) => {
+    const [displaySeconds, setDisplaySeconds] = useState(0);
+    
+    const activeSession = useMemo(() => {
+        return stations?.find(s => 
+            s.status !== 'available' && 
+            s.members?.some(m => m.id === member.id && m.status !== 'finished')
+        );
+    }, [member.id]);
+
+    const assignedMember = useMemo(() => {
+        return activeSession?.members?.find(m => m.id === member.id && m.status !== 'finished');
+    }, [activeSession, member.id]);
+
+    const isPaused = activeSession?.status === 'paused' || assignedMember?.status === 'paused';
+    const isRunning = activeSession?.status === 'in-use' && assignedMember?.status !== 'paused';
+
+    useEffect(() => {
+        const calculate = () => {
+            const staticSeconds = (member.recharges || [])
+                .filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                .reduce((sum, r) => sum + r.remainingDuration, 0);
+
+            if (!activeSession || !assignedMember) {
+                setDisplaySeconds(staticSeconds);
+                return;
+            }
+
+            // Case 1: Session is Paused
+            if (isPaused) {
+                const remOnPause = assignedMember.remainingTimeOnPause ?? activeSession.remainingTimeOnPause ?? 0;
+                
+                // If they are explicitly using a recharge/pool session
+                if (assignedMember.rechargeId) {
+                   // Add back other recharges if it's not a generic 'pool' ID
+                   const otherRecharges = (member.recharges || [])
+                       .filter(r => r.id !== assignedMember.rechargeId && new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                       .reduce((sum, r) => sum + r.remainingDuration, 0);
+                   
+                   setDisplaySeconds(remOnPause + otherRecharges);
+                   return;
+                }
+                
+                // If they are a walk-in member, the elapsed time IS Baseline - remOnPause
+                if (assignedMember.startTime && assignedMember.endTime) {
+                    const startTs = new Date(assignedMember.startTime).getTime();
+                    const endTs = new Date(assignedMember.endTime).getTime();
+                    const totalDuration = (endTs - startTs) / 1000;
+                    const elapsedSoFar = Math.max(0, totalDuration - remOnPause);
+                    setDisplaySeconds(Math.max(0, staticSeconds - elapsedSoFar));
+                    return;
+                }
+                
+                setDisplaySeconds(staticSeconds);
+                return;
+            }
+
+
+            // Case 2: Session is Running
+            if (isRunning && assignedMember.startTime) {
+                const now = Date.now();
+                const startTs = new Date(assignedMember.startTime).getTime();
+                const elapsedSeconds = Math.max(0, (now - startTs) / 1000);
+                
+                // Show the predicted account balance (Total Pool - Elapsed)
+                setDisplaySeconds(Math.max(0, staticSeconds - elapsedSeconds));
+                return;
+            }
+
+            // Case 3: Idle (Not in a session)
+            setDisplaySeconds(staticSeconds);
+        };
+
+
+
+        calculate();
+        const interval = setInterval(calculate, 1000);
+        return () => clearInterval(interval);
+    }, [member, isRunning, assignedMember]);
+
+    if (displaySeconds <= 0) {
+        return <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">0h 0m 0s</span>;
+    }
+
+    return (
+        <div className={cn(
+            "flex items-center gap-1.5 font-black text-xs transition-colors",
+            isRunning ? "text-primary animate-pulse" : "text-yellow-600"
+        )}>
+            <Zap className={cn("h-3.5 w-3.5", isRunning ? "fill-primary" : "fill-current")} />
+            <span className="font-mono">{formatDuration(displaySeconds)}</span>
+        </div>
+    );
+  };
+
 
   return (
     <div className="space-y-8">
@@ -338,15 +443,9 @@ export default function UserManagementPage() {
                         <Badge variant="outline" className={cn("font-black uppercase text-[9px] px-2", tierColors[member.tier])}>{member.tier}</Badge>
                     </TableCell>
                     <TableCell>
-                        {totalBalanceSeconds > 0 ? (
-                            <div className="flex items-center gap-1.5 font-black text-xs text-yellow-600">
-                                <Zap className="h-3.5 w-3.5 fill-current" />
-                                <span className="font-mono">{formatDuration(totalBalanceSeconds)}</span>
-                            </div>
-                        ) : (
-                            <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">0h 0m</span>
-                        )}
+                        <RealTimeBalance member={member} />
                     </TableCell>
+
                     <TableCell className="font-black text-sm">{member.level}</TableCell>
                     <TableCell className="font-black text-sm text-yellow-500">{member.points.toLocaleString()}</TableCell>
                     <TableCell className="font-mono font-black text-sm">₹{member.totalSpent.toLocaleString()}</TableCell>

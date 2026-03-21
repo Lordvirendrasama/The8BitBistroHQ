@@ -50,14 +50,24 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
   const [level, setLevel] = useState(String(member.level));
   const [xp, setXp] = useState(String(member.xp));
   const [points, setPoints] = useState(String(member.points));
+  const initialTotalSeconds = (member.recharges || []).reduce((acc, r) => acc + r.remainingDuration, 0);
+  const [rechargeHours, setRechargeHours] = useState(String(Math.floor(initialTotalSeconds / 3600)));
+  const [rechargeMinutes, setRechargeMinutes] = useState(String(Math.floor((initialTotalSeconds % 3600) / 60)));
   const { toast } = useToast();
+
+
 
   const handleUpdate = () => {
     const levelNum = parseInt(level, 10);
     const xpNum = parseInt(xp, 10);
     const pointsNum = parseInt(points, 10);
+    
+    const h = parseInt(rechargeHours, 10) || 0;
+    const m = parseInt(rechargeMinutes, 10) || 0;
+    const newTotalSeconds = (h * 3600) + (m * 60);
 
-    if (!name || !username || isNaN(levelNum) || isNaN(xpNum) || isNaN(pointsNum)) {
+    if (!name || !username || isNaN(levelNum) || isNaN(xpNum) || isNaN(pointsNum) || isNaN(newTotalSeconds)) {
+
       toast({
         variant: 'destructive',
         title: 'Invalid Information',
@@ -65,6 +75,37 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
       });
       return;
     }
+
+    // Handle Recharge duration adjustments
+    let updatedRecharges = (member.recharges || []).map(r => ({ ...r }));
+    const currentTotalSeconds = updatedRecharges.reduce((acc, r) => acc + r.remainingDuration, 0);
+    const diff = newTotalSeconds - currentTotalSeconds;
+
+    if (diff > 0) {
+      // Add a manual adjustment pack
+      updatedRecharges.push({
+          id: `manual-${Date.now()}`,
+          packageId: 'manual',
+          packageName: 'Manual Adjustment',
+          totalDuration: diff,
+          remainingDuration: diff,
+          purchaseDate: new Date().toISOString(),
+          expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          pricePaid: 0
+      });
+    } else if (diff < 0) {
+      // Subtract from recharges starting from last
+      let toSubtract = Math.abs(diff);
+      for (let i = updatedRecharges.length - 1; i >= 0 && toSubtract > 0; i--) {
+          const deduct = Math.min(updatedRecharges[i].remainingDuration, toSubtract);
+          updatedRecharges[i] = {
+            ...updatedRecharges[i],
+            remainingDuration: updatedRecharges[i].remainingDuration - deduct
+          };
+          toSubtract -= deduct;
+      }
+    }
+
     const updatedMember = { 
         ...member, 
         name, 
@@ -75,7 +116,9 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
         level: levelNum,
         xp: xpNum,
         points: pointsNum,
+        recharges: updatedRecharges,
     };
+
     onUpdate(updatedMember);
     logUserAction(`Updated member profile for ${member.name}.`, { memberId: member.id, updates: updatedMember });
     toast({
@@ -132,6 +175,33 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
                 <Label htmlFor="points">Loyalty Points</Label>
                 <Input id="points" type="number" value={points} onChange={(e) => setPoints(e.target.value)} />
             </div>
+            <div className="space-y-2">
+                <Label>Gaming Balance</Label>
+                <div className="flex gap-2">
+                    <div className="flex-1">
+                        <Input 
+                            id="rechargeHours" 
+                            type="number" 
+                            placeholder="Hours" 
+                            value={rechargeHours} 
+                            onChange={(e) => setRechargeHours(e.target.value)} 
+                        />
+                        <p className="text-[9px] font-bold uppercase text-muted-foreground mt-1 text-center">Hours</p>
+                    </div>
+                    <div className="flex-1">
+                        <Input 
+                            id="rechargeMinutes" 
+                            type="number" 
+                            placeholder="Mins" 
+                            value={rechargeMinutes} 
+                            onChange={(e) => setRechargeMinutes(e.target.value)} 
+                        />
+                        <p className="text-[9px] font-bold uppercase text-muted-foreground mt-1 text-center">Minutes</p>
+                    </div>
+                </div>
+            </div>
+
+
             <div className="space-y-2">
                 <Label htmlFor="tier">Membership Tier</Label>
                 <Select value={tier} onValueChange={(value) => setTier(value as MemberTier)}>

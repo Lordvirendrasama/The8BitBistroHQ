@@ -96,12 +96,27 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     if (hasItemizedSessionItems) return null;
     if (billItems.some(i => i.name === station.packageName)) return null;
     const isRechargeUsed = station.packageName.toLowerCase().startsWith('recharge: ');
+    
+    // SMART CHECK: Even if not started as "Recharge:", if the members HAVE balance, we treat it as prepaid
+    const membersWithPool = members.filter(am => {
+        const mData = allMembers.find(m => m.id === am.id);
+        return (mData?.recharges || []).some(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0);
+    });
+    const autoUsePool = membersWithPool.length > 0;
+
     const isRechargeBought = station.packageName.toLowerCase().startsWith('buy recharge: ');
     const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
     const pkg = gamingPackages.find(p => p.name.toLowerCase().trim() === pureName.toLowerCase());
-    const price = isRechargeUsed ? 0 : (pkg?.price || 0);
+    const price = (isRechargeUsed || autoUsePool) ? 0 : (pkg?.price || 0);
     const playerCount = members.length > 0 ? members.length : 1;
-    return { name: station.packageName, purePackage: pkg, total: price * playerCount, isExistingRecharge: isRechargeUsed, isNewRechargePurchase: isRechargeBought };
+    return { 
+        name: station.packageName, 
+        purePackage: pkg, 
+        total: price * playerCount, 
+        isExistingRecharge: isRechargeUsed || autoUsePool, 
+        isNewRechargePurchase: isRechargeBought 
+    };
+
   }, [station, gamingPackages, billItems]);
 
   const playedSecondsPerPlayer = useMemo(() => {

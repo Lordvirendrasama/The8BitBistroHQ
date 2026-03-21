@@ -418,7 +418,7 @@ function DashboardContent() {
         
         if (station.members.length === 0) {
             updates.members = [{
-                id: `guest-walkin-${Date.now()}`,
+                id: `guest-walkin-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
                 name: 'Walk-in Customer',
                 avatarUrl: PlaceHolderImages.find(img => img.id === 'avatar-6')?.imageUrl || 'https://picsum.photos/seed/guest/100/100',
                 status: 'active'
@@ -479,8 +479,20 @@ function DashboardContent() {
                 } else {
                     await consumeRechargeTime(member.id, member.rechargeId, playedSecondsForMember);
                 }
+            } else {
+                // Member started as walk-in but might have a pool!
+                const memberData = (members || []).find(m => m.id === member.id);
+                const poolBalance = (memberData?.recharges || [])
+                    .filter(r => new Date(r.expiryDate) > now && r.remainingDuration > 0)
+                    .reduce((sum, r) => sum + r.remainingDuration, 0);
+                
+                if (poolBalance > 0) {
+                    // Auto-consume from pool if they have balance, fulfilling the "match" requirement
+                    await consumeMemberBalancePool(member.id, playedSecondsForMember);
+                }
             }
         }
+
 
         finalMembersForBill.push({
             ...member,
@@ -515,7 +527,7 @@ function DashboardContent() {
     const newBillId = await archiveBill({
         stationId: station.id,
         stationName: station.name,
-        packageName: station.packageName || null,
+        packageName: station.packageName || undefined,
         members: finalMembersForBill,
         items: billItems,
         initialPackagePrice,
@@ -725,7 +737,9 @@ function DashboardContent() {
                     onStopPlayer={handleStopPlayer}
                     onOpenJoinModal={handleOpenJoinModal}
                     onTogglePlayerTimer={handleTogglePlayerTimer}
+                    allMembers={members || []}
                   />
+
                 ))}
               </div>
             ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active units.</div>}
