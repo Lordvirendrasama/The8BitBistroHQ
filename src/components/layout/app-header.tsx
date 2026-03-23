@@ -721,8 +721,26 @@ export function AppHeader({
       };
     }, [bills]);
 
-    const dailyAverage = monthRevenue / businessDayCount;
-    const projectedMonthEnd = dailyAverage * totalDaysInMonth;
+    const todaysSettledRevenue = useMemo(() => {
+        if (!bills) return 0;
+        return bills
+            .filter(bill => bill.timestamp && isBusinessToday(bill.timestamp))
+            .reduce((s, b) => s + (b.totalAmount || 0), 0);
+    }, [bills]);
+
+    const settledPastRevenue = monthRevenue - todaysSettledRevenue;
+    const settledPastAverage = businessDayCount > 1 ? settledPastRevenue / (businessDayCount - 1) : (monthRevenue / businessDayCount);
+
+    
+    // Trend-based forecasting: Current day's performance (projectedRevenue) is used as the projected baseline for all remaining days
+    const remainingDaysIncludingToday = totalDaysInMonth - (businessDayCount - 1);
+    const forecastedMonthEnd = settledPastRevenue + (projectedRevenue * remainingDaysIncludingToday);
+    const forecastedMonthlyAverage = forecastedMonthEnd / totalDaysInMonth;
+
+    const liveMonthRevenue = monthRevenue + Math.max(0, projectedRevenue - todaysSettledRevenue);
+    const liveDailyAverage = liveMonthRevenue / businessDayCount;
+
+
 
     /**
      * UNIFIED LOGOUT PROTOCOL (v2.7.5):
@@ -766,8 +784,8 @@ export function AppHeader({
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex flex-col items-end gap-0.5 mr-1 shrink-0 hover:bg-muted/10 p-1 rounded transition-colors text-right">
-                                    <p className="text-[7px] sm:text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Month Total</p>
-                                    <p className="text-[10px] sm:text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
+                                    <p className="text-[7px] sm:text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Live Total</p>
+                                    <p className="text-[10px] sm:text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(liveMonthRevenue).toLocaleString()}</p>
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-56 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
@@ -778,21 +796,50 @@ export function AppHeader({
                                     </h4>
                                 </div>
                                 <div className="p-4 space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Daily Average</span>
-                                        <span className="text-sm font-black font-mono text-emerald-600 tabular-nums">
-                                            ₹{Math.round(dailyAverage).toLocaleString()}
+                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
+                                        <div className="space-y-0.5">
+                                            <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Today's Forecast</span>
+                                            <p className="text-[8px] text-primary/70 uppercase font-black">Live Projection</p>
+                                        </div>
+                                        <span className="text-sm font-black font-mono text-primary tabular-nums">
+                                            ₹{Math.round(projectedRevenue).toLocaleString()}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center pt-2 border-t border-dashed">
-                                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
-                                        <span className="text-sm font-black font-mono text-primary tabular-nums">
-                                            ₹{Math.round(projectedMonthEnd).toLocaleString()}
-                                        </span>
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center opacity-60">
+                                            <div className="space-y-0.5">
+                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Settled Average</span>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Past Performance</p>
+                                            </div>
+                                            <span className="text-xs font-black font-mono tabular-nums">
+                                                ₹{Math.round(settledPastAverage).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center">
+                                            <div className="space-y-0.5">
+                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Projected Average</span>
+                                                <p className="text-[8px] text-emerald-600/70 uppercase font-black">Forecast Based</p>
+                                            </div>
+                                            <span className="text-sm font-black font-mono text-emerald-600 tabular-nums">
+                                                ₹{Math.round(forecastedMonthlyAverage).toLocaleString()}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center pt-2 border-t border-dashed">
+                                            <div className="space-y-0.5">
+                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
+                                                <p className="text-[8px] text-primary/70 uppercase font-black">Month Forecast</p>
+                                            </div>
+                                            <span className="text-sm font-black font-mono text-primary tabular-nums">
+                                                ₹{Math.round(forecastedMonthEnd).toLocaleString()}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="pt-2 border-t border-dashed">
                                         <p className="text-[8px] text-muted-foreground uppercase font-black tracking-widest leading-relaxed">
-                                            Calculated across {businessDayCount} days of active business.
+                                            Calculated across {totalDaysInMonth} days using Today's performance as baseline.
                                         </p>
                                     </div>
                                 </div>
