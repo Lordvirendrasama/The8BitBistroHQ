@@ -37,13 +37,15 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
 
   const fallbackSpeech = () => {
     if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); // Clear any hung utterances
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.95;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
       
       const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Premium')) || 
+      // Try to find a natural sounding English voice
+      const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium') || v.name.includes('Natural'))) || 
                              voices.find(v => v.lang.startsWith('en')) || 
                              voices[0];
       
@@ -51,15 +53,23 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
       
       utterance.onend = () => {
         isProcessingQueue = false;
-        processQueue(audioRef);
+        setTimeout(() => processQueue(audioRef), 100);
       };
 
+      utterance.onerror = (e) => {
+        console.warn("SpeechSynthesis error:", e);
+        isProcessingQueue = false;
+        setTimeout(() => processQueue(audioRef), 100);
+      };
+
+      // Brave/Linux specific: utterances can sometimes hang if too long or if voices aren't ready
       setTimeout(() => {
         if (isProcessingQueue) {
+            console.warn("SpeechSynthesis timed out, forcing next in queue");
             isProcessingQueue = false;
             processQueue(audioRef);
         }
-      }, 8000);
+      }, 10000);
 
       window.speechSynthesis.speak(utterance);
     } else {
@@ -151,14 +161,34 @@ export function GlobalTimerNotifications() {
   }, []);
 
   useEffect(() => {
-    const handleInteraction = () => unlockAudio();
+    const handleInteraction = () => {
+      unlockAudio();
+      // Also try to trigger a silent speech to unlock speechSynthesis on some browsers
+      if ('speechSynthesis' in window && !isUnlocked.current) {
+        const u = new SpeechSynthesisUtterance("");
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+      }
+    };
+
+    // Pre-load voices for Linux browsers
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+      }
+    }
+
     window.addEventListener('mousedown', handleInteraction, { passive: true });
     window.addEventListener('keydown', handleInteraction, { passive: true });
     window.addEventListener('touchstart', handleInteraction, { passive: true });
+    window.addEventListener('click', handleInteraction, { passive: true });
+    
     return () => {
       window.removeEventListener('mousedown', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
       window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('click', handleInteraction);
     };
   }, [unlockAudio]);
 
