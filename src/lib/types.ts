@@ -226,7 +226,7 @@ export interface BillItem {
   addedAt?: string;
 }
 
-export type PaymentMethod = 'cash' | 'upi' | 'split' | 'pending' | 'recharge';
+export type PaymentMethod = 'cash' | 'upi' | 'split' | 'pending' | 'recharge' | 'district-dinein';
 
 export interface Bill {
   id: string;

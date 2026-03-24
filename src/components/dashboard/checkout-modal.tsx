@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { Station, GamingPackage, Member, MemberTier, BillItem, PaymentMethod, FoodItem } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Star, Receipt, Banknote, Smartphone, ArrowLeft, Layers, Tag, ChevronRight, FileWarning, Zap, Phone, Clock, CheckCircle2, Search, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { Star, Receipt, Banknote, Smartphone, ArrowLeft, Layers, Tag, ChevronRight, FileWarning, Zap, Phone, Clock, CheckCircle2, Search, Plus, Minus, Trash2, ShoppingBag, MapPin } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { settings } from '@/lib/data';
@@ -300,7 +300,27 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                         </div>
                     </div>
                 )}
-                {step === 'payment-method' && <div className="grid grid-cols-2 gap-3 p-4 sm:p-6 my-2"><Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-green-500 uppercase tracking-tighter" onClick={() => handleCheckout('cash')}><Banknote className="h-8 w-8 text-green-600" /> Cash</Button><Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-primary uppercase tracking-tighter" onClick={() => handleCheckout('upi')}><Smartphone className="h-8 w-8 text-primary" /> UPI</Button><Button variant="outline" className="h-14 flex gap-2 font-bold uppercase border-dashed border-2 text-[10px]" onClick={() => setStep('split-details')}><Layers className="h-4 w-4 text-amber-500" /> Split</Button><Button variant="outline" className="h-14 flex gap-2 font-bold uppercase border-dashed border-2 text-[10px]" onClick={() => setStep('pending-details')}><FileWarning className="h-4 w-4 text-destructive" /> Pending</Button></div>}
+                {step === 'payment-method' && (
+                    <div className="grid grid-cols-2 gap-3 p-4 sm:p-6 my-2">
+                        <Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-green-500 uppercase tracking-tighter" onClick={() => handleCheckout('cash')}>
+                            <Banknote className="h-8 w-8 text-green-600" /> Cash
+                        </Button>
+                        <Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-primary uppercase tracking-tighter" onClick={() => handleCheckout('upi')}>
+                            <Smartphone className="h-8 w-8 text-primary" /> UPI
+                        </Button>
+                        <Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-amber-500 uppercase tracking-tighter" onClick={() => handleCheckout('district-dinein')}>
+                            <MapPin className="h-8 w-8 text-amber-500" /> District
+                        </Button>
+                        <div className="grid grid-cols-1 gap-3">
+                            <Button variant="outline" className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-[10px]" onClick={() => setStep('split-details')}>
+                                <Layers className="h-4 w-4 text-amber-500" /> Split
+                            </Button>
+                            <Button variant="outline" className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-[10px]" onClick={() => setStep('pending-details')}>
+                                <FileWarning className="h-4 w-4 text-destructive" /> Pending
+                            </Button>
+                        </div>
+                    </div>
+                )}
                 {step === 'split-details' && <div className="space-y-4 p-4 sm:p-6 my-2"><div className="space-y-4"><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Cash Portion (₹)</Label><Input type="number" value={splitCash} onChange={e => { setSplitCash(e.target.value); setSplitUpi((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">UPI Portion (₹)</Label><Input type="number" value={splitUpi} onChange={e => { setSplitUpi(e.target.value); setSplitCash((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div></div></div>}
                 {step === 'pending-details' && <div className="space-y-4 p-4 sm:p-6 my-2"><div className="grid gap-3"><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Collected Now (₹)</Label><Input type="number" value={paidNow} onChange={e => setPaidNow(e.target.value)} className="h-12 text-xl font-mono font-bold border-2"/></div><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Customer Name</Label><Input value={contactName} onChange={e => setContactName(e.target.value)} className="h-10 font-bold uppercase text-xs"/></div><div className="space-y-1"><Label className="text-[9px] font-bold uppercase tracking-normal opacity-50">Phone Number</Label><Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} className="h-10 font-bold font-mono text-xs"/></div></div></div>}
             </ScrollArea>

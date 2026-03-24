@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning } from 'lucide-react';
+import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -267,6 +267,11 @@ export function EditBillModal({ isOpen, onOpenChange, bill, foodItems, gamingPac
                             <RadioGroupItem value="split" className="sr-only" />
                             <Layers className="h-3 w-3" />
                             <span className="text-[9px] font-black uppercase">Split</span>
+                        </Label>
+                        <Label className={cn("flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all", paymentMethod === 'district-dinein' ? "bg-amber-500/10 border-amber-500 text-amber-700" : "bg-background border-muted")}>
+                            <RadioGroupItem value="district-dinein" className="sr-only" />
+                            <MapPin className="h-3 w-3" />
+                            <span className="text-[9px] font-black uppercase">District</span>
                         </Label>
                         <Label className={cn("flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all", paymentMethod === 'pending' ? "bg-destructive/10 border-destructive text-destructive" : "bg-background border-muted")}>
                             <RadioGroupItem value="pending" className="sr-only" />

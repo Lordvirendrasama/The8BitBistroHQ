@@ -581,6 +581,35 @@ function DashboardContent() {
 
     const updatedMembers = selectedStation.members.map(m => {
         if (!targetIds.includes(m.id)) return m;
+        
+        let durationToAddInSeconds = pkg.duration;
+        
+        // Handle Account Balance Extension
+        if (pkg.id === 'account-pool') {
+            const memberData = members?.find(mem => mem.id === m.id);
+            if (memberData) {
+                const now = new Date();
+                const totalPool = (memberData.recharges || [])
+                    .filter(r => new Date(r.expiryDate) > now && r.remainingDuration > 0)
+                    .reduce((sum, r) => sum + r.remainingDuration, 0);
+                
+                // If they are already in an active session, we calculate how much NEW time to add
+                // to make their TOTAL session duration match their TOTAL pool.
+                // However, the simplest way is to just set their endTime to now + totalPool
+                // this effectively "resets" their available time to their registry balance.
+                const newEndTime = new Date(Date.now() + totalPool * 1000).toISOString();
+                
+                return {
+                    ...m,
+                    status: 'active' as const,
+                    endTime: newEndTime,
+                    rechargeId: 'pool', // Ensure they are on pool mode
+                    remainingTimeOnPause: null,
+                    startTime: m.startTime || new Date().toISOString()
+                };
+            }
+        }
+
         let newEndTime = m.endTime ? new Date(m.endTime).toISOString() : null;
         let newRemaining = m.remainingTimeOnPause;
         const wasFinished = m.status === 'finished';
@@ -607,21 +636,28 @@ function DashboardContent() {
 
     const currentBill = selectedStation.currentBill || [];
     const newBillItems: BillItem[] = [...currentBill];
-    const capacity = pkg.playerCapacity || 1;
-    const numInstances = Math.ceil(targetIds.length / capacity);
     
-    for (let i = 0; i < numInstances; i++) {
-        const start = i * capacity;
-        const end = Math.min(start + capacity, targetIds.length);
-        const subgroupTids = targetIds.slice(start, end);
-        const playerNames = subgroupTids.map(tid => selectedStation.members.find(m => m.id === tid)?.name).filter(Boolean).join(', ');
-        newBillItems.push({
-            itemId: pkg.id,
-            name: `Time: ${pkg.name} (${playerNames})`,
-            price: pkg.price,
-            quantity: 1,
-            addedAt: new Date().toISOString()
-        });
+    // Only add bill items if it's NOT an account extension (account time is already paid for)
+    if (pkg.id !== 'account-pool') {
+        const capacity = pkg.playerCapacity || 1;
+        const numInstances = Math.ceil(targetIds.length / capacity);
+        
+        for (let i = 0; i < numInstances; i++) {
+            const start = i * capacity;
+            const end = Math.min(start + capacity, targetIds.length);
+            const subgroupTids = targetIds.slice(start, end);
+            const playerNames = subgroupTids.map(tid => selectedStation.members.find(m => m.id === tid)?.name).filter(Boolean).join(', ');
+            newBillItems.push({
+                itemId: pkg.id,
+                name: `Time: ${pkg.name} (${playerNames})`,
+                price: pkg.price,
+                quantity: 1,
+                addedAt: new Date().toISOString()
+            });
+        }
+    } else {
+        // Just log it or notify
+        toast({ title: "Account Balance Applied", description: `Session timer extended to match registry balance.` });
     }
     
     const activeMembers = updatedMembers.filter(m => m.status !== 'finished');

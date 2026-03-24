@@ -39,12 +39,12 @@ import {
   Flame,
   LineChart,
   TrendingDown,
-  Separator,
   Sparkles,
   Activity,
   ChevronRight,
   Filter,
-  Globe
+  Globe,
+  MapPin
 } from 'lucide-react';
 import { isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { format, differenceInCalendarMonths, subDays, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
@@ -140,10 +140,11 @@ export default function OwnerDashboardPage() {
     const revTotal = dailyBills.reduce((s, b) => s + b.totalAmount, 0);
     const revCash = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'cash' ? b.totalAmount : b.paymentMethod === 'split' ? (b.cashAmount || 0) : 0), 0);
     const revUpi = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'upi' ? b.totalAmount : b.paymentMethod === 'split' ? (b.upiAmount || 0) : 0), 0);
+    const revDistrict = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'district-dinein' ? b.totalAmount : 0), 0);
     const revPending = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'pending' ? b.totalAmount : 0), 0);
 
     const revGaming = dailyBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
-    const revFood = revTotal - revGaming - revPending;
+    const revFood = revTotal - revGaming - revPending - revDistrict;
 
     // MONTHLY DATA (For Performers) - Filtered by phase
     const monthlyBills = phaseFilteredBills.filter(b => {
@@ -239,6 +240,7 @@ export default function OwnerDashboardPage() {
         topFood, topDrink, topPkg,
         topHour, topDay,
         expToday: dailyExpenses.reduce((s, e) => s + e.amount, 0),
+        revDistrict,
         loanBalance: liabilityState.loanBalance,
         rentBalance: liabilityState.rentBalance,
         footfallIntensity,
@@ -336,14 +338,18 @@ export default function OwnerDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <div className="flex-1">
-                <p className="text-[8px] font-black uppercase opacity-40">Cash</p>
-                <p className="text-lg font-black font-mono text-emerald-600">₹{stats.revCash}</p>
+                <p className="text-[7px] font-black uppercase opacity-40 leading-none mb-1">Cash</p>
+                <p className="text-sm font-black font-mono text-emerald-600">₹{stats.revCash.toLocaleString()}</p>
               </div>
-              <div className="flex-1 border-l pl-4">
-                <p className="text-[8px] font-black uppercase opacity-40">UPI</p>
-                <p className="text-lg font-black font-mono text-primary">₹{stats.revUpi}</p>
+              <div className="flex-1 border-l pl-2">
+                <p className="text-[7px] font-black uppercase opacity-40 leading-none mb-1">UPI</p>
+                <p className="text-sm font-black font-mono text-primary">₹{stats.revUpi.toLocaleString()}</p>
+              </div>
+              <div className="flex-1 border-l pl-2">
+                <p className="text-[7px] font-black uppercase opacity-40 leading-none mb-1">Dist</p>
+                <p className="text-sm font-black font-mono text-amber-600">₹{stats.revDistrict.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>

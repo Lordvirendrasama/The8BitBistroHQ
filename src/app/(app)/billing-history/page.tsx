@@ -12,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format, differenceInMinutes, differenceInSeconds, addSeconds, addDays, subDays } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle, ChevronLeft, ChevronRight, Banknote, Smartphone } from 'lucide-react';
+import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle, ChevronLeft, ChevronRight, Banknote, Smartphone, MapPin } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteBill, updateBill } from '@/firebase/firestore/bills';
 import { useToast } from '@/hooks/use-toast';
@@ -59,19 +59,21 @@ export default function BillingHistoryPage() {
         return bills.filter(bill => getBusinessDate(new Date(bill.timestamp)) === selectedBusinessDate);
     }, [bills, date]);
 
-    const { filteredTotal, filteredCashTotal, filteredUpiTotal } = useMemo(() => {
+    const { filteredTotal, filteredCashTotal, filteredUpiTotal, filteredDistrictTotal } = useMemo(() => {
         return filteredBills.reduce((acc, bill) => {
             acc.filteredTotal += (bill.totalAmount || 0);
             if (bill.paymentMethod === 'cash') {
                 acc.filteredCashTotal += (bill.totalAmount || 0);
             } else if (bill.paymentMethod === 'upi') {
                 acc.filteredUpiTotal += (bill.totalAmount || 0);
+            } else if (bill.paymentMethod === 'district-dinein') {
+                acc.filteredDistrictTotal += (bill.totalAmount || 0);
             } else if (bill.paymentMethod === 'split') {
                 acc.filteredCashTotal += (bill.cashAmount || 0);
                 acc.filteredUpiTotal += (bill.upiAmount || 0);
             }
             return acc;
-        }, { filteredTotal: 0, filteredCashTotal: 0, filteredUpiTotal: 0 });
+        }, { filteredTotal: 0, filteredCashTotal: 0, filteredUpiTotal: 0, filteredDistrictTotal: 0 });
     }, [filteredBills]);
 
     const projectedTotal = useMemo(() => {
@@ -196,6 +198,12 @@ export default function BillingHistoryPage() {
                                 <Smartphone className="h-2.5 w-2.5" /> UPI Total
                             </p>
                             <p className="text-sm sm:text-base font-black text-primary font-mono leading-none">₹{filteredUpiTotal.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-amber-500/5 border-2 border-amber-500/20 rounded-lg px-3 py-1.5 flex flex-col justify-center shrink-0">
+                            <p className="text-[8px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1 flex items-center gap-1">
+                                <MapPin className="h-2.5 w-2.5" /> District
+                            </p>
+                            <p className="text-sm sm:text-base font-black text-amber-600 font-mono leading-none">₹{filteredDistrictTotal.toLocaleString()}</p>
                         </div>
                         <div className="bg-muted/30 border-2 rounded-lg px-3 py-1.5 flex flex-col justify-center shrink-0">
                             <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Period Revenue</p>

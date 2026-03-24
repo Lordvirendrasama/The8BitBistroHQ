@@ -129,7 +129,21 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
         return;
     }
 
-    if (selectedPackageId === 'custom') {
+    if (selectedPackageId === 'account') {
+        const targetMemberId = selectedPlayerIds[0];
+        const member = station?.members?.find(m => m.id === targetMemberId);
+        // We look for the member in the global list to get their LATEST balance
+        // This is handled by the parent 'onAddTime' which will be passed a virtual package
+        // but it's cleaner to let the parent handle the registry lookup.
+        onAddTime({
+            id: 'account-pool',
+            name: `Account Balance Extension`,
+            duration: 0, // This is a special flag for the parent to use the full pool
+            price: 0,
+            validity: 1,
+            isAddTimePackage: true
+        }, selectedPlayerIds.length, selectedPlayerIds);
+    } else if (selectedPackageId === 'custom') {
         const mins = parseInt(customMinutes, 10);
         const price = parseInt(customPrice, 10) || 0;
         if (mins > 0) {
@@ -265,7 +279,7 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
 
                             <Label 
                                 className={cn(
-                                    "flex items-center gap-3 p-3.5 rounded-xl border-2 border-dashed transition-all cursor-pointer bg-card",
+                                    "flex items-center gap-3 p-3.5 rounded-xl border-2 border-dashed transition-all cursor-pointer bg-card mb-2",
                                     selectedPackageId === 'custom' ? "border-primary ring-2 ring-primary/10 bg-primary/[0.02]" : "hover:border-primary/20 border-muted"
                                 )}
                             >
@@ -275,6 +289,31 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                                     <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Manual entry</p>
                                 </div>
                             </Label>
+
+                            {/* ACCOUNT BALANCE OPTION */}
+                            {(() => {
+                                // Only show if one player is selected and they have a balance or were an account player
+                                if (selectedPlayerIds.length === 1) {
+                                    const player = station?.members.find(m => m.id === selectedPlayerIds[0]);
+                                    if (player && !player.id.startsWith('guest-')) {
+                                        return (
+                                            <Label 
+                                                className={cn(
+                                                    "flex items-center gap-3 p-3.5 rounded-xl border-2 border-dashed transition-all cursor-pointer bg-card border-yellow-500/30",
+                                                    selectedPackageId === 'account' ? "border-yellow-500 ring-2 ring-yellow-500/20 bg-yellow-500/[0.02]" : "hover:border-yellow-500/50"
+                                                )}
+                                            >
+                                                <RadioGroupItem value="account" id="account-option" />
+                                                <div className="flex-1">
+                                                    <p className="font-black text-[11px] uppercase tracking-tight flex items-center gap-2 text-yellow-600"><Zap className="h-3 w-3 fill-current"/> Use Account Balance</p>
+                                                    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Extend timer to match registry pool</p>
+                                                </div>
+                                            </Label>
+                                        );
+                                    }
+                                }
+                                return null;
+                            })()}
 
                             {selectedPackageId === 'custom' && (
                                 <div className="p-3 border-2 border-dashed rounded-xl bg-muted/10 space-y-3 mt-2 animate-in zoom-in-95 duration-200">

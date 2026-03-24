@@ -89,15 +89,21 @@ const IndividualPlayerTimer = ({
                     const startTs = new Date(member.startTime).getTime();
                     const elapsed = Math.max(0, (now - startTs) / 1000);
                     
-                    // The member's account balance is the total pool minus what they've played so far
+                    // The member's predicted account balance (Total Pool - Live Elapsed)
                     setPoolRem(Math.max(0, totalPool - elapsed));
-                } else if (isPaused && member.startTime) {
+                } else if (isPaused) {
                     // For paused sessions, we need to know how much was played before pause
-                    // Station tracks remainingTimeOnPause, so elapsed = TotalPotential - remaining
-                    // But easier: the state already captured it in the station doc if paused.
-                    // For now, if paused, we just show the static pool because it's "safe".
-                    // However, we can improve this if needed.
-                    setPoolRem(totalPool);
+                    // If they are explicitly using a recharge/pool session
+                    if (member.rechargeId && member.startTime && member.endTime) {
+                       const startTs = new Date(member.startTime).getTime();
+                       const endTs = new Date(member.endTime).getTime();
+                       const totalDuration = (endTs - startTs) / 1000;
+                       const remOnPause = member.remainingTimeOnPause ?? 0;
+                       const elapsedSoFar = Math.max(0, totalDuration - remOnPause);
+                       setPoolRem(Math.max(0, totalPool - elapsedSoFar));
+                    } else {
+                       setPoolRem(totalPool);
+                    }
                 } else {
                     setPoolRem(totalPool);
                 }
@@ -271,10 +277,17 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                         const elapsedSeconds = Math.max(0, (now - startTs) / 1000);
                         displayBalance = Math.max(0, balance - elapsedSeconds);
                     } else if (assignedPlayer && (station.status === 'paused' || assignedPlayer.status === 'paused')) {
-                        // For paused sessions, we estimate the balance from what's in the DB
-                        // Note: In a perfect sync, we'd use the station's elapsed time, 
-                        // but since the DB isn't updated until checkout, balance is the old value.
-                        displayBalance = balance;
+                        // For paused sessions, we subtract the elapsed time BEFORE the pause from the static pool
+                        if (assignedPlayer.startTime && assignedPlayer.endTime) {
+                            const startTs = new Date(assignedPlayer.startTime).getTime();
+                            const endTs = new Date(assignedPlayer.endTime).getTime();
+                            const totalDuration = (endTs - startTs) / 1000;
+                            const remOnPause = assignedPlayer.remainingTimeOnPause ?? station.remainingTimeOnPause ?? 0;
+                            const elapsedSoFar = Math.max(0, totalDuration - remOnPause);
+                            displayBalance = Math.max(0, balance - elapsedSoFar);
+                        } else {
+                            displayBalance = balance;
+                        }
                     }
 
                         return (

@@ -13,7 +13,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Moon, IndianRupee, Wallet, ListChecks, TrendingUp, AlertTriangle, User, Phone, Info, MinusCircle, PlusCircle, Clock } from 'lucide-react';
+import { Moon, IndianRupee, Wallet, ListChecks, TrendingUp, AlertTriangle, User, Phone, Info, MinusCircle, PlusCircle, Clock, MapPin } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Input } from '../ui/input';
@@ -92,7 +92,7 @@ export function EndOfDayModal({
   }, [activeShift]);
 
   const systemTally = useMemo(() => {
-    if (!bills) return { cash: 0, upi: 0, pending: 0, activeDebtors: [] as Debt[] };
+    if (!bills) return { cash: 0, upi: 0, district: 0, pending: 0, activeDebtors: [] as Debt[] };
     
     // Use Business Today logic (5 AM threshold)
     const todayBills = bills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
@@ -110,10 +110,15 @@ export function EndOfDayModal({
         return sum;
     }, 0);
 
+    const district = todayBills.reduce((sum, b) => {
+        if (b.paymentMethod === 'district-dinein') return sum + b.totalAmount;
+        return sum;
+    }, 0);
+
     const pending = todayDebts.filter(d => d.type === 'receivable').reduce((sum, d) => sum + d.amount, 0);
 
-    return { cash, upi, pending, activeDebtors: todayDebts.filter(d => d.type === 'receivable') };
-  }, [bills, debts]);
+    return { cash, upi, district, pending, activeDebtors: todayDebts.filter(d => d.type === 'receivable') };
+}, [bills, debts]);
 
   const visibleTasks = useMemo(() => {
     if (!activeShift?.tasks) return [];
@@ -175,18 +180,22 @@ export function EndOfDayModal({
                   <TrendingUp className="h-3.5 w-3.5" />
                   System Reconciliation
                 </h3>
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
                     <div className="space-y-1">
                         <p className="text-[9px] sm:text-[10px] font-bold uppercase text-muted-foreground opacity-60">Expected Cash</p>
-                        <p className="text-base sm:text-xl font-black text-emerald-600 font-mono">₹{systemTally.cash.toLocaleString()}</p>
+                        <p className="text-sm sm:text-base font-black text-emerald-600 font-mono">₹{systemTally.cash.toLocaleString()}</p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[9px] sm:text-[10px] font-bold uppercase text-muted-foreground opacity-60">Expected UPI</p>
-                        <p className="text-base sm:text-xl font-black text-primary font-mono">₹{systemTally.upi.toLocaleString()}</p>
+                        <p className="text-sm sm:text-base font-black text-primary font-mono">₹{systemTally.upi.toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[9px] sm:text-[10px] font-bold uppercase text-muted-foreground opacity-60">District</p>
+                        <p className="text-sm sm:text-base font-black text-amber-600 font-mono">₹{systemTally.district.toLocaleString()}</p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[9px] sm:text-[10px] font-bold uppercase text-muted-foreground opacity-60">Owed (Debts)</p>
-                        <p className="text-base sm:text-xl font-black text-amber-600 font-mono">₹{systemTally.pending.toLocaleString()}</p>
+                        <p className="text-sm sm:text-base font-black text-amber-600 font-mono">₹{systemTally.pending.toLocaleString()}</p>
                     </div>
                 </div>
               </div>
