@@ -86,16 +86,19 @@ export default function LoginPage() {
         sum += (station.currentBill || []).reduce((s, i) => s + (i.price * i.quantity), 0);
         
         if (station.packageName && station.packageName !== 'Walk-in Order') {
-          const isItemized = (station.currentBill || []).some(item => 
-            item.name === station.packageName || 
-            item.name.startsWith(`Time: ${station.packageName}`) ||
-            item.name.startsWith(`Buy Recharge: ${station.packageName}`) ||
-            item.name.startsWith(`Recharge: ${station.packageName}`)
-          );
+          const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim().toLowerCase();
+          const isItemized = (station.currentBill || []).some(item => {
+            const nameLower = item.name.toLowerCase();
+            return (
+              nameLower.includes(pureName) ||
+              nameLower.startsWith('time:') ||
+              nameLower.startsWith('buy recharge:') ||
+              nameLower.startsWith('recharge:')
+            );
+          });
 
           if (!isItemized) {
-            const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
-            const pkg = packages.find(p => p.name.toLowerCase() === pureName.toLowerCase());
+            const pkg = packages.find(p => p.name.toLowerCase() === pureName);
             if (pkg) {
               const playerCount = station.members.length || 1;
               const capacity = pkg.playerCapacity || 1;

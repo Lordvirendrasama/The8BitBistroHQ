@@ -670,20 +670,25 @@ export function AppHeader({
         stations.filter(s => s.status === 'in-use' || s.status === 'paused').forEach(station => {
           sum += (station.currentBill || []).reduce((s, i) => s + (i.price * i.quantity), 0);
           if (station.packageName && station.packageName !== 'Walk-in Order' && packages) {
-            const isItemized = (station.currentBill || []).some(item => 
-              item.name === station.packageName || 
-              item.name.startsWith(`Time: ${station.packageName}`) ||
-              item.name.startsWith(`Buy Recharge: ${station.packageName}`) ||
-              item.name.startsWith(`Recharge: ${station.packageName}`)
-            );
+            const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim().toLowerCase();
+            const isItemized = (station.currentBill || []).some(item => {
+              const nameLower = item.name.toLowerCase();
+              return (
+                nameLower.includes(pureName) ||
+                nameLower.startsWith('time:') ||
+                nameLower.startsWith('buy recharge:') ||
+                nameLower.startsWith('recharge:')
+              );
+            });
             if (!isItemized) {
-              const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
-              const pkg = packages.find(p => p.name.toLowerCase() === pureName.toLowerCase());
+              const pkg = packages.find(p => p.name.toLowerCase() === pureName);
               if (pkg) {
                 const playerCount = station.members.length || 1;
                 const capacity = pkg.playerCapacity || 1;
                 const instances = Math.ceil(playerCount / capacity);
-                sum += (pkg.price * instances);
+                if (!station.packageName.startsWith('Recharge: ')) {
+                  sum += (pkg.price * instances);
+                }
               }
             }
           }
@@ -732,13 +737,13 @@ export function AppHeader({
     const settledPastAverage = businessDayCount > 1 ? settledPastRevenue / (businessDayCount - 1) : (monthRevenue / businessDayCount);
 
     
-    // Trend-based forecasting: Current day's performance (projectedRevenue) is used as the projected baseline for all remaining days
-    const remainingDaysIncludingToday = totalDaysInMonth - (businessDayCount - 1);
-    const forecastedMonthEnd = settledPastRevenue + (projectedRevenue * remainingDaysIncludingToday);
-    const forecastedMonthlyAverage = forecastedMonthEnd / totalDaysInMonth;
-
     const liveMonthRevenue = monthRevenue + Math.max(0, projectedRevenue - todaysSettledRevenue);
     const liveDailyAverage = liveMonthRevenue / businessDayCount;
+
+    // Performance-based forecasting: Current month-to-date daily average is used as the projected baseline for all remaining days
+    const forecastedMonthEnd = liveDailyAverage * totalDaysInMonth;
+    const forecastedMonthlyAverage = liveDailyAverage;
+
 
 
 
@@ -839,7 +844,7 @@ export function AppHeader({
                                     </div>
                                     <div className="pt-2 border-t border-dashed">
                                         <p className="text-[8px] text-muted-foreground uppercase font-black tracking-widest leading-relaxed">
-                                            Calculated across {totalDaysInMonth} days using Today's performance as baseline.
+                                            Calculated across {totalDaysInMonth} days using month-to-date average as baseline.
                                         </p>
                                     </div>
                                 </div>
