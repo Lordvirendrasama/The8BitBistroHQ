@@ -104,11 +104,19 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
   }
 }
 
+let globalAudioRef: React.RefObject<HTMLAudioElement | null> | null = null;
+
 export async function announceGlobally(text: string, audioRef?: React.RefObject<HTMLAudioElement | null>) {
   if (typeof window === 'undefined') return;
-  audioQueue.push(text);
+  
   if (audioRef) {
-    processQueue(audioRef);
+    globalAudioRef = audioRef;
+  }
+
+  audioQueue.push(text);
+  
+  if (globalAudioRef) {
+    processQueue(globalAudioRef);
   }
 }
 
@@ -143,6 +151,12 @@ export function GlobalTimerNotifications() {
 
   const playAnnouncement = useCallback(async (text: string) => {
     await announceGlobally(text, audioRef);
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      announceGlobally("", audioRef);
+    }
   }, []);
 
   const unlockAudio = useCallback(() => {

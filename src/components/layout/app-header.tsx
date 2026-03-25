@@ -12,6 +12,7 @@ import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBil
 import { EndOfDayModal } from '@/components/staff/end-of-day-modal';
 import { AdminNotifications } from '@/components/admin/notifications';
 import { PendingNotifications } from '@/components/layout/pending-notifications';
+import { announceGlobally } from '@/components/notifications/global-timer-notifications';
 import { StaffNotepad } from '@/components/staff/staff-notepad';
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -32,7 +33,7 @@ import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
-import { LogOut, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save } from "lucide-react";
+import { LogOut, Volume2, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save } from "lucide-react";
 
 const HeaderTimer = ({ station }: { station: Station }) => {
   const [remainingTime, setRemainingTime] = useState(0);
@@ -645,6 +646,7 @@ export function AppHeader({
 }: AppHeaderProps) {
     const { user, logout, switchUser } = useAuth();
     const { db } = useFirebase();
+    const { toast } = useToast();
     const router = useRouter();
     const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
 
@@ -891,6 +893,12 @@ export function AppHeader({
                                 <Badge variant="outline" className="text-[8px] uppercase h-4 font-bold">{user?.role}</Badge>
                             </div>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => { 
+                                announceGlobally("This is a test");
+                                toast({ title: "Audio Test Triggered", description: "You should hear 'This is a test'." });
+                            }} className="font-bold text-xs uppercase h-10 cursor-pointer">
+                                <Volume2 className="mr-2 h-4 w-4 text-primary" /> Test Audio Output
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleSwitchUser} className="font-bold text-xs uppercase h-10 cursor-pointer">
                                 <ShieldCheck className="mr-2 h-4 w-4" /> Switch Profile
                             </DropdownMenuItem>
