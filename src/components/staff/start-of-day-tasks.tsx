@@ -171,7 +171,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
   };
 
   return (
-    <Card className="fixed top-20 right-4 sm:right-8 z-50 w-[calc(100vw-32px)] sm:w-full sm:max-w-sm shadow-2xl animate-in fade-in-0 slide-in-from-right-8 border-2 border-primary/20 flex flex-col max-h-[60vh] sm:max-h-[75vh] overflow-hidden bg-background/95 backdrop-blur-xl">
+    <Card className="fixed top-20 right-4 sm:right-8 z-50 w-[calc(100vw-32px)] sm:w-full sm:max-w-sm shadow-2xl animate-in fade-in-0 slide-in-from-right-8 border-2 border-primary/20 flex flex-col bg-background/95 backdrop-blur-xl" style={{ maxHeight: 'calc(100vh - 96px)' }}>
       <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 shrink-0 border-b bg-muted/10">
         <div className="space-y-1">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -182,13 +182,13 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
               {isOwner ? 'STRATEGIC VERIFICATION' : 'Pending Accountability'}
           </CardDescription>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" onClick={onMinimize}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted shrink-0" onClick={onMinimize}>
           <Minus className="h-4 w-4" />
           <span className="sr-only">Minimize</span>
         </Button>
       </CardHeader>
       
-      <ScrollArea className="flex-1 min-h-0 w-full">
+      <ScrollArea className="flex-1 overflow-hidden">
         <div className="p-4 space-y-6">
           {strategicTasks.length > 0 && (
             <div className="space-y-2">

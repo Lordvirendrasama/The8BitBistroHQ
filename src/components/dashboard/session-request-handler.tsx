@@ -37,8 +37,7 @@ export function SessionRequestHandler() {
         if (!db) return;
         const q = query(
             collection(db, 'sessionRequests'),
-            where('status', '==', 'pending'),
-            where('timestamp', '>', sessionStart.current)
+            where('status', '==', 'pending')
         );
 
         const unsub = onSnapshot(q, (snap) => {
