@@ -236,7 +236,7 @@ export default function UserManagementPage() {
             s.status !== 'available' && 
             s.members?.some(m => m.id === member.id && m.status !== 'finished')
         );
-    }, [member.id]);
+    }, [member.id, stations]);
 
     const assignedMember = useMemo(() => {
         return activeSession?.members?.find(m => m.id === member.id && m.status !== 'finished');
@@ -301,12 +301,10 @@ export default function UserManagementPage() {
             setDisplaySeconds(staticSeconds);
         };
 
-
-
         calculate();
         const interval = setInterval(calculate, 1000);
         return () => clearInterval(interval);
-    }, [member, isRunning, assignedMember]);
+    }, [member, isRunning, isPaused, activeSession, assignedMember]);
 
     if (displaySeconds <= 0) {
         return <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">0h 0m 0s</span>;

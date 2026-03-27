@@ -28,6 +28,8 @@ import { updateStation } from '@/firebase/firestore/stations';
 
 const audioQueue: string[] = [];
 let isProcessingQueue = false;
+let globalToast: any = null;
+let activeUtterance: SpeechSynthesisUtterance | null = null; // Prevent GC
 
 async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) {
   if (isProcessingQueue || audioQueue.length === 0 || !audioRef?.current) return;
@@ -50,14 +52,32 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
                              voices[0];
       
       if (preferredVoice) utterance.voice = preferredVoice;
+      activeUtterance = utterance; // Keep reference to prevent GC
       
       utterance.onend = () => {
+        activeUtterance = null;
         isProcessingQueue = false;
         setTimeout(() => processQueue(audioRef), 100);
       };
 
-      utterance.onerror = (e) => {
-        console.warn("SpeechSynthesis error:", e);
+      utterance.onerror = (e: any) => {
+        activeUtterance = null;
+        const errCode = (e as any).error;
+        if (errCode === 'interrupted' || errCode === 'canceled') {
+           // Standard interruptions, just move on
+        } else {
+           console.error(`SpeechSynthesis actual failure [${errCode}]:`, e);
+        }
+        
+        if (typeof window !== 'undefined' && window.navigator.platform.toLowerCase().includes('linux')) {
+            if (globalToast && errCode !== 'interrupted') {
+                globalToast({
+                    title: "Audio Link Failure",
+                    description: errCode === 'not-allowed' ? "Browser blocked audio. Click settings to allow." : "Synthesis failed. System restart might help.",
+                    variant: "destructive"
+                });
+            }
+        }
         isProcessingQueue = false;
         setTimeout(() => processQueue(audioRef), 100);
       };
@@ -73,6 +93,7 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
 
       window.speechSynthesis.speak(utterance);
     } else {
+      console.error("SpeechSynthesis NOT supported in this browser");
       isProcessingQueue = false;
       processQueue(audioRef);
     }
@@ -105,6 +126,7 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
 }
 
 let globalAudioRef: React.RefObject<HTMLAudioElement | null> | null = null;
+let globalUnlockFunc: (() => void) | null = null;
 
 export async function announceGlobally(text: string, audioRef?: React.RefObject<HTMLAudioElement | null>) {
   if (typeof window === 'undefined') return;
@@ -116,6 +138,7 @@ export async function announceGlobally(text: string, audioRef?: React.RefObject<
   audioQueue.push(text);
   
   if (globalAudioRef) {
+    if (globalUnlockFunc) globalUnlockFunc();
     processQueue(globalAudioRef);
   }
 }
@@ -124,7 +147,11 @@ export function GlobalTimerNotifications() {
   const { db } = useFirebase();
   const { toast } = useToast();
   const router = useRouter();
-  
+
+  useEffect(() => {
+    globalToast = toast;
+  }, [toast]);
+
   const announcedWarnings = useRef<Set<string>>(new Set());
   const announcedEnds = useRef<Set<string>>(new Set());
   const processedAnnouncements = useRef<Set<string>>(new Set());
@@ -161,37 +188,83 @@ export function GlobalTimerNotifications() {
 
   const unlockAudio = useCallback(() => {
     if (isUnlocked.current) return;
+    
+    // 1. Unlock Web Audio API (AudioContext)
     const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (AudioContext) {
       const context = new AudioContext();
-      if (context.state === 'suspended') context.resume();
+      if (context.state === 'suspended') {
+        context.resume().then(() => {
+            console.log("AudioContext resumed successfully");
+        });
+      }
     }
+
+    // 2. Unlock HTML5 Audio Element (for AI TTS)
     if (audioRef.current && !isProcessingQueue) {
+      // Use a slightly longer silent buffer to ensure the hardware is engaged
       audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
-      audioRef.current.play().then(() => { isUnlocked.current = true; }).catch(() => {});
-    } else {
-      isUnlocked.current = true;
+      audioRef.current.play()
+        .then(() => { 
+          isUnlocked.current = true; 
+          console.log("HTML5 Audio unlocked");
+        })
+        .catch((err) => {
+          console.warn("HTML5 Audio unlock failed:", err);
+        });
     }
+
+    // 3. Unlock SpeechSynthesis (for Fallback TTS)
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance("");
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+      
+      // Force voice loading for Linux/Brave
+      window.speechSynthesis.getVoices();
+    }
+    
+    // If we've done all we can, mark as unlocked (or at least attempted)
+    isUnlocked.current = true;
   }, []);
 
   useEffect(() => {
+    globalUnlockFunc = unlockAudio;
+    return () => { globalUnlockFunc = null; };
+  }, [unlockAudio]);
+
+  // 1. Voice loading effect
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      const loadVoices = () => {
+        window.speechSynthesis.getVoices();
+      };
+      
+      loadVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
+      
+      const voiceInterval = setInterval(() => {
+        if (window.speechSynthesis.getVoices().length === 0) {
+            window.speechSynthesis.getVoices();
+        } else {
+            clearInterval(voiceInterval);
+        }
+      }, 5000);
+      
+      return () => clearInterval(voiceInterval);
+    }
+  }, []);
+
+  // 2. Interaction event listeners for unlocking audio
+  useEffect(() => {
     const handleInteraction = () => {
-      unlockAudio();
-      // Also try to trigger a silent speech to unlock speechSynthesis on some browsers
-      if ('speechSynthesis' in window && !isUnlocked.current) {
-        const u = new SpeechSynthesisUtterance("");
-        u.volume = 0;
-        window.speechSynthesis.speak(u);
+      if (!isUnlocked.current) {
+        unlockAudio();
       }
     };
-
-    // Pre-load voices for Linux browsers
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.getVoices();
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-      }
-    }
 
     window.addEventListener('mousedown', handleInteraction, { passive: true });
     window.addEventListener('keydown', handleInteraction, { passive: true });
