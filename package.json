@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "deploy": "node scripts/bump-version.js && git add . && git commit -m \"Build v$(node -p \"require('./package.json').version\")\" --allow-empty && git push origin main"
+    "deploy": "node scripts/bump-version.js && git add . && git commit -m \"Build v$(node -p \"require('./package.json').version\")\" --allow-empty && git push origin main && npm run dev"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",

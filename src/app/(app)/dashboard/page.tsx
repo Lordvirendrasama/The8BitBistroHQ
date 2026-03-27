@@ -22,6 +22,7 @@ import { JoinPlayerModal } from '@/components/dashboard/join-player-modal';
 import { ManageStationsModal } from '@/components/dashboard/manage-stations-modal';
 import { GlobalRechargeModal } from '@/components/dashboard/global-recharge-modal';
 import { GlobalRewardsModal } from '@/components/dashboard/global-rewards-modal';
+import { SessionRequestHandler } from '@/components/dashboard/session-request-handler';
 import { archiveBill } from '@/firebase/firestore/bills';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
@@ -842,6 +843,7 @@ function DashboardContent() {
         onOpenChange={setIsRewardsModalOpen}
         members={members || []}
       />
+      <SessionRequestHandler />
     </div>
   );
 }

@@ -49,7 +49,8 @@ import {
   Activity,
   Files,
   ClipboardCheck,
-  CalendarRange
+  CalendarRange,
+  QrCode
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
@@ -89,6 +90,7 @@ const allNavItems = [
   },
   { href: '/users', icon: Users, label: 'User Registry' },
   { href: '/billing-history', icon: Receipt, label: 'Billing Audit' },
+  { href: '/scan', icon: QrCode, label: 'Scan & Play' },
   { 
     href: '/analytics', 
     icon: ChartIcon, 
@@ -209,7 +211,7 @@ export function AppSidebar() {
                     )}
                  </>
               ) : (
-                <Link href={item.href}>
+                <Link href={item.href} target={item.href === '/scan' ? '_blank' : undefined} rel={item.href === '/scan' ? 'noopener noreferrer' : undefined}>
                     <SidebarMenuButton
                     isActive={pathname === item.href}
                     tooltip={item.label}
