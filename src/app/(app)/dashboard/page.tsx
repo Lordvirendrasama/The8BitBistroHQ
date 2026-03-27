@@ -26,7 +26,7 @@ import { SessionRequestHandler } from '@/components/dashboard/session-request-ha
 import { archiveBill } from '@/firebase/firestore/bills';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
-import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool } from '@/firebase/firestore/members';
+import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const tierMultipliers: Record<MemberTier, number> = {
@@ -611,6 +611,13 @@ function DashboardContent() {
             }
         }
 
+        // Feature: Automatically deposit/withdraw from the Firestore registry pool if the player is mapped to it!
+        if (m.rechargeId === 'pool' && pkg.id !== 'account-pool') {
+            adjustMemberBalancePool(m.id, durationToAddInSeconds);
+            const shiftedEndTime = m.endTime ? new Date(new Date(m.endTime).getTime() + durationToAddInSeconds * 1000).toISOString() : null;
+            return { ...m, endTime: shiftedEndTime };
+        }
+
         let newEndTime = m.endTime ? new Date(m.endTime).toISOString() : null;
         let newRemaining = m.remainingTimeOnPause;
         const wasFinished = m.status === 'finished';
@@ -683,11 +690,19 @@ function DashboardContent() {
     setSelectedStation(null);
   };
 
-  const handleReduceTime = (minutesToReduce: number, targetIds: string[]) => {
+    const handleReduceTime = (minutesToReduce: number, targetIds: string[]) => {
     if (!selectedStation) return;
     const secondsToReduce = minutesToReduce * 60;
     const updatedMembers = selectedStation.members.map(m => {
         if (m.status === 'finished' || !targetIds.includes(m.id)) return m;
+        
+        // Intercept for account-pool players: Reduce time straight from their registry balance
+        if (m.rechargeId === 'pool') {
+            adjustMemberBalancePool(m.id, -secondsToReduce);
+            const shiftedEndTime = m.endTime ? new Date(new Date(m.endTime).getTime() - secondsToReduce * 1000).toISOString() : null;
+            return { ...m, endTime: shiftedEndTime };
+        }
+
         let newEndTime = m.endTime ? new Date(m.endTime).toISOString() : null;
         let newRemaining = m.remainingTimeOnPause;
         if ((selectedStation.status === 'paused' || m.status === 'paused') && m.remainingTimeOnPause != null) {
@@ -843,7 +858,7 @@ function DashboardContent() {
         onOpenChange={setIsRewardsModalOpen}
         members={members || []}
       />
-      <SessionRequestHandler />
+      <SessionRequestHandler ps5Stations={ps5Stations} />
     </div>
   );
 }

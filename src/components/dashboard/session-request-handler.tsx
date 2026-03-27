@@ -5,7 +5,6 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { updateSessionRequest, deleteSessionRequest, SessionRequest } from '@/firebase/firestore/session-requests';
 import { updateStation } from '@/firebase/firestore/stations';
-import { useCollection } from '@/firebase/firestore/use-collection';
 import type { Station } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -21,7 +20,7 @@ import { Gamepad2, Users, X, Check, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
-export function SessionRequestHandler() {
+export function SessionRequestHandler({ ps5Stations }: { ps5Stations: Station[] }) {
     const { db } = useFirebase();
     const { toast } = useToast();
 
@@ -58,13 +57,8 @@ export function SessionRequestHandler() {
         }
     }, [pendingRequests, activeRequest]);
 
-    // Available PS5 stations query
-    const stationsQuery = useMemo(() => !db ? null : query(
-        collection(db, 'stations'),
-        where('status', '==', 'available'),
-        where('type', '==', 'ps5')
-    ), [db]);
-    const { data: availableStations } = useCollection<Station>(stationsQuery);
+    // Use the prop instead of a secondary query so it perfectly syncs with the dashboard
+    const availableStations = ps5Stations.filter(s => s.status === 'available');
 
     const handleDeny = async () => {
         if (!activeRequest) return;

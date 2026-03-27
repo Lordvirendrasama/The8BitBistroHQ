@@ -350,3 +350,57 @@ export const consumeMemberBalancePool = async (memberId: string, totalSecondsToD
         return false;
     }
 };
+
+/**
+ * Adjusts a member's total pool by either adding or removing time.
+ * If positive: Adds time to the newest active recharge, or creates a dummy one.
+ * If negative: Removes time from the soonest to expire.
+ */
+export const adjustMemberBalancePool = async (memberId: string, durationSeconds: number) => {
+    if (durationSeconds === 0) return true;
+    if (durationSeconds < 0) return consumeMemberBalancePool(memberId, Math.abs(durationSeconds));
+
+    const db = getFirestore();
+    const memberRef = doc(db, 'members', memberId);
+    try {
+        await runTransaction(db, async (transaction) => {
+            const memberSnap = await transaction.get(memberRef);
+            if (!memberSnap.exists()) throw "Member not found";
+            
+            const member = memberSnap.data() as Member;
+            const recharges = member.recharges || [];
+            
+            // Try to find any active recharge to dump time into (prefer furthest expiry)
+            let updatedRecharges = [...recharges];
+            const activeIndexes = updatedRecharges
+                .map((r, i) => ({r, i}))
+                .filter(x => new Date(x.r.expiryDate).getTime() > Date.now())
+                .sort((a, b) => new Date(b.r.expiryDate).getTime() - new Date(a.r.expiryDate).getTime());
+
+            if (activeIndexes.length > 0) {
+                const targetIdx = activeIndexes[0].i;
+                updatedRecharges[targetIdx].remainingDuration += durationSeconds;
+                updatedRecharges[targetIdx].totalDuration += durationSeconds;
+            } else {
+                // Generate a dummy recharge if they have nothing active
+                const dummyId = doc(collection(db, 'dummy')).id;
+                updatedRecharges.push({
+                    id: dummyId,
+                    packageId: 'manual',
+                    packageName: 'Manual Time Transfer',
+                    totalDuration: durationSeconds,
+                    remainingDuration: durationSeconds,
+                    purchaseDate: new Date().toISOString(),
+                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    pricePaid: 0
+                });
+            }
+
+            transaction.update(memberRef, sanitize({ recharges: updatedRecharges }));
+        });
+        return true;
+    } catch (e) {
+        console.error("Pool adjustment failed:", e);
+        return false;
+    }
+};
