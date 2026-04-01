@@ -12,11 +12,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format, differenceInMinutes, differenceInSeconds, addSeconds, addDays, subDays } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle, ChevronLeft, ChevronRight, Banknote, Smartphone, MapPin } from 'lucide-react';
+import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle, ChevronLeft, ChevronRight, Banknote, Smartphone, MapPin, FilePlus2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { deleteBill, updateBill } from '@/firebase/firestore/bills';
+import { deleteBill, updateBill, archiveBill } from '@/firebase/firestore/bills';
 import { useToast } from '@/hooks/use-toast';
 import { EditBillModal } from '@/components/billing/EditBillModal';
+import { CreateBillModal } from '@/components/billing/CreateBillModal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn, getBusinessDate } from '@/lib/utils';
@@ -28,6 +29,7 @@ export default function BillingHistoryPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [editingBill, setEditingBill] = useState<Bill | null>(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
 
     useEffect(() => {
@@ -51,6 +53,9 @@ export default function BillingHistoryPage() {
 
     const activeStationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), where('status', 'in', ['in-use', 'paused'])), [db]);
     const { data: activeStations } = useCollection<Station>(activeStationsQuery);
+
+    const allStationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
+    const { data: allStations } = useCollection<Station>(allStationsQuery);
 
     const filteredBills = useMemo(() => {
         if (!bills) return [];
@@ -133,6 +138,15 @@ export default function BillingHistoryPage() {
         setEditingBill(null);
     };
 
+    const handleCreateBill = async (billData: Omit<Bill, 'id' | 'shiftId'>) => {
+        const billId = await archiveBill(billData);
+        if (billId) {
+            toast({ title: "Bill Created", description: `Manual bill archived with ID ${billId.slice(0, 8)}...` });
+        } else {
+            toast({ variant: 'destructive', title: 'Failed to Create Bill', description: 'An error occurred while saving the manual bill.' });
+        }
+    };
+
     const formatLoggedTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
@@ -151,7 +165,16 @@ export default function BillingHistoryPage() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                 <div>
                     <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Billing Audit</h1>
-                    <p className="mt-1 text-xs sm:text-sm text-muted-foreground uppercase font-black tracking-widest">Historical Station Records & Transparency Ledger.</p>
+                    <p className="mt-1 text-xs sm:text-sm text-muted-foreground uppercase font-black tracking-widest">Historical Station Records &amp; Transparency Ledger.</p>
+                    {canEdit && (
+                        <Button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="mt-3 h-9 font-black uppercase text-[10px] tracking-widest gap-2 shadow-lg"
+                        >
+                            <FilePlus2 className="h-4 w-4" />
+                            Add Manual Bill
+                        </Button>
+                    )}
                 </div>
                  <div className="flex flex-col xs:flex-row gap-3 items-stretch xs:items-center">
                     <div className="flex items-center bg-muted/30 rounded-xl p-1 border-2 border-dashed">
@@ -440,6 +463,14 @@ export default function BillingHistoryPage() {
             {editingBill && (
                 <EditBillModal isOpen={!!editingBill} onOpenChange={(isOpen) => !isOpen && setEditingBill(null)} bill={editingBill} foodItems={foodItems || []} gamingPackages={gamingPackages || []} onSave={handleUpdateBill} />
             )}
+            <CreateBillModal
+                isOpen={isCreateModalOpen}
+                onOpenChange={setIsCreateModalOpen}
+                foodItems={foodItems || []}
+                gamingPackages={gamingPackages || []}
+                stations={allStations || []}
+                onSave={handleCreateBill}
+            />
         </div>
     );
 }

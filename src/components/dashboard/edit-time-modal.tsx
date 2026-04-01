@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Plus, Clock, IndianRupee, Minus, Sparkles, History, Users, CheckCircle2, User, Star } from 'lucide-react';
+import { Plus, Clock, IndianRupee, Minus, Sparkles, History, Users, CheckCircle2, User, Star, Zap } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { GamingPackage, Station, AssignedMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
