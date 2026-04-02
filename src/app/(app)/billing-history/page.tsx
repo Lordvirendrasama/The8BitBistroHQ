@@ -469,6 +469,7 @@ export default function BillingHistoryPage() {
                 foodItems={foodItems || []}
                 gamingPackages={gamingPackages || []}
                 stations={allStations || []}
+                initialDate={date}
                 onSave={handleCreateBill}
             />
         </div>

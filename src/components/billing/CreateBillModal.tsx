@@ -8,11 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning, MapPin, FilePlus2, Monitor, Pencil } from 'lucide-react';
+import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning, MapPin, FilePlus2, Monitor, Pencil, CalendarIcon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 interface CreateBillModalProps {
   isOpen: boolean;
@@ -20,10 +23,11 @@ interface CreateBillModalProps {
   foodItems: FoodItem[];
   gamingPackages: GamingPackage[];
   stations: Station[];
+  initialDate?: Date;
   onSave: (bill: Omit<Bill, 'id' | 'shiftId'>) => Promise<void>;
 }
 
-export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackages, stations, onSave }: CreateBillModalProps) {
+export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackages, stations, initialDate, onSave }: CreateBillModalProps) {
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,6 +36,7 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
   const [upiAmount, setUpiAmount] = useState<string>('0');
   const [selectedStationId, setSelectedStationId] = useState<string>('');
   const [customStationName, setCustomStationName] = useState('');
+  const [billDate, setBillDate] = useState<Date>(new Date());
   const [isSaving, setIsSaving] = useState(false);
 
   // Custom item entry
@@ -50,8 +55,9 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
       setCustomStationName('');
       setCustomItemName('');
       setCustomItemPrice('');
+      setBillDate(initialDate || new Date());
     }
-  }, [isOpen]);
+  }, [isOpen, initialDate]);
 
   const selectedStation = useMemo(() => stations.find(s => s.id === selectedStationId), [stations, selectedStationId]);
   const stationDisplayName = selectedStation?.name || customStationName || 'Manual Entry';
@@ -112,6 +118,11 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
     if (!canSave) return;
     setIsSaving(true);
     try {
+      const current = new Date();
+      if (billDate) {
+        current.setFullYear(billDate.getFullYear(), billDate.getMonth(), billDate.getDate());
+      }
+
       const billData: Omit<Bill, 'id' | 'shiftId'> = {
         stationId: selectedStationId || 'manual',
         stationName: stationDisplayName,
@@ -122,7 +133,7 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
         foodSubtotal: subtotal,
         discount: totalDiscountValue,
         totalAmount: total,
-        timestamp: new Date().toISOString(),
+        timestamp: current.toISOString(),
         paymentMethod,
         cashAmount: paymentMethod === 'split' ? parseFloat(cashAmount) || 0 : paymentMethod === 'cash' ? total : 0,
         upiAmount: paymentMethod === 'split' ? parseFloat(upiAmount) || 0 : paymentMethod === 'upi' ? total : 0,
@@ -259,20 +270,40 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
 
             {/* Station selector */}
             <div className="p-3 border-b bg-muted/10 space-y-2">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <Monitor className="h-3 w-3" /> Station
-              </Label>
-              <Select value={selectedStationId} onValueChange={setSelectedStationId}>
-                <SelectTrigger className="h-9 text-[10px] font-bold uppercase border-2">
-                  <SelectValue placeholder="Select a station..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual-custom" className="text-[10px] font-bold uppercase italic">Custom Name</SelectItem>
-                  {stations.map(s => (
-                    <SelectItem key={s.id} value={s.id} className="text-[10px] font-bold uppercase">{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2 items-start">
+                <div className="flex-1 space-y-2">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <Monitor className="h-3 w-3" /> Station
+                  </Label>
+                  <Select value={selectedStationId} onValueChange={setSelectedStationId}>
+                    <SelectTrigger className="h-9 text-[10px] font-bold uppercase border-2">
+                      <SelectValue placeholder="Select a station..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual-custom" className="text-[10px] font-bold uppercase italic">Custom Name</SelectItem>
+                      {stations.map(s => (
+                        <SelectItem key={s.id} value={s.id} className="text-[10px] font-bold uppercase">{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <CalendarIcon className="h-3 w-3" /> Date
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full h-9 text-[10px] font-bold uppercase border-2 justify-start text-left bg-background")}>
+                        <CalendarIcon className="mr-2 h-4 w-4 text-primary shrink-0" />
+                        {billDate ? format(billDate, "MMM dd, yyyy") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar mode="single" selected={billDate} onSelect={(d) => d && setBillDate(d)} initialFocus />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
               {(selectedStationId === 'manual-custom' || !selectedStationId) && (
                 <Input
                   placeholder="e.g. PS5 1, Board Game 2..."
