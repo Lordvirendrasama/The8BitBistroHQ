@@ -336,6 +336,10 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
 export const updateTask = async (shiftId: string, taskName: string, completed: boolean, user: CustomUser, verificationResult?: 'yes' | 'no'): Promise<boolean> => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
+    let shouldTriggerRupaliLog = false;
+    let shiftDateToTrigger = '';
+    let shiftCycleToTrigger = '';
+
     try {
         await runTransaction(db, async (transaction) => {
             const shiftDoc = await transaction.get(shiftRef);
@@ -372,50 +376,70 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
             
             transaction.update(shiftRef, sanitize({ tasks: updatedTasks }));
 
-            // AUTOMATION: If Rupali's presence is verified as YES, trigger her manual attendance log
-            if (taskName === 'Verify Rupali Presence' && completed && verificationResult === 'yes') {
-                const shiftDate = shiftData.date; // Use the business day of current shift
-                const loginTime = new Date(`${shiftDate}T20:00:00`); // Didi usually comes by 8 PM
-                
-                // Construct the manual shift data
-                const rupaliShiftData = {
-                    username: 'Rupali',
-                    displayName: 'Rupali',
-                    date: shiftDate,
-                    startTime: loginTime.toISOString(),
-                    endTime: new Date(loginTime.getTime() + 4 * 60 * 60 * 1000).toISOString(), // 4 hour session
-                    status: 'yes' as const
-                };
+            if (taskName === 'Verify Rupali Presence' && shiftData.staffId !== 'Rupali') {
+                shouldTriggerRupaliLog = true;
+                shiftDateToTrigger = shiftData.date;
+                shiftCycleToTrigger = shiftData.cycle || 'Live Cycle';
+            }
+        });
 
-                // We can't easily wait for this or use top-level await in transaction
-                // But we can trigger the addDoc outside or after
-                // In firestore transactions, it's better to use transaction.set
-                // I'll call manuallyCreateShift logic manually or just use transaction.set here
+        if (shouldTriggerRupaliLog) {
+            const shiftsRef = collection(db, 'shifts');
+            const q = query(shiftsRef, where('staffId', '==', 'Rupali'), where('date', '==', shiftDateToTrigger), limit(1));
+            const snap = await getDocs(q);
+
+            const strategicTask: ShiftTask = {
+                name: 'Verify Rupali Presence',
+                type: 'strategic',
+                ownerOnly: true,
+                completed: completed,
+                verificationResult,
+                completedAt: completed ? new Date().toISOString() : undefined,
+                completedBy: completed ? { username: user.username, displayName: user.displayName } : undefined
+            };
+
+            if (!snap.empty) {
+                const existingDoc = snap.docs[0];
+                const existingData = existingDoc.data() as Shift;
+                const newTasks = (existingData.tasks || []).filter(t => t.name !== 'Verify Rupali Presence');
+                newTasks.push(strategicTask);
+
+                let updatedEndTime = existingData.endTime;
+                if (verificationResult === 'yes' && !updatedEndTime && existingData.startTime) {
+                    updatedEndTime = new Date(new Date(existingData.startTime).getTime() + 4 * 60 * 60 * 1000).toISOString();
+                }
+
+                await updateDoc(existingDoc.ref, sanitize({ 
+                    tasks: newTasks,
+                    status: 'completed',
+                    endTime: verificationResult === 'no' ? null : updatedEndTime
+                }));
+            } else if (completed && verificationResult) {
+                const loginTime = new Date(`${shiftDateToTrigger}T20:00:00`);
                 const empsRef = collection(db, 'employees');
                 const empQ = query(empsRef, where('username', '==', 'Rupali'), limit(1));
                 const empSnap = await getDocs(empQ);
                 const rupaliSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
                 
                 const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(loginTime, rupaliSettings);
-                
-                const rupaliShiftRef = doc(collection(db, 'shifts'));
+
                 const rupaliLogData = {
-                    date: shiftDate,
+                    date: shiftDateToTrigger,
                     staffId: 'Rupali',
                     employees: [{ username: 'Rupali', displayName: 'Rupali' }],
                     startTime: loginTime.toISOString(),
-                    endTime: new Date(loginTime.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+                    endTime: verificationResult === 'yes' ? new Date(loginTime.getTime() + 4 * 60 * 60 * 1000).toISOString() : null,
                     status: 'completed',
-                    tasks: [],
+                    tasks: [strategicTask],
                     breaks: [],
                     lateMinutes,
                     workedOnWeeklyOff,
-                    cycle: shiftData.cycle || 'Live Cycle'
+                    cycle: shiftCycleToTrigger
                 };
-                
-                transaction.set(rupaliShiftRef, sanitize(rupaliLogData));
+
+                await addDoc(collection(db, 'shifts'), sanitize(rupaliLogData));
             }
-        });
+        }
         return true;
     } catch (e) {
         console.error("Error updating task:", e);
