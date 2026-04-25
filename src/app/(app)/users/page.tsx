@@ -7,7 +7,8 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import type { Member, Station } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 
-import { deleteMember } from '@/firebase/firestore/members';
+import { deleteMember, updateMember, recordTransaction } from '@/firebase/firestore/members';
+import { settings } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -52,6 +53,12 @@ const tierColors: Record<MemberTier, string> = {
     Gold: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50',
 }
 
+const tierMultipliers: Record<MemberTier, number> = {
+  Red: 1,
+  Green: 1.5,
+  Gold: 2,
+};
+
 type SortableKeys = keyof Member | 'name';
 
 export default function UserManagementPage() {
@@ -63,6 +70,11 @@ export default function UserManagementPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState('');
+  
+  const [isPointsModalOpen, setIsPointsModalOpen] = useState(false);
+  const [selectedMemberForPoints, setSelectedMemberForPoints] = useState<Member | null>(null);
+  const [pointsAction, setPointsAction] = useState<'add_points' | 'remove_points' | 'add_bill'>('add_points');
+  const [pointsAmount, setPointsAmount] = useState<string>('');
   
   const membersQuery = useMemo(() => {
     if (!db) return null;
@@ -151,6 +163,59 @@ export default function UserManagementPage() {
     logUserAction(`Clicked 'Edit' for member ${member.name} from User Management list.`, { memberId: member.id });
     router.push(`/members/${member.id}/edit`);
   }
+
+  const handlePointsSubmit = async () => {
+      if (!selectedMemberForPoints || !pointsAmount) return;
+      const amount = parseFloat(pointsAmount);
+      if (isNaN(amount) || amount <= 0) {
+          toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid positive number.' });
+          return;
+      }
+
+      try {
+          if (pointsAction === 'add_bill') {
+              const multiplier = tierMultipliers[selectedMemberForPoints.tier] || 1;
+              const finalXpToGrant = Math.floor(amount * settings.xpPerRupee * multiplier);
+              
+              const newXp = (selectedMemberForPoints.xp || 0) + finalXpToGrant;
+              const newTotalSpent = (selectedMemberForPoints.totalSpent || 0) + amount;
+
+              let newLevel = selectedMemberForPoints.level || 1;
+              let newPoints = selectedMemberForPoints.points || 0;
+              
+              const xpForNextLevel = newLevel * settings.xpPerLevel;
+              if (newXp >= xpForNextLevel) {
+                  newLevel += 1;
+                  newPoints += settings.pointsPerLevelUp;
+              }
+
+              await recordTransaction(
+                  selectedMemberForPoints, 
+                  { xp: newXp, level: newLevel, points: newPoints, totalSpent: newTotalSpent }, 
+                  { amount, xpGained: finalXpToGrant }
+              );
+              
+              toast({ title: 'Bill Logged', description: `Added ₹${amount} and granted ${finalXpToGrant} XP.` });
+
+          } else {
+              let newPoints = selectedMemberForPoints.points || 0;
+              if (pointsAction === 'add_points') {
+                  newPoints += amount;
+              } else if (pointsAction === 'remove_points') {
+                  newPoints = Math.max(0, newPoints - amount);
+              }
+
+              await updateMember(selectedMemberForPoints.id, { points: newPoints });
+              toast({ title: 'Points Updated', description: `${selectedMemberForPoints.name} now has ${newPoints} points.` });
+          }
+
+          setIsPointsModalOpen(false);
+          setPointsAmount('');
+          setSelectedMemberForPoints(null);
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
+  };
 
   const formatDuration = (sec: number) => {
     const h = Math.floor(sec / 3600);
@@ -467,6 +532,17 @@ export default function UserManagementPage() {
                             <DropdownMenuItem onSelect={() => router.push(`/members/${member.id}`)} className="font-bold text-xs gap-2">
                                 <Clock className="h-3.5 w-3.5" /> View Activity
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onSelect={() => {
+                                    setSelectedMemberForPoints(member);
+                                    setPointsAction('add_points');
+                                    setPointsAmount('');
+                                    setIsPointsModalOpen(true);
+                                }} 
+                                className="font-bold text-xs gap-2 text-yellow-600"
+                            >
+                                <Zap className="h-3.5 w-3.5" /> Manage Points
+                            </DropdownMenuItem>
                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem 
                                     className="text-destructive font-bold text-xs gap-2"
@@ -498,6 +574,60 @@ export default function UserManagementPage() {
           </Table>
         </CardContent>
       </Card>
+      {selectedMemberForPoints && (
+          <Dialog open={isPointsModalOpen} onOpenChange={setIsPointsModalOpen}>
+              <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                      <DialogTitle className="font-headline text-xl">Manage Points & XP</DialogTitle>
+                      <DialogDescription className="font-medium text-foreground/80">
+                          Adjust points or log a bill for <strong>{selectedMemberForPoints.name}</strong>.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                      <div className="flex gap-2">
+                          <Button 
+                              variant={pointsAction === 'add_points' ? 'default' : 'outline'} 
+                              onClick={() => setPointsAction('add_points')}
+                              className="flex-1 font-black uppercase text-xs"
+                          >
+                              Add Points
+                          </Button>
+                          <Button 
+                              variant={pointsAction === 'remove_points' ? 'default' : 'outline'} 
+                              onClick={() => setPointsAction('remove_points')}
+                              className="flex-1 font-black uppercase text-xs"
+                          >
+                              Remove Points
+                          </Button>
+                          <Button 
+                              variant={pointsAction === 'add_bill' ? 'default' : 'outline'} 
+                              onClick={() => setPointsAction('add_bill')}
+                              className="flex-1 font-black uppercase text-xs"
+                          >
+                              Add Bill Paid
+                          </Button>
+                      </div>
+                      <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                              {pointsAction === 'add_bill' ? 'Bill Amount (₹)' : 'Points Amount'}
+                          </Label>
+                          <Input
+                              type="number"
+                              min="0"
+                              value={pointsAmount}
+                              onChange={(e) => setPointsAmount(e.target.value)}
+                              className="font-bold border-2"
+                              placeholder="Enter amount..."
+                          />
+                      </div>
+                  </div>
+                  <DialogFooter className="gap-2">
+                      <Button variant="outline" onClick={() => setIsPointsModalOpen(false)} className="font-bold uppercase">Cancel</Button>
+                      <Button onClick={handlePointsSubmit} className="font-black uppercase tracking-tight shadow-xl">Confirm</Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+      )}
     </div>
   );
 }
