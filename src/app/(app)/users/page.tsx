@@ -7,7 +7,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import type { Member, Station } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 
-import { deleteMember, updateMember, recordTransaction } from '@/firebase/firestore/members';
+import { deleteMember, updateMember, recordTransaction, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { settings } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,6 +75,12 @@ export default function UserManagementPage() {
   const [selectedMemberForPoints, setSelectedMemberForPoints] = useState<Member | null>(null);
   const [pointsAction, setPointsAction] = useState<'add_points' | 'remove_points' | 'add_bill'>('add_points');
   const [pointsAmount, setPointsAmount] = useState<string>('');
+  
+  const [isTimeModalOpen, setIsTimeModalOpen] = useState(false);
+  const [selectedMemberForTime, setSelectedMemberForTime] = useState<Member | null>(null);
+  const [timeAction, setTimeAction] = useState<'add' | 'remove'>('add');
+  const [timeHours, setTimeHours] = useState('0');
+  const [timeMinutes, setTimeMinutes] = useState('0');
   
   const membersQuery = useMemo(() => {
     if (!db) return null;
@@ -212,6 +218,38 @@ export default function UserManagementPage() {
           setIsPointsModalOpen(false);
           setPointsAmount('');
           setSelectedMemberForPoints(null);
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
+  };
+
+  const handleTimeSubmit = async () => {
+      if (!selectedMemberForTime) return;
+      
+      const hours = parseInt(timeHours) || 0;
+      const minutes = parseInt(timeMinutes) || 0;
+      const totalSeconds = (hours * 3600) + (minutes * 60);
+
+      if (totalSeconds <= 0) {
+          toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid duration greater than 0.' });
+          return;
+      }
+
+      try {
+          const adjustment = timeAction === 'add' ? totalSeconds : -totalSeconds;
+          const success = await adjustMemberBalancePool(selectedMemberForTime.id, adjustment);
+          
+          if (success) {
+            logUserAction(`Adjusted time balance for ${selectedMemberForTime.name} by ${adjustment > 0 ? '+' : ''}${adjustment} seconds.`, { memberId: selectedMemberForTime.id });
+            toast({ title: 'Time Balance Updated', description: `Successfully ${timeAction === 'add' ? 'added' : 'removed'} time.` });
+          } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to adjust time balance.' });
+          }
+
+          setIsTimeModalOpen(false);
+          setTimeHours('0');
+          setTimeMinutes('0');
+          setSelectedMemberForTime(null);
       } catch (e: any) {
           toast({ variant: 'destructive', title: 'Error', description: e.message });
       }
@@ -543,6 +581,18 @@ export default function UserManagementPage() {
                             >
                                 <Zap className="h-3.5 w-3.5" /> Manage Points
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onSelect={() => {
+                                    setSelectedMemberForTime(member);
+                                    setTimeAction('add');
+                                    setTimeHours('0');
+                                    setTimeMinutes('0');
+                                    setIsTimeModalOpen(true);
+                                }} 
+                                className="font-bold text-xs gap-2 text-blue-500"
+                            >
+                                <Clock className="h-3.5 w-3.5" /> Edit Time Balance
+                            </DropdownMenuItem>
                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem 
                                     className="text-destructive font-bold text-xs gap-2"
@@ -583,6 +633,24 @@ export default function UserManagementPage() {
                           Adjust points or log a bill for <strong>{selectedMemberForPoints.name}</strong>.
                       </DialogDescription>
                   </DialogHeader>
+                  <div className="bg-muted/30 p-3 rounded-lg border flex justify-between text-xs mt-2">
+                      <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Level</span>
+                          <span className="font-black text-sm">{selectedMemberForPoints.level}</span>
+                      </div>
+                      <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Points</span>
+                          <span className="font-black text-yellow-600 text-sm">{selectedMemberForPoints.points?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">XP</span>
+                          <span className="font-black text-primary text-sm">{selectedMemberForPoints.xp?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex flex-col text-right">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Spent</span>
+                          <span className="font-black font-mono text-sm">₹{selectedMemberForPoints.totalSpent?.toLocaleString() || 0}</span>
+                      </div>
+                  </div>
                   <div className="space-y-4 py-4">
                       <div className="flex gap-2">
                           <Button 
@@ -624,6 +692,67 @@ export default function UserManagementPage() {
                   <DialogFooter className="gap-2">
                       <Button variant="outline" onClick={() => setIsPointsModalOpen(false)} className="font-bold uppercase">Cancel</Button>
                       <Button onClick={handlePointsSubmit} className="font-black uppercase tracking-tight shadow-xl">Confirm</Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+      )}
+
+      {selectedMemberForTime && (
+          <Dialog open={isTimeModalOpen} onOpenChange={setIsTimeModalOpen}>
+              <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                      <DialogTitle className="font-headline text-xl">Edit Time Balance</DialogTitle>
+                      <DialogDescription className="font-medium text-foreground/80">
+                          Adjust remaining time pool for <strong>{selectedMemberForTime.name}</strong>.
+                      </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4 py-4">
+                      <div className="flex gap-2">
+                          <Button 
+                              variant={timeAction === 'add' ? 'default' : 'outline'} 
+                              onClick={() => setTimeAction('add')}
+                              className={cn("flex-1 font-black uppercase text-xs", timeAction === 'add' && "bg-blue-600 hover:bg-blue-700")}
+                          >
+                              Add Time
+                          </Button>
+                          <Button 
+                              variant={timeAction === 'remove' ? 'destructive' : 'outline'} 
+                              onClick={() => setTimeAction('remove')}
+                              className={cn("flex-1 font-black uppercase text-xs", timeAction === 'remove' && "bg-destructive hover:bg-destructive/90")}
+                          >
+                              Remove Time
+                          </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hours</Label>
+                              <Input
+                                  type="number"
+                                  min="0"
+                                  value={timeHours}
+                                  onChange={(e) => setTimeHours(e.target.value)}
+                                  className="font-bold border-2"
+                                  placeholder="0"
+                              />
+                          </div>
+                          <div className="space-y-2">
+                              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Minutes</Label>
+                              <Input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  value={timeMinutes}
+                                  onChange={(e) => setTimeMinutes(e.target.value)}
+                                  className="font-bold border-2"
+                                  placeholder="0"
+                              />
+                          </div>
+                      </div>
+                  </div>
+                  <DialogFooter className="gap-2">
+                      <Button variant="outline" onClick={() => setIsTimeModalOpen(false)} className="font-bold uppercase">Cancel</Button>
+                      <Button onClick={handleTimeSubmit} className="font-black uppercase tracking-tight shadow-xl">Confirm</Button>
                   </DialogFooter>
               </DialogContent>
           </Dialog>

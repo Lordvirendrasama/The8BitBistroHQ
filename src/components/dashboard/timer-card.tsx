@@ -145,6 +145,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   const [minRemaining, setMinRemaining] = useState(0);
   const [maxRemaining, setMaxRemaining] = useState(0);
   const [graceRemaining, setGraceRemaining] = useState(0);
+  const [pauseDuration, setPauseDuration] = useState(0);
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [isOrderVisible, setIsOrderVisible] = useState(false);
   
@@ -193,6 +194,13 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             const maxPause = longestMember?.remainingTimeOnPause ?? station.remainingTimeOnPause ?? 0;
             setMinRemaining(minPause * 1000);
             setMaxRemaining(maxPause * 1000);
+
+            if (station.pauseStartTime) {
+                const pauseStart = new Date(station.pauseStartTime).getTime();
+                setPauseDuration(Math.max(0, now - pauseStart));
+            } else {
+                setPauseDuration(0);
+            }
             return;
         }
 
@@ -215,7 +223,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [isRunning, isPaused, isFinishing, shortestMember, longestMember, station.endTime, station.remainingTimeOnPause, station.finishingStartTime]);
+  }, [isRunning, isPaused, isFinishing, shortestMember, longestMember, station.endTime, station.remainingTimeOnPause, station.finishingStartTime, station.pauseStartTime]);
 
   const isTimeUp = minRemaining <= 0 && (shortestMember?.endTime || station.endTime) && isRunning;
   const isTimeLow = minRemaining > 0 && minRemaining < 5 * 60 * 1000 && isRunning;
@@ -358,6 +366,14 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                             <div className="text-[9px] font-bold uppercase text-muted-foreground opacity-60 tracking-widest leading-none mb-0.5">Session Ends</div>
                             <div className="text-base font-bold font-mono text-muted-foreground/80 tracking-tight tabular-nums leading-none">
                                 {formatTime(maxRemaining)}
+                            </div>
+                        </div>
+                    )}
+                    {isPaused && (
+                        <div className="mt-2 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
+                            <div className="text-[9px] font-bold uppercase text-blue-600 opacity-80 tracking-widest leading-none mb-0.5">Paused For</div>
+                            <div className="text-base font-bold font-mono text-blue-600 tracking-tight tabular-nums leading-none">
+                                {formatTime(pauseDuration)}
                             </div>
                         </div>
                     )}
