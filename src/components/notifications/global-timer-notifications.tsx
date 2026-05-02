@@ -379,7 +379,7 @@ export function GlobalTimerNotifications() {
   return (
     <>
       <AlertDialog open={!!activeEndAlert} onOpenChange={(open) => !open && setActiveEndAlert(null)}>
-        <AlertDialogContent className="border-4 border-destructive z-[10000] max-w-lg">
+        <AlertDialogContent className="border-4 border-destructive z-[10000] w-[95vw] max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-4xl text-destructive font-headline text-center animate-pulse uppercase tracking-tighter">Time is Up!</AlertDialogTitle>
             <Separator className="bg-destructive/20 my-4" />
@@ -390,25 +390,25 @@ export function GlobalTimerNotifications() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           
-          <div className="flex flex-col sm:flex-row gap-3 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
             <Button 
               variant="outline"
-              className="flex-1 h-16 font-bold text-lg uppercase border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm"
+              className="h-14 sm:h-16 font-bold text-sm lg:text-base uppercase border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm whitespace-normal text-center leading-tight"
               onClick={handleAddTime}
             >
-              <Clock className="mr-2 h-5 w-5" />
+              <Clock className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
               Add Time
             </Button>
             <Button 
               variant="outline"
-              className="flex-1 h-16 font-bold text-lg uppercase border-2 border-amber-500/50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm"
+              className="h-14 sm:h-16 font-bold text-sm lg:text-base uppercase border-2 border-amber-500/50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm whitespace-normal text-center leading-tight"
               onClick={handleStartFinishing}
             >
-              <CheckCircle2 className="mr-2 h-5 w-5" />
+              <CheckCircle2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
               Finishing Game
             </Button>
             <Button 
-              className="flex-1 bg-destructive hover:bg-destructive/90 text-lg h-16 font-bold shadow-lg" 
+              className="bg-destructive hover:bg-destructive/90 text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight" 
               onClick={handleAcknowledge}
             >
               Acknowledge & Close

@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,6 +9,7 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
+    "run": "npm run dev",
     "typecheck": "tsc --noEmit",
     "deploy": "node scripts/bump-version.js && git add . && git commit -m \"Build v$(node -p \"require('./package.json').version\")\" --allow-empty && git push origin main && npm run dev"
   },
