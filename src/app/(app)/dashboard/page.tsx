@@ -80,6 +80,7 @@ function DashboardContent() {
 
   useEffect(() => {
     const checkoutId = searchParams.get('checkoutId');
+    const addTimeId = searchParams.get('addTimeId');
     if (checkoutId && stations && stations.length > 0) {
       const station = stations.find(s => s.id === checkoutId);
       if (station) {
@@ -87,6 +88,15 @@ function DashboardContent() {
         setIsCheckoutModalOpen(true);
         const url = new URL(window.location.href);
         url.searchParams.delete('checkoutId');
+        window.history.replaceState({}, '', url.pathname);
+      }
+    } else if (addTimeId && stations && stations.length > 0) {
+      const station = stations.find(s => s.id === addTimeId);
+      if (station) {
+        setSelectedStation(station);
+        setIsEditTimeModalOpen(true);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('addTimeId');
         window.history.replaceState({}, '', url.pathname);
       }
     }

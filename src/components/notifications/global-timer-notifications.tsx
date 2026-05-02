@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Clock } from 'lucide-react';
 import { updateStation } from '@/firebase/firestore/stations';
 
 /**
@@ -369,6 +369,13 @@ export function GlobalTimerNotifications() {
     }
   };
 
+  const handleAddTime = () => {
+    if (activeEndAlert) {
+      router.push(`/dashboard?addTimeId=${activeEndAlert.station.id}`);
+    }
+    setActiveEndAlert(null);
+  };
+
   return (
     <>
       <AlertDialog open={!!activeEndAlert} onOpenChange={(open) => !open && setActiveEndAlert(null)}>
@@ -384,6 +391,14 @@ export function GlobalTimerNotifications() {
           </AlertDialogHeader>
           
           <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <Button 
+              variant="outline"
+              className="flex-1 h-16 font-bold text-lg uppercase border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm"
+              onClick={handleAddTime}
+            >
+              <Clock className="mr-2 h-5 w-5" />
+              Add Time
+            </Button>
             <Button 
               variant="outline"
               className="flex-1 h-16 font-bold text-lg uppercase border-2 border-amber-500/50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm"
