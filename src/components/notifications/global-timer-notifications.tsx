@@ -63,8 +63,8 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
       utterance.onerror = (e: any) => {
         activeUtterance = null;
         const errCode = (e as any).error;
-        if (errCode === 'interrupted' || errCode === 'canceled') {
-           // Standard interruptions, just move on
+        if (errCode === 'interrupted' || errCode === 'canceled' || errCode === 'not-allowed') {
+           // Standard interruptions or permission denial, just move on
         } else {
            console.error(`SpeechSynthesis actual failure [${errCode}]:`, e);
         }

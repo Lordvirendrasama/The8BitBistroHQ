@@ -48,10 +48,7 @@ export default function AppLayout({ children }: { children: React.Node }) {
         if (!snapshot.empty) {
             const shiftData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Shift;
             setActiveShift(shiftData);
-            if (user.username === 'Viren') {
-                const hasPending = (shiftData.tasks || []).some(t => t.type === 'strategic' && !t.completed);
-                setTasksVisible(hasPending);
-            }
+            // Removed auto-minimize logic so users can check multiple boxes without the UI disappearing
         } else {
             setActiveShift(null);
         }

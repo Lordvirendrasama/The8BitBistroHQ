@@ -11,7 +11,6 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { cn, getBusinessDate } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 
@@ -188,7 +187,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
         </Button>
       </CardHeader>
       
-      <ScrollArea className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
         <div className="p-4 space-y-6">
           {strategicTasks.length > 0 && (
             <div className="space-y-2">
@@ -218,7 +217,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </Card>
   );
 }

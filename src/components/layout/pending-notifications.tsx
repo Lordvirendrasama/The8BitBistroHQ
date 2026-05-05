@@ -223,7 +223,7 @@ export function PendingNotifications() {
                 </Button>
               </div>
             ) : (
-              <ScrollArea className="max-h-96">
+              <ScrollArea className="h-96">
                   <div className="divide-y">
                       {hasDebts ? debts.map((debt) => (
                           <div key={debt.id} className="p-4 bg-background hover:bg-accent/5 transition-colors">

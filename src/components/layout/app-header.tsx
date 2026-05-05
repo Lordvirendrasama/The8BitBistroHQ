@@ -577,7 +577,7 @@ const OwnerTaskDropdown = () => {
           <Button variant="ghost" size="sm" onClick={() => router.push('/owner-tasks')} className="h-6 text-[8px] font-black uppercase tracking-tighter">View All</Button>
         </div>
         
-        <ScrollArea className="max-h-[350px]">
+        <ScrollArea className="h-[350px]">
           <div className="divide-y">
             {pendingTasks.length > 0 ? pendingTasks.map((task) => (
               <div key={task.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group">
