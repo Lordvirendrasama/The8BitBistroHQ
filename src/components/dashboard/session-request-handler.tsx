@@ -179,7 +179,7 @@ export function SessionRequestHandler({ ps5Stations }: { ps5Stations: Station[] 
                             <SelectTrigger className="h-14 font-bold uppercase tracking-tight text-sm border-2 rounded-2xl">
                                 <SelectValue placeholder="Select an available console..." />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[10002]">
                                 {(availableStations || []).length === 0 ? (
                                     <SelectItem value="none" disabled>No consoles available</SelectItem>
                                 ) : (
