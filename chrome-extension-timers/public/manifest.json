@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "TEBB Timers PIP",
+  "version": "1.0",
+  "description": "Show TEBB POS timers in a floating PIP window on any tab",
+  "action": {
+    "default_title": "Toggle TEBB Timers"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["index.html", "assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+:root {
+  --bg-color: #1a1a1a;
+  --bg-card: #222;
+  --text-color: #fff;
+  --emerald-color: #10b981;
+  --emerald-bg: rgba(16, 185, 129, 0.1);
+  --amber-color: #f59e0b;
+  --amber-bg: rgba(245, 158, 11, 0.1);
+  --destructive-color: #ef4444;
+  --destructive-bg: rgba(239, 68, 68, 0.1);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  width: 300px;
+  min-height: 200px;
+}
+
+#app {
+  padding: 16px;
+}
+
+.header {
+  margin-bottom: 16px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 8px;
+}
+
+.header h1 {
+  font-size: 14px;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 800;
+  color: #888;
+}
+
+#timers-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timer-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-color: var(--bg-card);
+  transition: all 0.2s;
+}
+
+.timer-card.status-good {
+  border-color: var(--emerald-color);
+  background-color: var(--emerald-bg);
+  color: var(--emerald-color);
+}
+
+.timer-card.status-low {
+  border-color: var(--amber-color);
+  background-color: var(--amber-bg);
+  color: var(--amber-color);
+}
+
+.timer-card.status-up {
+  border-color: var(--destructive-color);
+  background-color: var(--destructive-bg);
+  color: var(--destructive-color);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.station-name {
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.timer-value {
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.loading {
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+.no-stations {
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+  padding: 20px 0;
+}
