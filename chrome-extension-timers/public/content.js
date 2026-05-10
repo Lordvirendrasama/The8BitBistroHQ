@@ -22,6 +22,7 @@
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
+      resize: 'both',
       backgroundColor: '#1a1a1a',
       fontFamily: 'sans-serif'
     });
@@ -103,15 +104,6 @@
       }
     });
 
-    // Listen for resize messages from the iframe
-    window.addEventListener('message', (e) => {
-      // Verify origin is from our extension
-      if (e.origin === `chrome-extension://${chrome.runtime.id}`) {
-        if (e.data && e.data.type === 'resize' && e.data.height) {
-          // Add header height (28) plus a tiny padding to the content height
-          container.style.height = (e.data.height + 28) + 'px';
-        }
-      }
-    });
+
   }
 })();

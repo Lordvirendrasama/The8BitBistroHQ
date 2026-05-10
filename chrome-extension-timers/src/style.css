@@ -16,8 +16,10 @@ body {
   padding: 0;
   background-color: var(--bg-color);
   color: var(--text-color);
-  width: 300px;
+  width: 100%;
   min-height: 200px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #app {
@@ -47,8 +49,9 @@ body {
 
 .timer-card {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
+  align-items: stretch;
   padding: 12px;
   border-radius: 8px;
   border: 2px solid transparent;
@@ -88,6 +91,93 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.timer-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.controls {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.action-btn {
+  background: transparent;
+  color: #aaa;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 3px 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex: 1;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.action-btn:hover {
+  color: #fff;
+  border-color: #555;
+}
+
+.btn-pause:hover  { color: var(--amber-color);  border-color: var(--amber-color); }
+.btn-resume:hover { color: var(--emerald-color); border-color: var(--emerald-color); }
+.btn-stop:hover   { color: var(--destructive-color); border-color: var(--destructive-color); }
+.btn-time:hover   { color: #60a5fa; border-color: #60a5fa; }
+
+.show-bill-btn {
+  background: transparent;
+  color: #555;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 3px 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 6px;
+  width: 100%;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.show-bill-btn:hover {
+  color: var(--amber-color);
+  border-color: var(--amber-color);
+}
+
+.bill-container {
+  margin-top: 8px;
+  background: #111;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 11px;
+}
+
+.bill-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #888;
+}
+
+.bill-header button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.bill-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
 @keyframes pulse {
