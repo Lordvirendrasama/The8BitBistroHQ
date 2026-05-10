@@ -225,8 +225,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
     return () => clearInterval(interval);
   }, [isRunning, isPaused, isFinishing, shortestMember, longestMember, station.endTime, station.remainingTimeOnPause, station.finishingStartTime, station.pauseStartTime]);
 
-  const isTimeUp = minRemaining <= 0 && (shortestMember?.endTime || station.endTime) && isRunning;
-  const isTimeLow = minRemaining > 0 && minRemaining < 5 * 60 * 1000 && isRunning;
+  const isTimeUp = maxRemaining <= 0 && (longestMember?.endTime || station.endTime) && isRunning;
+  const isTimeLow = maxRemaining > 0 && maxRemaining < 5 * 60 * 1000 && isRunning;
   const isGraceOver = isFinishing && graceRemaining <= 0;
 
   const cardBorderColor = isPaused ? 'border-blue-500' : isTimeUp ? 'border-destructive' : isTimeLow ? 'border-yellow-500' : isRunning ? 'border-emerald-500' : isFinishing ? (isGraceOver ? 'border-destructive animate-pulse shadow-destructive/20' : 'border-amber-500') : 'border-border';
@@ -352,8 +352,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                         isTimeUp && "text-destructive",
                         isTimeLow && "text-yellow-600"
                         )}>
-                        {(shortestMember?.endTime || station.endTime) 
-                            ? formatTime(minRemaining) 
+                        {(longestMember?.endTime || station.endTime) 
+                            ? formatTime(maxRemaining) 
                             : isRunning ? (
                                 <div className="flex flex-col items-center">
                                     <Utensils className="h-8 w-8 mb-1 text-emerald-600" />
@@ -363,9 +363,12 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     </div>
                     {showTwoTimers && (
                         <div className="mt-1.5 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-                            <div className="text-[9px] font-bold uppercase text-muted-foreground opacity-60 tracking-widest leading-none mb-0.5">Session Ends</div>
-                            <div className="text-base font-bold font-mono text-muted-foreground/80 tracking-tight tabular-nums leading-none">
-                                {formatTime(maxRemaining)}
+                            <div className="text-[9px] font-bold uppercase text-muted-foreground opacity-60 tracking-widest leading-none mb-0.5">Next Expiry</div>
+                            <div className={cn(
+                                "text-base font-bold font-mono tracking-tight tabular-nums leading-none",
+                                minRemaining <= 0 ? "text-destructive" : minRemaining < 5 * 60 * 1000 ? "text-yellow-600" : "text-muted-foreground/80"
+                            )}>
+                                {formatTime(minRemaining)}
                             </div>
                         </div>
                     )}

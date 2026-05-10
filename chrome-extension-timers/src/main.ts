@@ -137,15 +137,43 @@ function updateTimersUI() {
   }
 
   const html = activeStations.map(station => {
+    const now = Date.now();
+
+    // Per-member time-up announcements (for shorter timers that expire first)
+    const activeMembers = (station.members || []).filter((m: any) => m.status !== 'finished');
+    activeMembers.forEach((m: any) => {
+      if (!m.endTime) return;
+      const memberKey = `${station.id}_${m.id}`;
+      const memberRemaining = new Date(m.endTime).getTime() - now;
+      if (memberRemaining <= 0 && !announcedState[memberKey]) {
+        // Only announce if station still has other active members (not a full stop)
+        const otherActive = activeMembers.filter((o: any) => o.id !== m.id && o.status !== 'finished' && o.endTime && new Date(o.endTime).getTime() > now);
+        if (otherActive.length > 0) {
+          speak(`${m.name || 'A player'}'s time is up on ${station.name || station.id}`);
+          announcedState[memberKey] = { lowAnnounced: true, upAnnounced: true };
+        }
+      }
+    });
+
+    // Use the LONGEST (latest) remaining time among all active members as the primary display
     let remainingTime = 0;
     
     if (station.status === 'paused') {
       remainingTime = (station.remainingTimeOnPause || 0) * 1000;
-    } else if (station.endTime) {
-      const end = new Date(station.endTime).getTime();
-      const now = Date.now();
-      const diff = end - now;
-      remainingTime = diff > 0 ? diff : 0;
+    } else {
+      // Find max end time across all non-finished members
+      const memberEndTimes = (station.members || [])
+        .filter((m: any) => m.status !== 'finished' && m.endTime)
+        .map((m: any) => new Date(m.endTime).getTime());
+      
+      if (memberEndTimes.length > 0) {
+        const latestEnd = Math.max(...memberEndTimes);
+        const diff = latestEnd - now;
+        remainingTime = diff > 0 ? diff : 0;
+      } else if (station.endTime) {
+        const diff = new Date(station.endTime).getTime() - now;
+        remainingTime = diff > 0 ? diff : 0;
+      }
     }
 
     const isUp = remainingTime <= 0;
