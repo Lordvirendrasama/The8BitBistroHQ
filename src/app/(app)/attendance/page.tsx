@@ -599,7 +599,18 @@ export default function AttendanceRegistryPage() {
                       </TableCell>
                       <TableCell>
                           <div className="flex gap-1">
-                              {shift.lateMinutes ? <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">LATE</Badge> : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600">ON TIME</Badge>}
+                              {(() => {
+                                  const verifyTask = (shift.tasks || []).find((t: any) => t.type === 'strategic');
+                                  const isAbsent = verifyTask?.verificationResult === 'no';
+                                  if (isAbsent) {
+                                      return <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">ABSENT</Badge>;
+                                  }
+                                  const staffUsername = shift.staffId || shift.employees?.[0]?.username;
+                                  if (staffUsername === 'Rupali') {
+                                      return <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600 border-emerald-500/30 bg-emerald-500/5">PRESENT</Badge>;
+                                  }
+                                  return shift.lateMinutes ? <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">LATE</Badge> : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600">ON TIME</Badge>;
+                              })()}
                               {shift.wasForceExited && <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">FORCE</Badge>}
                           </div>
                       </TableCell>

@@ -62,6 +62,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
   const [configs, setConfigs] = useState<Record<string, PlayerConfig>>({});
   const [activeConfigPlayerId, setActiveConfigPlayerId] = useState<string | null>(null);
   const [clientTime, setClientTime] = useState<string>('');
+  const [customMinutes, setCustomMinutes] = useState('');
+  const [customPrice, setCustomPrice] = useState('');
 
   useEffect(() => {
     setClientTime(new Date().toTimeString().slice(0, 5));
@@ -209,6 +211,27 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
           }
           return next;
       });
+  };
+
+  const handlePickCustomWalkin = (playerId: string) => {
+      const mins = parseInt(customMinutes);
+      const price = parseInt(customPrice) || 0;
+      if (isNaN(mins) || mins <= 0) {
+          toast({ variant: 'destructive', title: 'Invalid Time', description: 'Please enter a valid number of minutes.' });
+          return;
+      }
+      
+      const customPkg = {
+          id: `custom-walkin-${Date.now()}`,
+          name: `Custom (${mins}m)`,
+          duration: mins * 60,
+          price: price,
+          validity: 1,
+      } as GamingPackage;
+      
+      handlePickConfig(playerId, customPkg, false);
+      setCustomMinutes('');
+      setCustomPrice('');
   };
 
   const handleApplyAllAndStart = () => {
@@ -567,6 +590,40 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                             <span className="font-mono font-bold text-base text-foreground">₹{pkg.price}</span>
                                                         </div>
                                                     ))}
+                                                    <div className="pt-3">
+                                                        <p className="text-[10px] font-bold uppercase text-muted-foreground text-center mb-3 tracking-normal border-t pt-3">--- CUSTOM QUICK PLAY ---</p>
+                                                        <div className="p-3 rounded-xl border-2 border-dashed bg-card shadow-sm space-y-3">
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">Minutes</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        placeholder="e.g. 1" 
+                                                                        value={customMinutes} 
+                                                                        onChange={(e) => setCustomMinutes(e.target.value)}
+                                                                        className="h-10 text-xs font-bold font-mono"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">Charge (₹)</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        placeholder="e.g. 10" 
+                                                                        value={customPrice} 
+                                                                        onChange={(e) => setCustomPrice(e.target.value)}
+                                                                        className="h-10 text-xs font-bold font-mono"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <Button 
+                                                                onClick={() => handlePickCustomWalkin(activeConfigPlayerId)} 
+                                                                className="w-full h-10 text-xs font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90"
+                                                                disabled={!customMinutes}
+                                                            >
+                                                                Set Custom Time
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ) : <div className="h-40 flex items-center justify-center opacity-30 italic text-xs font-bold uppercase tracking-normal text-center px-10">Choose a login type above</div>}
                                         </div>

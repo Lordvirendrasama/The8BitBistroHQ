@@ -421,7 +421,9 @@ export const updateTask = async (shiftId: string, taskName: string, completed: b
                 const empSnap = await getDocs(empQ);
                 const rupaliSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
                 
-                const { lateMinutes, workedOnWeeklyOff } = calculateAttendanceOnStart(loginTime, rupaliSettings);
+                // If absent (no), lateMinutes must be 0 — she didn't come, so she's not "late"
+                const { lateMinutes: rawLate, workedOnWeeklyOff } = calculateAttendanceOnStart(loginTime, rupaliSettings);
+                const lateMinutes = verificationResult === 'no' ? 0 : rawLate;
 
                 const rupaliLogData = {
                     date: shiftDateToTrigger,

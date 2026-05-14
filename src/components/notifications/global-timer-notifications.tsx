@@ -156,6 +156,7 @@ export function GlobalTimerNotifications() {
   const announcedEnds = useRef<Set<string>>(new Set());
   const processedAnnouncements = useRef<Set<string>>(new Set());
   const [activeEndAlert, setActiveEndAlert] = useState<{ station: Station, memberName: string } | null>(null);
+  const [activeWarningAlert, setActiveWarningAlert] = useState<{ station: Station, memberName: string } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isUnlocked = useRef(false);
   const sessionStartTime = useRef(new Date().toISOString());
@@ -337,13 +338,13 @@ export function GlobalTimerNotifications() {
 
         if (warningCandidates.length > 1) {
             warningCandidates.forEach(m => announcedWarnings.current.add(`${station.id}-${m.id}-5min`));
-            playAnnouncement(`Attention. Five minutes remaining for everyone at ${station.name}.`);
-            toast({ title: "Session Warning", description: `5 minutes left at ${station.name}` });
+            playAnnouncement(`Attention. Five minutes remaining for everyone at ${station.name}. Please ask if they will be continuing or ending their session.`);
+            setActiveWarningAlert({ station, memberName: "EVERYONE" });
         } else if (warningCandidates.length === 1) {
             const m = warningCandidates[0];
             announcedWarnings.current.add(`${station.id}-${m.id}-5min`);
-            playAnnouncement(`Attention. Five minutes remaining for ${m.name} at ${station.name}.`);
-            toast({ title: "Player Warning", description: `5 minutes left for ${m.name}` });
+            playAnnouncement(`Attention. Five minutes remaining for ${m.name} at ${station.name}. Please ask if they will be continuing or ending their session.`);
+            setActiveWarningAlert({ station, memberName: m.name });
         }
       });
     }, 2000);
@@ -374,6 +375,17 @@ export function GlobalTimerNotifications() {
       router.push(`/dashboard?addTimeId=${activeEndAlert.station.id}`);
     }
     setActiveEndAlert(null);
+  };
+
+  const handleWarningAddTime = () => {
+    if (activeWarningAlert) {
+      router.push(`/dashboard?addTimeId=${activeWarningAlert.station.id}`);
+    }
+    setActiveWarningAlert(null);
+  };
+
+  const handleWarningAcknowledge = () => {
+    setActiveWarningAlert(null);
   };
 
   return (
@@ -412,6 +424,40 @@ export function GlobalTimerNotifications() {
               onClick={handleAcknowledge}
             >
               Acknowledge & Close
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!activeWarningAlert} onOpenChange={(open) => !open && setActiveWarningAlert(null)}>
+        <AlertDialogContent className="border-4 border-amber-500 z-[10000] w-[95vw] max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-4xl text-amber-500 font-headline text-center animate-pulse uppercase tracking-tighter">5 Minutes Left!</AlertDialogTitle>
+            <Separator className="bg-amber-500/20 my-4" />
+            <AlertDialogDescription className="text-xl text-center pt-2 text-foreground font-medium">
+              <span className="font-black text-2xl block mt-2 text-primary">{activeWarningAlert?.memberName}</span>
+              <br />
+              <span className="text-base block mt-1 text-muted-foreground">has <strong className="text-amber-600">5 minutes</strong> remaining at</span>
+              <span className="font-semibold text-muted-foreground mt-3 block italic text-sm border bg-muted/50 p-2 rounded">Station: {activeWarningAlert?.station.name}</span>
+              <span className="text-sm block mt-4 font-bold text-foreground/80 uppercase tracking-wide">Please ask the customer if they will be continuing or ending their session.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
+            <Button 
+              variant="outline"
+              className="h-14 sm:h-16 font-bold text-sm lg:text-base uppercase border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm whitespace-normal text-center leading-tight"
+              onClick={handleWarningAddTime}
+            >
+              <Clock className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              Add More Time
+            </Button>
+            <Button 
+              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight" 
+              onClick={handleWarningAcknowledge}
+            >
+              <CheckCircle2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              Acknowledged
             </Button>
           </div>
         </AlertDialogContent>

@@ -152,7 +152,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                             "text-[9px] font-black uppercase h-4 px-1.5",
                             task.verificationResult === 'yes' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
                         )}>
-                            {task.verificationResult?.toUpperCase()}
+                            {task.verificationResult === 'no' ? 'ABSENT' : task.verificationResult?.toUpperCase()}
                         </Badge>
                     </div>
                     <Button 
