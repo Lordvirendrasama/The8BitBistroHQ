@@ -703,6 +703,8 @@ export function AppHeader({
             }
           }
           sum -= (station.discount || 0);
+          // Include any prepaid (advance) amount collected for this session
+          sum += (station.prepaidAmount || 0);
         });
       }
       return Math.max(0, sum);

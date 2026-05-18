@@ -18,6 +18,7 @@ import { getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/dat
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { isBusinessToday } from '@/lib/utils';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -49,14 +50,21 @@ export default function FootfallAnalyticsPage() {
     // 1. Matrix for Heatmap [Day][Hour]
     const heatmapMatrix: number[][] = Array(7).fill(0).map(() => Array(24).fill(0));
     const dayTotals: Record<string, number> = DAYS.reduce((acc, d) => ({ ...acc, [d]: 0 }), {});
+    const dayRevenue: Record<string, number> = DAYS.reduce((acc, d) => ({ ...acc, [d]: 0 }), {});
     const hourTotals: Record<number, number> = HOURS.reduce((acc, h) => ({ ...acc, [h]: 0 }), {});
     
     // Growth Trend
     const monthlyMap: Record<string, number> = {};
     const yearlyMap: Record<string, number> = {};
+    
+    let earliestMs = Date.now();
+    let latestMs = 0;
 
     filteredBills.forEach(bill => {
         const date = new Date(bill.timestamp);
+        const time = date.getTime();
+        if (time < earliestMs) earliestMs = time;
+        if (time > latestMs) latestMs = time;
         
         // Month/Year key
         const monthKey = format(date, 'MMM yyyy');
@@ -73,6 +81,7 @@ export default function FootfallAnalyticsPage() {
         if (dayIdx >= 0 && dayIdx < 7 && hour >= 0 && hour < 24) {
             heatmapMatrix[dayIdx][hour] += 1;
             dayTotals[DAYS[dayIdx]] += 1;
+            dayRevenue[DAYS[dayIdx]] += (bill.totalAmount || 0);
             hourTotals[hour] += 1;
         }
     });
@@ -84,10 +93,16 @@ export default function FootfallAnalyticsPage() {
     const hourChartData = HOURS.map(h => ({ name: `${h}:00`, count: hourTotals[h] }));
     const monthChartData = Object.entries(monthlyMap).map(([name, count]) => ({ name, count }));
     const yearChartData = Object.entries(yearlyMap).map(([name, count]) => ({ name, count }));
+    const totalPhaseRevenue = Object.values(dayRevenue).reduce((sum, rev) => sum + rev, 0);
+    const durationInWeeks = filteredBills.length > 0 ? Math.max(1, Math.ceil((latestMs - earliestMs) / (1000 * 60 * 60 * 24 * 7))) : 0;
 
     return { 
         heatmapMatrix, 
-        dayChartData, 
+        dayChartData,
+        dayTotals, 
+        dayRevenue,
+        totalPhaseRevenue,
+        durationInWeeks,
         hourChartData, 
         monthChartData,
         yearChartData,
@@ -96,6 +111,15 @@ export default function FootfallAnalyticsPage() {
         filteredBills 
     };
   }, [bills, selectedPhase]);
+
+  // Today's collections — always based on business date, independent of phase filter
+  const todayStats = useMemo(() => {
+    if (!bills) return { total: 0, count: 0, avg: 0 };
+    const todayBills = bills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
+    const total = todayBills.reduce((s, b) => s + (b.totalAmount || 0), 0);
+    const count = todayBills.length;
+    return { total, count, avg: count > 0 ? Math.round(total / count) : 0 };
+  }, [bills]);
 
   const drillDownBills = useMemo(() => {
     if (!selectedCell || !stats) return [];
@@ -154,8 +178,48 @@ export default function FootfallAnalyticsPage() {
                 </Select>
             </div>
             <Badge variant="outline" className="h-10 px-4 border-2 font-black uppercase text-[10px] bg-background shadow-sm">
-                {stats.totalBills.toLocaleString()} SESSIONS ANALYZED
+                {stats.totalBills.toLocaleString()} SESSIONS OVER {stats.durationInWeeks} WEEK{stats.durationInWeeks !== 1 ? 'S' : ''}
             </Badge>
+        </div>
+      </div>
+
+      {/* ── TODAY'S COLLECTIONS BANNER ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total collected today */}
+        <div className="sm:col-span-1 flex flex-col justify-between p-5 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/5 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          <div className="flex items-center gap-2 mb-2">
+            <ReceiptIndianRupee className="h-4 w-4 text-emerald-600" />
+            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700/70">Today&apos;s Collections</p>
+          </div>
+          <p className="text-4xl font-black font-mono text-emerald-600 tracking-tighter leading-none">
+            ₹{todayStats.total.toLocaleString()}
+          </p>
+          <p className="text-[9px] font-bold uppercase text-emerald-700/50 mt-2">Settled bills for current business day</p>
+        </div>
+
+        {/* Sessions today */}
+        <div className="flex flex-col justify-between p-5 rounded-2xl border-2 border-primary/20 bg-primary/5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <Receipt className="h-4 w-4 text-primary" />
+            <p className="text-[9px] font-black uppercase tracking-widest text-primary/70">Sessions Today</p>
+          </div>
+          <p className="text-4xl font-black font-mono text-primary tracking-tighter leading-none">
+            {todayStats.count}
+          </p>
+          <p className="text-[9px] font-bold uppercase text-primary/50 mt-2">Bills closed this business day</p>
+        </div>
+
+        {/* Avg per session */}
+        <div className="flex flex-col justify-between p-5 rounded-2xl border-2 border-amber-500/20 bg-amber-500/5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="h-4 w-4 text-amber-600" />
+            <p className="text-[9px] font-black uppercase tracking-widest text-amber-700/70">Avg per Session</p>
+          </div>
+          <p className="text-4xl font-black font-mono text-amber-600 tracking-tighter leading-none">
+            ₹{todayStats.avg.toLocaleString()}
+          </p>
+          <p className="text-[9px] font-bold uppercase text-amber-700/50 mt-2">Average bill value today</p>
         </div>
       </div>
 
@@ -186,8 +250,8 @@ export default function FootfallAnalyticsPage() {
                 </CardHeader>
                 <CardContent className="p-0 overflow-hidden">
                     <ScrollArea className="w-full">
-                        <div className="p-6 min-w-[800px]">
-                            <div className="grid grid-cols-[80px_repeat(24,1fr)] gap-1">
+                        <div className="p-6 min-w-[900px]">
+                            <div className="grid grid-cols-[80px_repeat(24,1fr)_110px] gap-1">
                                 {/* Header: Hours */}
                                 <div className="h-8" />
                                 {HOURS.map(h => (
@@ -195,6 +259,10 @@ export default function FootfallAnalyticsPage() {
                                         {h}
                                     </div>
                                 ))}
+                                {/* Revenue column header */}
+                                <div className="h-8 flex items-center justify-center text-[8px] font-black uppercase text-emerald-600 border-b border-dashed border-emerald-500/30">
+                                    Revenue
+                                </div>
 
                                 {/* Rows: Days */}
                                 {DAYS.map((day, dIdx) => (
@@ -219,6 +287,26 @@ export default function FootfallAnalyticsPage() {
                                                 </div>
                                             );
                                         })}
+                                        {/* Per-day total revenue cell */}
+                                        <div className="h-10 flex flex-col items-center justify-center rounded-md bg-emerald-500/10 border border-emerald-500/20 px-1 relative overflow-hidden">
+                                            <div 
+                                                className="absolute left-0 bottom-0 top-0 bg-emerald-500/10 z-0" 
+                                                style={{ width: `${stats.totalPhaseRevenue > 0 ? (stats.dayRevenue[day] / stats.totalPhaseRevenue) * 100 : 0}%` }}
+                                            />
+                                            <span className="text-[8px] font-black text-emerald-600 font-mono leading-none z-10 relative">
+                                                ₹{(stats.dayRevenue[day] >= 1000
+                                                    ? `${(stats.dayRevenue[day] / 1000).toFixed(1)}k`
+                                                    : stats.dayRevenue[day].toLocaleString()
+                                                )}
+                                            </span>
+                                            <span className="text-[5px] font-bold text-emerald-700/60 uppercase leading-none mt-0.5 flex gap-1 z-10 relative">
+                                                <span>{stats.dayTotals[day]} bills</span>
+                                                <span className="opacity-50">•</span>
+                                                <span>₹{stats.dayTotals[day] > 0 ? Math.round(stats.dayRevenue[day] / stats.dayTotals[day]).toLocaleString() : 0} avg</span>
+                                                <span className="opacity-50">•</span>
+                                                <span>{stats.totalPhaseRevenue > 0 ? ((stats.dayRevenue[day] / stats.totalPhaseRevenue) * 100).toFixed(1) : 0}%</span>
+                                            </span>
+                                        </div>
                                     </Fragment>
                                 ))}
                             </div>

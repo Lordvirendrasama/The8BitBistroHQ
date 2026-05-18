@@ -264,6 +264,7 @@ export interface Station {
   members: AssignedMember[];
   currentBill?: BillItem[];
   discount?: number;
+  prepaidAmount?: number; // Amount paid in advance by the customer
   order?: number;
 }
 
