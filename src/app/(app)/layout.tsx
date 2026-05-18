@@ -12,6 +12,7 @@ import { getActiveOrStartShift, updateTask } from '@/firebase/firestore/shifts';
 import { StartOfDayTasks } from '@/components/staff/start-of-day-tasks';
 import { GlobalTimerNotifications } from '@/components/notifications/global-timer-notifications';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { CustomerViewProvider } from '@/context/customer-view-context';
 
 export default function AppLayout({ children }: { children: React.Node }) {
   const { user, loading } = useAuth();
@@ -89,29 +90,31 @@ export default function AppLayout({ children }: { children: React.Node }) {
   const showTaskNotification = user?.role === 'admin' || user?.role === 'staff' || user?.role === 'guest';
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppHeader 
-          activeShift={activeShift} 
-          onTaskToggle={handleTaskToggle}
-          tasksVisible={tasksVisible}
-          setTasksVisible={setTasksVisible}
-          uncompletedTaskCount={activeShift?.tasks.filter(t => !t.completed && (t.type === 'start-of-day' || t.type === 'strategic')).length || 0}
-        />
-        <main className="p-3 sm:p-6 lg:p-8 bg-background min-h-0 overflow-y-auto">
-          <GlobalTimerNotifications />
-          {showTaskNotification && activeShift && tasksVisible && (
-            <StartOfDayTasks
-              tasks={activeShift.tasks}
-              onTaskToggle={handleTaskToggle}
-              onMinimize={() => setTasksVisible(false)}
-              employees={activeShift.employees}
-            />
-          )}
-          <div className="max-w-full">{children}</div>
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <CustomerViewProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <AppHeader 
+            activeShift={activeShift} 
+            onTaskToggle={handleTaskToggle}
+            tasksVisible={tasksVisible}
+            setTasksVisible={setTasksVisible}
+            uncompletedTaskCount={activeShift?.tasks.filter(t => !t.completed && (t.type === 'start-of-day' || t.type === 'strategic')).length || 0}
+          />
+          <main className="p-3 sm:p-6 lg:p-8 bg-background min-h-0 overflow-y-auto">
+            <GlobalTimerNotifications />
+            {showTaskNotification && activeShift && tasksVisible && (
+              <StartOfDayTasks
+                tasks={activeShift.tasks}
+                onTaskToggle={handleTaskToggle}
+                onMinimize={() => setTasksVisible(false)}
+                employees={activeShift.employees}
+              />
+            )}
+            <div className="max-w-full">{children}</div>
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </CustomerViewProvider>
   );
 }

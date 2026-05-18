@@ -188,12 +188,14 @@ export function BillModal({
     const hasItemizedSessionItems = billItems.some(i => {
         const nameLower = i.name.toLowerCase();
         const pkgNameLower = station.packageName!.toLowerCase();
+        const isGamingPackage = gamingPackages.some(p => p.name.toLowerCase() === nameLower);
         return (
             (station.members || []).some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) ||
             nameLower.startsWith('time:') ||
             nameLower.startsWith('buy recharge:') ||
             nameLower.startsWith('recharge:') ||
-            nameLower === pkgNameLower
+            nameLower === pkgNameLower ||
+            isGamingPackage
         );
     });
 

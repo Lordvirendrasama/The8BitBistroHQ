@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { updateStation } from '@/firebase/firestore/stations';
 import { Zap } from 'lucide-react';
 import type { Member } from '@/lib/types';
+import { useCustomerView } from '@/context/customer-view-context';
 
 
 interface TimerCardProps {
@@ -141,6 +142,7 @@ const IndividualPlayerTimer = ({
 
 
 export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer, allMembers }: TimerCardProps) {
+  const { isCustomerView } = useCustomerView();
 
   const [minRemaining, setMinRemaining] = useState(0);
   const [maxRemaining, setMaxRemaining] = useState(0);
@@ -397,7 +399,9 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                         <span>Current Order</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="font-mono text-primary">₹{billTotal.toLocaleString()}</span>
+                        {!isCustomerView && (
+                            <span className="font-mono text-primary">₹{billTotal.toLocaleString()}</span>
+                        )}
                         {isOrderVisible ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </div>
                 </Button>
@@ -411,7 +415,9 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                         <span className="truncate flex-1 uppercase tracking-tight text-foreground/80">
                                             {item.quantity}x {item.name.replace(/^(Time: |Buy Recharge: |Recharge: )/i, '')}
                                         </span>
-                                        <span className="font-mono opacity-40 ml-2">₹{item.price * item.quantity}</span>
+                                        {!isCustomerView && (
+                                            <span className="font-mono opacity-40 ml-2">₹{item.price * item.quantity}</span>
+                                        )}
                                     </div>
                                 ))}
                             </div>

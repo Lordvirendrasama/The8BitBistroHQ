@@ -33,7 +33,8 @@ import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
-import { LogOut, Volume2, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save } from "lucide-react";
+import { LogOut, Volume2, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff } from "lucide-react";
+import { useCustomerView } from '@/context/customer-view-context';
 
 const HeaderTimer = ({ station }: { station: Station }) => {
   const [remainingTime, setRemainingTime] = useState(0);
@@ -651,6 +652,7 @@ export function AppHeader({
   uncompletedTaskCount,
 }: AppHeaderProps) {
     const { user, logout, switchUser } = useAuth();
+    const { isCustomerView, toggleCustomerView } = useCustomerView();
     const { db } = useFirebase();
     const { toast } = useToast();
     const router = useRouter();
@@ -793,7 +795,27 @@ export function AppHeader({
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-                    {user?.username === 'Viren' && (
+                    {/* ── Customer View Toggle ── */}
+                    <button
+                        onClick={toggleCustomerView}
+                        title={isCustomerView ? 'Exit Customer View' : 'Enter Customer View'}
+                        className={cn(
+                            "relative h-9 w-9 flex items-center justify-center rounded-xl border-2 transition-all duration-300 shrink-0 shadow-sm",
+                            isCustomerView
+                                ? "bg-primary border-primary text-primary-foreground shadow-primary/30 shadow-md animate-pulse"
+                                : "bg-muted/20 border-muted-foreground/20 text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"
+                        )}
+                    >
+                        {isCustomerView ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {isCustomerView && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
+                            </span>
+                        )}
+                    </button>
+
+                    {user?.username === 'Viren' && !isCustomerView && (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex flex-col items-end gap-0.5 mr-1 shrink-0 hover:bg-muted/10 p-1 rounded transition-colors text-right">
@@ -859,9 +881,9 @@ export function AppHeader({
                             </PopoverContent>
                         </Popover>
                     )}
-                    <StrategicTarget projectedRevenue={projectedRevenue} />
-                    <OwnerConsumptionHeader />
-                    <TodayExpenses />
+                    {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} />}
+                    {!isCustomerView && <OwnerConsumptionHeader />}
+                    {!isCustomerView && <TodayExpenses />}
                     
                     <div className="flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2">
                         <PendingNotifications />
