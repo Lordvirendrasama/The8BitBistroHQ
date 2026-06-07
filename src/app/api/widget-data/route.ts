@@ -108,7 +108,8 @@ export async function GET(request: Request) {
             const parts = formatter.formatToParts(date);
             const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
             
-            return `${partMap.year}-${partMap.month}-${partMap.day} ${partMap.hour}:${partMap.minute}:${partMap.second}`;
+            // Format to Kustom native format: yyyy'y'MM'M'dd'd'HH'h'mm'm'ss's'
+            return `${partMap.year}y${partMap.month}M${partMap.day}d${partMap.hour}h${partMap.minute}m${partMap.second}s`;
         } catch (e) {
             return null;
         }
