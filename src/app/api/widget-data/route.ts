@@ -49,6 +49,30 @@ export async function GET(request: Request) {
     });
     
     // Format timers for the widget
+    const formatToIst = (dateStr: string | null | undefined): string | null => {
+        if (!dateStr) return null;
+        try {
+            const date = new Date(dateStr);
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            const parts = formatter.formatToParts(date);
+            const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+            
+            return `${partMap.year}-${partMap.month}-${partMap.day} ${partMap.hour}:${partMap.minute}:${partMap.second}`;
+        } catch (e) {
+            return null;
+        }
+    };
+
     const timers = stations.map(s => {
         let remainingSeconds = 0;
         let isExpired = false;
@@ -69,6 +93,8 @@ export async function GET(request: Request) {
             status: s.status,
             startTime: s.startTime,
             endTime: s.endTime,
+            startTimeLocal: formatToIst(s.startTime),
+            endTimeLocal: formatToIst(s.endTime),
             remainingSeconds,
             isExpired,
             type: s.type,
