@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { initializeFirebase } from '@/firebase/init';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import type { Station, Bill } from '@/lib/types';
+import type { Station, Bill, GamingPackage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic'; // Ensures this route is always evaluated dynamically
 
@@ -46,6 +46,47 @@ export async function GET(request: Request) {
     billsSnapshot.docs.forEach(doc => {
         const bill = doc.data() as Bill;
         dailyRevenue += (bill.totalAmount || 0);
+    });
+
+    // 3. Fetch gaming packages to calculate projected revenue
+    const packagesSnapshot = await getDocs(collection(db, 'gamingPackages'));
+    const gamingPackages = packagesSnapshot.docs.map(doc => doc.data() as GamingPackage);
+
+    // Calculate Projected Revenue (Daily Revenue + Active Sessions values)
+    let projectedRevenue = dailyRevenue;
+    stations.forEach(station => {
+        // Add current orders/food/extra time
+        const currentBillSum = (station.currentBill || []).reduce((s, i) => s + (i.price * i.quantity), 0);
+        projectedRevenue += currentBillSum;
+
+        // Add package price if not already itemized
+        if (station.packageName && station.packageName !== 'Walk-in Order') {
+            const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim().toLowerCase();
+            const isItemized = (station.currentBill || []).some(item => {
+                const nameLower = item.name.toLowerCase();
+                return (
+                    nameLower.includes(pureName) ||
+                    nameLower.startsWith('time:') ||
+                    nameLower.startsWith('buy recharge:') ||
+                    nameLower.startsWith('recharge:')
+                );
+            });
+
+            if (!isItemized) {
+                const pkg = gamingPackages.find(p => p.name.toLowerCase() === pureName);
+                if (pkg) {
+                    const playerCount = station.members?.length || 1;
+                    const capacity = pkg.playerCapacity || 1;
+                    const instances = Math.ceil(playerCount / capacity);
+                    if (!station.packageName.startsWith('Recharge: ')) {
+                        projectedRevenue += (pkg.price * instances);
+                    }
+                }
+            }
+        }
+        
+        // Subtract discount
+        projectedRevenue -= (station.discount || 0);
     });
     
     // Format timers for the widget
@@ -105,6 +146,7 @@ export async function GET(request: Request) {
     
     return NextResponse.json({
         dailyRevenue,
+        projectedRevenue: Math.floor(projectedRevenue),
         activeTimers: timers,
         timestamp: new Date().toISOString()
     });
