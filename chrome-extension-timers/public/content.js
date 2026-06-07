@@ -105,5 +105,17 @@
     });
 
 
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'resizePip' && container) {
+        if (e.data.isMinimized) {
+          container.style.width = '180px';
+          container.style.height = '100px';
+        } else {
+          container.style.width = '260px';
+          container.style.height = '300px';
+        }
+      }
+    });
+
   }
 })();

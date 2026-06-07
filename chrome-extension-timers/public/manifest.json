@@ -10,13 +10,18 @@
     "service_worker": "background.js"
   },
   "permissions": [
-    "activeTab",
-    "scripting"
+    "scripting",
+    "activeTab"
   ],
   "web_accessible_resources": [
     {
-      "resources": ["index.html", "assets/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "index.html",
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

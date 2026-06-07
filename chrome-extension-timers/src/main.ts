@@ -108,9 +108,61 @@ if (timersContainer) {
   });
 }
 
+let audioCtx: AudioContext | null = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+// Initialize audio on any click to ensure gesture requirements are met
+document.addEventListener('click', () => {
+  initAudio();
+});
+
+function playBeep() {
+  initAudio();
+  if (!audioCtx) return;
+  
+  try {
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+    osc.frequency.setValueAtTime(1108.73, audioCtx.currentTime + 0.1); // C#6
+    osc.frequency.setValueAtTime(1318.51, audioCtx.currentTime + 0.2); // E6
+    
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+    gainNode.gain.setValueAtTime(1, audioCtx.currentTime + 0.4);
+    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+    
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.5);
+  } catch (e) {
+    console.error("Audio beep failed", e);
+  }
+}
+
 function speak(text: string) {
+  playBeep();
   if ('speechSynthesis' in window) {
+    // Workaround for Chrome TTS occasionally getting stuck
+    if (!window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
     const utterance = new SpeechSynthesisUtterance(text);
+    utterance.volume = 1;
+    utterance.rate = 1;
+    utterance.pitch = 1;
     window.speechSynthesis.speak(utterance);
   }
 }
@@ -304,6 +356,31 @@ function init() {
   });
 }
 
+
+const minimizeBtn = document.getElementById('minimize-btn');
+let isMinimized = false;
+
+if (minimizeBtn) {
+  minimizeBtn.addEventListener('click', () => {
+    isMinimized = !isMinimized;
+    document.body.classList.toggle('minimized', isMinimized);
+    
+    // Switch SVG icon between minimize and maximize
+    if (isMinimized) {
+      minimizeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`;
+      minimizeBtn.title = "Maximize";
+    } else {
+      minimizeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+      minimizeBtn.title = "Minimize";
+    }
+    
+    if (window.parent) {
+      window.parent.postMessage({ type: 'resizePip', isMinimized }, '*');
+    }
+  });
+}
+
 init();
+
 
 

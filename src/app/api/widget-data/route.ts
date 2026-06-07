@@ -19,9 +19,16 @@ export async function GET(request: Request) {
     
     // 1. Get active stations
     const stationsSnapshot = await getDocs(collection(db, 'stations'));
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
     const stations = stationsSnapshot.docs
       .map(doc => doc.data() as Station)
-      .filter(s => s.status === 'in-use' || s.status === 'paused');
+      .filter(s => s.status === 'in-use' || s.status === 'paused')
+      .filter(s => {
+          if (!s.startTime) return false;
+          const startTimeMs = new Date(s.startTime).getTime();
+          // Filter out stale sessions older than 24 hours
+          return (Date.now() - startTimeMs) < ONE_DAY_MS;
+      });
       
     // 2. Get today's revenue
     // Get start of today (midnight)
@@ -60,6 +67,8 @@ export async function GET(request: Request) {
         return {
             name: s.name,
             status: s.status,
+            startTime: s.startTime,
+            endTime: s.endTime,
             remainingSeconds,
             isExpired,
             type: s.type,

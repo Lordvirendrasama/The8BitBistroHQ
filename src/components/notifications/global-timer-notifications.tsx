@@ -30,12 +30,60 @@ const audioQueue: string[] = [];
 let isProcessingQueue = false;
 let globalToast: any = null;
 let activeUtterance: SpeechSynthesisUtterance | null = null; // Prevent GC
+let sharedAudioCtx: AudioContext | null = null;
+
+function getAudioContext() {
+  if (typeof window === 'undefined') return null;
+  if (!sharedAudioCtx) {
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      sharedAudioCtx = new AudioContextClass();
+    }
+  }
+  return sharedAudioCtx;
+}
+
+function playBeep() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  
+  try {
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+    osc.frequency.setValueAtTime(1108.73, ctx.currentTime + 0.1); // C#6
+    osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.2); // E6
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.05);
+    gainNode.gain.setValueAtTime(1, ctx.currentTime + 0.4);
+    gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch (e) {
+    console.error("Audio beep failed", e);
+  }
+}
 
 async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) {
   if (isProcessingQueue || audioQueue.length === 0 || !audioRef?.current) return;
   
   isProcessingQueue = true;
   const text = audioQueue.shift()!;
+
+  if (text.trim() !== "") {
+    playBeep();
+  }
 
   const fallbackSpeech = () => {
     if ('speechSynthesis' in window) {
