@@ -149,6 +149,7 @@ export async function GET(request: Request) {
         dailyRevenue,
         projectedRevenue: Math.floor(projectedRevenue),
         activeTimers: timers,
+        lastUpdatedLocal: formatToIst(new Date().toISOString()),
         timestamp: new Date().toISOString()
     });
     
