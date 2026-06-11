@@ -333,6 +333,41 @@ export const endBreak = async (shiftId: string, user: CustomUser) => {
     }
 };
 
+export const notifyLateBreak = async (shiftId: string, user: CustomUser) => {
+    const db = getFirestore();
+    const shiftRef = doc(db, 'shifts', shiftId);
+    try {
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(shiftRef);
+            if (!snap.exists()) return;
+            const data = snap.data() as Shift;
+            const hasActive = data.breaks?.some(b => !b.endTime && !b.lateNotified);
+            if (!hasActive) return;
+            const updatedBreaks = data.breaks.map(b => {
+                if (!b.endTime && !b.lateNotified) {
+                    return { ...b, lateNotified: true };
+                }
+                return b;
+            });
+            transaction.update(shiftRef, { breaks: updatedBreaks });
+
+            const notificationRef = doc(collection(db, 'adminNotifications'));
+            const now = new Date();
+            transaction.set(notificationRef, {
+                message: `<strong>${user.displayName}</strong> has been on break for over 1 hour.`,
+                type: 'LATE_BREAK',
+                isRead: false,
+                timestamp: now.toISOString(),
+                triggeredBy: { username: user.username, displayName: user.displayName, role: user.role }
+            });
+        });
+        return true;
+    } catch (e) {
+        console.error("Error notifying late break:", e);
+        return false;
+    }
+};
+
 export const updateTask = async (shiftId: string, taskName: string, completed: boolean, user: CustomUser, verificationResult?: 'yes' | 'no'): Promise<boolean> => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);

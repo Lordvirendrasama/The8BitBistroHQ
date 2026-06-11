@@ -3,8 +3,9 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, limit } from 'firebase/firestore';
+import { collection, query, where, limit, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
+import { useAuth } from '@/firebase/auth/use-user';
 import type { Station, AudioAnnouncement } from '@/lib/types';
 import { generateSpeech } from '@/ai/flows/tts-flow';
 import {
@@ -195,10 +196,36 @@ export function GlobalTimerNotifications() {
   const { db } = useFirebase();
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
+
+  const [breakState, setBreakState] = useState<any>(null);
+  const [showBreakOverAlert, setShowBreakOverAlert] = useState(false);
+  const lastAlertedBreakStart = useRef<string | null>(null);
 
   useEffect(() => {
     globalToast = toast;
   }, [toast]);
+
+  // Listen to Firestore break timer config
+  useEffect(() => {
+    if (!db) return;
+    const docRef = doc(db, 'settings', 'break_timer');
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setBreakState(data);
+        // If break timer is set to inactive from somewhere else, close alert
+        if (data.status === 'inactive') {
+          setShowBreakOverAlert(false);
+        }
+      } else {
+        setBreakState(null);
+        setShowBreakOverAlert(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [db]);
+
 
   const announcedWarnings = useRef<Set<string>>(new Set());
   const announcedEnds = useRef<Set<string>>(new Set());
@@ -234,6 +261,42 @@ export function GlobalTimerNotifications() {
       announceGlobally("", audioRef);
     }
   }, []);
+
+  // Check if break is active and expired
+  useEffect(() => {
+    if (!breakState || breakState.status !== 'active' || !breakState.endTime) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const endTimeMs = new Date(breakState.endTime).getTime();
+      const diff = endTimeMs - now;
+
+      if (diff <= 0) {
+        // Break has expired!
+        if (user && user.username !== 'Viren') {
+          if (lastAlertedBreakStart.current !== breakState.startTime) {
+            lastAlertedBreakStart.current = breakState.startTime;
+            setShowBreakOverAlert(true);
+            playAnnouncement("Break time is over. Please return to work.");
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [breakState, user, playAnnouncement]);
+
+  const handleAcknowledgeBreakOver = async () => {
+    setShowBreakOverAlert(false);
+    if (!db) return;
+    try {
+      const docRef = doc(db, 'settings', 'break_timer');
+      await updateDoc(docRef, { status: 'inactive' });
+      toast({ title: "Break Reset Complete", description: "Bistro status returned to normal." });
+    } catch (err) {
+      console.error("Error acknowledging break over:", err);
+    }
+  };
 
   const unlockAudio = useCallback(() => {
     if (isUnlocked.current) return;
@@ -506,6 +569,33 @@ export function GlobalTimerNotifications() {
             >
               <CheckCircle2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
               Acknowledged
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBreakOverAlert} onOpenChange={setShowBreakOverAlert}>
+        <AlertDialogContent className="border-4 border-amber-500 z-[10000] w-[95vw] max-w-2xl font-body">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-4xl text-amber-500 font-headline text-center animate-pulse uppercase tracking-tighter">
+              Break Time Over!
+            </AlertDialogTitle>
+            <Separator className="bg-amber-500/20 my-4" />
+            <AlertDialogDescription className="text-xl text-center pt-2 text-foreground font-medium">
+              The 1-hour break period has ended.
+              <br />
+              <span className="text-base block mt-2 text-muted-foreground">
+                Please return to your station and resume operations.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="flex justify-center mt-6">
+            <Button 
+              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 px-8 font-black uppercase tracking-widest shadow-lg" 
+              onClick={handleAcknowledgeBreakOver}
+            >
+              Acknowledge & Reset
             </Button>
           </div>
         </AlertDialogContent>

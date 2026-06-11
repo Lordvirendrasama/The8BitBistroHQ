@@ -285,6 +285,7 @@ export interface ShiftBreak {
   startTime: string;
   endTime?: string;
   durationSeconds?: number;
+  lateNotified?: boolean;
 }
 
 export interface Shift {

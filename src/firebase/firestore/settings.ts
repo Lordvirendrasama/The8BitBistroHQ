@@ -50,3 +50,37 @@ export const updateSettings = async (updates: Partial<Settings>) => {
     return false;
   }
 };
+
+export const startBreakTimer = async (startedBy: string) => {
+  const db = getFirestore();
+  const docRef = doc(db, 'settings', 'break_timer');
+  const startTime = new Date().toISOString();
+  const endTime = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour break
+  try {
+    await setDoc(docRef, {
+      status: 'active',
+      startTime,
+      endTime,
+      startedBy
+    });
+    return true;
+  } catch (error) {
+    console.error("Error starting break timer:", error);
+    return false;
+  }
+};
+
+export const stopBreakTimer = async () => {
+  const db = getFirestore();
+  const docRef = doc(db, 'settings', 'break_timer');
+  try {
+    await setDoc(docRef, {
+      status: 'inactive'
+    });
+    return true;
+  } catch (error) {
+    console.error("Error stopping break timer:", error);
+    return false;
+  }
+};
+

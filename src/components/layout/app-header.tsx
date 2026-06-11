@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { updateSettings } from "@/firebase/firestore/settings";
+import { startBreak, endBreak, notifyLateBreak } from "@/firebase/firestore/shifts";
 import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -533,6 +534,165 @@ const TodayExpenses = () => {
   );
 };
 
+const BreakTimerButton = ({ activeShift }: { activeShift: Shift | null }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const activeBreak = useMemo(() => activeShift?.breaks?.find(b => !b.endTime), [activeShift]);
+  const isActive = !!activeBreak;
+  const [activeDurationMs, setActiveDurationMs] = useState<number>(0);
+
+  // Update elapsed timer and check for late break
+  useEffect(() => {
+    if (!activeBreak) {
+      setActiveDurationMs(0);
+      return;
+    }
+
+    const startTimeMs = new Date(activeBreak.startTime).getTime();
+    
+    const update = () => {
+      const now = Date.now();
+      const diff = Math.max(0, now - startTimeMs);
+      setActiveDurationMs(diff);
+
+      // Trigger late notification if over 1 hour (3600000 ms)
+      if (diff > 3600000 && !activeBreak.lateNotified && activeShift && user) {
+        notifyLateBreak(activeShift.id, user);
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [activeBreak, activeShift, user]);
+
+  const handleStart = async () => {
+    if (!user || !activeShift) return;
+    const success = await startBreak(activeShift.id, user);
+    if (success) {
+      toast({ title: "Break Started", description: "Your break timer is now active." });
+    } else {
+      toast({ title: "Error starting break", variant: "destructive" });
+    }
+  };
+
+  const handleStop = async () => {
+    if (!user || !activeShift) return;
+    const success = await endBreak(activeShift.id, user);
+    if (success) {
+      toast({ title: "Break Ended", description: "Welcome back." });
+    } else {
+      toast({ title: "Error stopping break", variant: "destructive" });
+    }
+  };
+
+  const formatTime = (ms: number) => {
+    if (ms <= 0) return "00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  if (!user || !activeShift) return null;
+
+  if (isActive) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={cn(
+              "h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 text-white border rounded-lg font-black transition-all shrink-0 font-body shadow-md animate-pulse",
+              activeDurationMs > 3600000 ? "bg-destructive border-destructive hover:bg-destructive/90" : "bg-amber-500 border-amber-600 hover:bg-amber-600"
+            )}
+          >
+            <Coffee className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current text-white" />
+            <span className="font-mono text-[10px] sm:text-sm">{formatTime(activeDurationMs)}</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-3 text-center space-y-2 border-2 shadow-2xl font-body" align="center">
+          <p className={cn("text-xs font-black uppercase", activeDurationMs > 3600000 ? "text-destructive" : "text-amber-600")}>
+            Break Period Active
+          </p>
+          <p className="text-[9px] text-muted-foreground uppercase font-bold">
+            Elapsed: {formatTime(activeDurationMs)}
+          </p>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="w-full h-8 font-black uppercase text-[10px] tracking-wider"
+            onClick={handleStop}
+          >
+            End Break
+          </Button>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  return (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-black transition-all shrink-0 font-body"
+      onClick={handleStart}
+    >
+      <Coffee className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+      <span className="text-[10px] sm:text-xs uppercase font-black">Take Break</span>
+    </Button>
+  );
+};
+
+const OperatorBreakTime = ({ breaks }: { breaks?: import('@/lib/types').ShiftBreak[] }) => {
+  const [totalMs, setTotalMs] = useState(0);
+
+  useEffect(() => {
+    if (!breaks || breaks.length === 0) {
+      setTotalMs(0);
+      return;
+    }
+
+    const update = () => {
+      const now = Date.now();
+      let sum = 0;
+      for (const b of breaks) {
+        if (b.durationSeconds) sum += b.durationSeconds * 1000;
+        else if (b.startTime && !b.endTime) sum += Math.max(0, now - new Date(b.startTime).getTime());
+      }
+      setTotalMs(sum);
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [breaks]);
+
+  if (totalMs === 0) return null;
+
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  return (
+    <div className="flex items-center justify-between px-2 py-1 mb-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
+      <span className="text-[9px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-1.5">
+        <Coffee className="h-3 w-3" /> Break Time Today
+      </span>
+      <span className="text-xs font-mono font-black text-amber-600">
+        {hours > 0 ? `${hours}h ` : ''}{minutes}m
+      </span>
+    </div>
+  );
+};
+
 const OwnerTaskDropdown = () => {
   const { db } = useFirebase();
   const { user } = useAuth();
@@ -886,6 +1046,7 @@ export function AppHeader({
                     {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} />}
                     {!isCustomerView && <OwnerConsumptionHeader />}
                     {!isCustomerView && <TodayExpenses />}
+                    {!isCustomerView && <BreakTimerButton activeShift={activeShift} />}
                     
                     <div className="flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2">
                         <PendingNotifications />
@@ -922,6 +1083,7 @@ export function AppHeader({
                                 <p className="text-sm font-bold truncate">{user?.displayName}</p>
                                 <Badge variant="outline" className="text-[8px] uppercase h-4 font-bold">{user?.role}</Badge>
                             </div>
+                            <OperatorBreakTime breaks={activeShift?.breaks} />
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => { 
                                 announceGlobally("This is a test");
