@@ -18,7 +18,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['var(--font-inter)', 'sans-serif'],
+        body: ['var(--font-outfit)', 'sans-serif'],
         display: ['var(--font-anton)', 'sans-serif'],
         headline: ['Karmatic Arcade', 'sans-serif'],
         code: ['monospace'],
