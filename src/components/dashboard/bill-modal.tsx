@@ -232,7 +232,7 @@ export function BillModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] md:max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="max-w-[98vw] md:max-w-7xl h-[92vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
         <div className="flex flex-col shrink-0 bg-background border-b z-20">
             <DialogHeader className="px-4 pt-3 md:px-5 md:pt-4 pb-1 relative">
                 <div className="flex justify-between items-start gap-2 pr-8">
@@ -298,13 +298,13 @@ export function BillModal({
                                 key={cat} 
                                 onClick={() => scrollToCategory(cat)}
                                 className={cn(
-                                    "px-3 py-2 text-center border-b-2 transition-all whitespace-nowrap shrink-0",
+                                    "px-4 py-2.5 text-center border-b-2 transition-all whitespace-nowrap shrink-0",
                                     activeCategory === cat 
                                         ? "border-primary text-primary font-black bg-primary/5" 
                                         : "border-transparent text-muted-foreground font-bold"
                                 )}
                             >
-                                <span className="text-[8px] uppercase tracking-[0.1em]">{cat}</span>
+                                <span className="text-[13px] md:text-[14px] uppercase tracking-[0.1em]">{cat}</span>
                             </button>
                         ))}
                     </div>
@@ -328,7 +328,7 @@ export function BillModal({
                                 : "border-transparent text-muted-foreground font-bold hover:bg-muted"
                         )}
                     >
-                        <span className="text-[10px] uppercase tracking-[0.1em] flex items-center gap-2">
+                        <span className="text-[15px] md:text-[16px] uppercase tracking-[0.1em] flex items-center gap-2">
                             {cat === 'Hot Items' && <Flame className="h-3 w-3 text-primary fill-current" />}
                             {cat}
                         </span>
@@ -346,17 +346,17 @@ export function BillModal({
                                 <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
                                     <Flame className="h-3 w-3 fill-current" /> TOP PICKS
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
                                     {hotItems.gaming.map(pkg => (
                                         <button 
                                             key={pkg.id} 
                                             onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
-                                            className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                         >
-                                            <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                            <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
                                             <div className="flex justify-between items-end">
-                                                <span className="font-mono font-black text-xs md:text-base">₹{pkg.price}</span>
-                                                <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{pkg.price}</span>
+                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
                                             </div>
                                         </button>
                                     ))}
@@ -364,12 +364,12 @@ export function BillModal({
                                         <button 
                                             key={food.id} 
                                             onClick={() => handleAddItem(food)}
-                                            className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                         >
-                                            <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{food.name}</p>
+                                            <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{food.name}</p>
                                             <div className="flex justify-between items-end">
-                                                <span className="font-mono font-black text-xs md:text-base">₹{food.price}</span>
-                                                <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{food.price}</span>
+                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
                                             </div>
                                         </button>
                                     ))}
@@ -386,17 +386,17 @@ export function BillModal({
                                     <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-muted-foreground/60 bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
                                         {category}
                                     </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
                                         {items.map(item => (
                                             <button 
                                                 key={item.id} 
                                                 onClick={() => handleAddItem(item)}
-                                                className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                                className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                             >
-                                                <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                                <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
                                                 <div className="flex justify-between items-end">
-                                                    <span className="font-mono font-black text-xs md:text-base">₹{item.price}</span>
-                                                    <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                                    <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
+                                                    <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
                                                 </div>
                                             </button>
                                         ))}
@@ -410,17 +410,17 @@ export function BillModal({
                             <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary/60 bg-background/95 backdrop-blur-sm border-b border-dashed border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
                                 <Gamepad2 className="h-3 w-3" /> SESSION PACKAGES
                             </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-2.5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
                                 {filteredGaming.map(pkg => (
                                     <button 
                                         key={pkg.id} 
                                         onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
-                                        className="group p-2.5 md:p-3 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-16 md:h-24 relative overflow-hidden active:scale-95 shadow-sm"
+                                        className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-primary/10 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                     >
-                                        <p className="font-black uppercase text-[9px] md:text-[11px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                        <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
                                         <div className="flex justify-between items-end">
-                                            <span className="font-mono font-black text-xs md:text-base">₹{pkg.price}</span>
-                                            <PlusCircle className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                            <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{pkg.price}</span>
+                                            <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
                                         </div>
                                     </button>
                                 ))}
@@ -431,7 +431,7 @@ export function BillModal({
             </div>
 
             <div className={cn(
-                "w-full md:w-[320px] bg-card border-t md:border-t-0 md:border-l shrink-0 flex flex-col overflow-hidden shadow-2xl transition-all",
+                "w-full md:w-[380px] bg-card border-t md:border-t-0 md:border-l shrink-0 flex flex-col overflow-hidden shadow-2xl transition-all",
                 activeTab === 'menu' && "hidden md:flex"
             )}>
                 <div className="p-3 border-b bg-muted/10 shrink-0 flex justify-between items-center">
@@ -448,8 +448,8 @@ export function BillModal({
                             {billItems.length > 0 ? billItems.map((item, idx) => (
                                 <TableRow key={`${item.itemId}-${idx}`} className="border-b hover:bg-transparent">
                                     <TableCell className="py-2.5 md:py-3 pl-0">
-                                        <p className="font-black text-[9px] md:text-[11px] uppercase leading-tight">{item.name}</p>
-                                        <p className="text-[8px] md:text-[9px] font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
+                                        <p className="font-black text-[15px] md:text-[16px] uppercase leading-tight">{item.name}</p>
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
                                     </TableCell>
                                     <TableCell className="py-2.5 md:py-3 px-0">
                                         <div className="flex items-center justify-end gap-1.5 md:gap-2">
@@ -458,7 +458,7 @@ export function BillModal({
                                             <button onClick={() => handleAddItem({ id: item.itemId, name: item.name, price: item.price })} className="text-muted-foreground hover:text-green-600"><PlusCircle className="h-4 w-4" /></button>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right py-2.5 md:py-3 pr-0 font-black text-[11px] md:text-xs font-mono whitespace-nowrap text-primary">
+                                    <TableCell className="text-right py-2.5 md:py-3 pr-0 font-black text-[15px] md:text-[16px] font-mono whitespace-nowrap text-primary">
                                         ₹{(item.price * item.quantity).toLocaleString()}
                                     </TableCell>
                                 </TableRow>
@@ -504,7 +504,7 @@ export function BillModal({
                     
                     <div className="flex justify-between items-center">
                         <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground">Total Paid</span>
-                        <span className="text-xl md:text-2xl font-black text-primary font-mono tracking-tighter">₹{finalTotal.toLocaleString()}</span>
+                        <span className="text-[32px] md:text-[36px] font-black text-primary font-mono tracking-tighter">₹{finalTotal.toLocaleString()}</span>
                     </div>
                 </div>
             </div>
@@ -512,10 +512,10 @@ export function BillModal({
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2 p-2.5 md:p-3 border-t bg-background shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
           <div className="flex gap-2 w-full sm:flex-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-black uppercase tracking-[0.1em] h-10 md:h-12 border-2 text-[9px] md:text-[10px]">Cancel</Button>
-            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-black uppercase tracking-[0.1em] h-10 md:h-12 border-2 text-[9px] md:text-[10px]"><Save className="mr-1 h-3.5 w-3.5" /> Save</Button>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-black uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-[11px] md:text-[12px]">Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-black uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-[11px] md:text-[12px]"><Save className="mr-1 h-3.5 w-3.5" /> Save</Button>
           </div>
-          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-black uppercase tracking-[0.1em] h-10 md:h-12 shadow-lg text-xs md:text-sm"><CreditCard className="mr-1.5 h-4 w-4 md:h-5 md:w-5"/> Pay & Close</Button>
+          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-black uppercase tracking-[0.1em] h-12 md:h-14 shadow-lg text-[13px] md:text-[15px]"><CreditCard className="mr-1.5 h-4 w-4 md:h-5 md:w-5"/> Pay & Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

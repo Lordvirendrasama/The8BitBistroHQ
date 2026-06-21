@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import { updateSessionRequest, deleteSessionRequest, SessionRequest } from '@/firebase/firestore/session-requests';
+import { updateSessionRequest, deleteSessionRequest, SessionRequest, SessionRequestPartyMember } from '@/firebase/firestore/session-requests';
 import { updateStation } from '@/firebase/firestore/stations';
 import type { Station } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +20,7 @@ import { Gamepad2, Users, X, Check, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
-export function SessionRequestHandler({ ps5Stations }: { ps5Stations: Station[] }) {
+export function SessionRequestHandler({ ps5Stations, onApprove }: { ps5Stations: Station[], onApprove: (station: Station, partyMembers: SessionRequestPartyMember[], requestId: string) => void }) {
     const { db } = useFirebase();
     const { toast } = useToast();
 
@@ -55,7 +55,7 @@ export function SessionRequestHandler({ ps5Stations }: { ps5Stations: Station[] 
             setActiveRequest(pendingRequests[0]);
             setSelectedStationId('');
         }
-    }, [pendingRequests, activeRequest]);
+      }, [pendingRequests, activeRequest]);
 
     // Use the prop instead of a secondary query so it perfectly syncs with the dashboard
     const availableStations = ps5Stations.filter(s => s.status === 'available');
@@ -78,44 +78,26 @@ export function SessionRequestHandler({ ps5Stations }: { ps5Stations: Station[] 
             return;
         }
 
+        const station = ps5Stations.find(s => s.id === selectedStationId);
+        if (!station) {
+            toast({ variant: 'destructive', title: "Error", description: "Selected station not found." });
+            return;
+        }
+
         setIsProcessing(true);
         try {
-            const now = new Date();
-
-            // Calculate combined pool across all party members' recharges
-            // Each player will be set up as a pool-based member
-            const assignedMembers = activeRequest.partyMembers.map(p => ({
-                id: p.id,
-                name: p.name,
-                avatarUrl: p.avatarUrl,
-                status: 'active' as const,
-                rechargeId: 'pool',
-                startTime: now.toISOString(),
-                endTime: null,
-            }));
-
-            await updateStation(selectedStationId, {
-                status: 'in-use',
-                startTime: now.toISOString(),
-                endTime: null, // Staff can set time or add package from dashboard
-                packageName: 'Account Balance',
-                members: assignedMembers,
-                currentBill: [],
-                discount: 0,
-            });
-
             await updateSessionRequest(activeRequest.id, 'approved');
             await deleteSessionRequest(activeRequest.id);
 
-            const names = activeRequest.partyMembers.map(p => p.name).join(', ');
-            toast({ title: "Session Started!", description: `${names} assigned to ${(availableStations || []).find(s => s.id === selectedStationId)?.name}.` });
+            // Trigger the plan selection pop-up in the parent dashboard
+            onApprove(station, activeRequest.partyMembers, activeRequest.id);
 
             processedRef.current.add(activeRequest.id);
             setPendingRequests(prev => prev.filter(r => r.id !== activeRequest.id));
             setActiveRequest(null);
         } catch (e) {
             console.error(e);
-            toast({ variant: 'destructive', title: "System Error", description: "Failed to start session. Try again." });
+            toast({ variant: 'destructive', title: "System Error", description: "Failed to approve request. Try again." });
         } finally {
             setIsProcessing(false);
         }

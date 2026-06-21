@@ -90,7 +90,7 @@ export const deleteFixedBill = async (billId: string) => {
 
 // --- INVENTORY ---
 
-export const addInventoryPurchase = async (purchaseData: Omit<InventoryPurchase, 'id' | 'unitCost'>, user: CustomUser) => {
+export const addInventoryPurchase = async (purchaseData: Omit<InventoryPurchase, 'id' | 'unitCost' | 'addedBy'>, user: CustomUser) => {
   const db = getFirestore();
   const settings = await getSettings();
   

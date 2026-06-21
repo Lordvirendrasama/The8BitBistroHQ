@@ -158,7 +158,14 @@ export type LogEntryType =
     | 'LEAVE_RECORDED'
     | 'SHIFT_UPDATED'
     | 'DEBT_CLEARED'
-    | 'LEAVE_RECORDED';
+    | 'LEAVE_RECORDED'
+    | 'MEMBER_UPDATED'
+    | 'MEMBER_DELETED'
+    | 'REWARD_CREATED'
+    | 'REWARD_UPDATED'
+    | 'REWARD_DELETED'
+    | 'REFERRAL_BONUS'
+    | 'ADMIN_LOGIN';
 
 
 export interface LogEntry {

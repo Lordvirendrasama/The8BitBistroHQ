@@ -365,7 +365,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-headline text-4xl tracking-wider text-foreground">
+        <h1 className="font-pixel text-2xl text-foreground">
           Cafe Dashboard
         </h1>
         <p className="mt-2 text-muted-foreground">

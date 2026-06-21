@@ -16,6 +16,7 @@ import { addAppUpdate, deleteAppUpdate, updateAppUpdate } from '@/firebase/fires
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export function AppUpdatesDropdown() {
   const { db } = useFirebase();

@@ -472,7 +472,7 @@ export default function AttendanceRegistryPage() {
         
         let tSuccess = true;
         const verifyTask = (shift.tasks || []).find((t: any) => t.type === 'strategic');
-        if (verifyTask && editStatus && editStatus !== 'leave') {
+        if (verifyTask && editStatus) {
             tSuccess = await updateTask(shift.id, verifyTask.name, true, user, editStatus);
         }
 

@@ -11,4 +11,5 @@ export const settings: Settings = {
   xpPerLevel: 1000,
   maxLevels: 10,
   pointsPerLevelUp: 100,
+  activeCycle: 'Launch Live',
 };

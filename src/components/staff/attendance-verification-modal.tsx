@@ -76,7 +76,7 @@ export function AttendanceVerificationModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md font-body p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="sm:max-w-md font-body p-0 overflow-hidden shadow-2xl">
         <DialogHeader className="p-6 bg-primary text-white shrink-0">
           <DialogTitle className="flex items-center gap-3 text-2xl font-display uppercase tracking-tight">
             <ShieldCheck className="h-8 w-8" />

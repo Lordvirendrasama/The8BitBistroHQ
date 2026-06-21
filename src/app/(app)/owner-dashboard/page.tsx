@@ -260,8 +260,8 @@ export default function OwnerDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-4">
-            <h1 className="font-headline text-4xl tracking-wider text-foreground flex items-center gap-4">
-              <Crown className="h-10 w-10 text-primary fill-current" />
+            <h1 className="font-pixel text-2xl md:text-3xl text-foreground flex items-center gap-4">
+              <Crown className="h-8 w-8 text-primary fill-current" />
               OWNER PULSE
             </h1>
             <AppUpdatesDropdown />
@@ -302,7 +302,7 @@ export default function OwnerDashboardPage() {
         <div className="flex items-center gap-4">
           <ShieldCheck className="h-10 w-10" />
           <div>
-            <h3 className="text-2xl font-headline tracking-tighter">TODAY'S STATUS: {healthStatus}</h3>
+            <h3 className="text-lg md:text-xl font-pixel">TODAY'S STATUS: <span className={cn(healthStatus === 'STRONG' ? 'text-accent' : healthStatus === 'STABLE' ? 'text-yellow-500' : 'text-primary')}>{healthStatus}</span></h3>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">
               Audit performed based on current business day intake vs calculated survival threshold.
             </p>
@@ -323,7 +323,7 @@ export default function OwnerDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-3xl font-black font-mono">₹{stats.revTotal.toLocaleString()}</div>
+            <div className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">₹{stats.revTotal.toLocaleString()}</div>
             <div className="flex justify-between mt-2 text-[9px] font-bold uppercase opacity-60">
               <span>Gaming: ₹{stats.revGaming}</span>
               <span>Bistro: ₹{stats.revFood}</span>
@@ -340,16 +340,16 @@ export default function OwnerDashboardPage() {
           <CardContent className="p-4 pt-0">
             <div className="flex items-center gap-2">
               <div className="flex-1">
-                <p className="text-[7px] font-black uppercase opacity-40 leading-none mb-1">Cash</p>
-                <p className="text-sm font-black font-mono text-emerald-600">₹{stats.revCash.toLocaleString()}</p>
+                <p className="text-[9px] font-black uppercase text-muted-foreground leading-none mb-1">Cash</p>
+                <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revCash.toLocaleString()}</p>
               </div>
-              <div className="flex-1 border-l pl-2">
-                <p className="text-[7px] font-black uppercase opacity-40 leading-none mb-1">UPI</p>
-                <p className="text-sm font-black font-mono text-primary">₹{stats.revUpi.toLocaleString()}</p>
+              <div className="flex-1 border-l border-zinc-800 pl-2">
+                <p className="text-[9px] font-black uppercase text-muted-foreground leading-none mb-1">UPI</p>
+                <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revUpi.toLocaleString()}</p>
               </div>
-              <div className="flex-1 border-l pl-2">
-                <p className="text-[7px] font-black uppercase opacity-40 leading-none mb-1">Dist</p>
-                <p className="text-sm font-black font-mono text-amber-600">₹{stats.revDistrict.toLocaleString()}</p>
+              <div className="flex-1 border-l border-zinc-800 pl-2">
+                <p className="text-[9px] font-black uppercase text-muted-foreground leading-none mb-1">Dist</p>
+                <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revDistrict.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -363,7 +363,7 @@ export default function OwnerDashboardPage() {
           </CardHeader>
           <CardContent className="p-4 pt-0 space-y-2">
             <div className="flex justify-between items-baseline">
-              <div className="text-2xl font-black font-mono">₹{Math.round(stats.survivalGoal).toLocaleString()}</div>
+              <div className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">₹{Math.round(stats.survivalGoal).toLocaleString()}</div>
               <Badge variant="outline" className="text-[8px] h-4 font-black border-primary/30 text-primary">DAILY TARGET</Badge>
             </div>
             <Progress value={(stats.revTotal / stats.survivalGoal) * 100} className="h-1.5" />
@@ -384,8 +384,8 @@ export default function OwnerDashboardPage() {
             <div className="flex justify-between items-end">
                 <div>
                     <div className={cn(
-                        "text-3xl font-black font-mono",
-                        stats.footfallIntensity === 'HIGH' ? "text-emerald-600" : stats.footfallIntensity === 'MODERATE' ? "text-amber-600" : "text-muted-foreground"
+                        "text-4xl md:text-5xl font-extrabold font-body tracking-tight",
+                        stats.footfallIntensity === 'HIGH' ? "text-accent" : stats.footfallIntensity === 'MODERATE' ? "text-yellow-500" : "text-white"
                     )}>
                         {stats.footfallIntensity}
                     </div>
@@ -493,7 +493,7 @@ export default function OwnerDashboardPage() {
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
-                    <p className="text-4xl font-black font-mono tracking-tighter">
+                    <p className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">
                         {stats.topHour ? `${stats.topHour[0]}:00` : 'N/A'}
                     </p>
                     <p className="text-[10px] font-black uppercase text-primary tracking-widest">Power Hour</p>
@@ -525,7 +525,7 @@ export default function OwnerDashboardPage() {
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
-                    <p className="text-3xl font-black uppercase tracking-tighter">
+                    <p className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white uppercase">
                         {stats.topDay ? stats.topDay[0] : 'N/A'}
                     </p>
                     <p className="text-[10px] font-black uppercase text-primary tracking-widest">Strongest Day</p>

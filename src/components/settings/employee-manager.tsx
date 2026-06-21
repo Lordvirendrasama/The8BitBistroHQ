@@ -72,7 +72,8 @@ export function EmployeeManager() {
       workStartTime: emp.workStartTime || '11:00',
       workEndTime: emp.workEndTime || '23:00',
       workingDaysPerWeek: emp.workingDaysPerWeek ?? 6,
-      overtimeMultiplier: emp.overtimeMultiplier ?? 1.5
+      overtimeMultiplier: emp.overtimeMultiplier ?? 1.5,
+      isActive: emp.isActive ?? true
     });
     setModalOpen(true);
   };

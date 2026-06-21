@@ -51,9 +51,10 @@ interface SelectMemberModalProps {
   members: Member[];
   onConfirm: (assignedPlayers: AssignedMember[], selectedPackage: GamingPackage) => void;
   station: Station | null;
+  initialPlayers?: AssignedMember[];
 }
 
-export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, station }: SelectMemberModalProps) {
+export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, station, initialPlayers }: SelectMemberModalProps) {
   const { db } = useFirebase();
   const { toast } = useToast();
   const [step, setStep] = useState<ModalStep>('selection');
@@ -111,13 +112,19 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   useEffect(() => {
     if (isOpen) {
-      setStep('selection');
+      if (initialPlayers && initialPlayers.length > 0) {
+        setStep('configuration');
+        setSelectedPlayers(initialPlayers);
+        setActiveConfigPlayerId(initialPlayers[0].id);
+      } else {
+        setStep('selection');
+        setSelectedPlayers([]);
+        setActiveConfigPlayerId(null);
+      }
       setSearchTerm('');
-      setSelectedPlayers([]);
       setConfigs({});
-      setActiveConfigPlayerId(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialPlayers]);
 
   const getMemberActiveRecharges = (memberId: string) => {
     const member = members.find(m => m.id === memberId);
@@ -193,19 +200,23 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
               };
 
           } else {
+              const isRec = isRecharge && !isBuy;
+              const pkg = item as GamingPackage;
+              const rec = item as MemberRecharge;
+
               const pkgId = isBuy 
-                ? (item as GamingPackage).id 
-                : (isRecharge ? (item as MemberRecharge).packageId : (item as GamingPackage).id);
+                ? pkg.id 
+                : (isRec ? rec.packageId : pkg.id);
                 
-              const rId = isRecharge && !isBuy ? (item as MemberRecharge).id : null;
+              const rId = isRec ? rec.id : null;
 
               next[playerId] = {
-                  mode: isBuy ? 'buy-recharge' : (isRecharge ? 'recharge' : 'walkin'),
+                  mode: isBuy ? 'buy-recharge' : (isRec ? 'recharge' : 'walkin'),
                   packageId: pkgId,
                   rechargeId: rId,
-                  name: isBuy ? `Buy Recharge: ${item.name}` : (isRecharge ? `Recharge: ${(item as MemberRecharge).packageName}` : item.name),
-                  duration: item.duration,
-                  price: (isRecharge && !isBuy) ? 0 : item.price,
+                  name: isBuy ? `Buy Recharge: ${pkg.name}` : (isRec ? `Recharge: ${rec.packageName}` : pkg.name),
+                  duration: isRec ? rec.remainingDuration : pkg.duration,
+                  price: isRec ? 0 : pkg.price,
                   reminderDuration: null
               };
           }
@@ -325,7 +336,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[98vw] sm:max-w-2xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl bg-card font-body">
+      <DialogContent className="w-[98vw] sm:max-w-2xl h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl font-body">
         <DialogHeader className="px-4 pt-4 pb-2 relative shrink-0 border-b bg-muted/5">
           <DialogTitle className="font-headline text-xl sm:text-2xl text-primary tracking-tight uppercase">
               {step === 'selection' ? 'ASSIGN PLAYERS' : 'CONFIGURE LOGINS'}
@@ -456,57 +467,57 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                         const isSelected = configs[activeConfigPlayerId]?.rechargeId === 'pool';
                                                         if (totalBalance <= 0) return null;
                                                         return (
-                                                            <div className={cn("p-4 rounded-xl border-2 bg-gradient-to-br from-yellow-50 to-white transition-all shadow-md", isSelected ? "border-yellow-500 ring-2 ring-yellow-500/20" : "border-yellow-200")}>
-                                                                <div className="flex justify-between items-center">
-                                                                    <div className="min-w-0">
-                                                                        <p className="text-[10px] font-bold uppercase text-yellow-700 tracking-normal">TOTAL COMBINED BALANCE</p>
-                                                                        <div className="flex items-center gap-2 text-2xl font-bold text-yellow-600 font-mono tracking-tighter"><Zap className="h-5 w-5 fill-current" /> {formatPackageDuration(totalBalance)}</div>
-                                                                    </div>
-                                                                    {!isSelected ? (
-                                                                        <Button size="sm" onClick={() => handlePickConfig(activeConfigPlayerId, 'pool', true)} className="h-9 px-5 text-xs font-bold bg-yellow-500 text-black uppercase shadow-lg hover:bg-yellow-600">
-                                                                            Use Pool
-                                                                        </Button>
-                                                                    ) : (
-                                                                        <Badge className="bg-green-600 text-xs font-bold uppercase h-6 shadow-sm">
-                                                                            <CheckCircle2 className="h-4 w-4 mr-1.5"/> Selected
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
+                                                             <div className={cn("p-4 rounded-xl border-2 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 transition-all shadow-md", isSelected ? "border-yellow-500 ring-2 ring-yellow-500/20" : "border-yellow-500/10")}>
+                                                                 <div className="flex justify-between items-center">
+                                                                     <div className="min-w-0">
+                                                                         <p className="text-[10px] font-bold uppercase text-yellow-500/80 tracking-normal">TOTAL COMBINED BALANCE</p>
+                                                                         <div className="flex items-center gap-2 text-2xl font-bold text-yellow-500 font-mono tracking-tighter"><Zap className="h-5 w-5 fill-current" /> {formatPackageDuration(totalBalance)}</div>
+                                                                     </div>
+                                                                     {!isSelected ? (
+                                                                         <Button size="sm" onClick={() => handlePickConfig(activeConfigPlayerId, 'pool', true)} className="h-9 px-5 text-xs font-bold bg-yellow-500 text-black uppercase shadow-lg hover:bg-yellow-600">
+                                                                             Use Pool
+                                                                         </Button>
+                                                                     ) : (
+                                                                         <Badge className="bg-green-600 text-white text-xs font-bold uppercase h-6 shadow-sm">
+                                                                             <CheckCircle2 className="h-4 w-4 mr-1.5"/> Selected
+                                                                         </Badge>
+                                                                     )}
+                                                                 </div>
 
-                                                                {isSelected && (
-                                                                    <div className="mt-4 pt-4 border-t border-yellow-200/50 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                                                                        <p className="text-[9px] font-black uppercase text-yellow-700 tracking-widest px-1">Duration to Deduct</p>
-                                                                        <div className="grid grid-cols-4 gap-1.5">
-                                                                            {[1800, 3600, 7200].map(s => {
-                                                                                const isCurrent = configs[activeConfigPlayerId].reminderDuration === s;
-                                                                                return (
-                                                                                    <Button 
-                                                                                        key={s} 
-                                                                                        variant="outline" 
-                                                                                        size="sm" 
-                                                                                        className={cn(
-                                                                                            "h-8 text-[10px] font-bold border-yellow-200 text-yellow-700 hover:bg-yellow-500 hover:text-white transition-all",
-                                                                                            isCurrent && "bg-yellow-500 text-white border-yellow-500"
-                                                                                        )}
-                                                                                        onClick={() => handleSetPoolDuration(activeConfigPlayerId, s)}
-                                                                                        disabled={s > totalBalance}
-                                                                                    >
-                                                                                        {formatPackageDuration(s)}
-                                                                                    </Button>
-                                                                                );
-                                                                            })}
-                                                                            <Button 
-                                                                                variant="outline" 
-                                                                                size="sm" 
-                                                                                className={cn(
-                                                                                    "h-8 text-[10px] font-bold border-yellow-200 text-yellow-700 hover:bg-yellow-500 hover:text-white transition-all",
-                                                                                    configs[activeConfigPlayerId].reminderDuration === totalBalance && "bg-yellow-500 text-white border-yellow-500"
-                                                                                )}
-                                                                                onClick={() => handleSetPoolDuration(activeConfigPlayerId, totalBalance)}
-                                                                            >
-                                                                                FULL
-                                                                            </Button>
-                                                                        </div>
+                                                                 {isSelected && (
+                                                                     <div className="mt-4 pt-4 border-t border-yellow-500/20 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                                                         <p className="text-[9px] font-black uppercase text-yellow-500/80 tracking-widest px-1">Duration to Deduct</p>
+                                                                         <div className="grid grid-cols-4 gap-1.5">
+                                                                             {[1800, 3600, 7200].map(s => {
+                                                                                 const isCurrent = configs[activeConfigPlayerId].reminderDuration === s;
+                                                                                 return (
+                                                                                     <Button 
+                                                                                         key={s} 
+                                                                                         variant="outline" 
+                                                                                         size="sm" 
+                                                                                         className={cn(
+                                                                                             "h-8 text-[10px] font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                                                             isCurrent && "bg-yellow-500 text-black border-yellow-500"
+                                                                                         )}
+                                                                                         onClick={() => handleSetPoolDuration(activeConfigPlayerId, s)}
+                                                                                         disabled={s > totalBalance}
+                                                                                     >
+                                                                                         {formatPackageDuration(s)}
+                                                                                     </Button>
+                                                                                 );
+                                                                             })}
+                                                                             <Button 
+                                                                                 variant="outline" 
+                                                                                 size="sm" 
+                                                                                 className={cn(
+                                                                                     "h-8 text-[10px] font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                                                     configs[activeConfigPlayerId].reminderDuration === totalBalance && "bg-yellow-500 text-black border-yellow-500"
+                                                                                 )}
+                                                                                 onClick={() => handleSetPoolDuration(activeConfigPlayerId, totalBalance)}
+                                                                             >
+                                                                                 FULL
+                                                                             </Button>
+                                                                         </div>
                                                                         
                                                                         <div className="flex items-center gap-2">
                                                                             <div className="relative flex-1">

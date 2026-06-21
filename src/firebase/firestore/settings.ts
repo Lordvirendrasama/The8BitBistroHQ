@@ -17,7 +17,8 @@ export const getSettings = async (): Promise<Settings> => {
     pointsPerLevelUp: 100,
     activeCycle: 'Launch Live',
     includeFixed: true,
-    includeLoan: true,
+    includeLoanInterest: true,
+    includeLoanPrincipal: true,
     includeRent: true,
     includeBacklog: true
   };

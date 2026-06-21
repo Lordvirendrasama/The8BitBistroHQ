@@ -51,6 +51,7 @@ function DashboardContent() {
   const [isRewardsModalOpen, setIsRewardsModalOpen] = useState(false);
   const [manageType, setManageType] = useState<'ps5' | 'boardgame'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+  const [initialPlayers, setInitialPlayers] = useState<AssignedMember[] | undefined>(undefined);
 
   const membersQuery = useMemo(() => !db ? null : collection(db, 'members'), [db]);
   const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
@@ -213,9 +214,24 @@ function DashboardContent() {
     if (station.status === 'in-use') handlePauseTimer(station);
     else if (station.status === 'paused') handleResumeTimer(station);
     else {
+      setInitialPlayers(undefined);
       setSelectedStation(station);
       setIsModalOpen(true);
     }
+  };
+
+  const handleApproveSessionRequest = (station: Station, partyMembers: any[]) => {
+    const mappedMembers: AssignedMember[] = partyMembers.map(p => ({
+        id: p.id,
+        name: p.name,
+        avatarUrl: p.avatarUrl,
+        status: 'active' as const,
+        startTime: new Date().toISOString(),
+        endTime: null,
+    }));
+    setInitialPlayers(mappedMembers);
+    setSelectedStation(station);
+    setIsModalOpen(true);
   };
 
   const handleTogglePlayerTimer = async (stationId: string, playerId: string) => {
@@ -840,7 +856,7 @@ function DashboardContent() {
 
       {selectedStation && (
         <>
-          <SelectMemberModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} members={members || []} onConfirm={handleStartSession} station={selectedStation} />
+          <SelectMemberModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} members={members || []} onConfirm={handleStartSession} station={selectedStation} initialPlayers={initialPlayers} />
           <BillModal isOpen={isBillModalOpen} onOpenChange={setIsBillModalOpen} station={selectedStation} allMembers={members || []} foodItems={foodItems || []} onSaveBill={handleSaveBill} gamingPackages={gamingPackages || []} onConfirmCheckout={handleConfirmCheckout} onStartFoodSession={handleStartFoodSession} />
           <CheckoutModal isOpen={isCheckoutModalOpen} onOpenChange={setIsCheckoutModalOpen} station={selectedStation} gamingPackages={gamingPackages || []} onConfirmCheckout={handleConfirmCheckout} onSaveBill={handleSaveBill} allMembers={members || []} foodItems={foodItems || []} />
           <EditTimeModal isOpen={isEditTimeModalOpen} onOpenChange={setIsEditTimeModalOpen} onAddTime={handleAddTime} onReduceTime={handleReduceTime} gamingPackages={gamingPackages || []} station={selectedStation} />
@@ -868,7 +884,7 @@ function DashboardContent() {
         onOpenChange={setIsRewardsModalOpen}
         members={members || []}
       />
-      <SessionRequestHandler ps5Stations={ps5Stations} />
+      <SessionRequestHandler ps5Stations={ps5Stations} onApprove={handleApproveSessionRequest} />
     </div>
   );
 }

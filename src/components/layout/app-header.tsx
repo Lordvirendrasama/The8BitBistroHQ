@@ -172,6 +172,39 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
   const isViren = user.username === 'Viren';
   const progress = target > 0 ? Math.min(100, (projectedRevenue / target) * 100) : 0;
 
+  if (!isViren) {
+    return (
+      <div className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border bg-card border-primary/20 overflow-hidden relative shadow-sm">
+        <div className="flex justify-between items-center w-full mb-1">
+          <span className={cn("text-[11px] sm:text-xs font-black font-mono tracking-tighter", isMet ? "text-emerald-600" : "text-foreground")}>
+            ₹{Math.round(projectedRevenue).toLocaleString()}
+          </span>
+          
+          <span className={cn(
+            "text-[9px] font-black font-mono",
+            isMet ? "text-emerald-600" : "text-primary"
+          )}>
+            {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
+          </span>
+
+          <span className="text-[10px] font-black font-mono opacity-30">
+            ₹{Math.round(target).toLocaleString()}
+          </span>
+        </div>
+        <div className="w-full h-1 bg-muted/30 rounded-full relative overflow-hidden">
+          <div 
+            className={cn(
+              "h-full transition-all duration-1000 rounded-full", 
+              isMet ? "bg-emerald-500" : "bg-primary"
+            )} 
+            style={{ width: `${progress}%` }} 
+          />
+        </div>
+        <div className={cn("absolute top-0 left-0 w-0.5 h-full", isMet ? "bg-emerald-500" : "bg-primary")} />
+      </div>
+    );
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -947,7 +980,7 @@ export function AppHeader({
 
     return (
         <>
-            <header className="flex h-20 items-center gap-1.5 sm:gap-2 border-b bg-card px-2 sm:px-6 sticky top-0 z-40 w-full overflow-hidden font-body">
+            <header className="flex h-20 items-center gap-1.5 sm:gap-2 border-b glass-panel px-2 sm:px-6 sticky top-0 z-40 w-full overflow-hidden font-body">
                 <SidebarTrigger className="shrink-0 scale-90 sm:scale-100"/>
                 
                 <div className="flex-1 flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth pr-1 sm:pr-4">

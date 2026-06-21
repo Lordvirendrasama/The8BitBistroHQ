@@ -120,7 +120,7 @@ export function StaffNotepad() {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md font-body p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="sm:max-w-md font-body p-0 overflow-hidden shadow-2xl">
         <DialogHeader className="p-6 pb-2 bg-muted/10 border-b">
           <DialogTitle className="flex items-center gap-2 text-xl font-display uppercase tracking-tight">
             <StickyNote className="text-primary h-6 w-6" />

@@ -26,7 +26,7 @@ interface TaskFormModalProps {
 
 export function TaskFormModal({ isOpen, onOpenChange, onSave, task }: TaskFormModalProps) {
   const [name, setName] = useState('');
-  const [type, setType] = useState<'start-of-day' | 'end-of-day'>('start-of-day');
+  const [type, setType] = useState<'start-of-day' | 'end-of-day' | 'strategic'>('start-of-day');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task }: TaskFormMo
           </div>
           <div className="space-y-2">
             <Label>Task Type</Label>
-            <RadioGroup value={type} onValueChange={(value) => setType(value as 'start-of-day' | 'end-of-day')}>
+            <RadioGroup value={type} onValueChange={(value) => setType(value as 'start-of-day' | 'end-of-day' | 'strategic')}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="start-of-day" id="start-of-day" />
                 <Label htmlFor="start-of-day">Start of Day</Label>
@@ -89,6 +89,10 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task }: TaskFormMo
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="end-of-day" id="end-of-day" />
                 <Label htmlFor="end-of-day">End of Day</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="strategic" id="strategic" />
+                <Label htmlFor="strategic">Strategic</Label>
               </div>
             </RadioGroup>
           </div>

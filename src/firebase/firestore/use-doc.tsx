@@ -20,7 +20,7 @@ export const useDoc = <T extends DocumentData>(ref: DocumentReference<DocumentDa
       ref,
       (snapshot: DocumentSnapshot) => {
         if (snapshot.exists()) {
-          setData({ id: snapshot.id, ...snapshot.data() } as T);
+          setData({ id: snapshot.id, ...snapshot.data() } as unknown as T);
         } else {
           setData(null);
         }

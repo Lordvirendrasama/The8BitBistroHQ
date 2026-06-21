@@ -170,7 +170,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
   };
 
   return (
-    <Card className="fixed top-20 right-4 sm:right-8 z-50 w-[calc(100vw-32px)] sm:w-full sm:max-w-sm shadow-2xl animate-in fade-in-0 slide-in-from-right-8 border-2 border-primary/20 flex flex-col bg-background/95 backdrop-blur-xl" style={{ maxHeight: 'calc(100vh - 96px)' }}>
+    <Card className="fixed top-20 right-4 sm:right-8 z-50 w-[calc(100vw-32px)] sm:w-full sm:max-w-sm shadow-2xl animate-in fade-in-0 slide-in-from-right-8 border-2 border-primary/20 flex flex-col glass-panel" style={{ maxHeight: 'calc(100vh - 96px)' }}>
       <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 shrink-0 border-b bg-muted/10">
         <div className="space-y-1">
           <CardTitle className="text-lg flex items-center gap-2">

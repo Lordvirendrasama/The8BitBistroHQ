@@ -169,7 +169,7 @@ export default function ScanPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/20 rounded-2xl border border-primary/30 mb-4 shadow-lg shadow-primary/20">
                     <QrCode className="text-primary w-8 h-8" />
                 </div>
-                <h1 className="font-headline text-5xl tracking-tighter text-white mb-2 italic">
+                <h1 className="font-pixel text-3xl text-white mb-2">
                     SCAN <span className="text-primary">&</span> PLAY
                 </h1>
                 <p className="text-primary/60 text-[10px] uppercase tracking-[0.3em] font-black italic">The 8 Bit Bistro OS</p>

@@ -14,7 +14,7 @@ import { GlobalTimerNotifications } from '@/components/notifications/global-time
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { CustomerViewProvider } from '@/context/customer-view-context';
 
-export default function AppLayout({ children }: { children: React.Node }) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { db } = useFirebase();
@@ -101,7 +101,7 @@ export default function AppLayout({ children }: { children: React.Node }) {
             setTasksVisible={setTasksVisible}
             uncompletedTaskCount={activeShift?.tasks.filter(t => !t.completed && (t.type === 'start-of-day' || t.type === 'strategic')).length || 0}
           />
-          <main className="p-3 sm:p-6 lg:p-8 bg-background min-h-0 overflow-y-auto">
+          <main className="p-3 sm:p-6 lg:p-8 bg-transparent min-h-0 overflow-y-auto">
             <GlobalTimerNotifications />
             {showTaskNotification && activeShift && tasksVisible && (
               <StartOfDayTasks

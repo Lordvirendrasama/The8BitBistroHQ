@@ -286,7 +286,7 @@ export const exportAccountingLedger = async (filters?: ExportFilters): Promise<s
         date: b.timestamp,
         type: 'INCOME',
         category: b.packageName || 'Walk-in Order',
-        description: `Order at ${b.stationName} (${(b.members || []).map(m => m.name).join(', ')})`,
+        description: `Order at ${b.stationName} (${(b.members || []).map((m: any) => m.name).join(', ')})`,
         amount: b.totalAmount,
         method: b.paymentMethod.toUpperCase(),
         cycle: b.cycle

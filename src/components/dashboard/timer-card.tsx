@@ -125,10 +125,10 @@ const IndividualPlayerTimer = ({
         <div className="flex flex-col items-end ml-auto mr-3 gap-0.5">
             <span className={cn(
                 "font-mono font-bold text-xs px-2 py-0.5 rounded border shadow-sm",
-                member.status === 'paused' ? "text-blue-600 bg-blue-500/10 border-blue-500/20" :
+                member.status === 'paused' ? "text-zinc-400 bg-zinc-800/30 border-zinc-800/50" :
                 rem <= 0 ? "text-destructive bg-destructive/10 border-destructive/20 animate-pulse" : 
-                rem < 5 * 60 * 1000 ? "text-yellow-600 bg-yellow-500/10 border-yellow-500/20" : 
-                "text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
+                rem < 5 * 60 * 1000 ? "text-yellow-500 bg-yellow-500/10 border-yellow-500/20" : 
+                "text-white bg-white/5 border-white/10"
             )}>
                 {formatTime(rem)}
             </span>
@@ -234,8 +234,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   const isTimeLow = maxRemaining > 0 && maxRemaining < 5 * 60 * 1000 && isRunning;
   const isGraceOver = isFinishing && graceRemaining <= 0;
 
-  const cardBorderColor = isPaused ? 'border-blue-500' : isTimeUp ? 'border-destructive' : isTimeLow ? 'border-yellow-500' : isRunning ? 'border-emerald-500' : isFinishing ? (isGraceOver ? 'border-destructive animate-pulse shadow-destructive/20' : 'border-amber-500') : 'border-border';
-  const cardBgColor = isPaused ? 'bg-blue-500/5' : isTimeUp ? 'bg-destructive/5' : isTimeLow ? 'bg-yellow-500/5' : isRunning ? 'bg-emerald-500/5' : isFinishing ? (isGraceOver ? 'bg-destructive/10' : 'bg-amber-500/5') : 'bg-card';
+  const cardBorderColor = isTimeUp ? 'border-destructive shadow-lg shadow-destructive/5' : isFinishing && isGraceOver ? 'border-destructive animate-pulse shadow-lg shadow-destructive/5' : 'border-zinc-800';
+  const cardBgColor = isTimeUp ? 'bg-destructive/5' : isFinishing && isGraceOver ? 'bg-destructive/5' : 'bg-card';
 
   const showTwoTimers = activeWithTimers.length > 1 && maxRemaining > minRemaining + 1000 && !isFinishing;
 
@@ -317,7 +317,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     }
 
                         return (
-                            <div className="flex items-center gap-1 text-[9px] font-black text-yellow-600 bg-yellow-500/5 px-2 py-0.5 rounded-full border border-yellow-500/10 animate-in fade-in zoom-in-95 duration-500">
+                            <div className="flex items-center gap-1 text-[9px] font-black text-zinc-400 bg-zinc-800/50 px-2 py-0.5 rounded-full border border-zinc-700 animate-in fade-in zoom-in-95 duration-500">
                                <Zap className="h-2.5 w-2.5 fill-current" />
                                <span className="font-mono">{formatTime(displayBalance * 1000)} ACCOUNT</span>
                             </div>
@@ -330,14 +330,15 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
         </div>
 
         <div className="flex flex-col items-end gap-1">
-            <Badge variant={isRunning || isPaused || isFinishing ? 'default' : 'secondary'} className={cn(
+            <Badge variant="outline" className={cn(
                 "font-bold uppercase text-[10px] tracking-tight",
-                isPaused && 'bg-blue-600',
-                isRunning && !isTimeUp && 'bg-emerald-600',
-                isTimeLow && 'bg-yellow-600',
-                isTimeUp && 'bg-destructive',
-                isFinishing && !isGraceOver && 'bg-amber-500',
-                isGraceOver && 'bg-destructive animate-pulse'
+                !isRunning && !isPaused && !isFinishing && 'bg-accent/10 text-accent border-accent/20',
+                isPaused && 'bg-zinc-800/50 text-zinc-400 border-zinc-800',
+                isRunning && !isTimeLow && !isTimeUp && 'bg-zinc-800 text-white border-zinc-700',
+                isTimeLow && 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+                isTimeUp && 'bg-primary/20 text-primary border-primary/30 animate-pulse',
+                isFinishing && !isGraceOver && 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+                isGraceOver && 'bg-primary/20 text-primary border-primary/30 animate-pulse'
             )}>
                 {isPaused ? "Paused" : isFinishing ? (isGraceOver ? "Grace Expired" : "Finishing Up") : isTimeUp ? "Time's Up" : isRunning ? 'In Use' : 'Available'}
             </Badge>
@@ -350,7 +351,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 <div className="flex flex-col items-center">
                     <div className={cn(
                         "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none",
-                        isGraceOver ? "text-destructive" : "text-amber-600"
+                        isGraceOver ? "text-destructive" : "text-yellow-500"
                     )}>
                         {graceRemaining < 0 ? `-${formatTime(Math.abs(graceRemaining))}` : formatTime(graceRemaining)}
                     </div>
@@ -368,14 +369,14 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     <div className={cn(
                         "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none transition-colors",
                         isTimeUp && "text-destructive",
-                        isTimeLow && "text-yellow-600"
+                        isTimeLow && "text-yellow-500"
                         )}>
                         {(longestMember?.endTime || station.endTime) 
                             ? formatTime(maxRemaining) 
                             : isRunning ? (
                                 <div className="flex flex-col items-center">
-                                    <Utensils className="h-8 w-8 mb-1 text-emerald-600" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Bistro Order</span>
+                                    <Utensils className="h-8 w-8 mb-1 text-zinc-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Bistro Order</span>
                                 </div>
                             ) : "00:00"}
                     </div>
@@ -384,7 +385,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                             <div className="text-[9px] font-bold uppercase text-muted-foreground opacity-60 tracking-widest leading-none mb-0.5">Next Expiry</div>
                             <div className={cn(
                                 "text-base font-bold font-mono tracking-tight tabular-nums leading-none",
-                                minRemaining <= 0 ? "text-destructive" : minRemaining < 5 * 60 * 1000 ? "text-yellow-600" : "text-muted-foreground/80"
+                                minRemaining <= 0 ? "text-destructive" : minRemaining < 5 * 60 * 1000 ? "text-yellow-500" : "text-muted-foreground/80"
                             )}>
                                 {formatTime(minRemaining)}
                             </div>
@@ -392,8 +393,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     )}
                     {isPaused && (
                         <div className="mt-2 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-                            <div className="text-[9px] font-bold uppercase text-blue-600 opacity-80 tracking-widest leading-none mb-0.5">Paused For</div>
-                            <div className="text-base font-bold font-mono text-blue-600 tracking-tight tabular-nums leading-none">
+                            <div className="text-[9px] font-bold uppercase text-zinc-400 opacity-80 tracking-widest leading-none mb-0.5">Paused For</div>
+                            <div className="text-base font-bold font-mono text-zinc-400 tracking-tight tabular-nums leading-none">
                                 {formatTime(pauseDuration)}
                             </div>
                         </div>
@@ -572,7 +573,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 </div>
             )}
             {(station.prepaidAmount || 0) > 0 && (isRunning || isPaused || isFinishing) && (
-                <div className="flex items-center gap-1 text-[9px] font-black text-emerald-700 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1 rounded-full shadow-inner animate-in fade-in zoom-in-95 duration-300">
+                <div className="flex items-center gap-1 text-[9px] font-black text-white bg-zinc-800 border border-zinc-700 px-3 py-1 rounded-full shadow-inner animate-in fade-in zoom-in-95 duration-500">
                     <Wallet className="h-3 w-3" />
                     <span>PREPAID ₹{(station.prepaidAmount || 0).toLocaleString()}</span>
                 </div>
@@ -611,15 +612,15 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                               <span className="text-[8px] font-bold uppercase leading-none">Resume</span>
                           </Button>
                       )}
-                      <Button onClick={() => onOpenEditTimeModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
+                      <Button onClick={() => onOpenEditTimeModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                           <Timer className="h-3.5 w-3.5" />
                           <span className="text-[8px] font-bold uppercase leading-none">Time</span>
                       </Button>
-                      <Button onClick={() => onOpenJoinModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm">
+                      <Button onClick={() => onOpenJoinModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                           <UserPlus className="h-3.5 w-3.5"/>
                           <span className="text-[8px] font-bold uppercase leading-none">Join</span>
                       </Button>
-                      <Button onClick={() => onOpenMoveModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border-primary/20 text-primary hover:bg-primary/5 shadow-sm">
+                      <Button onClick={() => onOpenMoveModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                           <ArrowRightLeft className="h-3.5 w-3.5"/>
                           <span className="text-[8px] font-bold uppercase leading-none">Move</span>
                       </Button>
@@ -650,8 +651,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                         className={cn(
                                             "h-11 font-bold uppercase tracking-tight text-xs border-2",
                                             (station.prepaidAmount || 0) > 0
-                                                ? "border-emerald-500 text-emerald-600 bg-emerald-500/5 hover:bg-emerald-500/10"
-                                                : "border-primary/30 text-primary hover:bg-primary/5"
+                                                ? "border-primary text-primary bg-primary/5 hover:bg-primary/10"
+                                                : "border-zinc-800 text-zinc-400 hover:bg-zinc-800/50"
                                         )}
                                         onClick={handleOpenPrepaid}
                                     >

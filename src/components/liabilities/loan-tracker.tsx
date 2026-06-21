@@ -8,7 +8,7 @@ import { useFirebase } from '@/firebase/provider';
 import type { LiabilityState, Bill, FixedBill, Expense } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, Zap, Target, TrendingUp, Settings2, Timer, Info, Activity, Calendar as CalendarIcon, Landmark, ArrowRight, CheckCircle2, History, ChevronDown, Percent } from 'lucide-react';
+import { Wallet, Zap, Target, TrendingUp, Settings2, Timer, Info, Activity, Calendar as CalendarIcon, Landmark, ArrowRight, CheckCircle2, History, ChevronDown, Percent, AlertCircle } from 'lucide-react';
 import { format, addMonths, differenceInCalendarMonths, differenceInDays, subDays } from 'date-fns';
 import { cn, isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';

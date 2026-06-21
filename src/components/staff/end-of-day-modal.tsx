@@ -150,7 +150,7 @@ export function EndOfDayModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-2xl h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl font-body">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl font-body">
         <DialogHeader className="p-4 sm:p-6 bg-muted/10 border-b shrink-0">
           <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-display uppercase tracking-tight">
             <Moon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
@@ -161,7 +161,7 @@ export function EndOfDayModal({
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 min-h-0 bg-background">
+        <ScrollArea className="flex-1 min-h-0 bg-transparent">
           <div className="p-4 sm:p-6 space-y-4">
             
             {isLoggingOutEarly && (

@@ -70,7 +70,7 @@ export default function FixedBillsPage() {
         success = await updateFixedBill(editingBill.id, formData, user);
         if (success) toast({ title: "Bill Updated" });
     } else {
-        success = await addFixedBill(formData, user);
+        success = !!(await addFixedBill(formData, user));
         if (success) toast({ title: "Fixed Bill Added" });
     }
 
