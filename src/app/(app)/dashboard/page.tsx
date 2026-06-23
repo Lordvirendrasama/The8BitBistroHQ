@@ -69,11 +69,12 @@ function DashboardContent() {
     return Array.from(new Set(ids));
   }, [rawStations]);
 
+  const activeMemberIdsStr = activeMemberIds.join(',');
   const membersQuery = useMemo(() => {
     if (!db) return null;
     if (activeMemberIds.length === 0) return null;
     return query(collection(db, 'members'), where('__name__', 'in', activeMemberIds.slice(0, 30)));
-  }, [db, activeMemberIds]);
+  }, [db, activeMemberIdsStr]);
 
   const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
 
@@ -120,6 +121,15 @@ function DashboardContent() {
       }
     }
   }, [searchParams, stations]);
+
+  useEffect(() => {
+    if (selectedStation) {
+      const latest = stations.find(s => s.id === selectedStation.id);
+      if (latest && JSON.stringify(latest) !== JSON.stringify(selectedStation)) {
+        setSelectedStation(latest);
+      }
+    }
+  }, [stations, selectedStation]);
 
   const onGrantXp = (memberId: string, baseXp: number, billAmount: number, billId?: string) => {
     if (!db) return;
@@ -791,7 +801,12 @@ function DashboardContent() {
     setIsManageModalOpen(true);
   };
 
-  if (stationsLoading || membersLoading || foodLoading || packagesLoading) {
+  const isInitialLoading = 
+    (stationsLoading && (!stations || stations.length === 0)) || 
+    (foodLoading && (!foodItems || foodItems.length === 0)) || 
+    (packagesLoading && (!gamingPackages || gamingPackages.length === 0));
+
+  if (isInitialLoading) {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center gap-4 opacity-50">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

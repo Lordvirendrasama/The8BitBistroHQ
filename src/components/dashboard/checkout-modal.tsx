@@ -49,6 +49,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
   const [step, setStep] = useState<CheckoutStep>('review-bill');
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [discount, setDiscount] = useState(0);
+  const [discountInput, setDiscountInput] = useState('0');
   const [splitCash, setSplitCash] = useState<string>('');
   const [splitUpi, setSplitUpi] = useState<string>('');
   const [paidNow, setPaidNow] = useState<string>('0');
@@ -61,6 +62,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     if (isOpen && station) {
         setBillItems(station.currentBill || []);
         setDiscount(station.discount || 0);
+        setDiscountInput(String(station.discount || 0));
         setStep('review-bill');
         setIsClosing(false);
         setSearchTerm('');
@@ -71,7 +73,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
             setContactPhone(member?.phone || '');
         }
     }
-  }, [isOpen, station?.id, allMembers]);
+  }, [isOpen, station?.id]);
 
   const formatBalance = (sec: number) => {
     if (sec < 0) sec = 0;
@@ -154,7 +156,8 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     if (!station) return;
     const updatedItems = billItems.map((item, i) => i === index ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item).filter(item => item.quantity > 0);
     setBillItems(updatedItems);
-    onSaveBill(station.id, updatedItems, discount);
+    const finalDiscount = Math.max(0, parseFloat(discountInput) || 0);
+    onSaveBill(station.id, updatedItems, finalDiscount);
   };
 
   const handleAddItem = (food: FoodItem) => {
@@ -168,16 +171,47 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
         updatedItems = [...billItems, { itemId: food.id, name: food.name, price: food.price, quantity: 1, addedAt: new Date().toISOString() }]; 
     }
     setBillItems(updatedItems);
-    onSaveBill(station.id, updatedItems, discount);
+    const finalDiscount = Math.max(0, parseFloat(discountInput) || 0);
+    onSaveBill(station.id, updatedItems, finalDiscount);
     setSearchTerm('');
     toast({ title: "Item Added" });
   };
 
   const handleDiscountChange = (val: string) => {
-    if (!station) return;
+    setDiscountInput(val);
     const num = Math.max(0, parseFloat(val) || 0);
     setDiscount(num);
+  };
+
+  const handleDiscountBlur = () => {
+    if (!station) return;
+    const num = Math.max(0, parseFloat(discountInput) || 0);
+    setDiscountInput(String(num));
     onSaveBill(station.id, billItems, num);
+  };
+
+  const handleContinueToPayment = () => {
+    if (!station) return;
+    const finalDiscount = Math.max(0, parseFloat(discountInput) || 0);
+    onSaveBill(station.id, billItems, finalDiscount);
+    if (realMembersInSession.length > 0) {
+      setStep('member-xp');
+    } else if (finalBillTotal === 0) {
+      handleCheckout('recharge');
+    } else {
+      setStep('payment-method');
+    }
+  };
+
+  const handleConfirmRewards = () => {
+    if (!station) return;
+    const finalDiscount = Math.max(0, parseFloat(discountInput) || 0);
+    onSaveBill(station.id, billItems, finalDiscount);
+    if (finalBillTotal === 0) {
+      handleCheckout('recharge');
+    } else {
+      setStep('payment-method');
+    }
   };
 
   const filteredFood = useMemo(() => {
@@ -277,7 +311,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                             <div className="pt-3 border-t border-dashed mt-3">
                                 <div className="flex items-center justify-between p-2 rounded-lg bg-destructive/5 border-2 border-destructive/20">
                                     <div className="flex items-center gap-1.5"><Tag className="h-3 w-3 text-destructive" /><Label className="text-[8px] font-bold uppercase tracking-normal text-destructive">Discount</Label></div>
-                                    <div className="relative w-20"><span className="absolute left-1.5 top-1/2 -translate-y-1/2 font-mono font-bold text-[10px] text-destructive">₹</span><Input type="number" value={discount || ''} onChange={e => handleDiscountChange(e.target.value)} className="h-7 pl-4 text-right font-mono font-bold text-[10px] text-destructive border-destructive/30 focus-visible:ring-destructive" placeholder="0" /></div>
+                                    <div className="relative w-20"><span className="absolute left-1.5 top-1/2 -translate-y-1/2 font-mono font-bold text-[10px] text-destructive">₹</span><Input type="number" value={discountInput} onChange={e => handleDiscountChange(e.target.value)} onBlur={handleDiscountBlur} className="h-7 pl-4 text-right font-mono font-bold text-[10px] text-destructive border-destructive/30 focus-visible:ring-destructive" placeholder="0" /></div>
                                 </div>
                             </div>
                         </div>
@@ -338,8 +372,8 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
             </ScrollArea>
 
             <DialogFooter className="px-4 py-3 border-t bg-muted/10 shrink-0">
-                {step === 'review-bill' && <Button disabled={isClosing} onClick={() => realMembersInSession.length > 0 ? setStep('member-xp') : (finalBillTotal === 0 ? handleCheckout('recharge') : setStep('payment-method'))} className="w-full h-12 font-display text-[10px] uppercase tracking-normal shadow-xl">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
-                {step === 'member-xp' && <Button disabled={isClosing} onClick={() => finalBillTotal === 0 ? handleCheckout('recharge') : setStep('payment-method')} className="w-full h-12 font-display text-[10px] uppercase tracking-normal shadow-xl">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+                {step === 'review-bill' && <Button disabled={isClosing} onClick={handleContinueToPayment} className="w-full h-12 font-display text-[10px] uppercase tracking-normal shadow-xl">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+                {step === 'member-xp' && <Button disabled={isClosing} onClick={handleConfirmRewards} className="w-full h-12 font-display text-[10px] uppercase tracking-normal shadow-xl">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
                 {step === 'payment-method' && <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="w-full h-10 font-bold uppercase text-[9px] tracking-normal"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> BACK TO REVIEW</Button>}
                 {step === 'split-details' && <Button onClick={() => handleCheckout('split', parseFloat(splitCash), parseFloat(splitUpi))} disabled={isClosing || Math.abs((parseFloat(splitCash)||0) + (parseFloat(splitUpi)||0) - finalBillTotal) > 0.1} className="w-full h-12 font-bold uppercase tracking-tight text-base bg-primary shadow-xl">FINALIZE SPLIT</Button>}
                 {step === 'pending-details' && <Button onClick={handlePendingConfirm} disabled={isClosing} className="w-full h-12 font-bold uppercase tracking-tight text-base bg-destructive shadow-xl">SAVE DEBT & CLOSE</Button>}
