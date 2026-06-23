@@ -182,7 +182,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
     } else {
         const pkg = item as GamingPackage;
         duration = pkg.duration;
-        name = type === 'buy-recharge' ? `Buy Recharge: ${pkg.name}` : pkg.name;
+        name = type === 'buy-recharge' ? `Buy Recharge: ${pkg.name}` : `Time: ${pkg.name}`;
         isNewRecharge = type === 'buy-recharge';
         billItem = {
             itemId: pkg.id,

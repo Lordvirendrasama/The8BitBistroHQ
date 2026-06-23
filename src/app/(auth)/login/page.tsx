@@ -78,14 +78,21 @@ export default function LoginPage() {
 
   const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
   const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
+  // Fetch Live Offers
+  const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
+  const { data: packages } = useCollection<GamingPackage>(packagesQuery);
 
   const getCategory = useCallback((itemName: string, itemId: string) => {
     const lowerName = itemName.toLowerCase();
+    const cleanName = itemName.replace(/\s*\(.*\)/, '').trim().toLowerCase();
+    const isPackage = packages?.some(p => p.name.toLowerCase() === cleanName);
+
     if (
       lowerName.startsWith('time:') ||
       lowerName.startsWith('recharge:') ||
       lowerName.startsWith('buy recharge:') ||
-      lowerName.startsWith('walk-in:')
+      lowerName.startsWith('walk-in:') ||
+      isPackage
     ) {
       return 'Gaming';
     }
@@ -103,7 +110,7 @@ export default function LoginPage() {
       return 'Coffee';
     }
     return 'Food';
-  }, [foodItems]);
+  }, [foodItems, packages]);
 
   const registerSnapshot = useMemo(() => {
     let gaming = 0;
@@ -119,13 +126,7 @@ export default function LoginPage() {
       }
       
       const rawGaming = (b.initialPackagePrice || 0) + b.items.filter(i => {
-        const lowerName = i.name.toLowerCase();
-        return (
-          lowerName.startsWith('time:') ||
-          lowerName.startsWith('recharge:') ||
-          lowerName.startsWith('buy recharge:') ||
-          lowerName.startsWith('walk-in:')
-        );
+        return getCategory(i.name, i.itemId) === 'Gaming';
       }).reduce((s, i) => s + (i.price * i.quantity), 0);
       
       const rawFood = b.items.filter(i => {
@@ -163,13 +164,7 @@ export default function LoginPage() {
     
     bills.filter(b => b.timestamp && isBusinessToday(b.timestamp) && !b.isRechargePurchase).forEach(b => {
       b.items.forEach(item => {
-        const lowerName = item.name.toLowerCase();
-        if (
-          lowerName.startsWith('time:') ||
-          lowerName.startsWith('recharge:') ||
-          lowerName.startsWith('buy recharge:') ||
-          lowerName.startsWith('walk-in:')
-        ) {
+        if (getCategory(item.name, item.itemId) === 'Gaming') {
           return;
         }
         
@@ -182,7 +177,7 @@ export default function LoginPage() {
       .map(([name, qty]) => ({ name, qty }))
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 3);
-  }, [bills]);
+  }, [bills, getCategory]);
 
   // Sort Employees: Viren first, then Admins, then Staff, then Guests (at the end)
   const employees = useMemo(() => {
@@ -211,9 +206,7 @@ export default function LoginPage() {
       .reduce((s, b) => s + (b.totalAmount || 0), 0);
   }, [bills]);
 
-  // Fetch Live Offers
-  const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
-  const { data: packages } = useCollection<GamingPackage>(packagesQuery);
+
 
   const projectedTotal = useMemo(() => {
     let sum = todayCollection;

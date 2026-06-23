@@ -400,7 +400,7 @@ function DashboardContent() {
                 const end = Math.min(start + capacity, players.length);
                 const subGroup = players.slice(start, end);
                 const playerNames = subGroup.map(p => p.name).join(', ');
-                const label = subGroup[0].isNewRecharge ? `Buy Recharge: ${pkg.name}` : pkg.name;
+                const label = subGroup[0].isNewRecharge ? `Buy Recharge: ${pkg.name}` : `Time: ${pkg.name}`;
                 initialBill.push({
                     itemId: pkg.id,
                     name: `${label} (${playerNames})`,
@@ -564,7 +564,14 @@ function DashboardContent() {
     const hasItemizedSessionItems = billItems.some(i => {
         const nameLower = i.name.toLowerCase();
         return (
-            station.members.some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) ||
+            station.members.some(m => {
+                const matches = nameLower.match(/\(([^)]+)\)/g);
+                if (!matches) return false;
+                return matches.some(match => {
+                    const content = match.slice(1, -1);
+                    return content.split(',').map(p => p.trim()).includes(m.name.toLowerCase());
+                });
+            }) ||
             nameLower.startsWith('time:') ||
             nameLower.startsWith('buy recharge:') ||
             nameLower.startsWith('recharge:')

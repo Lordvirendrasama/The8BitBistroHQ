@@ -143,7 +143,18 @@ export default function OwnerDashboardPage() {
     const revDistrict = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'district-dinein' ? b.totalAmount : 0), 0);
     const revPending = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'pending' ? b.totalAmount : 0), 0);
 
-    const revGaming = dailyBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => i.name.startsWith('Time:')).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
+    const revGaming = dailyBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => {
+        const nameLower = i.name.toLowerCase();
+        return (
+            i.name.startsWith('Time:') || 
+            i.name.startsWith('Buy Recharge:') || 
+            i.name.startsWith('Recharge:') ||
+            nameLower.includes('hour') || 
+            nameLower.includes('offer') ||
+            nameLower.includes('pass') ||
+            nameLower.includes('rent')
+        );
+    }).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
     const revFood = revTotal - revGaming - revPending - revDistrict;
 
     // MONTHLY DATA (For Performers) - Filtered by phase
@@ -167,8 +178,18 @@ export default function OwnerDashboardPage() {
             packageCounts[pureName] = (packageCounts[pureName] || 0) + 1;
         }
         bill.items.forEach(item => {
-            if (item.name.startsWith('Time:')) {
-                const pureName = item.name.replace('Time: ', '').split('(')[0].trim();
+            const nameLower = item.name.toLowerCase();
+            const isGamingItem = 
+                item.name.startsWith('Time:') || 
+                item.name.startsWith('Buy Recharge:') || 
+                item.name.startsWith('Recharge:') ||
+                nameLower.includes('hour') || 
+                nameLower.includes('offer') ||
+                nameLower.includes('pass') ||
+                nameLower.includes('rent');
+
+            if (isGamingItem) {
+                const pureName = item.name.replace(/^(Time: |Buy Recharge: |Recharge: )/i, '').split('(')[0].trim();
                 packageCounts[pureName] = (packageCounts[pureName] || 0) + item.quantity;
             } else {
                 const isDrink = item.name.toLowerCase().includes('coffee') || 

@@ -207,7 +207,14 @@ export function BillModal({
         const pkgNameLower = station.packageName!.toLowerCase();
         const isGamingPackage = gamingPackages.some(p => p.name.toLowerCase() === nameLower);
         return (
-            (station.members || []).some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) ||
+            (station.members || []).some(m => {
+                const matches = nameLower.match(/\(([^)]+)\)/g);
+                if (!matches) return false;
+                return matches.some(match => {
+                    const content = match.slice(1, -1);
+                    return content.split(',').map(p => p.trim()).includes(m.name.toLowerCase());
+                });
+            }) ||
             nameLower.startsWith('time:') ||
             nameLower.startsWith('buy recharge:') ||
             nameLower.startsWith('recharge:') ||

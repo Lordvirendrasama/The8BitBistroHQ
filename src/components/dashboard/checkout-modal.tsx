@@ -71,7 +71,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
             setContactPhone(member?.phone || '');
         }
     }
-  }, [isOpen, station, allMembers]);
+  }, [isOpen, station?.id, allMembers]);
 
   const formatBalance = (sec: number) => {
     if (sec < 0) sec = 0;
@@ -91,7 +91,19 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     const members = station.members || [];
     const hasItemizedSessionItems = billItems.some(i => {
         const nameLower = i.name.toLowerCase();
-        return (members.some(m => nameLower.includes(`(${m.name.toLowerCase()})`)) || nameLower.startsWith('time:') || nameLower.startsWith('buy recharge:') || nameLower.startsWith('recharge:'));
+        return (
+            members.some(m => {
+                const matches = nameLower.match(/\(([^)]+)\)/g);
+                if (!matches) return false;
+                return matches.some(match => {
+                    const content = match.slice(1, -1);
+                    return content.split(',').map(p => p.trim()).includes(m.name.toLowerCase());
+                });
+            }) ||
+            nameLower.startsWith('time:') ||
+            nameLower.startsWith('buy recharge:') ||
+            nameLower.startsWith('recharge:')
+        );
     });
     if (hasItemizedSessionItems) return null;
     if (billItems.some(i => i.name === station.packageName)) return null;
