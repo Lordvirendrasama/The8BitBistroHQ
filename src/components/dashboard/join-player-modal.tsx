@@ -16,7 +16,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { isAfter } from 'date-fns';
 import { AddMemberModal } from './add-member-modal';
-import { addMember } from '@/firebase/firestore/members';
+import { addMember, searchMembers } from '@/firebase/firestore/members';
 
 const GUEST_AVATAR = PlaceHolderImages.find(img => img.id === 'avatar-6')?.imageUrl || 'https://picsum.photos/seed/guest/100/100';
 
@@ -92,16 +92,57 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
     }
   }, [isOpen]);
 
+  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [loadedMembers, setLoadedMembers] = useState<Record<string, Member>>({});
+
+  useEffect(() => {
+    if (isOpen && members) {
+      setLoadedMembers(prev => {
+        const next = { ...prev };
+        members.forEach(m => {
+          if (m.id) next[m.id] = m;
+        });
+        return next;
+      });
+    }
+  }, [isOpen, members]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const results = await searchMembers(searchTerm);
+        setSearchResults(results);
+        setLoadedMembers(prev => {
+          const next = { ...prev };
+          results.forEach(m => {
+            if (m.id) next[m.id] = m;
+          });
+          return next;
+        });
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm, isOpen]);
+
   const filteredMembers = useMemo(() => {
     const existingIds = new Set((station?.members || []).map(m => m.id));
-    const available = members.filter(m => !existingIds.has(m.id));
-    if (!searchTerm) return available.slice(0, 10);
-    const term = searchTerm.toLowerCase();
-    return available.filter(m => m.name.toLowerCase().includes(term) || m.username.toLowerCase().includes(term)).slice(0, 15);
-  }, [members, searchTerm, station?.members]);
+    return searchResults.filter(m => !existingIds.has(m.id));
+  }, [searchResults, station?.members]);
 
   const getMemberActiveRecharges = (memberId: string) => {
-    const member = members.find(m => m.id === memberId);
+    const member = loadedMembers[memberId];
     if (!member || !member.recharges) return [];
     const now = new Date();
     return member.recharges.filter(r => isAfter(new Date(r.expiryDate), now) && r.remainingDuration > 0);
@@ -129,7 +170,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
     let isNewRecharge = false;
 
     if (item === 'pool') {
-        const member = members.find(m => m.id === selectedMember.id);
+        const member = loadedMembers[selectedMember.id];
         duration = member?.recharges?.reduce((s, r) => s + r.remainingDuration, 0) || 0;
         name = "Recharge: Combined Pool";
         rechargeId = 'pool';

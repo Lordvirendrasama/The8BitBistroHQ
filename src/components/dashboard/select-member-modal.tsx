@@ -16,7 +16,7 @@ import { collection } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Label } from '@/components/ui/label';
 import { AddMemberModal } from './add-member-modal';
-import { addMember } from '@/firebase/firestore/members';
+import { addMember, searchMembers } from '@/firebase/firestore/members';
 import { isAfter } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -65,6 +65,50 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
   const [clientTime, setClientTime] = useState<string>('');
   const [customMinutes, setCustomMinutes] = useState('');
   const [customPrice, setCustomPrice] = useState('');
+
+  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [loadedMembers, setLoadedMembers] = useState<Record<string, Member>>({});
+
+  useEffect(() => {
+    if (isOpen && members) {
+      setLoadedMembers(prev => {
+        const next = { ...prev };
+        members.forEach(m => {
+          if (m.id) next[m.id] = m;
+        });
+        return next;
+      });
+    }
+  }, [isOpen, members]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const results = await searchMembers(searchTerm);
+        setSearchResults(results);
+        setLoadedMembers(prev => {
+          const next = { ...prev };
+          results.forEach(m => {
+            if (m.id) next[m.id] = m;
+          });
+          return next;
+        });
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm, isOpen]);
 
   useEffect(() => {
     setClientTime(new Date().toTimeString().slice(0, 5));
@@ -127,31 +171,56 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
   }, [isOpen, initialPlayers]);
 
   const getMemberActiveRecharges = (memberId: string) => {
-    const member = members.find(m => m.id === memberId);
+    const member = loadedMembers[memberId];
     if (!member || !member.recharges) return [];
     const now = new Date();
     return member.recharges.filter(r => isAfter(new Date(r.expiryDate), now) && r.remainingDuration > 0);
   };
 
   const getMemberTotalBalance = (member: Member) => {
-    if (!member.recharges) return 0;
+    if (!member || !member.recharges) return 0;
     const now = new Date();
     return member.recharges
         .filter(r => isAfter(new Date(r.expiryDate), now) && r.remainingDuration > 0)
         .reduce((sum, r) => sum + r.remainingDuration, 0);
   };
 
+  // Auto-initialize mode for the active player
+  useEffect(() => {
+    if (activeConfigPlayerId) {
+      setConfigs(prev => {
+        // If this player already has a config mode set, don't override it
+        if (prev[activeConfigPlayerId]?.mode) return prev;
+
+        const isGuest = activeConfigPlayerId.startsWith('guest-');
+        let defaultMode: 'recharge' | 'walkin' = 'walkin';
+
+        if (!isGuest) {
+          const activeRecharges = getMemberActiveRecharges(activeConfigPlayerId);
+          if (activeRecharges.length > 0) {
+            defaultMode = 'recharge';
+          }
+        }
+
+        return {
+          ...prev,
+          [activeConfigPlayerId]: {
+            mode: defaultMode,
+            packageId: null,
+            rechargeId: null,
+            name: null,
+            duration: null,
+            price: null
+          }
+        };
+      });
+    }
+  }, [activeConfigPlayerId, loadedMembers]);
+
   const filteredMembers = useMemo(() => {
-    if (!members) return [];
     const selectedIds = new Set(selectedPlayers.map(p => p.id));
-    const availableMembers = members.filter(m => m.id && !selectedIds.has(m.id));
-    if (!searchTerm) return availableMembers.slice(0, 15);
-    const term = searchTerm.toLowerCase();
-    return availableMembers.filter(m => 
-      m.name.toLowerCase().includes(term) || 
-      m.username.toLowerCase().includes(term)
-    ).slice(0, 20);
-  }, [members, searchTerm, selectedPlayers]);
+    return searchResults.filter(m => m.id && !selectedIds.has(m.id));
+  }, [searchResults, selectedPlayers]);
 
   const handleAddPlayer = (member: Member) => {
     const newPlayer: AssignedMember = { id: member.id, name: member.name, avatarUrl: member.avatarUrl };
@@ -187,7 +256,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
       setConfigs(prev => {
           const next = { ...prev };
           if (item === 'pool') {
-              const member = members.find(m => m.id === playerId);
+              const member = loadedMembers[playerId];
               const balance = member ? getMemberTotalBalance(member) : 0;
               next[playerId] = { 
                   mode: 'recharge', 
@@ -454,8 +523,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                         <h4 className="text-[10px] font-bold uppercase text-muted-foreground tracking-normal">LOGGING IN: <strong className="text-foreground">{selectedPlayers.find(p => p.id === activeConfigPlayerId)?.name}</strong></h4>
                                     </div>
                                     <div className="flex gap-3 mb-3 shrink-0">
-                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'recharge' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'recharge')}><Zap className="h-4 w-4" /> RECHARGE</Button>
                                         <Button variant={configs[activeConfigPlayerId]?.mode === 'walkin' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'walkin')}><Gamepad2 className="h-4 w-4" /> QUICK PLAY</Button>
+                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'recharge' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'recharge')}><Zap className="h-4 w-4" /> RECHARGE</Button>
                                     </div>
                                     <ScrollArea className="flex-1 bg-background/50 rounded-xl border-2 min-h-0">
                                         <div className="p-2.5 space-y-2.5 pb-12 font-body">
@@ -551,7 +620,15 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                         {getMemberActiveRecharges(activeConfigPlayerId).map((r, rIdx) => {
                                                             const isSelected = configs[activeConfigPlayerId]?.rechargeId === r.id;
                                                             return (
-                                                                <div key={`${r.id}-${rIdx}`} className={cn("p-3 rounded-lg border-2 bg-card transition-all", isSelected ? "border-primary bg-primary/5" : "border-muted opacity-60")}>
+                                                                <div 
+                                                                    key={`${r.id}-${rIdx}`} 
+                                                                    className={cn(
+                                                                        "p-3 rounded-lg border-2 transition-all", 
+                                                                        isSelected 
+                                                                            ? "border-primary bg-primary/10 ring-2 ring-primary/30 scale-[1.01] shadow-md" 
+                                                                            : "border-muted bg-card opacity-60 hover:opacity-100"
+                                                                    )}
+                                                                >
                                                                     <div className="flex justify-between items-center">
                                                                         <div className="min-w-0">
                                                                             <p className="text-xs font-bold uppercase truncate opacity-80">{r.packageName}</p>
@@ -566,41 +643,93 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                     <div className="pt-3">
                                                         <p className="text-[10px] font-bold uppercase text-muted-foreground text-center mb-3 tracking-normal border-t pt-3">--- BUY NEW PACK ---</p>
                                                         <div className="space-y-2">
-                                                            {rechargePackages.map(pkg => (
-                                                                <div key={pkg.id} onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)} className="p-3 rounded-xl border-2 border-dashed hover:border-yellow-500 transition-all cursor-pointer flex justify-between items-center bg-card shadow-sm group">
-                                                                    <div className="min-w-0">
-                                                                        <p className="text-xs font-bold uppercase truncate group-hover:text-yellow-600">{pkg.name}</p>
-                                                                        <div className="flex items-center gap-2 mt-1">
-                                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
-                                                                            {pkg.playerCapacity && pkg.playerCapacity > 1 && <Badge variant="outline" className="h-4 text-[8px] border-primary/20 text-primary uppercase font-bold">{pkg.playerCapacity}P</Badge>}
+                                                             {rechargePackages.map(pkg => {
+                                                                const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
+                                                                return (
+                                                                    <div 
+                                                                        key={pkg.id} 
+                                                                        onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)} 
+                                                                        className={cn(
+                                                                            "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
+                                                                            isSelected 
+                                                                                ? "border-yellow-500 bg-yellow-500/10 ring-2 ring-yellow-500/30 scale-[1.02] shadow-md" 
+                                                                                : "border-muted bg-card hover:border-yellow-500/50"
+                                                                        )}
+                                                                    >
+                                                                        <div className="min-w-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <p className={cn("text-xs font-bold uppercase truncate group-hover:text-yellow-600", isSelected && "text-yellow-600 font-black")}>{pkg.name}</p>
+                                                                                {isSelected && (
+                                                                                    <Badge className="h-5 px-2 text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase flex items-center gap-1 animate-in fade-in-50 zoom-in-95 duration-200">
+                                                                                        <CheckCircle2 className="h-3 w-3" /> SELECTED
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 mt-1">
+                                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
+                                                                                {pkg.playerCapacity && pkg.playerCapacity > 1 && <Badge variant="outline" className="h-4 text-[8px] border-primary/20 text-primary uppercase font-bold">{pkg.playerCapacity}P</Badge>}
+                                                                            </div>
                                                                         </div>
+                                                                        <span className={cn(
+                                                                            "text-sm font-bold transition-colors",
+                                                                            isSelected ? "text-yellow-500 font-black scale-105" : "text-primary"
+                                                                        )}>
+                                                                            ₹{pkg.price}
+                                                                        </span>
                                                                     </div>
-                                                                    <span className="text-sm font-bold text-primary">₹{pkg.price}</span>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 </div>
                                             ) : configs[activeConfigPlayerId]?.mode === 'walkin' ? (
                                                 <div className="space-y-2.5">
-                                                    {walkInPackages.map(pkg => (
-                                                        <div key={pkg.id} onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false)} className={cn(
-                                                            "p-4 rounded-xl border-2 bg-card hover:border-primary/50 transition-all cursor-pointer group shadow-sm flex justify-between items-center",
-                                                            pkg.isPriorityOffer && "border-amber-500/30 bg-amber-500/[0.02] ring-1 ring-amber-500/10"
-                                                        )}>
-                                                            <div className="min-w-0">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className={cn("text-xs font-bold uppercase truncate group-hover:text-primary", pkg.isPriorityOffer && "text-amber-600")}>
-                                                                        {pkg.name}
-                                                                        {pkg.isPriorityOffer && <Star className="inline h-3 w-3 ml-1.5 fill-amber-500 text-amber-500" />}
-                                                                    </p>
-                                                                    {pkg.playerCapacity && pkg.playerCapacity > 1 ? <Badge variant="outline" className="h-4 text-[8px] bg-primary/5 border-primary/30 text-primary font-black uppercase flex items-center gap-1"><Users className="h-2 w-2" />{pkg.playerCapacity}P</Badge> : <Badge variant="outline" className="h-4 text-[8px] border-muted text-muted-foreground uppercase flex items-center gap-1"><User className="h-2 w-2" />1P</Badge>}
+                                                    {walkInPackages.map(pkg => {
+                                                        const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'walkin';
+                                                        return (
+                                                            <div 
+                                                                key={pkg.id} 
+                                                                onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false)} 
+                                                                className={cn(
+                                                                    "p-4 rounded-xl border-2 transition-all cursor-pointer group shadow-md flex justify-between items-center",
+                                                                    isSelected 
+                                                                        ? "border-primary bg-primary/15 ring-2 ring-primary/40 scale-[1.02]" 
+                                                                        : (pkg.isPriorityOffer 
+                                                                            ? "border-amber-500/35 bg-amber-500/5 ring-1 ring-amber-500/15 hover:border-amber-500/60" 
+                                                                            : "border-muted bg-card hover:border-primary/50")
+                                                                )}
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className={cn(
+                                                                            "text-xs font-bold uppercase truncate group-hover:text-primary", 
+                                                                            isSelected ? "text-primary font-black" : (pkg.isPriorityOffer && "text-amber-500")
+                                                                        )}>
+                                                                            {pkg.name}
+                                                                            {pkg.isPriorityOffer && <Star className="inline h-3.5 w-3.5 ml-1.5 fill-amber-500 text-amber-500" />}
+                                                                        </p>
+                                                                        {pkg.playerCapacity && pkg.playerCapacity > 1 ? (
+                                                                            <Badge variant="outline" className="h-4 text-[8px] bg-primary/5 border-primary/30 text-primary font-black uppercase flex items-center gap-1"><Users className="h-2.5 w-2.5" />{pkg.playerCapacity}P</Badge>
+                                                                        ) : (
+                                                                            <Badge variant="outline" className="h-4 text-[8px] border-muted text-muted-foreground uppercase flex items-center gap-1"><User className="h-2.5 w-2.5" />1P</Badge>
+                                                                        )}
+                                                                        {isSelected && (
+                                                                            <Badge className="h-5 px-2 text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase flex items-center gap-1 animate-in fade-in-50 zoom-in-95 duration-200">
+                                                                                <CheckCircle2 className="h-3 w-3" /> SELECTED
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-normal flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatPackageDuration(pkg.duration)}</p>
                                                                 </div>
-                                                                <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-normal flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatPackageDuration(pkg.duration)}</p>
+                                                                <span className={cn(
+                                                                    "font-mono font-bold text-base transition-colors",
+                                                                    isSelected ? "text-primary font-black scale-105" : "text-foreground"
+                                                                )}>
+                                                                    ₹{pkg.price}
+                                                                </span>
                                                             </div>
-                                                            <span className="font-mono font-bold text-base text-foreground">₹{pkg.price}</span>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                     <div className="pt-3">
                                                         <p className="text-[10px] font-bold uppercase text-muted-foreground text-center mb-3 tracking-normal border-t pt-3">--- CUSTOM QUICK PLAY ---</p>
                                                         <div className="p-3 rounded-xl border-2 border-dashed bg-card shadow-sm space-y-3">

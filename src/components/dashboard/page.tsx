@@ -193,7 +193,15 @@ export default function DashboardPage() {
 
   const handleSaveBill = (stationId: string, newBill: BillItem[], newDiscount: number) => {
     updateStation(stationId, { currentBill: newBill, discount: newDiscount });
-    toast({ title: "Bill Saved", description: "The station's bill has been updated." });
+  };
+
+  const handleCheckoutClickFromBillModal = (stationId: string) => {
+    setIsBillModalOpen(false);
+    const station = stations?.find(s => s.id === stationId);
+    if (station) {
+      setSelectedStation(station);
+      setIsCheckoutModalOpen(true);
+    }
   };
 
   const handleConfirmCheckout = async (stationId: string, finalBill: number, billItems: BillItem[], discountValue: number) => {
@@ -241,7 +249,7 @@ export default function DashboardPage() {
     // Explicitly delete prepaidAmount field (undefined won't remove Firestore fields)
     clearStationPrepaid(stationId);
     
-    const thankYouMessage = `Thank you for your payment of ${finalBill.toLocaleString()} Rupees. Station ${station.name} is now available.`;
+    const thankYouMessage = `Thank you for your payment of ${Math.round(finalBill)} Rupees. Thank you for visiting the 8 bit bistro.`;
     toast({ title: "Payment Received!", description: thankYouMessage });
     
     if ('speechSynthesis' in window) {
@@ -430,7 +438,8 @@ export default function DashboardPage() {
         onSaveBill={handleSaveBill} 
         gamingPackages={gamingPackages || []} 
         onConfirmCheckout={handleConfirmCheckout}
-        onStartFoodSession={handleStartFoodSession} />
+        onStartFoodSession={handleStartFoodSession}
+        onCheckoutClick={handleCheckoutClickFromBillModal} />
 
       <CheckoutModal 
         isOpen={isCheckoutModalOpen} 

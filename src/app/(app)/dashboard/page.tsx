@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, runTransaction, doc } from 'firebase/firestore';
+import { collection, query, orderBy, runTransaction, doc, where } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { addStation, updateStation, addPlayerToSession } from '@/firebase/firestore/stations';
 import { settings } from '@/lib/data';
@@ -53,11 +53,29 @@ function DashboardContent() {
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [initialPlayers, setInitialPlayers] = useState<AssignedMember[] | undefined>(undefined);
 
-  const membersQuery = useMemo(() => !db ? null : collection(db, 'members'), [db]);
-  const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
-  
   const stationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), orderBy('order')), [db]);
   const { data: rawStations, loading: stationsLoading } = useCollection<Station>(stationsQuery);
+
+  const activeMemberIds = useMemo(() => {
+    if (!rawStations) return [];
+    const ids: string[] = [];
+    rawStations.forEach(s => {
+      (s.members || []).forEach(m => {
+        if (m.status !== 'finished' && !m.id.startsWith('guest-')) {
+          ids.push(m.id);
+        }
+      });
+    });
+    return Array.from(new Set(ids));
+  }, [rawStations]);
+
+  const membersQuery = useMemo(() => {
+    if (!db) return null;
+    if (activeMemberIds.length === 0) return null;
+    return query(collection(db, 'members'), where('__name__', 'in', activeMemberIds.slice(0, 30)));
+  }, [db, activeMemberIds]);
+
+  const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
 
   const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
   const { data: foodItems, loading: foodLoading } = useCollection<FoodItem>(foodItemsQuery);
@@ -454,7 +472,15 @@ function DashboardContent() {
     }
 
     updateStation(stationId, updates);
-    toast({ title: "Bill Saved" });
+  };
+
+  const handleCheckoutClickFromBillModal = (stationId: string) => {
+    setIsBillModalOpen(false);
+    const station = stations?.find(s => s.id === stationId);
+    if (station) {
+      setSelectedStation(station);
+      setIsCheckoutModalOpen(true);
+    }
   };
 
   const handleConfirmCheckout = async (
@@ -590,7 +616,7 @@ function DashboardContent() {
     
     const paymentLabel = paymentMethod === 'split' ? `Split` : paymentMethod.toUpperCase();
     toast({ title: "Session Closed", description: `Total: ₹${finalBill.toLocaleString()} via ${paymentLabel}.` });
-    await createSystemAnnouncement(`Checkout for ${station.name}. Total: ₹${finalBill.toLocaleString()}.`);
+    await createSystemAnnouncement(`Checkout for ${station.name}. Total: ${Math.round(finalBill)} Rupees. Thank you for visiting the 8 bit bistro.`);
 
     setIsCheckoutModalOpen(false);
     setSelectedStation(null);
@@ -857,7 +883,7 @@ function DashboardContent() {
       {selectedStation && (
         <>
           <SelectMemberModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} members={members || []} onConfirm={handleStartSession} station={selectedStation} initialPlayers={initialPlayers} />
-          <BillModal isOpen={isBillModalOpen} onOpenChange={setIsBillModalOpen} station={selectedStation} allMembers={members || []} foodItems={foodItems || []} onSaveBill={handleSaveBill} gamingPackages={gamingPackages || []} onConfirmCheckout={handleConfirmCheckout} onStartFoodSession={handleStartFoodSession} />
+          <BillModal isOpen={isBillModalOpen} onOpenChange={setIsBillModalOpen} station={selectedStation} allMembers={members || []} foodItems={foodItems || []} onSaveBill={handleSaveBill} gamingPackages={gamingPackages || []} onConfirmCheckout={handleConfirmCheckout} onStartFoodSession={handleStartFoodSession} onCheckoutClick={handleCheckoutClickFromBillModal} />
           <CheckoutModal isOpen={isCheckoutModalOpen} onOpenChange={setIsCheckoutModalOpen} station={selectedStation} gamingPackages={gamingPackages || []} onConfirmCheckout={handleConfirmCheckout} onSaveBill={handleSaveBill} allMembers={members || []} foodItems={foodItems || []} />
           <EditTimeModal isOpen={isEditTimeModalOpen} onOpenChange={setIsEditTimeModalOpen} onAddTime={handleAddTime} onReduceTime={handleReduceTime} gamingPackages={gamingPackages || []} station={selectedStation} />
           <MoveStationModal isOpen={isMoveModalOpen} onOpenChange={setIsMoveModalOpen} sourceStation={selectedStation} availableStations={availableStations} />

@@ -12,7 +12,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
 import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw, IndianRupee, TrendingUp, Circle } from 'lucide-react';
 import { cn, isBusinessToday } from '@/lib/utils';
-import type { GamingPackage, Employee, Bill, Station, Shift } from '@/lib/types';
+import type { GamingPackage, Employee, Bill, Station, Shift, FoodItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -54,16 +54,130 @@ export default function LoginPage() {
   const activeShiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), where('status', '==', 'active')), [db]);
   const { data: activeShifts } = useCollection<Shift>(activeShiftsQuery);
 
-  // Sort Employees: Viren first, then Admins, then alphabetical
+  const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
+  const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
+
+  const getCategory = useCallback((itemName: string, itemId: string) => {
+    const lowerName = itemName.toLowerCase();
+    if (
+      lowerName.startsWith('time:') ||
+      lowerName.startsWith('recharge:') ||
+      lowerName.startsWith('buy recharge:') ||
+      lowerName.startsWith('walk-in:')
+    ) {
+      return 'Gaming';
+    }
+    
+    const foodItem = foodItems?.find(f => f.id === itemId || f.name.toLowerCase() === lowerName);
+    if (foodItem) {
+      const cat = foodItem.category.toLowerCase();
+      if (cat.includes('coffee') || cat.includes('beverage') || cat.includes('drink') || lowerName.includes('coffee') || lowerName.includes('hot chocolate') || lowerName.includes('tea') || lowerName.includes('latte')) {
+        return 'Coffee';
+      }
+      return 'Food';
+    }
+    
+    if (lowerName.includes('coffee') || lowerName.includes('latte') || lowerName.includes('cappuccino') || lowerName.includes('tea') || lowerName.includes('hot chocolate') || lowerName.includes('drink') || lowerName.includes('shake') || lowerName.includes('beverage')) {
+      return 'Coffee';
+    }
+    return 'Food';
+  }, [foodItems]);
+
+  const registerSnapshot = useMemo(() => {
+    let gaming = 0;
+    let food = 0;
+    let coffee = 0;
+    
+    if (!bills) return { gaming: 0, food: 0, coffee: 0, total: 0 };
+    
+    bills.filter(b => b.timestamp && isBusinessToday(b.timestamp)).forEach(b => {
+      if (b.isRechargePurchase) {
+        gaming += b.totalAmount || 0;
+        return;
+      }
+      
+      const rawGaming = (b.initialPackagePrice || 0) + b.items.filter(i => {
+        const lowerName = i.name.toLowerCase();
+        return (
+          lowerName.startsWith('time:') ||
+          lowerName.startsWith('recharge:') ||
+          lowerName.startsWith('buy recharge:') ||
+          lowerName.startsWith('walk-in:')
+        );
+      }).reduce((s, i) => s + (i.price * i.quantity), 0);
+      
+      const rawFood = b.items.filter(i => {
+        const cat = getCategory(i.name, i.itemId);
+        return cat === 'Food';
+      }).reduce((s, i) => s + (i.price * i.quantity), 0);
+      
+      const rawCoffee = b.items.filter(i => {
+        const cat = getCategory(i.name, i.itemId);
+        return cat === 'Coffee';
+      }).reduce((s, i) => s + (i.price * i.quantity), 0);
+      
+      const rawTotal = rawGaming + rawFood + rawCoffee;
+      if (rawTotal <= 0) return;
+      
+      const discountRatio = (b.discount || 0) / rawTotal;
+      const factor = 1 - discountRatio;
+      
+      gaming += rawGaming * factor;
+      food += rawFood * factor;
+      coffee += rawCoffee * factor;
+    });
+    
+    return {
+      gaming: Math.round(gaming),
+      food: Math.round(food),
+      coffee: Math.round(coffee),
+      total: Math.round(gaming) + Math.round(food) + Math.round(coffee)
+    };
+  }, [bills, foodItems, getCategory]);
+
+  const topSellers = useMemo(() => {
+    if (!bills) return [];
+    const counts: Record<string, number> = {};
+    
+    bills.filter(b => b.timestamp && isBusinessToday(b.timestamp) && !b.isRechargePurchase).forEach(b => {
+      b.items.forEach(item => {
+        const lowerName = item.name.toLowerCase();
+        if (
+          lowerName.startsWith('time:') ||
+          lowerName.startsWith('recharge:') ||
+          lowerName.startsWith('buy recharge:') ||
+          lowerName.startsWith('walk-in:')
+        ) {
+          return;
+        }
+        
+        const displayName = item.name;
+        counts[displayName] = (counts[displayName] || 0) + item.quantity;
+      });
+    });
+    
+    return Object.entries(counts)
+      .map(([name, qty]) => ({ name, qty }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 3);
+  }, [bills]);
+
+  // Sort Employees: Viren first, then Admins, then Staff, then Guests (at the end)
   const employees = useMemo(() => {
     if (!rawEmployees) return [];
     return [...rawEmployees].sort((a, b) => {
         if (a.username === 'Viren') return -1;
         if (b.username === 'Viren') return 1;
         
+        if (a.role === 'guest' && b.role !== 'guest') return 1;
+        if (b.role === 'guest' && a.role !== 'guest') return -1;
+        
         if (a.role === 'admin' && b.role !== 'admin') return -1;
         if (b.role === 'admin' && a.role !== 'admin') return 1;
         
+        if (a.role === 'staff' && b.role !== 'staff') return -1;
+        if (b.role === 'staff' && a.role !== 'staff') return 1;
+
         return a.displayName.localeCompare(b.displayName);
     });
   }, [rawEmployees]);
@@ -308,88 +422,202 @@ export default function LoginPage() {
             </div>
         </div>
 
-        <div 
-          className="flex flex-col items-center animate-in fade-in zoom-in duration-1000 transition-transform duration-300 ease-out"
-          style={{ transform: `translate(${logoX}px, ${logoY}px)` }}
-        >
-            <div className="relative h-24 w-24 sm:h-32 sm:w-32 drop-shadow-[0_0_25px_rgba(239,0,53,0.2)] hover:scale-110 transition-transform">
-                <Image src="/logo.png" alt="The 8 Bit Bistro" width={128} height={128} className="object-contain" priority />
-            </div>
-            <p className="text-[8px] font-pixel mt-4 text-primary uppercase bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">Build v{APP_VERSION}</p>
-        </div>
-
-        {activeOffers.length > 0 && (
-            <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                <div className="bg-card/40 backdrop-blur-3xl border-2 border-emerald-500/10 rounded-3xl p-4 sm:p-6 shadow-lg relative overflow-hidden flex flex-col">
-                    <div className="flex items-center justify-between mb-4 border-b border-foreground/5 pb-3">
-                        <div className="flex items-center gap-2">
-                            <Gamepad2 className="h-3 w-3 text-emerald-500" />
-                            <span className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Power-Ups</span>
-                        </div>
-                        <Badge variant="outline" className="h-4 text-[8px] border-emerald-500/20 text-emerald-600 bg-emerald-500/5 font-black uppercase">Today's Deals</Badge>
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-1000">
+            {/* Left Column: Logo & Logins */}
+            <div className="lg:col-span-8 flex flex-col items-center gap-6 sm:gap-10 w-full">
+                <div 
+                  className="flex flex-col items-center animate-in fade-in zoom-in duration-1000 transition-transform duration-300 ease-out"
+                  style={{ transform: `translate(${logoX}px, ${logoY}px)` }}
+                >
+                    <div className="relative h-24 w-24 sm:h-32 sm:w-32 drop-shadow-[0_0_25px_rgba(239,0,53,0.2)] hover:scale-110 transition-transform">
+                        <Image src="/logo.png" alt="The 8 Bit Bistro" width={128} height={128} className="object-contain" priority />
                     </div>
-                    <div className="space-y-2">
-                        {activeOffers.map((pkg) => (
-                            <div key={pkg.id} className="flex justify-between items-center p-3 rounded-xl border-2 bg-amber-500/5 border-amber-500/20 transition-all group">
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-bold text-[10px] uppercase truncate text-amber-600">{pkg.name}</p>
-                                        <Badge className="h-3.5 px-1 bg-amber-500 text-[7px] font-black">BOOST</Badge>
-                                    </div>
-                                    <p className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">
-                                        {formatDuration(pkg.duration)} Session
-                                    </p>
+                    <p className="text-[8px] font-pixel mt-4 text-primary uppercase bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">Build v{APP_VERSION}</p>
+                </div>
+
+                {activeOffers.length > 0 && (
+                    <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                        <div className="bg-card/40 backdrop-blur-3xl border-2 border-emerald-500/10 rounded-3xl p-4 sm:p-6 shadow-lg relative overflow-hidden flex flex-col">
+                            <div className="flex items-center justify-between mb-4 border-b border-foreground/5 pb-3">
+                                <div className="flex items-center gap-2">
+                                    <Gamepad2 className="h-3 w-3 text-emerald-500" />
+                                    <span className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Power-Ups</span>
                                 </div>
-                                <span className="font-mono font-black text-sm text-primary">₹{pkg.price}</span>
+                                <Badge variant="outline" className="h-4 text-[8px] border-emerald-500/20 text-emerald-600 bg-emerald-500/5 font-black uppercase">Today's Deals</Badge>
                             </div>
-                        ))}
+                            <div className="space-y-2">
+                                {activeOffers.map((pkg) => (
+                                    <div key={pkg.id} className="flex justify-between items-center p-3 rounded-xl border-2 bg-amber-500/5 border-amber-500/20 transition-all group">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-[10px] uppercase truncate text-amber-600">{pkg.name}</p>
+                                                <Badge className="h-3.5 px-1 bg-amber-500 text-[7px] font-black">BOOST</Badge>
+                                            </div>
+                                            <p className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">
+                                                {formatDuration(pkg.duration)} Session
+                                            </p>
+                                        </div>
+                                        <span className="font-mono font-black text-sm text-primary">₹{pkg.price}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full">
+                    {employees?.map(emp => {
+                        const isOnline = activeShifts?.some(s => s.staffId === emp.username);
+                        
+                        return (
+                            <Button key={emp.id} onClick={() => handleLoginAttempt(emp)} variant="outline" className={cn(
+                                "group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm w-full",
+                                emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : "border-blue-500/10"
+                            )}>
+                                {isOnline && (
+                                    <Badge className="absolute top-2 left-2 bg-emerald-500 hover:bg-emerald-500 text-white text-[7px] font-black h-4 px-1.5 border-none shadow-sm animate-pulse flex items-center gap-1">
+                                        <Circle className="h-1.5 w-1.5 fill-current" />
+                                        ONLINE
+                                    </Badge>
+                                )}
+                                <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
+                                    {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Users className="h-12 w-12" /> : <User className="h-12 w-12" />}
+                                </div>
+                                {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
+                                emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
+                                <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
+                                <span className="font-headline text-[10px] tracking-tight uppercase">{emp.displayName}</span>
+                                <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">{emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}</span>
+                            </Button>
+                        );
+                    })}
+                    {(!employees || employees.length === 0) && (
+                        <div className="col-span-full py-12 flex flex-col items-center gap-4 opacity-50 bg-card/20 rounded-3xl border-2 border-dashed">
+                            <RefreshCcw className="h-10 w-10 animate-spin text-muted-foreground" />
+                            <div className="text-center">
+                                <p className="font-headline text-[10px] tracking-widest uppercase">No Operator Profiles Detected</p>
+                                <button 
+                                    onClick={handleManualSeed} 
+                                    disabled={isSeeding}
+                                    className="text-[10px] font-black uppercase text-primary hover:underline mt-2 flex items-center justify-center gap-2"
+                                >
+                                    {isSeeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
+                                    Initialize Default Profiles
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Right Column: Operational Stats Panel */}
+            <div className="lg:col-span-4 space-y-4 w-full text-left">
+                {/* Active Staff Widget */}
+                <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
+                    <div className="flex items-center gap-2 mb-4 border-b border-foreground/5 pb-2">
+                        <Users className="h-4 w-4 text-emerald-500" />
+                        <span className="font-headline text-xs tracking-widest text-muted-foreground uppercase font-black">STAFF ONLINE</span>
+                    </div>
+                    {activeShifts && activeShifts.length > 0 ? (
+                        <div className="space-y-4">
+                            {(() => {
+                                const activeEmployeeUsernames = new Set((rawEmployees || []).map(e => e.username));
+                                const filteredActiveShifts = activeShifts.flatMap(shift => {
+                                    const shiftEmployees = shift.employees && shift.employees.length > 0
+                                        ? shift.employees
+                                        : [{ username: shift.staffId, displayName: shift.staffId }];
+                                    
+                                    return shiftEmployees
+                                        .filter(emp => activeEmployeeUsernames.has(emp.username))
+                                        .map(emp => ({
+                                            ...emp,
+                                            startTime: shift.startTime,
+                                        }));
+                                });
+
+                                if (filteredActiveShifts.length === 0) {
+                                    return <p className="text-[10px] italic font-bold text-muted-foreground uppercase opacity-50 py-2">No staff currently clocked in</p>;
+                                }
+
+                                return filteredActiveShifts.map(emp => {
+                                    const loginTime = new Date(emp.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                    const elapsedMs = currentTime.getTime() - new Date(emp.startTime).getTime();
+                                    const h = Math.floor(elapsedMs / 3600000);
+                                    const m = Math.floor((elapsedMs % 3600000) / 60000);
+                                    const workedStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                                    
+                                    return (
+                                        <div key={emp.username} className="flex items-start gap-2.5 animate-in fade-in duration-300">
+                                            <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5 animate-pulse shrink-0" />
+                                            <div>
+                                                <p className="font-bold text-sm text-foreground uppercase leading-none">{emp.displayName}</p>
+                                                <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">
+                                                    Logged In: <span className="text-foreground/80">{loginTime}</span>
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground font-bold uppercase">
+                                                    Worked: <span className="text-emerald-500">{workedStr}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+                    ) : (
+                        <p className="text-[10px] italic font-bold text-muted-foreground uppercase opacity-50 py-2">No staff currently clocked in</p>
+                    )}
+                </div>
+
+                {/* Today's Top Products Widget */}
+                <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
+                    <div className="flex items-center gap-2 mb-4 border-b border-foreground/5 pb-2">
+                        <Gamepad2 className="h-4 w-4 text-blue-500" />
+                        <span className="font-headline text-xs tracking-widest text-muted-foreground uppercase font-black">TOP SELLERS</span>
+                    </div>
+                    {topSellers.length > 0 ? (
+                        <div className="space-y-3 font-body">
+                            {topSellers.map((item, idx) => (
+                                <div key={item.name} className="flex items-center justify-between text-xs font-bold uppercase animate-in fade-in duration-300">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <span className="font-mono text-primary text-[10px]">{idx + 1}.</span>
+                                        <span className="text-foreground truncate">{item.name}</span>
+                                    </div>
+                                    <span className="text-muted-foreground/60 text-[10px] shrink-0">{item.qty} Sold</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-[10px] italic font-bold text-muted-foreground uppercase opacity-50 py-2">No product sales today</p>
+                    )}
+                </div>
+
+                {/* Cash Register Snapshot Widget */}
+                <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
+                    <div className="flex items-center gap-2 mb-3 border-b border-foreground/5 pb-2">
+                        <TrendingUp className="h-4 w-4 text-emerald-500" />
+                        <span className="font-headline text-xs tracking-widest text-muted-foreground uppercase font-black">TODAY</span>
+                    </div>
+                    <div className="space-y-2.5 text-xs font-bold uppercase">
+                        <div className="flex justify-between items-center text-muted-foreground">
+                            <span>Gaming:</span>
+                            <span className="text-foreground font-mono">₹{registerSnapshot.gaming.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-muted-foreground">
+                            <span>Food:</span>
+                            <span className="text-foreground font-mono">₹{registerSnapshot.food.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-muted-foreground">
+                            <span>Coffee:</span>
+                            <span className="text-foreground font-mono">₹{registerSnapshot.coffee.toLocaleString()}</span>
+                        </div>
+                        <div className="border-t border-foreground/5 my-2" />
+                        <div className="flex justify-between items-center text-sm font-black">
+                            <span className="text-emerald-500">Total:</span>
+                            <span className="text-emerald-500 font-mono text-base">₹{registerSnapshot.total.toLocaleString()}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-4xl">
-            {employees?.map(emp => {
-                const isOnline = activeShifts?.some(s => s.staffId === emp.username);
-                
-                return (
-                    <Button key={emp.id} onClick={() => handleLoginAttempt(emp)} variant="outline" className={cn(
-                        "group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm",
-                        emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : ""
-                    )}>
-                        {isOnline && (
-                            <Badge className="absolute top-2 left-2 bg-emerald-500 hover:bg-emerald-500 text-white text-[7px] font-black h-4 px-1.5 border-none shadow-sm animate-pulse flex items-center gap-1">
-                                <Circle className="h-1.5 w-1.5 fill-current" />
-                                ONLINE
-                            </Badge>
-                        )}
-                        <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
-                            {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Users className="h-12 w-12" /> : <User className="h-12 w-12" />}
-                        </div>
-                        {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
-                        emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
-                        <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
-                        <span className="font-headline text-[10px] tracking-tight uppercase">{emp.displayName}</span>
-                        <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">{emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}</span>
-                    </Button>
-                );
-            })}
-            {(!employees || employees.length === 0) && (
-                <div className="col-span-full py-12 flex flex-col items-center gap-4 opacity-50 bg-card/20 rounded-3xl border-2 border-dashed">
-                    <RefreshCcw className="h-10 w-10 animate-spin text-muted-foreground" />
-                    <div className="text-center">
-                        <p className="font-headline text-[10px] tracking-widest uppercase">No Operator Profiles Detected</p>
-                        <button 
-                            onClick={handleManualSeed} 
-                            disabled={isSeeding}
-                            className="text-[10px] font-black uppercase text-primary hover:underline mt-2 flex items-center justify-center gap-2"
-                        >
-                            {isSeeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
-                            Initialize Default Profiles
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
 
         <p className="text-[8px] font-mono text-muted-foreground/30 uppercase tracking-widest text-center">

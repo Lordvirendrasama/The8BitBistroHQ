@@ -1,7 +1,7 @@
 
 'use client';
 
-import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, WriteBatch, getDoc, runTransaction, where, query, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, WriteBatch, getDoc, runTransaction, where, query, getDocs, limit } from 'firebase/firestore';
 import type { Member, ClaimedReward, Reward, Transaction, LogEntry, LogEntryType, GamingPackage, MemberRecharge } from '@/lib/types';
 import { getSettings } from './settings';
 import { addMonths, isAfter } from 'date-fns';
@@ -404,3 +404,38 @@ export const adjustMemberBalancePool = async (memberId: string, durationSeconds:
         return false;
     }
 };
+
+/**
+ * Searches members in Firestore on-demand to avoid fetching the entire collection.
+ * Uses case-variations (original, capitalized, lowercase) prefix matches in parallel for names and usernames.
+ */
+export const searchMembers = async (searchTerm: string): Promise<Member[]> => {
+    const db = getFirestore();
+    const membersRef = collection(db, 'members');
+    
+    // If search term is empty, fetch a default list of 30 members
+    if (!searchTerm) {
+        const q = query(membersRef, limit(30));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
+    }
+    
+    const term = searchTerm.trim();
+    const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
+    
+    // Prefix queries for name as typed, capitalized name, and lowercase username
+    const q1 = query(membersRef, where('name', '>=', term), where('name', '<=', term + '\uf8ff'), limit(30));
+    const q2 = query(membersRef, where('name', '>=', termCapitalized), where('name', '<=', termCapitalized + '\uf8ff'), limit(30));
+    const q3 = query(membersRef, where('username', '>=', term.toLowerCase()), where('username', '<=', term.toLowerCase() + '\uf8ff'), limit(30));
+    
+    const [snap1, snap2, snap3] = await Promise.all([getDocs(q1), getDocs(q2), getDocs(q3)]);
+    
+    // Merge and deduplicate results
+    const map = new Map<string, Member>();
+    snap1.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() } as Member));
+    snap2.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() } as Member));
+    snap3.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() } as Member));
+    
+    return Array.from(map.values()).slice(0, 30);
+};
+

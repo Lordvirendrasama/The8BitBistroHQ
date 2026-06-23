@@ -90,7 +90,7 @@ const allNavItems = [
   },
   { href: '/users', icon: Users, label: 'User Registry' },
   { href: '/billing-history', icon: Receipt, label: 'Billing Audit' },
-  { href: '/scan', icon: QrCode, label: 'Scan & Play' },
+  { href: '/scan', icon: QrCode, label: 'Scan & Play', ownerOnly: true },
   { 
     href: '/analytics', 
     icon: ChartIcon, 

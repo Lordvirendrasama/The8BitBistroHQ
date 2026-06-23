@@ -232,6 +232,11 @@ export function GlobalTimerNotifications() {
   const processedAnnouncements = useRef<Set<string>>(new Set());
   const [activeEndAlert, setActiveEndAlert] = useState<{ station: Station, memberName: string } | null>(null);
   const [activeWarningAlert, setActiveWarningAlert] = useState<{ station: Station, memberName: string } | null>(null);
+  const activeEndAlertRef = useRef<{ station: Station, memberName: string } | null>(null);
+
+  useEffect(() => {
+    activeEndAlertRef.current = activeEndAlert;
+  }, [activeEndAlert]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isUnlocked = useRef(false);
   const sessionStartTime = useRef(new Date().toISOString());
@@ -427,12 +432,14 @@ export function GlobalTimerNotifications() {
             endCandidates.forEach(m => announcedEnds.current.add(`${station.id}-${m.id}-ended`));
             playAnnouncement(`Time is up for ${station.name}. All sessions ended.`);
             setActiveEndAlert({ station, memberName: "EVERYONE" });
+            setActiveWarningAlert(null);
         } else if (endCandidates.length === 1) {
             // Individual announcement for single player
             const m = endCandidates[0];
             announcedEnds.current.add(`${station.id}-${m.id}-ended`);
             playAnnouncement(`Time is up for ${m.name} at ${station.name}.`);
             setActiveEndAlert({ station, memberName: m.name });
+            setActiveWarningAlert(null);
         }
 
         // 2. FIVE MINUTE WARNING CHECK
@@ -450,18 +457,116 @@ export function GlobalTimerNotifications() {
         if (warningCandidates.length > 1) {
             warningCandidates.forEach(m => announcedWarnings.current.add(`${station.id}-${m.id}-5min`));
             playAnnouncement(`Attention. Five minutes remaining for everyone at ${station.name}. Please ask if they will be continuing or ending their session.`);
-            setActiveWarningAlert({ station, memberName: "EVERYONE" });
+            if (!activeEndAlertRef.current) {
+                setActiveWarningAlert({ station, memberName: "EVERYONE" });
+            }
         } else if (warningCandidates.length === 1) {
             const m = warningCandidates[0];
             announcedWarnings.current.add(`${station.id}-${m.id}-5min`);
             playAnnouncement(`Attention. Five minutes remaining for ${m.name} at ${station.name}. Please ask if they will be continuing or ending their session.`);
-            setActiveWarningAlert({ station, memberName: m.name });
+            if (!activeEndAlertRef.current) {
+                setActiveWarningAlert({ station, memberName: m.name });
+            }
         }
       });
     }, 2000);
 
     return () => clearInterval(interval);
   }, [activeStations, playAnnouncement, toast]);
+
+  // Dismiss warning alert when end alert is displayed
+  useEffect(() => {
+    if (activeEndAlert) {
+      setActiveWarningAlert(null);
+    }
+  }, [activeEndAlert]);
+
+  // Sync activeWarningAlert with activeStations list to auto-dismiss if session state changes
+  useEffect(() => {
+    if (!activeWarningAlert || !activeStations) return;
+
+    const { station: warningStation, memberName } = activeWarningAlert;
+    const currentStation = activeStations.find(s => s.id === warningStation.id);
+
+    if (!currentStation || currentStation.status !== 'in-use') {
+      setActiveWarningAlert(null);
+      return;
+    }
+
+    const now = Date.now();
+
+    if (memberName !== "EVERYONE") {
+      const activeMember = currentStation.members.find(
+        m => m.name === memberName && m.status !== 'finished'
+      );
+      if (!activeMember || !activeMember.endTime) {
+        setActiveWarningAlert(null);
+        return;
+      }
+      const mEndTime = new Date(activeMember.endTime).getTime();
+      const mRemaining = mEndTime - now;
+      if (mRemaining > 5 * 60 * 1000) {
+        setActiveWarningAlert(null);
+      }
+    } else {
+      const activeMembers = currentStation.members.filter(m => m.status !== 'finished' && !!m.endTime);
+      if (activeMembers.length === 0) {
+        setActiveWarningAlert(null);
+        return;
+      }
+      // Check if all active members have more than 5 minutes remaining
+      const allHaveMoreTime = activeMembers.every(m => {
+        const mEndTime = new Date(m.endTime!).getTime();
+        return (mEndTime - now) > 5 * 60 * 1000;
+      });
+      if (allHaveMoreTime) {
+        setActiveWarningAlert(null);
+      }
+    }
+  }, [activeStations, activeWarningAlert]);
+
+  // Sync activeEndAlert with activeStations list to auto-dismiss if session state changes
+  useEffect(() => {
+    if (!activeEndAlert || !activeStations) return;
+
+    const { station: endStation, memberName } = activeEndAlert;
+    const currentStation = activeStations.find(s => s.id === endStation.id);
+
+    if (!currentStation || (currentStation.status !== 'in-use' && currentStation.status !== 'finishing')) {
+      setActiveEndAlert(null);
+      return;
+    }
+
+    const now = Date.now();
+
+    if (memberName !== "EVERYONE") {
+      const activeMember = currentStation.members.find(
+        m => m.name === memberName && m.status !== 'finished'
+      );
+      if (!activeMember || !activeMember.endTime) {
+        setActiveEndAlert(null);
+        return;
+      }
+      const mEndTime = new Date(activeMember.endTime).getTime();
+      const mRemaining = mEndTime - now;
+      if (mRemaining > 0) {
+        setActiveEndAlert(null);
+      }
+    } else {
+      const activeMembers = currentStation.members.filter(m => m.status !== 'finished' && !!m.endTime);
+      if (activeMembers.length === 0) {
+        setActiveEndAlert(null);
+        return;
+      }
+      const allHaveTime = activeMembers.every(m => {
+        const mEndTime = new Date(m.endTime!).getTime();
+        return (mEndTime - now) > 0;
+      });
+      if (allHaveTime) {
+        setActiveEndAlert(null);
+      }
+    }
+  }, [activeStations, activeEndAlert]);
 
   const handleAcknowledge = () => {
     if (activeEndAlert) {

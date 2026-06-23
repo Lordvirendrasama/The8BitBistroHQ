@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Gift, ChevronRight, Coins, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ClaimReward } from '../claim-rewards/claim-reward';
+import { searchMembers } from '@/firebase/firestore/members';
 
 interface GlobalRewardsModalProps {
   isOpen: boolean;
@@ -21,21 +22,36 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
+  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setSearchTerm('');
       setSelectedMemberId(null);
+      setSearchResults([]);
     }
   }, [isOpen]);
 
-  const filteredMembers = useMemo(() => {
-    if (!searchTerm) return members.slice(0, 10);
-    const term = searchTerm.toLowerCase();
-    return members.filter(m => 
-      m.name.toLowerCase().includes(term) || 
-      m.username.toLowerCase().includes(term)
-    ).slice(0, 20);
-  }, [members, searchTerm]);
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    setIsSearching(true);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const results = await searchMembers(searchTerm);
+        setSearchResults(results);
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm, isOpen]);
+
+  const filteredMembers = searchResults;
 
   const handleSelectMember = (id: string) => {
     setSelectedMemberId(id);
