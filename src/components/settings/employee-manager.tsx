@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,11 +52,60 @@ export function EmployeeManager() {
     workEndTime: '23:00',
     workingDaysPerWeek: 6,
     overtimeMultiplier: 1.5,
-    isActive: true
+    isActive: true,
+    gracePeriod: 5
   });
 
   const empQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
   const { data: employees, loading } = useCollection<Employee>(empQuery);
+
+  // Auto-seeding Kaif and Musaib if they don't exist
+  useEffect(() => {
+    if (loading || !employees) return;
+    const hasKaif = employees.some(e => e.username === 'kaif');
+    const hasMusaib = employees.some(e => e.username === 'musaib');
+    if (!hasKaif || !hasMusaib) {
+      const seedData = async () => {
+        if (!hasKaif) {
+          await addEmployee({
+            username: 'kaif',
+            displayName: 'Kaif',
+            role: 'staff',
+            salary: 6000,
+            salaryType: 'monthly',
+            weekOffDay: 4, // Thursday
+            joinDate: new Date().toISOString().slice(0, 10),
+            pin: '1234',
+            workStartTime: '09:00',
+            workEndTime: '15:00',
+            workingDaysPerWeek: 6,
+            overtimeMultiplier: 1.5,
+            isActive: true,
+            gracePeriod: 5
+          });
+        }
+        if (!hasMusaib) {
+          await addEmployee({
+            username: 'musaib',
+            displayName: 'Musaib',
+            role: 'staff',
+            salary: 6000,
+            salaryType: 'monthly',
+            weekOffDay: 4, // Thursday
+            joinDate: new Date().toISOString().slice(0, 10),
+            pin: '1234',
+            workStartTime: '17:00',
+            workEndTime: '23:00',
+            workingDaysPerWeek: 6,
+            overtimeMultiplier: 1.5,
+            isActive: true,
+            gracePeriod: 5
+          });
+        }
+      };
+      seedData();
+    }
+  }, [employees, loading]);
 
   const handleEdit = (emp: Employee) => {
     setSelectedEmp(emp);
@@ -73,7 +122,8 @@ export function EmployeeManager() {
       workEndTime: emp.workEndTime || '23:00',
       workingDaysPerWeek: emp.workingDaysPerWeek ?? 6,
       overtimeMultiplier: emp.overtimeMultiplier ?? 1.5,
-      isActive: emp.isActive ?? true
+      isActive: emp.isActive ?? true,
+      gracePeriod: emp.gracePeriod ?? 5
     });
     setModalOpen(true);
   };
@@ -95,7 +145,7 @@ export function EmployeeManager() {
     setFormData({ 
         username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', 
         weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '',
-        workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true
+        workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true, gracePeriod: 5
     });
   };
 
@@ -132,7 +182,14 @@ export function EmployeeManager() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="font-black uppercase text-[9px] border-primary/20 text-primary">{emp.role}</Badge>
+                    <div className="flex gap-1.5 items-center">
+                      <Badge variant="outline" className="font-black uppercase text-[9px] border-primary/20 text-primary">{emp.role}</Badge>
+                      {emp.isActive === false ? (
+                        <Badge className="bg-destructive text-white font-black uppercase text-[8px] px-1.5 py-0.5 rounded">INACTIVE</Badge>
+                      ) : (
+                        <Badge className="bg-emerald-600 text-white font-black uppercase text-[8px] px-1.5 py-0.5 rounded">ACTIVE</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5 font-mono font-bold text-xs">
@@ -248,6 +305,23 @@ export function EmployeeManager() {
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase text-muted-foreground">Join Date</Label>
                 <Input type="date" value={formData.joinDate} onChange={e => setFormData({...formData, joinDate: e.target.value})} className="font-bold" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase text-muted-foreground">Grace Period (Mins)</Label>
+                <Input type="number" min={0} value={formData.gracePeriod ?? 5} onChange={e => setFormData({...formData, gracePeriod: Number(e.target.value)})} className="font-bold" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase text-muted-foreground">Status</Label>
+                <Select value={String(formData.isActive)} onValueChange={v => setFormData({...formData, isActive: v === 'true'})}>
+                  <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

@@ -233,13 +233,17 @@ export function GlobalTimerNotifications() {
   const [activeEndAlert, setActiveEndAlert] = useState<{ station: Station, memberName: string } | null>(null);
   const [activeWarningAlert, setActiveWarningAlert] = useState<{ station: Station, memberName: string } | null>(null);
   const activeEndAlertRef = useRef<{ station: Station, memberName: string } | null>(null);
-
-  useEffect(() => {
-    activeEndAlertRef.current = activeEndAlert;
-  }, [activeEndAlert]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isUnlocked = useRef(false);
   const sessionStartTime = useRef(new Date().toISOString());
+
+  // Automatically dismiss the "5 Minutes Left" warning alert when a session ends alert is shown
+  useEffect(() => {
+    activeEndAlertRef.current = activeEndAlert;
+    if (activeEndAlert) {
+      setActiveWarningAlert(null);
+    }
+  }, [activeEndAlert]);
 
   const stationsQuery = useMemo(() => {
     if (!db) return null;

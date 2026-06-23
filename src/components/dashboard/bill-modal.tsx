@@ -56,16 +56,14 @@ export function BillModal({
   const { data: recentBills } = useCollection<Bill>(billsQuery);
 
   useEffect(() => {
-    if (isOpen) {
-        if (station) {
-            setBillItems(station.currentBill || []);
-            setDiscount(station.discount || 0);
-        }
+    if (isOpen && station) {
+        setBillItems(station.currentBill || []);
+        setDiscount(station.discount || 0);
         setSearchTerm('');
         setActiveCategory('SESSION');
         setActiveTab('menu');
     }
-  }, [station, isOpen]);
+  }, [isOpen, station?.id]);
 
   // Master Categories
   const categories = ["SESSION", "FOOD", "BEVERAGES", "ADD ONS"];
@@ -134,37 +132,38 @@ export function BillModal({
     }
   };
 
-  // Auto-saves bill items instantly when an item is added
+  // Updates local bill items state when an item is added
   const handleAddItem = (item: FoodItem | { id: string, name: string, price: number }) => {
     setBillItems(prevItems => {
-      let updated;
       const existingItemIndex = prevItems.findIndex(bi => bi.itemId === item.id && bi.name === item.name);
       if (existingItemIndex > -1) {
-        updated = prevItems.map((bi, i) => i === existingItemIndex ? { ...bi, quantity: bi.quantity + 1 } : bi);
+        return prevItems.map((bi, i) => i === existingItemIndex ? { ...bi, quantity: bi.quantity + 1 } : bi);
       } else {
-        updated = [...prevItems, { itemId: item.id, name: item.name, price: item.price, quantity: 1, addedAt: new Date().toISOString() }];
+        return [...prevItems, { itemId: item.id, name: item.name, price: item.price, quantity: 1, addedAt: new Date().toISOString() }];
       }
-      if (station) {
-        onSaveBill(station.id, updated, discount);
-      }
-      return updated;
     });
   };
 
-  // Auto-saves bill items instantly when quantity is adjusted
+  // Updates local bill items state when quantity is adjusted
   const handleUpdateQuantityByIndex = (index: number, newQuantity: number) => {
     setBillItems(prevItems => {
-        let updated;
         if (newQuantity <= 0) {
-            updated = prevItems.filter((_, i) => i !== index);
+            return prevItems.filter((_, i) => i !== index);
         } else {
-            updated = prevItems.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item);
+            return prevItems.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item);
         }
-        if (station) {
-            onSaveBill(station.id, updated, discount);
-        }
-        return updated;
     });
+  };
+
+  const handleSave = () => {
+    if (station) {
+      onSaveBill(station.id, billItems, discount);
+      toast({
+        title: "Session Saved",
+        description: `${station.name} tab has been updated successfully.`
+      });
+      onOpenChange(false);
+    }
   };
 
   // Helper for Sticky Quick Add Bar actions
@@ -233,6 +232,7 @@ export function BillModal({
   // Checkout redirects either to dedicated checkout drawer callback or defaults to confirming cash
   const handleCheckout = () => {
     if (station) {
+      onSaveBill(station.id, billItems, discount);
       if (onCheckoutClick) {
         onCheckoutClick(station.id);
         onOpenChange(false);
@@ -610,8 +610,11 @@ export function BillModal({
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2 p-2.5 md:p-3 border-t bg-background shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="font-black uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-[11px] md:text-[12px] flex-1">Cancel</Button>
-          <Button size="sm" onClick={handleCheckout} className="flex-[2] font-black uppercase tracking-[0.1em] h-12 md:h-14 shadow-lg text-[13px] md:text-[15px] bg-primary text-primary-foreground"><CreditCard className="mr-1.5 h-4 w-4 md:h-5 md:w-5"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
+          <div className="flex gap-2 w-full sm:flex-1">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-black uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-[11px] md:text-[12px]">Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-black uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-[11px] md:text-[12px]"><Save className="mr-1 h-3.5 w-3.5" /> Save</Button>
+          </div>
+          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-black uppercase tracking-[0.1em] h-12 md:h-14 shadow-lg text-[13px] md:text-[15px] bg-primary text-primary-foreground"><CreditCard className="mr-1.5 h-4 w-4 md:h-5 md:w-5"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

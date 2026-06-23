@@ -299,6 +299,7 @@ export interface Shift {
     id: string;
     date: string;
     staffId: string; // The username of the person who started the shift
+    employeeId?: string;
     employees: {
         username: string;
         displayName: string;
@@ -317,6 +318,14 @@ export interface Shift {
     shiftExpenses?: number;
     cycle?: string;
     wasForceExited?: boolean;
+    scheduledLogin?: string;
+    actualLogin?: string | null;
+    scheduledLogout?: string;
+    actualLogout?: string | null;
+    totalHoursWorked?: number;
+    attendanceStatus?: 'Present' | 'Late' | 'Half Day' | 'Absent' | 'Weekly Off';
+    logoutMethod?: 'manual' | 'auto-midnight' | 'force-admin' | null;
+    forgotToLogout?: boolean;
 }
 
 export interface Task {
@@ -485,6 +494,7 @@ export interface Employee {
   isActive: boolean;
   workStartTime?: string; // "HH:mm"
   workEndTime?: string;   // "HH:mm"
+  gracePeriod?: number;   // default 5 minutes
 }
 
 export interface Leave {

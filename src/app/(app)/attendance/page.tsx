@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Shift, ShiftTask, Employee, Leave } from '@/lib/types';
@@ -36,11 +36,13 @@ import {
   Plus,
   AlertTriangle,
   DollarSign,
-  Plane
+  Plane,
+  Users,
+  IndianRupee
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, getBusinessDate } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { 
@@ -57,7 +59,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { updateShiftTimes, updateTask, manuallyCreateShift, deleteShift } from '@/firebase/firestore/shifts';
+import { updateShiftTimes, updateTask, manuallyCreateShift, deleteShift, endShift } from '@/firebase/firestore/shifts';
 import { clearAttendanceData } from '@/firebase/firestore/data-management';
 import { recordLeave } from '@/firebase/firestore/leaves';
 import { SalaryCalculator } from '@/components/attendance/salary-calculator';
@@ -66,6 +68,47 @@ import { useToast } from '@/hooks/use-toast';
 const toLocalISOString = (date: Date) => {
   const tzOffset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+};
+
+const getFormattedDate = (dateStr: string) => {
+  try {
+    const parts = dateStr.split('-');
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return format(d, 'MMM dd');
+  } catch (e) {
+    return dateStr;
+  }
+};
+
+const formatShiftHours = (start?: string, end?: string) => {
+  if (!start || !end) return 'N/A';
+  const formatTimeStr = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const displayH = h % 12 || 12;
+    return m === 0 ? `${displayH}${ampm}` : `${displayH}:${String(m).padStart(2, '0')}${ampm}`;
+  };
+  return `${formatTimeStr(start)}-${formatTimeStr(end)}`;
+};
+
+const getStatusBadge = (status: string, forgotToLogout?: boolean) => {
+  if (forgotToLogout) {
+    return <Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Forgot Logout</Badge>;
+  }
+  switch (status) {
+    case 'Present':
+      return <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Present</Badge>;
+    case 'Late':
+      return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Late</Badge>;
+    case 'Half Day':
+      return <Badge className="bg-amber-500 hover:bg-amber-600 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Half Day</Badge>;
+    case 'Absent':
+      return <Badge className="bg-destructive hover:bg-destructive/90 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Absent</Badge>;
+    case 'Weekly Off':
+      return <Badge className="bg-slate-400 hover:bg-slate-500 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Weekly Off</Badge>;
+    default:
+      return <Badge className="bg-muted text-muted-foreground uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">{status}</Badge>;
+  }
 };
 
 function AttendanceCalendar({ shifts, leaves, filterStaff, user, onAddClick, onEditClick }: { shifts: Shift[], leaves: Leave[], filterStaff: string, user: any, onAddClick?: (date: Date) => void, onEditClick?: (s: any) => void }) {
@@ -240,6 +283,30 @@ export default function AttendanceRegistryPage() {
   const [editTasks, setEditTasks] = useState<ShiftTask[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Live timer for active shift duration
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isOwner = user?.username === 'Viren';
+
+  // Fallback: trigger background cron check when admin loads attendance page
+  useEffect(() => {
+    if (isOwner) {
+      fetch('/api/cron/attendance-cron')
+        .then(res => res.json())
+        .then(data => {
+          if (data.processed && data.processed.length > 0) {
+            toast({ title: "System Synced", description: "Absences and auto midnight logouts reconciled." });
+          }
+        })
+        .catch(err => console.error("Error triggering cron:", err));
+    }
+  }, [isOwner, toast]);
+
   const auditFlags = useMemo(() => {
     if (!editStartTime || editStatus === 'leave') return { isLate: false, isShortShift: false, shiftDurationHours: 0 };
     
@@ -285,6 +352,96 @@ export default function AttendanceRegistryPage() {
 
   const employeesQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
   const { data: employees } = useCollection<Employee>(employeesQuery);
+
+  // Today's business date
+  const todayStr = useMemo(() => getBusinessDate(), []);
+
+  // Summary stats for today
+  const dashboardStats = useMemo(() => {
+    if (!allShifts) return { present: 0, late: 0, absent: 0, onShift: 0, loggedOut: 0, forgotLogout: 0 };
+    
+    const shiftsToday = allShifts.filter(s => s.date === todayStr);
+    
+    const present = shiftsToday.filter(s => s.attendanceStatus === 'Present').length;
+    const late = shiftsToday.filter(s => s.attendanceStatus === 'Late').length;
+    const absent = shiftsToday.filter(s => s.attendanceStatus === 'Absent').length;
+    const onShift = allShifts.filter(s => s.status === 'active').length;
+    const loggedOut = shiftsToday.filter(s => s.status === 'completed' && s.attendanceStatus !== 'Absent' && s.attendanceStatus !== 'Weekly Off').length;
+    
+    // Forgot logouts count in current month
+    const currentMonthPrefix = todayStr.slice(0, 7);
+    const forgotLogout = allShifts.filter(s => s.forgotToLogout === true && s.date.slice(0, 7) === currentMonthPrefix).length;
+
+    return { present, late, absent, onShift, loggedOut, forgotLogout };
+  }, [allShifts, todayStr]);
+
+  const activeShiftsList = useMemo(() => {
+    if (!allShifts) return [];
+    return allShifts.filter(s => s.status === 'active');
+  }, [allShifts]);
+
+  const attendanceAlerts = useMemo(() => {
+    const alerts: string[] = [];
+    if (!allShifts) return alerts;
+
+    const shiftsToday = allShifts.filter(s => s.date === todayStr);
+
+    shiftsToday.forEach(s => {
+      const empName = s.employees?.[0]?.displayName || s.staffId || 'Unknown';
+      if (s.attendanceStatus === 'Late') {
+        alerts.push(`⚠️ ${empName} arrived LATE today (login: ${s.actualLogin || 'N/A'})`);
+      }
+      if (s.attendanceStatus === 'Absent') {
+        alerts.push(`🔴 ${empName} is ABSENT today`);
+      }
+    });
+
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const threeDaysAgoStr = format(threeDaysAgo, 'yyyy-MM-dd');
+    
+    allShifts.filter(s => s.forgotToLogout === true && s.date >= threeDaysAgoStr).forEach(s => {
+      const empName = s.employees?.[0]?.displayName || s.staffId || 'Unknown';
+      alerts.push(`⚠️ ${empName} forgot to logout on ${s.date} (Auto Logged Out)`);
+    });
+
+    activeShiftsList.forEach(s => {
+      const empName = s.employees?.[0]?.displayName || s.staffId || 'Unknown';
+      const startTimeDate = new Date(s.startTime);
+      const durationMs = currentTime.getTime() - startTimeDate.getTime();
+      
+      const scheduledStart = s.scheduledLogin || "11:00";
+      const scheduledEnd = s.scheduledLogout || "23:00";
+      const [startH, startM] = scheduledStart.split(':').map(Number);
+      const [endH, endM] = scheduledEnd.split(':').map(Number);
+      let scheduledDiffMins = (endH * 60 + endM) - (startH * 60 + startM);
+      if (scheduledDiffMins < 0) scheduledDiffMins += 24 * 60;
+      const scheduledDurationHours = scheduledDiffMins / 60;
+
+      const durationHours = durationMs / 3600000;
+      if (durationHours > scheduledDurationHours + 0.25) { // 15 mins excess
+        const diffStr = (durationHours - scheduledDurationHours).toFixed(1);
+        alerts.push(`⏰ ${empName} has exceeded scheduled shift hours by ${diffStr} hours`);
+      }
+    });
+
+    return alerts;
+  }, [allShifts, todayStr, activeShiftsList, currentTime]);
+
+  const handleForceLogout = async (shift: Shift) => {
+    if (!user) return;
+    if (!window.confirm(`Force logout ${shift.employees?.[0]?.displayName || shift.staffId}?`)) return;
+    try {
+      setIsSubmitting(true);
+      await endShift(shift.id, user, undefined, true, 'force-admin', shift.staffId);
+      toast({ title: "Force Logout Complete", description: `Session ended for ${shift.employees?.[0]?.displayName || shift.staffId}.` });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: 'destructive', title: "Force Logout Failed" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const staffOptions = useMemo(() => {
     if (!allShifts) return [];
@@ -517,7 +674,6 @@ export default function AttendanceRegistryPage() {
   if (loading) return <div className="flex h-screen items-center justify-center animate-pulse uppercase font-black text-xs">Syncing Registry...</div>;
 
   const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
-  const isOwner = user?.username === 'Viren';
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 font-body">
@@ -573,67 +729,206 @@ export default function AttendanceRegistryPage() {
         </div>
 
         <TabsContent value="registry" className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-300">
+          {/* Attendance Dashboard Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Present Today</span>
+              <span className="text-3xl font-black text-emerald-600 mt-2">{dashboardStats.present}</span>
+            </Card>
+            <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Late Today</span>
+              <span className="text-3xl font-black text-yellow-500 mt-2">{dashboardStats.late}</span>
+            </Card>
+            <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Absent Today</span>
+              <span className="text-3xl font-black text-destructive mt-2">{dashboardStats.absent}</span>
+            </Card>
+            <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> On Shift</span>
+              <span className="text-3xl font-black text-primary mt-2">{dashboardStats.onShift}</span>
+            </Card>
+            <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Logged Out</span>
+              <span className="text-3xl font-black text-indigo-600 mt-2">{dashboardStats.loggedOut}</span>
+            </Card>
+            <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Forgot Logout</span>
+              <span className="text-3xl font-black text-orange-500 mt-2">{dashboardStats.forgotLogout}</span>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Active Shift Monitoring List */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="border-2 shadow-none">
+                <CardHeader className="bg-muted/10 pb-3">
+                  <CardTitle className="text-xs font-black uppercase tracking-widest text-foreground flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary animate-pulse" /> Active Shift Monitoring
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  {activeShiftsList.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-muted-foreground font-bold uppercase tracking-wider">No active shifts currently</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {activeShiftsList.map(s => {
+                        const empName = s.employees?.[0]?.displayName || s.staffId || 'Unknown';
+                        const hoursStr = formatShiftHours(s.scheduledLogin, s.scheduledLogout);
+                        const loginTimeStr = s.startTime ? format(new Date(s.startTime), 'p') : 'N/A';
+                        
+                        // Calculate duration
+                        const startTimeDate = new Date(s.startTime);
+                        const durationMs = currentTime.getTime() - startTimeDate.getTime();
+                        const h = Math.floor(durationMs / 3600000);
+                        const m = Math.floor((durationMs % 3600000) / 60000);
+                        const durationStr = `${h}h ${m}m`;
+
+                        const gracePeriod = employees?.find(e => e.username === s.staffId)?.gracePeriod ?? 5;
+                        const scheduledStart = s.scheduledLogin || "11:00";
+                        const [schH, schM] = scheduledStart.split(':').map(Number);
+                        const schDate = new Date(startTimeDate);
+                        schDate.setHours(schH, schM, 0, 0);
+                        const delayMinutes = Math.floor((startTimeDate.getTime() - schDate.getTime()) / 60000);
+                        const isLate = delayMinutes > gracePeriod;
+
+                        return (
+                          <Card key={s.id} className="border-2 p-3 flex flex-col justify-between bg-muted/5 relative overflow-hidden">
+                            <div className="absolute right-2 top-2">
+                              {isLate ? (
+                                <Badge className="bg-yellow-500 text-white uppercase text-[8px] font-black">Late</Badge>
+                              ) : (
+                                <Badge className="bg-emerald-600 text-white uppercase text-[8px] font-black">On Shift</Badge>
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-black uppercase text-sm">{empName}</div>
+                              <div className="text-[10px] text-muted-foreground font-black uppercase mt-1">Shift: {hoursStr}</div>
+                              <div className="text-[10px] text-emerald-600 font-bold uppercase mt-0.5">Logged In: {loginTimeStr}</div>
+                            </div>
+                            <div className="border-t border-dashed mt-3 pt-2 flex items-center justify-between">
+                              <span className="text-[9px] font-black text-muted-foreground uppercase">Duration</span>
+                              <span className="font-mono text-xs font-black text-primary">{durationStr}</span>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Attendance Alerts Panel */}
+            <div className="space-y-6">
+              <Card className="border-2 border-dashed shadow-none h-full bg-muted/5">
+                <CardHeader className="bg-muted/10 pb-3">
+                  <CardTitle className="text-xs font-black uppercase tracking-widest text-foreground flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" /> Attendance Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-2">
+                  {attendanceAlerts.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-muted-foreground font-bold uppercase tracking-wider">No compliance alerts</div>
+                  ) : (
+                    attendanceAlerts.map((alert, idx) => (
+                      <div key={idx} className="p-2.5 bg-background border-2 border-dashed border-amber-500/20 rounded-lg text-[10px] font-black uppercase text-foreground/80 leading-tight">
+                        {alert}
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           <Card className="border-2 shadow-none overflow-hidden">
               <Table>
                   <TableHeader className="bg-muted/20">
                   <TableRow>
                       <TableHead className="font-black uppercase text-[10px]">Date</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Operator</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Logins</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Alerts</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Tasks</TableHead>
-                      <TableHead className="text-right font-black uppercase text-[10px]">Pool</TableHead>
-                      {isAdmin && <TableHead className="w-[50px]"></TableHead>}
+                      <TableHead className="font-black uppercase text-[10px]">Employee</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Shift</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Login</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Logout</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Hours Worked</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Status</TableHead>
+                      {isAdmin && <TableHead className="w-[120px] text-right font-black uppercase text-[10px] pr-6">Actions</TableHead>}
                   </TableRow>
                   </TableHeader>
                   <TableBody>
-                  {filteredShifts.map((shift) => (
-                      <TableRow key={shift.id} className="hover:bg-muted/5 transition-colors group">
-                      <TableCell className="font-black uppercase text-[10px]">{format(new Date(shift.startTime), 'MMM dd, yyyy')}</TableCell>
-                      <TableCell className="font-black uppercase text-xs">{(shift.employees || [])[0]?.displayName || shift.staffId || 'Unknown'}</TableCell>
-                      <TableCell>
-                          <div className="flex flex-col text-[10px] font-bold uppercase text-emerald-600">
-                              <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 fill-current" /> {format(new Date(shift.startTime), 'p')}</span>
-                              {shift.endTime && <span className="text-muted-foreground flex items-center gap-1.5 mt-1"><Moon className="h-3 w-3" /> {format(new Date(shift.endTime), 'p')}</span>}
-                          </div>
-                      </TableCell>
-                      <TableCell>
-                          <div className="flex gap-1">
-                              {(() => {
-                                  const verifyTask = (shift.tasks || []).find((t: any) => t.type === 'strategic');
-                                  const isAbsent = verifyTask?.verificationResult === 'no';
-                                  if (isAbsent) {
-                                      return <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">ABSENT</Badge>;
-                                  }
-                                  const staffUsername = shift.staffId || shift.employees?.[0]?.username;
-                                  if (staffUsername === 'Rupali') {
-                                      return <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600 border-emerald-500/30 bg-emerald-500/5">PRESENT</Badge>;
-                                  }
-                                  return shift.lateMinutes ? <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">LATE</Badge> : <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600">ON TIME</Badge>;
-                              })()}
-                              {shift.wasForceExited && <Badge variant="destructive" className="h-4 text-[7px] uppercase font-black">FORCE</Badge>}
-                          </div>
-                      </TableCell>
-                      <TableCell>
-                          {(() => {
-                              const pendingCount = (shift.tasks || []).filter(t => !t.completed).length;
-                              if (pendingCount === 0) {
-                                  return <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-emerald-600 border-emerald-500/30">ALL DONE</Badge>;
-                              }
-                              return (
-                                  <Badge variant="outline" className="h-4 text-[7px] uppercase font-black text-destructive border-destructive/30 bg-destructive/5 gap-1">
-                                      <AlertTriangle className="h-2 w-2" /> {pendingCount} PENDING
-                                  </Badge>
-                              );
-                          })()}
-                      </TableCell>
-                      <TableCell className="text-right pr-6 font-mono font-black text-xs text-primary">₹{((shift.cashTotal || 0) + (shift.upiTotal || 0)).toLocaleString()}</TableCell>
-                      {isAdmin && <TableCell><Button variant="ghost" size="icon" onClick={() => handleEditClick(shift)}><Edit className="h-4 w-4" /></Button></TableCell>}
-                      </TableRow>
-                  ))}
+                  {filteredShifts.map((shift) => {
+                      const empName = (shift.employees || [])[0]?.displayName || shift.staffId || 'Unknown';
+                      const formattedDate = getFormattedDate(shift.date);
+                      const shiftHours = formatShiftHours(shift.scheduledLogin, shift.scheduledLogout);
+                      const actualLoginStr = shift.startTime ? format(new Date(shift.startTime), 'p') : 'N/A';
+                      
+                      let actualLogoutStr = 'N/A';
+                      if (shift.status === 'active') {
+                          actualLogoutStr = 'Active';
+                      } else if (shift.endTime) {
+                          actualLogoutStr = format(new Date(shift.endTime), 'p');
+                      }
+                      
+                      let hoursWorkedStr = '0h';
+                      if (shift.status === 'active') {
+                          hoursWorkedStr = 'Live';
+                      } else if (shift.totalHoursWorked != null) {
+                          const h = Math.floor(shift.totalHoursWorked);
+                          const m = Math.round((shift.totalHoursWorked - h) * 60);
+                          hoursWorkedStr = `${h}h${m}m`;
+                      } else if (shift.endTime && shift.startTime) {
+                          const durationMs = new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime();
+                          const hrs = durationMs / 3600000;
+                          const h = Math.floor(hrs);
+                          const m = Math.round((hrs - h) * 60);
+                          hoursWorkedStr = `${h}h${m}m`;
+                      }
+                      
+                      const attendanceStatusVal = shift.attendanceStatus || (shift.lateMinutes ? 'Late' : 'Present');
+
+                      return (
+                          <TableRow key={shift.id} className="hover:bg-muted/5 transition-colors group">
+                              <TableCell className="font-black uppercase text-[10px]">{formattedDate}</TableCell>
+                              <TableCell className="font-black uppercase text-xs">{empName}</TableCell>
+                              <TableCell className="font-mono text-[10px] font-bold">{shiftHours}</TableCell>
+                              <TableCell className="font-mono text-[10px] text-emerald-600 font-bold">{actualLoginStr}</TableCell>
+                              <TableCell className={cn("font-mono text-[10px] font-bold", shift.status === 'active' ? "text-amber-500 animate-pulse" : "text-muted-foreground")}>{actualLogoutStr}</TableCell>
+                              <TableCell className="font-mono text-[10px] font-bold">{hoursWorkedStr}</TableCell>
+                              <TableCell>
+                                  <div className="flex gap-1 items-center">
+                                      {getStatusBadge(attendanceStatusVal, shift.forgotToLogout)}
+                                      {shift.logoutMethod && shift.logoutMethod !== 'manual' && (
+                                          <Badge variant="outline" className="text-[7px] font-black uppercase text-amber-600 border-amber-500/20 bg-amber-500/5">
+                                              {shift.logoutMethod === 'auto-midnight' ? 'MIDNIGHT AUTO' : 'FORCE ADMIN'}
+                                          </Badge>
+                                      )}
+                                  </div>
+                              </TableCell>
+                              {isAdmin && (
+                                  <TableCell className="text-right pr-6 py-3">
+                                      <div className="flex items-center justify-end gap-1">
+                                          {shift.status === 'active' && (
+                                              <Button 
+                                                  variant="destructive" 
+                                                  size="sm" 
+                                                  onClick={() => handleForceLogout(shift)} 
+                                                  className="h-8 px-2.5 font-black uppercase text-[9px] shadow-sm shrink-0"
+                                              >
+                                                  Force Out
+                                              </Button>
+                                          )}
+                                          <Button variant="ghost" size="icon" onClick={() => handleEditClick(shift)} className="h-8 w-8">
+                                              <Edit className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                  </TableCell>
+                              )}
+                          </TableRow>
+                      );
+                  })}
                   {filteredShifts.length === 0 && (
                       <TableRow>
-                          <TableCell colSpan={7} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No matching records found.</TableCell>
+                          <TableCell colSpan={8} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No matching records found.</TableCell>
                       </TableRow>
                   )}
                   </TableBody>

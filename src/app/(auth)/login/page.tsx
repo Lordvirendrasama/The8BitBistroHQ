@@ -10,7 +10,7 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
-import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, Loader2, RefreshCcw, IndianRupee, TrendingUp, Circle } from 'lucide-react';
+import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, MoreVertical, Loader2, RefreshCcw, IndianRupee, TrendingUp, Circle } from 'lucide-react';
 import { cn, isBusinessToday } from '@/lib/utils';
 import type { GamingPackage, Employee, Bill, Station, Shift, FoodItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,20 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { APP_VERSION } from '@/lib/version';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { endShift } from '@/firebase/firestore/shifts';
+import { format } from 'date-fns';
+
+const formatShiftHours = (start?: string, end?: string) => {
+  if (!start || !end) return 'N/A';
+  const formatTimeStr = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const displayH = h % 12 || 12;
+    return m === 0 ? `${displayH}${ampm}` : `${displayH}:${String(m).padStart(2, '0')}${ampm}`;
+  };
+  return `${formatTimeStr(start)}-${formatTimeStr(end)}`;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,6 +54,14 @@ export default function LoginPage() {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pendingUser, setPendingUser] = useState<Employee | null>(null);
+  const [redirectUrl, setRedirectUrl] = useState('/dashboard');
+
+  // Logout States
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [logoutTargetUser, setLogoutTargetUser] = useState<Employee | null>(null);
+  const [logoutTargetShift, setLogoutTargetShift] = useState<Shift | null>(null);
+  const [logoutPinInput, setLogoutPinInput] = useState('');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Fetch Data
   const employeesQuery = useMemo(() => !db ? null : query(collection(db, 'employees'), where('isActive', '==', true)), [db]);
@@ -288,12 +310,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard');
+      router.push(redirectUrl);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, redirectUrl]);
 
   const handleLoginAttempt = (emp: Employee) => {
     setPendingUser(emp);
+    setRedirectUrl('/dashboard');
     setIsPinModalOpen(true);
   };
 
@@ -320,6 +343,83 @@ export default function LoginPage() {
     }
   };
 
+  const formatLoginTime = (startTimeStr?: string) => {
+    if (!startTimeStr) return 'N/A';
+    try {
+      return format(new Date(startTimeStr), 'hh:mm a');
+    } catch (e) {
+      return 'N/A';
+    }
+  };
+
+  const getHoursWorked = (startTimeStr?: string) => {
+    if (!startTimeStr) return '0h 0m';
+    try {
+      const start = new Date(startTimeStr);
+      const diffMs = currentTime.getTime() - start.getTime();
+      const hours = Math.floor(diffMs / 3600000);
+      const minutes = Math.floor((diffMs % 3600000) / 60000);
+      return `${hours}h ${minutes}m`;
+    } catch (e) {
+      return '0h 0m';
+    }
+  };
+
+  const handleViewAttendance = (emp: Employee) => {
+    setPendingUser(emp);
+    setRedirectUrl('/attendance');
+    setIsPinModalOpen(true);
+  };
+
+  const handleLogoutClick = (emp: Employee, shift?: Shift) => {
+    setLogoutTargetUser(emp);
+    setLogoutTargetShift(shift || null);
+    setLogoutPinInput('');
+    setIsLogoutConfirmOpen(true);
+  };
+
+  const handleExecuteLogout = async () => {
+    if (!logoutTargetUser || !logoutTargetShift) return;
+    if (logoutPinInput !== logoutTargetUser.pin) {
+      toast({
+        variant: 'destructive',
+        title: 'Security Mismatch',
+        description: 'The PIN entered is incorrect.',
+      });
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      const tempUser = {
+        username: logoutTargetUser.username,
+        displayName: logoutTargetUser.displayName,
+        role: logoutTargetUser.role || 'staff'
+      } as any;
+
+      await endShift(logoutTargetShift.id, tempUser, undefined, false, 'manual', logoutTargetUser.username);
+      
+      toast({
+        title: 'Logged Out',
+        description: `${logoutTargetUser.displayName} shift ended successfully.`,
+      });
+      
+      setIsLogoutConfirmOpen(false);
+      setLogoutTargetUser(null);
+      setLogoutTargetShift(null);
+      setLogoutPinInput('');
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Logout Failed',
+        description: error.message,
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   const executeLogin = async (username: string, pin: string) => {
     if (isEntering) return;
     setIsEntering(true);
@@ -328,7 +428,7 @@ export default function LoginPage() {
     setTimeout(async () => {
       try {
         await login(username, pin);
-        router.push('/dashboard');
+        router.push(redirectUrl);
       } catch (error: any) {
         setIsEntering(false);
         toast({
@@ -467,28 +567,86 @@ export default function LoginPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full">
                     {employees?.map(emp => {
-                        const isOnline = activeShifts?.some(s => s.staffId === emp.username);
+                        const activeShift = activeShifts?.find(s => s.staffId === emp.username);
+                        const isOnline = !!activeShift;
                         
                         return (
-                            <Button key={emp.id} onClick={() => handleLoginAttempt(emp)} variant="outline" className={cn(
-                                "group relative h-20 sm:h-24 flex flex-col gap-1 sm:gap-2 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm w-full",
-                                emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : "border-blue-500/10"
-                            )}>
-                                {isOnline && (
-                                    <Badge className="absolute top-2 left-2 bg-emerald-500 hover:bg-emerald-500 text-white text-[7px] font-black h-4 px-1.5 border-none shadow-sm animate-pulse flex items-center gap-1">
-                                        <Circle className="h-1.5 w-1.5 fill-current" />
-                                        ONLINE
-                                    </Badge>
-                                )}
-                                <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
-                                    {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Users className="h-12 w-12" /> : <User className="h-12 w-12" />}
+                            <div key={emp.id} className="relative group w-full">
+                                <Button onClick={() => handleLoginAttempt(emp)} variant="outline" className={cn(
+                                    "w-full relative h-28 sm:h-32 flex flex-col gap-1 sm:gap-1.5 bg-card/30 backdrop-blur-xl border-2 border-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-all rounded-2xl shadow-sm text-center justify-center items-center p-3",
+                                    emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : "border-blue-500/10"
+                                )}>
+                                    {isOnline ? (
+                                        <Badge className="absolute top-2 left-2 bg-emerald-500 hover:bg-emerald-500 text-white text-[7px] font-black h-4 px-1.5 border-none shadow-sm animate-pulse flex items-center gap-1">
+                                            <Circle className="h-1 w-1 fill-current" />
+                                            ONLINE
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="absolute top-2 left-2 text-[7px] font-black h-4 px-1.5 bg-muted/50 text-muted-foreground/60 border-none shadow-none">
+                                            OFFLINE
+                                        </Badge>
+                                    )}
+                                    <div className="absolute top-0 right-0 p-2 opacity-5 hidden xs:block">
+                                        {emp.role === 'admin' ? <Shield className="h-12 w-12" /> : emp.role === 'staff' ? <Users className="h-12 w-12" /> : <User className="h-12 w-12" />}
+                                    </div>
+                                    {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
+                                    emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
+                                    <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
+                                    
+                                    <span className="font-headline text-[10px] tracking-tight uppercase leading-none mt-1">{emp.displayName}</span>
+                                    
+                                    {isOnline && activeShift ? (
+                                        <div className="flex flex-col items-center text-[8px] font-mono font-bold text-muted-foreground mt-0.5 space-y-0.5 leading-none">
+                                            <span>Logged In: {formatLoginTime(activeShift.startTime)}</span>
+                                            <span>Shift: {formatShiftHours(emp.workStartTime, emp.workEndTime)}</span>
+                                            <span>Worked: {getHoursWorked(activeShift.startTime)}</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[8px] font-black opacity-40 uppercase tracking-widest leading-none mt-0.5">
+                                            {emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}
+                                        </span>
+                                    )}
+                                </Button>
+                                
+                                {/* Three-Dot Option Menu */}
+                                <div className="absolute top-1.5 right-1.5 z-20">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-6 w-6 rounded-full hover:bg-foreground/5 text-muted-foreground/60 hover:text-foreground"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <MoreVertical className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="font-body w-36 border-2">
+                                            <DropdownMenuLabel className="text-[8px] font-black uppercase text-muted-foreground tracking-widest px-2 py-1.5">Console Menu</DropdownMenuLabel>
+                                            <DropdownMenuItem 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewAttendance(emp);
+                                                }}
+                                                className="font-bold text-xs uppercase cursor-pointer"
+                                            >
+                                                View Attendance
+                                            </DropdownMenuItem>
+                                            {isOnline && (
+                                                <DropdownMenuItem 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleLogoutClick(emp, activeShift);
+                                                    }}
+                                                    className="font-bold text-xs uppercase text-destructive focus:text-destructive cursor-pointer"
+                                                >
+                                                    Logout
+                                                </DropdownMenuItem>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
-                                {emp.role === 'admin' ? <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-primary group-hover:scale-110 transition-transform" /> : 
-                                emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
-                                <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
-                                <span className="font-headline text-[10px] tracking-tight uppercase">{emp.displayName}</span>
-                                <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">{emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}</span>
-                            </Button>
+                            </div>
                         );
                     })}
                     {(!employees || employees.length === 0) && (
@@ -624,7 +782,6 @@ export default function LoginPage() {
             BISTRO_OS_v{APP_VERSION} // DYNAMIC_AUTH_ENABLED // STABLE_BUILD
         </p>
       </main>
-
       <Dialog open={isPinModalOpen} onOpenChange={setIsPinModalOpen}>
         <DialogContent className="sm:max-w-sm font-body border-4 border-primary">
           <DialogHeader>
@@ -654,6 +811,73 @@ export default function LoginPage() {
             <Button onClick={verifyPinAndLogin} className="w-full h-12 sm:h-14 font-black uppercase tracking-widest text-base sm:text-lg shadow-xl">
               Unlock Console
               <ArrowRight className="ml-2 h-4 sm:h-5 w-4 sm:w-5" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={isLogoutConfirmOpen} onOpenChange={setIsLogoutConfirmOpen}>
+        <DialogContent className="sm:max-w-sm font-body border-4 border-destructive">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-lg sm:text-xl flex items-center gap-3 text-destructive uppercase tracking-tight">
+              <KeyRound className="h-5 sm:h-6 w-5 sm:w-6" />
+              Logout {logoutTargetUser?.displayName}?
+            </DialogTitle>
+            <DialogDescription className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground">
+              Confirm your identity to terminate the shift session.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="bg-muted/10 border-2 rounded-xl p-4 space-y-2 text-xs font-mono font-bold">
+              <div className="flex justify-between items-center border-b border-dashed pb-1.5">
+                <span className="text-muted-foreground uppercase text-[10px]">Login Time</span>
+                <span>{formatLoginTime(logoutTargetShift?.startTime)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground uppercase text-[10px]">Current Hours</span>
+                <span className="text-primary">{getHoursWorked(logoutTargetShift?.startTime)}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-2">
+              <label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest self-start">Verification PIN</label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={logoutPinInput}
+                onChange={(e) => setLogoutPinInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => e.key === 'Enter' && handleExecuteLogout()}
+                className="h-12 w-full text-center text-2xl font-mono font-black tracking-[0.4em] border-2 bg-muted/5 focus-visible:ring-destructive"
+                placeholder="****"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              type="button"
+              onClick={() => {
+                setIsLogoutConfirmOpen(false);
+                setLogoutTargetUser(null);
+                setLogoutTargetShift(null);
+                setLogoutPinInput('');
+              }}
+              className="flex-1 font-black uppercase tracking-widest h-11 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              onClick={handleExecuteLogout} 
+              disabled={isLoggingOut || !logoutPinInput}
+              className="flex-1 font-black uppercase tracking-widest h-11 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isLoggingOut ? 'Ending Shift...' : 'End Shift'}
             </Button>
           </DialogFooter>
         </DialogContent>

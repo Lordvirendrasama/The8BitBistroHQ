@@ -5,6 +5,7 @@ import type { Shift, ShiftTask, LogEntry, Task, ShiftBreak, Employee } from '@/l
 import type { CustomUser } from '@/firebase/auth/use-user';
 import { getBusinessDate } from '@/lib/utils';
 import { getSettings } from './settings';
+import { format } from 'date-fns';
 
 // Defaults for shift logic
 const DEFAULT_START_TIME = "11:00"; 
@@ -173,10 +174,23 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 completed: false
             });
 
+            const gracePeriod = empSettings?.gracePeriod ?? 5;
+            const scheduledStart = empSettings?.workStartTime || "11:00";
+            const [schH, schM] = scheduledStart.split(':').map(Number);
+            const schDate = new Date(now);
+            schDate.setHours(schH, schM, 0, 0);
+
+            const delayMinutes = Math.floor((now.getTime() - schDate.getTime()) / 60000);
+            let attendanceStatus: 'Present' | 'Late' = 'Present';
+            if (delayMinutes > gracePeriod) {
+                attendanceStatus = 'Late';
+            }
+
             const newShiftRef = doc(collection(db, 'shifts'));
-            const newShiftData: Omit<Shift, 'id'> = {
+            const newShiftData: Omit<Shift, 'id'> & { [key: string]: any } = {
                 date: businessToday,
                 staffId: user.username,
+                employeeId: user.username,
                 employees: [{ username: user.username, displayName: user.displayName }],
                 startTime: now.toISOString(),
                 status: 'active',
@@ -184,7 +198,15 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 breaks: [],
                 lateMinutes,
                 workedOnWeeklyOff,
-                cycle: settings.activeCycle || 'Live Cycle'
+                cycle: settings.activeCycle || 'Live Cycle',
+                scheduledLogin: scheduledStart,
+                actualLogin: format(now, 'HH:mm'),
+                scheduledLogout: empSettings?.workEndTime || "23:00",
+                actualLogout: null,
+                totalHoursWorked: 0,
+                attendanceStatus,
+                logoutMethod: null,
+                forgotToLogout: false
             };
 
             transaction.set(newShiftRef, sanitize(newShiftData));
@@ -219,26 +241,35 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
     }
 };
 
-export const endShift = async (shiftId: string, user: CustomUser, totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number; }, forceEnd?: boolean): Promise<void> => {
+export const endShift = async (
+    shiftId: string, 
+    user: CustomUser, 
+    totals?: { cashTotal: number; upiTotal: number; shiftExpenses: number; }, 
+    forceEnd?: boolean,
+    logoutMethod: 'manual' | 'force-admin' | 'auto-midnight' = 'manual',
+    targetUsername?: string
+): Promise<void> => {
     const db = getFirestore();
     const shiftRef = doc(db, 'shifts', shiftId);
-    const lockRef = doc(db, 'user_active_shift', user.username);
 
     try {
         await runTransaction(db, async (transaction) => {
             const shiftDoc = await transaction.get(shiftRef);
             if (!shiftDoc.exists()) return;
 
+            const shiftData = shiftDoc.data() as Shift;
+            const staffId = targetUsername || shiftData.staffId || user.username;
+            const lockRef = doc(db, 'user_active_shift', staffId);
+
             const now = new Date();
             const empsRef = collection(db, 'employees');
-            const empQ = query(empsRef, where('username', '==', user.username), limit(1));
+            const empQ = query(empsRef, where('username', '==', staffId), limit(1));
             const empSnap = await getDocs(empQ);
             const empSettings = empSnap.empty ? undefined : empSnap.docs[0].data() as Employee;
 
             const { earlyLeaveMinutes, overtimeMinutes } = calculateAttendanceOnEnd(now, empSettings);
 
             if (forceEnd) {
-                const shiftData = shiftDoc.data() as Shift;
                 const incompleteTasks = (shiftData.tasks || []).filter(t => !t.completed);
                 if (incompleteTasks.length > 0) {
                     const incompleteTaskNames = incompleteTasks.map(t => `"${t.name}"`).join(', ');
@@ -253,12 +284,46 @@ export const endShift = async (shiftId: string, user: CustomUser, totals?: { cas
                 }
             }
 
+            const startTimeDate = new Date(shiftData.startTime);
+            const durationMs = now.getTime() - startTimeDate.getTime();
+            const totalHoursWorked = Math.round((durationMs / (1000 * 60 * 60)) * 100) / 100;
+
+            const scheduledStart = shiftData.scheduledLogin || empSettings?.workStartTime || "11:00";
+            const scheduledEnd = shiftData.scheduledLogout || empSettings?.workEndTime || "23:00";
+            const [startH, startM] = scheduledStart.split(':').map(Number);
+            const [endH, endM] = scheduledEnd.split(':').map(Number);
+            
+            let scheduledDiffMins = (endH * 60 + endM) - (startH * 60 + startM);
+            if (scheduledDiffMins < 0) {
+                scheduledDiffMins += 24 * 60;
+            }
+            const scheduledDurationHours = scheduledDiffMins / 60;
+
+            const gracePeriod = empSettings?.gracePeriod ?? 5;
+            const [schH, schM] = scheduledStart.split(':').map(Number);
+            const schDate = new Date(startTimeDate);
+            schDate.setHours(schH, schM, 0, 0);
+            const delayMinutes = Math.floor((startTimeDate.getTime() - schDate.getTime()) / 60000);
+            
+            let currentAttendanceStatus: 'Present' | 'Late' | 'Half Day' = 'Present';
+            if (delayMinutes > gracePeriod) {
+                currentAttendanceStatus = 'Late';
+            }
+            if (totalHoursWorked < 0.5 * scheduledDurationHours) {
+                currentAttendanceStatus = 'Half Day';
+            }
+
             const updates: any = {
                 endTime: now.toISOString(),
                 status: 'completed',
                 earlyLeaveMinutes,
                 overtimeMinutes,
-                wasForceExited: !!forceEnd
+                wasForceExited: !!forceEnd,
+                actualLogout: format(now, 'HH:mm'),
+                totalHoursWorked,
+                attendanceStatus: currentAttendanceStatus,
+                logoutMethod,
+                forgotToLogout: logoutMethod !== 'manual'
             };
 
             if (totals) {
@@ -554,9 +619,46 @@ export const manuallyCreateShift = async (data: {
         completedAt: new Date().toISOString(),
         completedBy: { username: user.username, displayName: user.displayName }
     };
+
+    const scheduledStart = empSettings?.workStartTime || "11:00";
+    const scheduledEnd = empSettings?.workEndTime || "23:00";
+
+    const actualLoginDate = new Date(data.startTime);
+    const gracePeriod = empSettings?.gracePeriod ?? 5;
+    const [schH, schM] = scheduledStart.split(':').map(Number);
+    const schDate = new Date(actualLoginDate);
+    schDate.setHours(schH, schM, 0, 0);
+    const delayMinutes = Math.floor((actualLoginDate.getTime() - schDate.getTime()) / 60000);
+
+    let attendanceStatus: 'Present' | 'Late' | 'Half Day' | 'Absent' = 'Present';
+    if (data.status === 'no') {
+        attendanceStatus = 'Absent';
+    } else if (delayMinutes > gracePeriod) {
+        attendanceStatus = 'Late';
+    }
+
+    let actualLogoutStr = null;
+    let totalHoursWorked = 0;
+    if (data.endTime) {
+        const actualLogoutDate = new Date(data.endTime);
+        actualLogoutStr = format(actualLogoutDate, 'HH:mm');
+        const durationMs = actualLogoutDate.getTime() - actualLoginDate.getTime();
+        totalHoursWorked = Math.round((durationMs / (1000 * 60 * 60)) * 100) / 100;
+
+        const [startH, startM] = scheduledStart.split(':').map(Number);
+        const [endH, endM] = scheduledEnd.split(':').map(Number);
+        let scheduledDiffMins = (endH * 60 + endM) - (startH * 60 + startM);
+        if (scheduledDiffMins < 0) scheduledDiffMins += 24 * 60;
+        const scheduledDurationHours = scheduledDiffMins / 60;
+
+        if (data.status !== 'no' && totalHoursWorked < 0.5 * scheduledDurationHours) {
+            attendanceStatus = 'Half Day';
+        }
+    }
     
-    const shiftData: Omit<Shift, 'id'> = {
+    const shiftData: Omit<Shift, 'id'> & { [key: string]: any } = {
         date: data.date, staffId: data.username,
+        employeeId: data.username,
         employees: [{ username: data.username, displayName: data.displayName }],
         startTime: data.startTime, endTime: data.endTime || undefined,
         status: 'completed', tasks: [strategicTask], breaks: [], 
@@ -564,7 +666,15 @@ export const manuallyCreateShift = async (data: {
         lateMinutes,
         earlyLeaveMinutes,
         overtimeMinutes,
-        workedOnWeeklyOff
+        workedOnWeeklyOff,
+        scheduledLogin: scheduledStart,
+        actualLogin: format(actualLoginDate, 'HH:mm'),
+        scheduledLogout: scheduledEnd,
+        actualLogout: actualLogoutStr,
+        totalHoursWorked,
+        attendanceStatus,
+        logoutMethod: data.endTime ? 'manual' : null,
+        forgotToLogout: false
     };
     
     try {

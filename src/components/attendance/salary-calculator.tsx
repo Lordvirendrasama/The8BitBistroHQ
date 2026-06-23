@@ -47,6 +47,7 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
     const startOfSelectedMonth = startOfMonth(monthDate);
     const endOfSelectedMonth = endOfMonth(monthDate);
     const daysInMonth = getDaysInMonth(monthDate);
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     // Filter shifts for this employee in this month
     const monthShifts = allShifts.filter(s => {
@@ -57,58 +58,127 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
       return isWithinInterval(shiftDate, { start: startOfSelectedMonth, end: endOfSelectedMonth });
     });
 
-    // Filter leaves for this employee in this month
-    // Simplified: Just counting days that fall inside the month
-    let leavesTaken = 0;
-    allLeaves.filter(l => l.employeeId === emp.id || l.employeeName === emp.username || l.employeeName === emp.displayName).forEach(l => {
-      if (l.type !== 'unpaid') return;
-
-      const lStart = startOfDay(new Date(l.startDate));
-      const lEnd = startOfDay(new Date(l.endDate));
-      if (isNaN(lStart.getTime()) || isNaN(lEnd.getTime())) return;
-      
-      const overlapStart = max([lStart, startOfSelectedMonth]);
-      const overlapEnd = min([lEnd, endOfSelectedMonth]);
-      
-      if (overlapStart <= overlapEnd) {
-        leavesTaken += differenceInDays(overlapEnd, overlapStart) + 1;
-      }
-    });
-
-    // Extract constants
     const monthlySalary = emp.salary || 0;
     const weekOffDay = emp.weekOffDay ?? 0; // 0=Sun, 1=Mon, etc.
 
-    // A. Count how many times the weeklyOffDay occurs in that specific month
-    let weeklyOffCount = 0;
+    // A. Count how many times the weeklyOffDay occurs in that specific month (for denominator working days)
+    let totalWeeklyOffsInMonth = 0;
     for (let i = 1; i <= daysInMonth; i++) {
         if (new Date(year, month - 1, i).getDay() === weekOffDay) {
-            weeklyOffCount++;
+            totalWeeklyOffsInMonth++;
         }
     }
 
     // B. Calculate workingDays
-    const workingDays = isWeeklyOffPaid ? daysInMonth : (daysInMonth - weeklyOffCount);
+    const workingDays = isWeeklyOffPaid ? daysInMonth : (daysInMonth - totalWeeklyOffsInMonth);
 
     // C. Daily rate
     const dailyRate = workingDays > 0 ? (monthlySalary / workingDays) : 0;
 
-    // D. Deduction
-    const deduction = leavesTaken * dailyRate;
+    // Track daily status counts
+    let presentCount = 0;
+    let lateCount = 0;
+    let halfDayCount = 0;
+    let absentCount = 0;
+    let weeklyOffCount = 0;
+    let paidLeaveCount = 0;
+    let unpaidLeaveCount = 0;
+    let totalHoursWorked = 0;
+
+    // Iterate through all days of the month to build daily breakdown
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayDate = new Date(year, month - 1, day);
+      const dateStr = format(dayDate, 'yyyy-MM-dd');
+
+      // Skip future dates
+      if (dateStr > todayStr) {
+        continue;
+      }
+
+      // 1. Find shifts on this date
+      const shiftsOnDay = monthShifts.filter(s => s.date === dateStr);
+
+      // 2. Find approved leaves on this date
+      const approvedLeave = allLeaves.find(l => {
+        const isCorrectEmp = l.employeeId === emp.id || l.employeeName === emp.username || l.employeeName === emp.displayName;
+        if (!isCorrectEmp || l.status !== 'approved') return false;
+        const lStart = startOfDay(new Date(l.startDate));
+        const lEnd = startOfDay(new Date(l.endDate));
+        if (isNaN(lStart.getTime()) || isNaN(lEnd.getTime())) return false;
+        return dayDate >= lStart && dayDate <= lEnd;
+      });
+
+      let status: 'Present' | 'Late' | 'Half Day' | 'Absent' | 'Weekly Off' | 'Paid Leave' | 'Unpaid Leave' | 'Future' = 'Future';
+
+      if (shiftsOnDay.length > 0) {
+        const shift = shiftsOnDay[0];
+        totalHoursWorked += shift.totalHoursWorked || 0;
+
+        const shStatus = shift.attendanceStatus;
+        if (shStatus) {
+          status = shStatus;
+        } else {
+          if (shift.workedOnWeeklyOff) {
+            status = 'Present';
+          } else if (shift.lateMinutes && shift.lateMinutes > 0) {
+            status = 'Late';
+          } else {
+            status = 'Present';
+          }
+        }
+      } else if (approvedLeave) {
+        if (approvedLeave.type === 'unpaid') {
+          status = 'Unpaid Leave';
+        } else {
+          status = 'Paid Leave';
+        }
+      } else {
+        const dayOfWeek = dayDate.getDay();
+        const isWeeklyOff = dayOfWeek === weekOffDay;
+
+        if (isWeeklyOff) {
+          status = 'Weekly Off';
+        } else {
+          status = 'Absent';
+        }
+      }
+
+      // Increment counts
+      if (status === 'Present') presentCount++;
+      else if (status === 'Late') lateCount++;
+      else if (status === 'Half Day') halfDayCount++;
+      else if (status === 'Absent') absentCount++;
+      else if (status === 'Weekly Off') weeklyOffCount++;
+      else if (status === 'Paid Leave') paidLeaveCount++;
+      else if (status === 'Unpaid Leave') unpaidLeaveCount++;
+    }
+
+    // D. Deductions
+    const absentDeduction = (absentCount + unpaidLeaveCount) * dailyRate;
+    const halfDayDeduction = halfDayCount * 0.5 * dailyRate;
+    const deduction = absentDeduction + halfDayDeduction;
 
     // E. Final salary
-    const finalSalary = monthlySalary - deduction;
+    const finalSalary = Math.max(0, monthlySalary - deduction);
 
     return {
       emp,
       monthlySalary,
       daysInMonth,
-      weeklyOffCount,
       workingDays,
       dailyRate,
       deduction,
       finalSalary,
-      leavesTaken
+      presentCount,
+      lateCount,
+      halfDayCount,
+      absentCount,
+      weeklyOffCount,
+      paidLeaveCount,
+      unpaidLeaveCount,
+      totalHoursWorked,
+      absentDeduction,
+      halfDayDeduction
     };
 
   }, [selectedEmpId, selectedMonth, employees, allShifts, allLeaves, isWeeklyOffPaid]);
@@ -219,27 +289,70 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
                         <span>{calculation.daysInMonth}</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-dashed pb-1">
-                        <span className="text-muted-foreground">Weekly Off Count</span>
+                        <span className="text-muted-foreground">Working Days (Base)</span>
+                        <span className="text-emerald-600">{calculation.workingDays}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-dashed pb-1">
+                        <span className="text-muted-foreground">Weekly Offs</span>
                         <span className={isWeeklyOffPaid ? "text-emerald-500" : "text-amber-500"}>
-                          {isWeeklyOffPaid ? "PAID" : `-${calculation.weeklyOffCount}`}
+                          {calculation.weeklyOffCount} {isWeeklyOffPaid ? "(PAID)" : "(UNPAID)"}
                         </span>
                     </div>
                     <div className="flex justify-between items-center border-b border-dashed pb-1">
-                        <span className="text-muted-foreground">Unpaid Leaves</span>
-                        <span className="text-red-500">-{calculation.leavesTaken}</span>
+                        <span className="text-muted-foreground">Total Hours Worked</span>
+                        <span className="text-blue-500">{calculation.totalHoursWorked.toFixed(1)} hrs</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-dashed pb-1">
-                        <span className="text-emerald-600">Working Days (Base)</span>
-                        <span className="text-emerald-600">{calculation.workingDays}</span>
+                        <span className="text-muted-foreground">Present Days</span>
+                        <span className="text-emerald-500">{calculation.presentCount}</span>
                     </div>
-
+                    <div className="flex justify-between items-center border-b border-dashed pb-1">
+                        <span className="text-muted-foreground">Late Days</span>
+                        <span className="text-yellow-500">{calculation.lateCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-dashed pb-1">
+                        <span className="text-muted-foreground">Half Day Shifts</span>
+                        <span className="text-orange-500">{calculation.halfDayCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-dashed pb-1">
+                        <span className="text-muted-foreground">Absent Days</span>
+                        <span className="text-red-500">{calculation.absentCount}</span>
+                    </div>
+                    {calculation.paidLeaveCount > 0 && (
+                      <div className="flex justify-between items-center border-b border-dashed pb-1">
+                          <span className="text-muted-foreground">Paid Leaves</span>
+                          <span className="text-emerald-500">{calculation.paidLeaveCount}</span>
+                      </div>
+                    )}
+                    {calculation.unpaidLeaveCount > 0 && (
+                      <div className="flex justify-between items-center border-b border-dashed pb-1">
+                          <span className="text-muted-foreground">Unpaid Leaves</span>
+                          <span className="text-red-500">{calculation.unpaidLeaveCount}</span>
+                      </div>
+                    )}
                 </div>
 
                 <Separator className="my-2" />
 
-                <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm font-black uppercase text-muted-foreground">
-                        <span>Leave Deductions</span>
+                <div className="space-y-2 text-xs">
+                    <div className="flex justify-between items-center font-bold text-muted-foreground">
+                        <span>Absence Deductions</span>
+                        <span className="font-mono text-red-500">
+                          {calculation.absentCount + calculation.unpaidLeaveCount > 0 
+                            ? `-₹${calculation.absentDeduction.toLocaleString(undefined, { maximumFractionDigits: 1 })}` 
+                            : '₹0'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold text-muted-foreground">
+                        <span>Half Day Deductions</span>
+                        <span className="font-mono text-red-500">
+                          {calculation.halfDayCount > 0 
+                            ? `-₹${calculation.halfDayDeduction.toLocaleString(undefined, { maximumFractionDigits: 1 })}` 
+                            : '₹0'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm font-black uppercase text-foreground pt-1 border-t border-dashed">
+                        <span>Total Deductions</span>
                         <span className="font-mono text-red-500">-₹{calculation.deduction.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
                     </div>
                 </div>
