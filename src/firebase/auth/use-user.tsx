@@ -1,7 +1,8 @@
 'use client';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { logUserLogin } from '@/firebase/firestore/logs';
-import { getFirestore, collection, query, where, getDocs, limit, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
 import { endShift } from '../firestore/shifts';
 import type { Employee } from '@/lib/types';
 
@@ -27,33 +28,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) setUser(JSON.parse(storedUser));
-    setLoading(false);
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Firebase auth is persistent, fetch user details
+        const db = getFirestore();
+        const roleDoc = await getDoc(doc(db, 'userRoles', firebaseUser.uid));
+        if (roleDoc.exists()) {
+          const roleData = roleDoc.data();
+          const loggedInUser: CustomUser = {
+              username: roleData.username,
+              displayName: roleData.username,
+              photoURL: `https://picsum.photos/seed/${roleData.username}/100/100`,
+              role: roleData.role,
+          };
+          setUser(loggedInUser);
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const login = async (username: string, pin: string) => {
     setLoading(true);
-    const db = getFirestore();
-    const empsRef = collection(db, 'employees');
-    const q = query(empsRef, where('username', '==', username), where('isActive', '==', true), limit(1));
-    const snap = await getDocs(q);
+    const auth = getAuth();
+    const email = `${username.toLowerCase()}@8bitbistro.local`;
+    const password = `${pin}-8bit`;
 
-    if (snap.empty) { setLoading(false); throw new Error('User inactive'); }
-    const empData = snap.docs[0].data() as Employee;
-    if (empData.pin !== pin) { setLoading(false); throw new Error('Invalid PIN'); }
-
-    const loggedInUser: CustomUser = {
-        username: empData.username,
-        displayName: empData.displayName,
-        photoURL: empData.photoURL || `https://picsum.photos/seed/${empData.username}/100/100`,
-        role: empData.role,
-    };
-
-    sessionStorage.setItem('user', JSON.stringify(loggedInUser));
-    setUser(loggedInUser);
-    await logUserLogin(loggedInUser);
-    setLoading(false);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle the rest
+      const loggedInUser: CustomUser = {
+        username: username,
+        displayName: username,
+        photoURL: `https://picsum.photos/seed/${username}/100/100`,
+        role: 'staff', // Temporary until onAuthStateChanged fetches the real role
+      };
+      await logUserLogin(loggedInUser);
+    } catch (error) {
+      setLoading(false);
+      throw new Error('Invalid PIN or user not found');
+    }
   };
 
   /**
@@ -77,12 +95,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Atomic logout failed:", error);
       }
     }
-    sessionStorage.removeItem('user');
+    const auth = getAuth();
+    await firebaseSignOut(auth);
     setUser(null);
   };
 
-  const switchUser = () => {
-    sessionStorage.removeItem('user');
+  const switchUser = async () => {
+    const auth = getAuth();
+    await firebaseSignOut(auth);
     setUser(null);
   };
 

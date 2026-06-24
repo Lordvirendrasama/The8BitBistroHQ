@@ -4,6 +4,7 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, orderBy, DocumentData } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
+import { useAuth } from '@/firebase/auth/use-user';
 import type { Station, Employee, Shift, GamingPackage, FoodItem } from '@/lib/types';
 
 interface DataContextType {

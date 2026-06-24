@@ -2,10 +2,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all operations for any user.
-    // This is insecure and should only be used for development.
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role;
+    }
+
+    function isOwner() {
+      return isAuthenticated() && getUserRole() == 'owner';
+    }
+
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /employees/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+    match /userRoles/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner();
+    }
+
+    match /stations/{document=**} {
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isOwner();
+    }
+    match /shifts/{document=**} {
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isOwner();
+    }
+    match /bills/{document=**} {
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isOwner();
+    }
+    match /foodItems/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+    match /packages/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+    
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
   }
 }

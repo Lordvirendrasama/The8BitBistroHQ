@@ -1,9 +1,10 @@
 // Note: This is a client-side configuration.
 export const firebaseConfig = {
-  apiKey: "AIzaSyDHN_5OdQ7Yyl7GUdzx4F8CbXbqlEzmQ2E",
-  authDomain: "the-8-bit-hq-16379234-d1b08.firebaseapp.com",
-  projectId: "the-8-bit-hq-16379234-d1b08",
-  storageBucket: "the-8-bit-hq-16379234-d1b08.firebasestorage.app",
-  messagingSenderId: "858051160002",
-  appId: "1:858051160002:web:9884f4ee5d237b6ad3985b"
+  "projectId": "museview-gag3p",
+  "appId": "1:529984145400:web:1fef8c161e5b2ca229b80d",
+  "apiKey": "AIzaSyCmN6MkteozF-6OCk8OJ8Pk_J42-pkGUZg",
+  "authDomain": "museview-gag3p.firebaseapp.com",
+  "storageBucket": "museview-gag3p.firebasestorage.app",
+  "measurementId": "",
+  "messagingSenderId": "529984145400"
 };
