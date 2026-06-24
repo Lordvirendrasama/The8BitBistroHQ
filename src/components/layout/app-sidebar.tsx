@@ -88,6 +88,7 @@ const allNavItems = [
         { href: '/leaves', label: 'Leaves Tracker', icon: CalendarRange },
     ]
   },
+  { href: '/policies', icon: Files, label: 'Employee Policies' },
   { href: '/users', icon: Users, label: 'User Registry' },
   { href: '/billing-history', icon: Receipt, label: 'Billing Audit' },
   { href: '/scan', icon: QrCode, label: 'Scan & Play', ownerOnly: true },

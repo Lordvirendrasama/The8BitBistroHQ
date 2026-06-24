@@ -196,8 +196,8 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                 Strategic Verification
               </h4>
               <div className="space-y-0.5 bg-primary/5 rounded-xl p-1.5 border-2 border-dashed border-primary/20">
-                {strategicTasks.map((task) => (
-                  <TaskItem key={task.name} task={task} />
+                {strategicTasks.map((task, idx) => (
+                  <TaskItem key={`${task.name}-${task.type}-${idx}`} task={task} />
                 ))}
               </div>
             </div>
@@ -210,8 +210,8 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                 Start of Day
               </h4>
               <div className="space-y-0.5 bg-muted/30 rounded-lg p-1.5 border border-dashed">
-                {sodTasks.map((task) => (
-                  <TaskItem key={task.name} task={task} />
+                {sodTasks.map((task, idx) => (
+                  <TaskItem key={`${task.name}-${task.type}-${idx}`} task={task} />
                 ))}
               </div>
             </div>

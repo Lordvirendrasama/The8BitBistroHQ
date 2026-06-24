@@ -322,8 +322,8 @@ export function EndOfDayModal({
                   )}
               </div>
               <div className="space-y-3">
-                {visibleTasks.map((task) => (
-                  <div key={task.name} className="flex items-start space-x-3 group">
+                {visibleTasks.map((task, idx) => (
+                  <div key={`${task.name}-${task.type}-${idx}`} className="flex items-start space-x-3 group">
                     <Checkbox
                       id={`eod-${task.name}`}
                       checked={task.completed}

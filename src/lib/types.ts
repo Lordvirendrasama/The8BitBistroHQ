@@ -520,4 +520,11 @@ export interface AppUpdate {
   };
 }
 
+export interface PolicySection {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+}
+
 

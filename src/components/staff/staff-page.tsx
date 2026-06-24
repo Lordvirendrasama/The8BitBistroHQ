@@ -174,8 +174,8 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
         <div>
             <h3 className="mb-4 text-lg font-black uppercase tracking-tight text-foreground">{title}</h3>
             <div className="space-y-4">
-                {tasks.map((task) => (
-                    <div key={task.name} className="flex items-center space-x-3 group">
+                {tasks.map((task, idx) => (
+                    <div key={`${task.name}-${task.type}-${idx}`} className="flex items-center space-x-3 group">
                         <Checkbox
                             id={`${isOwnerView ? 'owner' : 'staff'}-${task.name}`}
                             checked={task.completed}
