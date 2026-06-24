@@ -11,7 +11,8 @@ import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
 import { Shield, Users, User, Zap, Clock, Calendar, Gamepad2, KeyRound, ArrowRight, MoreVertical, Loader2, RefreshCcw, IndianRupee, TrendingUp, Circle } from 'lucide-react';
-import { cn, isBusinessToday } from '@/lib/utils';
+import { cn, isBusinessToday, getBusinessDate } from '@/lib/utils';
+import { useData } from '@/context/data-context';
 import type { GamingPackage, Employee, Bill, Station, Shift, FoodItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -64,23 +65,17 @@ export default function LoginPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Fetch Data
-  const employeesQuery = useMemo(() => !db ? null : query(collection(db, 'employees'), where('isActive', '==', true)), [db]);
-  const { data: rawEmployees, loading: empsLoading } = useCollection<Employee>(employeesQuery);
+  const { employees: rawEmployees, employeesLoading: empsLoading, stations, activeShifts, foodItems, gamingPackages: packages } = useData();
 
-  const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
+  const businessStartIso = useMemo(() => {
+    const d = new Date();
+    if (d.getHours() < 5) d.setDate(d.getDate() - 1);
+    d.setHours(5, 0, 0, 0);
+    return d.toISOString();
+  }, []);
+
+  const billsQuery = useMemo(() => !db ? null : query(collection(db, 'bills'), where('timestamp', '>=', businessStartIso)), [db, businessStartIso]);
   const { data: bills } = useCollection<Bill>(billsQuery);
-
-  const stationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
-  const { data: stations } = useCollection<Station>(stationsQuery);
-
-  const activeShiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), where('status', '==', 'active')), [db]);
-  const { data: activeShifts } = useCollection<Shift>(activeShiftsQuery);
-
-  const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
-  const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
-  // Fetch Live Offers
-  const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
-  const { data: packages } = useCollection<GamingPackage>(packagesQuery);
 
   const getCategory = useCallback((itemName: string, itemId: string) => {
     const lowerName = itemName.toLowerCase();

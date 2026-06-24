@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, limit, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { useData } from '@/context/data-context';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import type { Station, AudioAnnouncement } from '@/lib/types';
@@ -245,11 +246,8 @@ export function GlobalTimerNotifications() {
     }
   }, [activeEndAlert]);
 
-  const stationsQuery = useMemo(() => {
-    if (!db) return null;
-    return query(collection(db, 'stations'), where('status', 'in', ['in-use', 'paused']));
-  }, [db]);
-  const { data: activeStations } = useCollection<Station>(stationsQuery);
+  const { stations } = useData();
+  const activeStations = useMemo(() => stations?.filter(s => s.status === 'in-use' || s.status === 'paused') || null, [stations]);
 
   const announcementsQuery = useMemo(() => {
     if (!db) return null;

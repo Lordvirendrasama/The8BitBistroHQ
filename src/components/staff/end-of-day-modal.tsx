@@ -61,7 +61,14 @@ export function EndOfDayModal({
     }
   }, [isOpen, user, db]);
 
-  const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
+  const businessStartIso = useMemo(() => {
+    const d = new Date();
+    if (d.getHours() < 5) d.setDate(d.getDate() - 1);
+    d.setHours(5, 0, 0, 0);
+    return d.toISOString();
+  }, []);
+
+  const billsQuery = useMemo(() => !db ? null : query(collection(db, 'bills'), where('timestamp', '>=', businessStartIso)), [db, businessStartIso]);
   const { data: bills } = useCollection<Bill>(billsQuery);
 
   const debtsQuery = useMemo(() => !db ? null : query(collection(db, 'debts'), where('status', '==', 'pending')), [db]);

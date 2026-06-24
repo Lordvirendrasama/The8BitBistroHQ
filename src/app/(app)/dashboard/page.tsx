@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useData } from '@/context/data-context';
 import { collection, query, orderBy, runTransaction, doc, where } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { addStation, updateStation, addPlayerToSession } from '@/firebase/firestore/stations';
@@ -53,8 +54,7 @@ function DashboardContent() {
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [initialPlayers, setInitialPlayers] = useState<AssignedMember[] | undefined>(undefined);
 
-  const stationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), orderBy('order')), [db]);
-  const { data: rawStations, loading: stationsLoading } = useCollection<Station>(stationsQuery);
+  const { stations: rawStations, stationsLoading, foodItems, foodItemsLoading: foodLoading, gamingPackages, gamingPackagesLoading: packagesLoading } = useData();
 
   const activeMemberIds = useMemo(() => {
     if (!rawStations) return [];
@@ -78,11 +78,6 @@ function DashboardContent() {
 
   const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
 
-  const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
-  const { data: foodItems, loading: foodLoading } = useCollection<FoodItem>(foodItemsQuery);
-
-  const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
-  const { data: gamingPackages, loading: packagesLoading } = useCollection<GamingPackage>(packagesQuery);
 
   const stations = useMemo(() => {
     if (!rawStations) return [];
