@@ -141,3 +141,45 @@ export const deleteTask = async (taskId: string, taskName: string) => {
         console.error("Error deleting task: ", e);
     }
 }
+
+export const bulkUpdateTasks = async (taskIds: string[], updates: Partial<TaskFormData>) => {
+    const db = getFirestore();
+    const batch = writeBatch(db);
+    try {
+        taskIds.forEach(id => {
+            const taskRef = doc(db, 'tasks', id);
+            batch.update(taskRef, updates);
+        });
+        createLogEntry(db, batch, {
+            type: 'SETTINGS_UPDATED',
+            description: `Bulk updated <strong>${taskIds.length}</strong> shift tasks.`,
+            details: { taskIds, updates }
+        });
+        await batch.commit();
+        return true;
+    } catch (e) {
+        console.error("Error bulk updating tasks: ", e);
+        return false;
+    }
+}
+
+export const bulkDeleteTasks = async (taskIds: string[]) => {
+    const db = getFirestore();
+    const batch = writeBatch(db);
+    try {
+        taskIds.forEach(id => {
+            const taskRef = doc(db, 'tasks', id);
+            batch.delete(taskRef);
+        });
+        createLogEntry(db, batch, {
+            type: 'SETTINGS_UPDATED',
+            description: `Bulk deleted <strong>${taskIds.length}</strong> shift tasks.`,
+            details: { taskIds }
+        });
+        await batch.commit();
+        return true;
+    } catch (e) {
+        console.error("Error bulk deleting tasks: ", e);
+        return false;
+    }
+}

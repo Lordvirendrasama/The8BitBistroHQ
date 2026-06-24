@@ -153,7 +153,8 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 name: task.name,
                 type: task.type,
                 completed: false,
-                ownerOnly: task.ownerOnly || false
+                ownerOnly: task.ownerOnly || false,
+                assignedTo: task.assignedTo || []
             }));
 
             // Add verification task

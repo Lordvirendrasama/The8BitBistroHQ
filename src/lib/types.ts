@@ -271,7 +271,6 @@ export interface Station {
   members: AssignedMember[];
   currentBill?: BillItem[];
   discount?: number;
-  prepaidAmount?: number; // Amount paid in advance by the customer
   order?: number;
 }
 
@@ -286,6 +285,7 @@ export interface ShiftTask {
         username: string;
         displayName: string;
     };
+    assignedTo?: string[];
 }
 
 export interface ShiftBreak {
@@ -333,6 +333,7 @@ export interface Task {
   name: string;
   type: 'start-of-day' | 'end-of-day' | 'strategic';
   ownerOnly?: boolean;
+  assignedTo?: string[];
 }
 
 export type TaskFormData = Omit<Task, 'id'>;

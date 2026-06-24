@@ -102,13 +102,27 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
 
     const startOfDayTasks = useMemo(() => {
         if (!activeShift) return [];
-        return activeShift.tasks.filter(task => task.type === 'start-of-day');
-    }, [activeShift]);
+        return activeShift.tasks.filter(task => {
+            if (task.type !== 'start-of-day') return false;
+            if (isOwnerView) return true;
+            if (task.assignedTo && task.assignedTo.length > 0) {
+                return task.assignedTo.includes(user?.username || '');
+            }
+            return true;
+        });
+    }, [activeShift, user, isOwnerView]);
 
     const endOfDayTasks = useMemo(() => {
         if (!activeShift) return [];
-        return activeShift.tasks.filter(task => task.type === 'end-of-day');
-    }, [activeShift]);
+        return activeShift.tasks.filter(task => {
+            if (task.type !== 'end-of-day') return false;
+            if (isOwnerView) return true;
+            if (task.assignedTo && task.assignedTo.length > 0) {
+                return task.assignedTo.includes(user?.username || '');
+            }
+            return true;
+        });
+    }, [activeShift, user, isOwnerView]);
 
     const handleTaskToggle = async (task: ShiftTask) => {
         if (!user || !activeShift) return;

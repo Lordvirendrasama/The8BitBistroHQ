@@ -1,11 +1,13 @@
 'use client';
 import { useState, useMemo, useRef } from 'react';
-import type { Task, TaskFormData } from '@/lib/types';
+import type { Task, TaskFormData, Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash, Edit, Sun, Moon, Upload } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Sun, Moon, Upload, ArrowUpDown, ArrowUp, ArrowDown, User, Clock, ArrowRight } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
-import { addTask, updateTask, deleteTask, addTasks } from '@/firebase/firestore/tasks';
+import { addTask, updateTask, deleteTask, addTasks, bulkUpdateTasks, bulkDeleteTasks } from '@/firebase/firestore/tasks';
 import { TaskFormModal } from './task-form-modal';
 import { logUserAction } from '@/firebase/firestore/logs';
 import { Badge } from '../ui/badge';
@@ -115,6 +117,70 @@ export function TaskManager() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sortField, setSortField] = useState<'name' | 'type'>('type');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+
+  const handleSort = (field: 'name' | 'type') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    logUserAction(`Sorted tasks by ${field} ${sortField === field && sortDirection === 'asc' ? 'descending' : 'ascending'}.`);
+  };
+
+  const handleBulkAssign = async (assignedTo: string[]) => {
+    const success = await bulkUpdateTasks(selectedTaskIds, { assignedTo });
+    if (success) {
+      toast({
+        title: 'Tasks Updated',
+        description: `Successfully assigned ${selectedTaskIds.length} tasks.`,
+      });
+      setSelectedTaskIds([]);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'An error occurred while bulk updating tasks.',
+      });
+    }
+  };
+
+  const handleBulkChangeType = async (type: 'start-of-day' | 'end-of-day' | 'strategic') => {
+    const success = await bulkUpdateTasks(selectedTaskIds, { type });
+    if (success) {
+      toast({
+        title: 'Tasks Updated',
+        description: `Successfully updated shift timing for ${selectedTaskIds.length} tasks.`,
+      });
+      setSelectedTaskIds([]);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'An error occurred while bulk updating tasks.',
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const success = await bulkDeleteTasks(selectedTaskIds);
+    if (success) {
+      toast({
+        title: 'Tasks Deleted',
+        description: `Successfully deleted ${selectedTaskIds.length} tasks.`,
+      });
+      setSelectedTaskIds([]);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Delete Failed',
+        description: 'An error occurred while bulk deleting tasks.',
+      });
+    }
+  };
 
   const handleImportClick = () => {
     logUserAction("Clicked 'Import CSV' button.");
@@ -183,11 +249,14 @@ export function TaskManager() {
           }
 
           const ownerOnly = ['true', 'yes', '1'].includes(ownerOnlyStr) || role === 'owner';
+          const assignedToStr = (row.assignedto || row.assigned_to || row.assignee || row.employees || '').trim();
+          const assignedTo = assignedToStr ? assignedToStr.split(/[;,]+/).map(s => s.trim()).filter(Boolean) : [];
 
           validTasks.push({
             name,
             type,
             ownerOnly,
+            assignedTo,
           });
         });
 
@@ -244,16 +313,36 @@ export function TaskManager() {
 
   const { data: tasks, loading, error } = useCollection<Task>(tasksCollection);
 
+  const employeesCollection = useMemo(() => {
+    if (!db) return null;
+    return collection(db, 'employees');
+  }, [db]);
+
+  const { data: employees } = useCollection<Employee>(employeesCollection);
+
+  const activeEmployees = useMemo(() => {
+    if (!employees) return [];
+    return employees.filter(e => e.isActive);
+  }, [employees]);
+
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
     return [...tasks].sort((a, b) => {
-      if (a.type < b.type) return -1;
-      if (a.type > b.type) return 1;
-      if (a.name < b.name) return -1;
-      if (a.name > b.name) return 1;
-      return 0;
+      let comparison = 0;
+      if (sortField === 'name') {
+        comparison = a.name.localeCompare(b.name);
+        if (comparison === 0) {
+          comparison = a.type.localeCompare(b.type);
+        }
+      } else {
+        comparison = a.type.localeCompare(b.type);
+        if (comparison === 0) {
+          comparison = a.name.localeCompare(b.name);
+        }
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [tasks]);
+  }, [tasks, sortField, sortDirection]);
 
   const handleAdd = () => {
     setSelectedTask(null);
@@ -296,8 +385,15 @@ export function TaskManager() {
     <Card className="overflow-hidden border-2 shadow-none">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="font-headline tracking-wide text-2xl">Manage Shift Tasks</CardTitle>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="font-headline tracking-wide text-2xl">Manage Shift Tasks</CardTitle>
+              {tasks && (
+                <Badge variant="secondary" className="font-mono text-xs font-bold px-2 py-0.5 rounded-full">
+                  {tasks.length}
+                </Badge>
+              )}
+            </div>
             <CardDescription>Add, edit, or remove the daily tasks for employee shifts.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -320,6 +416,107 @@ export function TaskManager() {
         </div>
       </CardHeader>
       <CardContent>
+        {selectedTaskIds.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 mb-4 bg-muted/20 border-2 border-dashed rounded-xl animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="font-mono text-xs font-bold px-2 py-0.5 rounded-full bg-muted/50">
+                {selectedTaskIds.length}
+              </Badge>
+              <span className="text-xs font-black uppercase text-muted-foreground tracking-wider">Tasks Selected</span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="text-xs font-bold uppercase tracking-tight gap-1.5 border-2">
+                    <User className="h-3.5 w-3.5" /> Assign to...
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2 font-body" align="end">
+                  <div className="space-y-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-start font-bold uppercase text-[10px] text-muted-foreground"
+                      onClick={() => handleBulkAssign([])}
+                    >
+                      All Employees (Unassigned)
+                    </Button>
+                    {activeEmployees.map(emp => (
+                      <Button 
+                        key={emp.id}
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start font-bold text-xs"
+                        onClick={() => handleBulkAssign([emp.username])}
+                      >
+                        {emp.displayName} ({emp.username})
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="text-xs font-bold uppercase tracking-tight gap-1.5 border-2">
+                    <Clock className="h-3.5 w-3.5" /> Change Shift...
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2 font-body" align="end">
+                  <div className="space-y-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-start font-bold text-xs"
+                      onClick={() => handleBulkChangeType('start-of-day')}
+                    >
+                      <Sun className="h-3.5 w-3.5 mr-1.5 text-blue-500" /> Start of Day
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-start font-bold text-xs"
+                      onClick={() => handleBulkChangeType('end-of-day')}
+                    >
+                      <Moon className="h-3.5 w-3.5 mr-1.5 text-zinc-400" /> End of Day
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-start font-bold text-xs"
+                      onClick={() => handleBulkChangeType('strategic')}
+                    >
+                      <PlusCircle className="h-3.5 w-3.5 mr-1.5 text-primary" /> Strategic
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="destructive" className="text-xs font-bold uppercase tracking-tight gap-1.5">
+                    <Trash className="h-3.5 w-3.5" /> Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="font-body">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the <strong>{selectedTaskIds.length}</strong> selected tasks.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive hover:bg-destructive/90">
+                      Yes, delete selected
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        )}
         {loading && <p>Loading tasks...</p>}
         {error && <p className="text-destructive">Error loading tasks: {error.message}</p>}
         {sortedTasks && (
@@ -327,15 +524,83 @@ export function TaskManager() {
             <Table>
                 <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm">
                 <TableRow>
-                    <TableHead className="bg-muted/30">Task Name</TableHead>
-                    <TableHead className="bg-muted/30">Type</TableHead>
+                    <TableHead className="w-12 bg-muted/30">
+                      <Checkbox 
+                        checked={sortedTasks.length > 0 && selectedTaskIds.length === sortedTasks.length}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedTaskIds(sortedTasks.map(t => t.id));
+                          } else {
+                            setSelectedTaskIds([]);
+                          }
+                        }}
+                        className="border-2"
+                      />
+                    </TableHead>
+                    <TableHead 
+                      className="bg-muted/30 cursor-pointer select-none hover:bg-muted/40 transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold">
+                        Task Name
+                        {sortField === 'name' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="bg-muted/30 cursor-pointer select-none hover:bg-muted/40 transition-colors"
+                      onClick={() => handleSort('type')}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold">
+                        Type
+                        {sortField === 'type' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        )}
+                      </div>
+                    </TableHead>
                     <TableHead className="text-right bg-muted/30">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {sortedTasks.map((task) => (
-                    <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.name}</TableCell>
+                 {sortedTasks.map((task) => (
+                    <TableRow key={task.id} className={cn(selectedTaskIds.includes(task.id) && "bg-muted/10")}>
+                    <TableCell className="w-12">
+                      <Checkbox 
+                        checked={selectedTaskIds.includes(task.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedTaskIds(prev => [...prev, task.id]);
+                          } else {
+                            setSelectedTaskIds(prev => prev.filter(id => id !== task.id));
+                          }
+                        }}
+                        className="border-2"
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div>
+                        <span>{task.name}</span>
+                        {task.assignedTo && task.assignedTo.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {task.assignedTo.map(username => {
+                              const emp = employees?.find(e => e.username === username);
+                              return (
+                                <Badge key={username} variant="outline" className="text-[8px] h-4 bg-muted/40 font-bold uppercase tracking-wider">
+                                  {emp ? emp.displayName : username}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter mt-1">All Employees</p>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                         <Badge variant={task.type === 'start-of-day' ? 'default' : 'secondary'} className={cn(task.type === 'start-of-day' && 'bg-blue-500 hover:bg-blue-600')}>
                         <div className="flex items-center gap-2">
@@ -386,9 +651,9 @@ export function TaskManager() {
                     </TableCell>
                     </TableRow>
                 ))}
-                {sortedTasks.length === 0 && (
+                 {sortedTasks.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center">No tasks found. Add one to get started!</TableCell>
+                        <TableCell colSpan={4} className="h-24 text-center">No tasks found. Add one to get started!</TableCell>
                     </TableRow>
                 )}
                 </TableBody>
@@ -401,6 +666,7 @@ export function TaskManager() {
         onOpenChange={setModalOpen}
         onSave={handleSave}
         task={selectedTask}
+        employees={activeEmployees}
       />
     </Card>
   );

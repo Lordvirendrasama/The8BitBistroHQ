@@ -6,13 +6,13 @@ import type { Station, AssignedMember, StationStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle, X, Wallet } from 'lucide-react';
+import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { updateStation, clearStationPrepaid } from '@/firebase/firestore/stations';
+import { updateStation } from '@/firebase/firestore/stations';
 import { Zap } from 'lucide-react';
 import type { Member } from '@/lib/types';
 import { useCustomerView } from '@/context/customer-view-context';
@@ -151,8 +151,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   const [pauseDuration, setPauseDuration] = useState(0);
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [isOrderVisible, setIsOrderVisible] = useState(false);
-  const [isPrepaidOpen, setIsPrepaidOpen] = useState(false);
-  const [prepaidInput, setPrepaidInput] = useState('');
+  
   
   const isRunning = station.status === 'in-use';
   const isPaused = station.status === 'paused';
@@ -252,19 +251,6 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
         status: 'in-use',
         finishingStartTime: null
     });
-  };
-
-  const handleSavePrepaid = () => {
-    const amount = parseFloat(prepaidInput);
-    if (isNaN(amount) || amount < 0) return;
-    updateStation(station.id, { prepaidAmount: amount > 0 ? amount : undefined });
-    setIsPrepaidOpen(false);
-    setPrepaidInput('');
-  };
-
-  const handleOpenPrepaid = () => {
-    setPrepaidInput(station.prepaidAmount ? String(station.prepaidAmount) : '');
-    setIsPrepaidOpen(true);
   };
 
   return (
@@ -572,12 +558,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     <span>Started: {new Date(station.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
             )}
-            {(station.prepaidAmount || 0) > 0 && (isRunning || isPaused || isFinishing) && (
-                <div className="flex items-center gap-1 text-[9px] font-black text-white bg-zinc-800 border border-zinc-700 px-3 py-1 rounded-full shadow-inner animate-in fade-in zoom-in-95 duration-500">
-                    <Wallet className="h-3 w-3" />
-                    <span>PREPAID ₹{(station.prepaidAmount || 0).toLocaleString()}</span>
-                </div>
-            )}
+
         </div>
       </CardContent>
 
@@ -637,70 +618,10 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                             </Button>
                           </div>
                       ) : (
-                          <div className="grid grid-cols-3 gap-1.5">
+                          <div className="grid grid-cols-2 gap-1.5">
                             <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs shadow-md">
                                 <StopCircle className="h-4 w-4 mr-1.5"/> Stop All
                             </Button>
-
-                            {/* Prepaid Button + Popover */}
-                            <Popover open={isPrepaidOpen} onOpenChange={setIsPrepaidOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className={cn(
-                                            "h-11 font-bold uppercase tracking-tight text-xs border-2",
-                                            (station.prepaidAmount || 0) > 0
-                                                ? "border-primary text-primary bg-primary/5 hover:bg-primary/10"
-                                                : "border-zinc-800 text-zinc-400 hover:bg-zinc-800/50"
-                                        )}
-                                        onClick={handleOpenPrepaid}
-                                    >
-                                        <Wallet className="h-4 w-4 mr-1.5" />
-                                        {(station.prepaidAmount || 0) > 0 ? `₹${station.prepaidAmount?.toLocaleString()}` : 'Prepaid'}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64 p-4 font-body shadow-2xl border-2" align="center" side="top">
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <Wallet className="h-4 w-4 text-emerald-600" />
-                                            <p className="text-[11px] font-black uppercase tracking-widest text-foreground">Prepaid Amount</p>
-                                        </div>
-                                        <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-normal">Enter the amount collected in advance from the customer for this session.</p>
-                                        <div className="relative">
-                                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-sm text-emerald-600">₹</span>
-                                            <Input
-                                                id={`prepaid-input-${station.id}`}
-                                                type="number"
-                                                min="0"
-                                                placeholder="0"
-                                                value={prepaidInput}
-                                                onChange={e => setPrepaidInput(e.target.value)}
-                                                onKeyDown={e => e.key === 'Enter' && handleSavePrepaid()}
-                                                className="pl-7 h-10 font-mono font-bold text-base border-2 focus-visible:ring-emerald-500"
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 h-9 text-[10px] font-bold uppercase border-destructive/30 text-destructive hover:bg-destructive/5"
-                                                onClick={() => { clearStationPrepaid(station.id); setIsPrepaidOpen(false); setPrepaidInput(''); }}
-                                            >
-                                                Clear
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                className="flex-1 h-9 text-[10px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 shadow-md"
-                                                onClick={handleSavePrepaid}
-                                            >
-                                                Save
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
 
                             <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
                                 <Utensils className="h-4 w-4 mr-1.5" /> Food

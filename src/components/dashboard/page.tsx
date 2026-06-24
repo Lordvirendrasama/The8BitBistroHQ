@@ -11,7 +11,7 @@ import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, runTransaction, doc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import { addStation, updateStation, clearStationPrepaid } from '@/firebase/firestore/stations';
+import { addStation, updateStation } from '@/firebase/firestore/stations';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { BillModal } from '@/components/dashboard/bill-modal';
@@ -246,8 +246,7 @@ export default function DashboardPage() {
       status: 'available', startTime: null, endTime: null, packageName: null,
       members: [], currentBill: [], discount: 0,
     });
-    // Explicitly delete prepaidAmount field (undefined won't remove Firestore fields)
-    clearStationPrepaid(stationId);
+    
     
     const thankYouMessage = `Thank you for your payment of ${Math.round(finalBill)} Rupees. Thank you for visiting the 8 bit bistro.`;
     toast({ title: "Payment Received!", description: thankYouMessage });

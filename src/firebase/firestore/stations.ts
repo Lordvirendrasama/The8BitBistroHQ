@@ -55,20 +55,6 @@ export const updateStation = async (stationId: string, updates: Partial<Station>
     }
 }
 
-/**
- * Explicitly removes the prepaidAmount field from a station document.
- * Must use deleteField() since sanitize() skips undefined and cannot remove existing fields.
- */
-export const clearStationPrepaid = async (stationId: string) => {
-    const db = getFirestore();
-    const stationRef = doc(db, 'stations', stationId);
-    try {
-        await updateDoc(stationRef, { prepaidAmount: deleteField() });
-    } catch (e) {
-        console.error("Error clearing prepaid amount: ", e);
-    }
-}
-
 export const removeStation = async (stationId: string) => {
     const db = getFirestore();
     const stationRef = doc(db, 'stations', stationId);
@@ -122,7 +108,7 @@ export const moveStationSession = async (sourceId: string, targetId: string) => 
             
             if (targetData.status !== 'available') throw new Error("Target station is no longer available");
             
-            // 1. Update target with source data (carry prepaid amount if any)
+            // 1. Update target with source data
             transaction.update(targetRef, sanitize({
                 status: sourceData.status,
                 startTime: sourceData.startTime,
@@ -133,7 +119,6 @@ export const moveStationSession = async (sourceId: string, targetId: string) => 
                 members: sourceData.members,
                 currentBill: sourceData.currentBill || [],
                 discount: sourceData.discount || 0,
-                prepaidAmount: sourceData.prepaidAmount || null,
             }));
             
             // 2. Reset source station to available
@@ -147,7 +132,6 @@ export const moveStationSession = async (sourceId: string, targetId: string) => 
                 members: [],
                 currentBill: [],
                 discount: 0,
-                prepaidAmount: deleteField(),
             });
         });
         return { success: true };

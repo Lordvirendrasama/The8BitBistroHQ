@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Task, TaskFormData } from '@/lib/types';
+import type { Task, TaskFormData, Employee } from '@/lib/types';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,20 +23,24 @@ interface TaskFormModalProps {
   onOpenChange: (isOpen: boolean) => void;
   onSave: (formData: TaskFormData) => void;
   task: Task | null;
+  employees: Employee[];
 }
 
-export function TaskFormModal({ isOpen, onOpenChange, onSave, task }: TaskFormModalProps) {
+export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }: TaskFormModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<'start-of-day' | 'end-of-day' | 'strategic'>('start-of-day');
+  const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     if (task) {
       setName(task.name);
       setType(task.type);
+      setAssignedTo(task.assignedTo || []);
     } else {
       setName('');
       setType('start-of-day');
+      setAssignedTo([]);
     }
   }, [task, isOpen]);
 
@@ -52,6 +57,7 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task }: TaskFormMo
     const formData: TaskFormData = {
         name,
         type,
+        assignedTo,
     };
 
     onSave(formData);
@@ -95,6 +101,51 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task }: TaskFormMo
                 <Label htmlFor="strategic">Strategic</Label>
               </div>
             </RadioGroup>
+          </div>
+          <div className="space-y-2">
+            <Label>Assign to Employees</Label>
+            <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-background">
+              <div className="flex items-center space-x-2 pb-1 border-b">
+                <Checkbox 
+                  id="assign-all" 
+                  checked={assignedTo.length === 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setAssignedTo([]);
+                    }
+                  }}
+                  className="h-4 w-4 border-2"
+                />
+                <Label htmlFor="assign-all" className="text-xs font-bold uppercase cursor-pointer text-muted-foreground">
+                  All Employees (No Restrictions)
+                </Label>
+              </div>
+              {employees.map((emp) => {
+                const isChecked = assignedTo.includes(emp.username);
+                return (
+                  <div key={emp.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`emp-${emp.id}`}
+                      checked={isChecked}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setAssignedTo(prev => [...prev, emp.username]);
+                        } else {
+                          setAssignedTo(prev => prev.filter(username => username !== emp.username));
+                        }
+                      }}
+                      className="h-4 w-4 border-2"
+                    />
+                    <Label htmlFor={`emp-${emp.id}`} className="text-xs font-bold cursor-pointer">
+                      {emp.displayName} ({emp.username})
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">
+              If no employees are selected, the task is visible to everyone.
+            </p>
           </div>
         </div>
         <DialogFooter>
