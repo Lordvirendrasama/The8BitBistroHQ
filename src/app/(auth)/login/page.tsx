@@ -28,6 +28,7 @@ import { APP_VERSION } from '@/lib/version';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { endShift } from '@/firebase/firestore/shifts';
 import { format } from 'date-fns';
+import { getAuth, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 
 const formatShiftHours = (start?: string, end?: string) => {
   if (!start || !end) return 'N/A';
@@ -297,10 +298,10 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !isLoggingOut) {
       router.push(redirectUrl);
     }
-  }, [user, loading, router, redirectUrl]);
+  }, [user, loading, router, redirectUrl, isLoggingOut]);
 
   const handleLoginAttempt = (emp: Employee) => {
     setPendingUser(emp);
@@ -379,14 +380,25 @@ export default function LoginPage() {
 
     setIsLoggingOut(true);
     try {
+      const auth = getAuth();
+      const email = `${logoutTargetUser.username.toLowerCase()}@8bitbistro.local`;
+      const password = `${logoutPinInput}-8bit`;
+      
+      // 1. Sign in temporarily to satisfy security rules
+      await signInWithEmailAndPassword(auth, email, password);
+
       const tempUser = {
         username: logoutTargetUser.username,
         displayName: logoutTargetUser.displayName,
         role: logoutTargetUser.role || 'staff'
       } as any;
 
+      // 2. End shift
       await endShift(logoutTargetShift.id, tempUser, undefined, false, 'manual', logoutTargetUser.username);
       
+      // 3. Log out immediately to restore login page state
+      await firebaseSignOut(auth);
+
       toast({
         title: 'Logged Out',
         description: `${logoutTargetUser.displayName} shift ended successfully.`,

@@ -4,6 +4,14 @@ import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch
 import type { TaskFormData, LogEntry, Shift } from '@/lib/types';
 
 
+const mapToDb = (data: Partial<TaskFormData>) => {
+  const dbData: any = { ...data };
+  if (dbData.shiftType !== undefined) {
+    dbData.shift_type = dbData.shiftType;
+  }
+  return dbData;
+};
+
 const createLogEntry = (
   db: ReturnType<typeof getFirestore>, 
   batch: ReturnType<typeof writeBatch>,
@@ -33,11 +41,19 @@ const syncNewTasksToActiveShifts = async (db: ReturnType<typeof getFirestore>, t
         const currentTasks = shiftData.tasks || [];
         
         // Filter out tasks that already exist in this shift by name
-        const filteredTasks = tasksToAdd.filter(newTask => 
-          !currentTasks.some(existingTask => existingTask.name === newTask.name)
-        ).map(taskData => ({
+        // AND check if the task is appropriate for this shift's shiftType (or 'both')
+        const filteredTasks = tasksToAdd.filter(newTask => {
+          const alreadyExists = currentTasks.some(existingTask => existingTask.name === newTask.name);
+          if (alreadyExists) return false;
+          
+          const taskShiftType = newTask.shiftType || (newTask.type === 'start-of-day' ? 'opening' : newTask.type === 'end-of-day' ? 'closing' : 'both');
+          const shiftShiftType = shiftData.shiftType || 'opening';
+          return taskShiftType === 'both' || taskShiftType === shiftShiftType;
+        }).map(taskData => ({
           name: taskData.name,
-          type: taskData.type,
+          type: taskData.type || (taskData.shiftType === 'opening' ? 'start-of-day' : taskData.shiftType === 'closing' ? 'end-of-day' : 'strategic'),
+          shiftType: taskData.shiftType || (taskData.type === 'start-of-day' ? 'opening' : taskData.type === 'end-of-day' ? 'closing' : 'both'),
+          shift_type: taskData.shiftType || (taskData.type === 'start-of-day' ? 'opening' : taskData.type === 'end-of-day' ? 'closing' : 'both'),
           completed: false,
           ownerOnly: taskData.ownerOnly || false
         }));
@@ -60,11 +76,12 @@ export const addTask = async (taskData: TaskFormData) => {
   const batch = writeBatch(db);
   const newTaskRef = doc(collection(db, 'tasks'));
   try {
-    batch.set(newTaskRef, taskData);
+    const dbData = mapToDb(taskData);
+    batch.set(newTaskRef, dbData);
     createLogEntry(db, batch, {
         type: 'SETTINGS_UPDATED',
         description: `Created a new shift task: <strong>${taskData.name}</strong>.`,
-        details: { taskId: newTaskRef.id, taskData }
+        details: { taskId: newTaskRef.id, taskData: dbData }
     });
     await batch.commit();
     
@@ -88,11 +105,12 @@ export const addTasks = async (tasksData: TaskFormData[]) => {
       const batch = writeBatch(db);
       for (const taskData of chunk) {
         const newTaskRef = doc(collection(db, 'tasks'));
-        batch.set(newTaskRef, taskData);
+        const dbData = mapToDb(taskData);
+        batch.set(newTaskRef, dbData);
         createLogEntry(db, batch, {
             type: 'SETTINGS_UPDATED',
             description: `Created a new shift task via CSV: <strong>${taskData.name}</strong>.`,
-            details: { taskId: newTaskRef.id, taskData }
+            details: { taskId: newTaskRef.id, taskData: dbData }
         });
       }
       await batch.commit();
@@ -113,11 +131,12 @@ export const updateTask = async (taskId: string, taskData: Partial<TaskFormData>
     const batch = writeBatch(db);
     const taskRef = doc(db, 'tasks', taskId);
     try {
-        batch.update(taskRef, taskData);
+        const dbData = mapToDb(taskData);
+        batch.update(taskRef, dbData);
         createLogEntry(db, batch, {
             type: 'SETTINGS_UPDATED',
             description: `Updated details for task <strong>${taskData.name || 'ID: ' + taskId}</strong>.`,
-            details: { taskId, updates: taskData }
+            details: { taskId, updates: dbData }
         });
         await batch.commit();
     } catch (e) {
@@ -146,14 +165,15 @@ export const bulkUpdateTasks = async (taskIds: string[], updates: Partial<TaskFo
     const db = getFirestore();
     const batch = writeBatch(db);
     try {
+        const dbUpdates = mapToDb(updates);
         taskIds.forEach(id => {
             const taskRef = doc(db, 'tasks', id);
-            batch.update(taskRef, updates);
+            batch.update(taskRef, dbUpdates);
         });
         createLogEntry(db, batch, {
             type: 'SETTINGS_UPDATED',
             description: `Bulk updated <strong>${taskIds.length}</strong> shift tasks.`,
-            details: { taskIds, updates }
+            details: { taskIds, updates: dbUpdates }
         });
         await batch.commit();
         return true;

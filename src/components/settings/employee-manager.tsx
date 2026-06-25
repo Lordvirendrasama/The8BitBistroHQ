@@ -53,7 +53,8 @@ export function EmployeeManager() {
     workingDaysPerWeek: 6,
     overtimeMultiplier: 1.5,
     isActive: true,
-    gracePeriod: 5
+    gracePeriod: 5,
+    assignedShift: 'opening'
   });
 
   const empQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
@@ -81,7 +82,8 @@ export function EmployeeManager() {
             workingDaysPerWeek: 6,
             overtimeMultiplier: 1.5,
             isActive: true,
-            gracePeriod: 5
+            gracePeriod: 5,
+            assignedShift: 'opening'
           });
         }
         if (!hasMusaib) {
@@ -99,7 +101,8 @@ export function EmployeeManager() {
             workingDaysPerWeek: 6,
             overtimeMultiplier: 1.5,
             isActive: true,
-            gracePeriod: 5
+            gracePeriod: 5,
+            assignedShift: 'closing'
           });
         }
       };
@@ -123,7 +126,8 @@ export function EmployeeManager() {
       workingDaysPerWeek: emp.workingDaysPerWeek ?? 6,
       overtimeMultiplier: emp.overtimeMultiplier ?? 1.5,
       isActive: emp.isActive ?? true,
-      gracePeriod: emp.gracePeriod ?? 5
+      gracePeriod: emp.gracePeriod ?? 5,
+      assignedShift: emp.assignedShift || 'opening'
     });
     setModalOpen(true);
   };
@@ -145,7 +149,8 @@ export function EmployeeManager() {
     setFormData({ 
         username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', 
         weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '',
-        workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true, gracePeriod: 5
+        workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true, gracePeriod: 5,
+        assignedShift: 'opening'
     });
   };
 
@@ -201,6 +206,9 @@ export function EmployeeManager() {
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black uppercase tracking-tight">{emp.workStartTime || '11:00'} - {emp.workEndTime || '23:00'}</span>
                         <span className="text-[8px] font-bold text-muted-foreground uppercase">{DAYS[emp.weekOffDay] || 'N/A'} OFF</span>
+                        {emp.assignedShift && (
+                          <Badge variant="outline" className="w-fit text-[8px] font-black uppercase tracking-tight mt-1 bg-primary/5 text-primary border-primary/20">{emp.assignedShift} Shift</Badge>
+                        )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -310,9 +318,23 @@ export function EmployeeManager() {
 
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase text-muted-foreground">Assigned Shift</Label>
+                <Select value={formData.assignedShift} onValueChange={v => setFormData({...formData, assignedShift: v})}>
+                  <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="opening">Opening</SelectItem>
+                    <SelectItem value="closing">Closing</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase text-muted-foreground">Grace Period (Mins)</Label>
                 <Input type="number" min={0} value={formData.gracePeriod ?? 5} onChange={e => setFormData({...formData, gracePeriod: Number(e.target.value)})} className="font-bold" />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase text-muted-foreground">Status</Label>
                 <Select value={String(formData.isActive)} onValueChange={v => setFormData({...formData, isActive: v === 'true'})}>

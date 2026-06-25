@@ -147,11 +147,29 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
             // Fetch master tasks
             const masterTasksRef = collection(db, 'tasks');
             const masterTasksSnapshot = await getDocs(masterTasksRef);
-            const masterTasks = masterTasksSnapshot.docs.map(doc => doc.data() as Task);
+            const masterTasks = masterTasksSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    name: data.name,
+                    type: data.type,
+                    shiftType: data.shift_type || data.shiftType || (data.type === 'start-of-day' ? 'opening' : data.type === 'end-of-day' ? 'closing' : 'both'),
+                    ownerOnly: data.ownerOnly,
+                    assignedTo: data.assignedTo
+                } as Task;
+            });
 
-            const dailyTasks: ShiftTask[] = masterTasks.map(task => ({
+            const employeeShift = empSettings?.assignedShift || 'opening';
+
+            // Filter master tasks to only include those assigned to this shift or both
+            const filteredMasterTasks = masterTasks.filter(task => {
+                return task.shiftType === 'both' || task.shiftType === employeeShift;
+            });
+
+            const dailyTasks: ShiftTask[] = filteredMasterTasks.map(task => ({
                 name: task.name,
                 type: task.type,
+                shiftType: task.shiftType,
                 completed: false,
                 ownerOnly: task.ownerOnly || false,
                 assignedTo: task.assignedTo || []
@@ -197,6 +215,7 @@ export const getActiveOrStartShift = async (user: CustomUser): Promise<Shift | n
                 status: 'active',
                 tasks: dailyTasks,
                 breaks: [],
+                shiftType: employeeShift,
                 lateMinutes,
                 workedOnWeeklyOff,
                 cycle: settings.activeCycle || 'Live Cycle',

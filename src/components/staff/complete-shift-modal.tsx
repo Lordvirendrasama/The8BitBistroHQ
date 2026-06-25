@@ -24,7 +24,7 @@ import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { ScrollArea } from '../ui/scroll-area';
 
-interface EndOfDayModalProps {
+interface CompleteShiftModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   activeShift: Shift | null;
@@ -32,13 +32,13 @@ interface EndOfDayModalProps {
   onConfirmLogout: (totals: { cashTotal: number, upiTotal: number, shiftExpenses: number }, forceLogout: boolean) => void;
 }
 
-export function EndOfDayModal({
+export function CompleteShiftModal({
   isOpen,
   onOpenChange,
   activeShift,
   onTaskToggle,
   onConfirmLogout,
-}: EndOfDayModalProps) {
+}: CompleteShiftModalProps) {
   const { user } = useAuth();
   const { db } = useFirebase();
   
@@ -130,13 +130,13 @@ export function EndOfDayModal({
   const visibleTasks = useMemo(() => {
     if (!activeShift?.tasks) return [];
     return activeShift.tasks.filter((task) => 
-        task.type === 'end-of-day' || (task.type === 'start-of-day' && !task.completed)
+        task.type !== 'strategic'
     );
   }, [activeShift]);
 
   const allTasksCompleted = useMemo(() => {
     if (!activeShift) return false;
-    return activeShift.tasks.every(task => task.completed);
+    return activeShift.tasks.filter(t => t.type !== 'strategic').every(task => task.completed);
   }, [activeShift]);
 
   const enteredCash = parseFloat(cashTotal) || 0;
@@ -155,16 +155,18 @@ export function EndOfDayModal({
     onConfirmLogout({ cashTotal: enteredCash, upiTotal: enteredUpi, shiftExpenses: enteredExpenses }, true);
   };
 
+  const titleText = activeShift?.shiftType === 'opening' ? 'Opening Shift Complete' : activeShift?.shiftType === 'closing' ? 'Closing Shift Complete' : 'Complete Shift';
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-2xl h-[90vh] md:h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl font-body">
         <DialogHeader className="p-4 sm:p-6 bg-muted/10 border-b shrink-0">
           <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-display uppercase tracking-tight">
             <Moon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
-            Shift Settlement
+            {titleText}
           </DialogTitle>
           <DialogDescription className="font-semibold text-[10px] sm:text-xs uppercase text-muted-foreground mt-1 tracking-tight">
-            Verify operations and tally financials for closing (Bistro Business Day).
+            Verify operations and tally financials for closing.
           </DialogDescription>
         </DialogHeader>
         
@@ -324,7 +326,7 @@ export function EndOfDayModal({
                   </h3>
                   {!allTasksCompleted && (
                       <Badge variant="outline" className="text-[8px] sm:text-[10px] font-bold border-destructive/30 text-destructive bg-destructive/5 gap-1 uppercase h-5 sm:h-6 px-2">
-                          <AlertTriangle className="h-3 w-3" /> {activeShift?.tasks.filter(t => !t.completed).length} Pending
+                          <AlertTriangle className="h-3 w-3" /> {activeShift?.tasks.filter(t => !t.completed && t.type !== 'strategic').length} Pending
                       </Badge>
                   )}
               </div>
@@ -346,9 +348,9 @@ export function EndOfDayModal({
                             )}
                         >
                             {task.name}
-                            {task.type === 'start-of-day' && !task.completed && (
-                                <Badge variant="outline" className="ml-2 text-[8px] sm:text-[9px] font-bold text-amber-600 border-amber-600/30 uppercase h-3.5 sm:h-4">Morning Item</Badge>
-                            )}
+                             {task.shiftType === 'opening' && (
+                                 <Badge variant="outline" className="ml-2 text-[8px] sm:text-[9px] font-bold text-amber-600 border-amber-600/30 uppercase h-3.5 sm:h-4">Opening Item</Badge>
+                             )}
                         </Label>
                           {task.completed && task.completedBy ? (
                             <p className="text-[9px] sm:text-[10px] font-medium text-green-600 uppercase mt-1">
@@ -386,7 +388,7 @@ export function EndOfDayModal({
             onClick={handleConfirm}
             className="h-12 sm:h-14 uppercase font-black tracking-[0.2em] flex-[2] shadow-xl text-[10px] sm:text-xs"
           >
-            END SHIFT & LOGOUT
+            COMPLETE SHIFT & LOGOUT
           </Button>
         </DialogFooter>
       </DialogContent>

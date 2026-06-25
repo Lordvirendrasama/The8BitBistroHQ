@@ -9,7 +9,7 @@ import { useAuth } from "@/firebase/auth/use-user";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
 import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem, GamingPackage } from '@/lib/types';
-import { EndOfDayModal } from '@/components/staff/end-of-day-modal';
+import { CompleteShiftModal } from '@/components/staff/complete-shift-modal';
 import { AdminNotifications } from '@/components/admin/notifications';
 import { PendingNotifications } from '@/components/layout/pending-notifications';
 import { announceGlobally } from '@/components/notifications/global-timer-notifications';
@@ -1134,7 +1134,7 @@ export function AppHeader({
                 </div>
             </header>
             
-            <EndOfDayModal 
+            <CompleteShiftModal 
                 isOpen={isEndOfDayModalOpen} 
                 onOpenChange={setIsEndOfDayModalOpen} 
                 activeShift={activeShift} 

@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import type { Task, TaskFormData, Employee } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Save } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -28,18 +27,18 @@ interface TaskFormModalProps {
 
 export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }: TaskFormModalProps) {
   const [name, setName] = useState('');
-  const [type, setType] = useState<'start-of-day' | 'end-of-day' | 'strategic'>('start-of-day');
+  const [shiftType, setShiftType] = useState<'opening' | 'closing' | 'both'>('opening');
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     if (task) {
       setName(task.name);
-      setType(task.type);
+      setShiftType(task.shiftType as 'opening' | 'closing' | 'both' || 'opening');
       setAssignedTo(task.assignedTo || []);
     } else {
       setName('');
-      setType('start-of-day');
+      setShiftType('opening');
       setAssignedTo([]);
     }
   }, [task, isOpen]);
@@ -56,7 +55,8 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
 
     const formData: TaskFormData = {
         name,
-        type,
+        shiftType,
+        type: shiftType === 'opening' ? 'start-of-day' : shiftType === 'closing' ? 'end-of-day' : 'strategic',
         assignedTo,
     };
 
@@ -66,44 +66,41 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] font-body">
         <DialogHeader>
           <DialogTitle className="font-headline tracking-wide text-2xl">
             {task ? 'Edit Task' : 'Add New Task'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">
             {task ? `Editing details for ${task.name}.` : 'Enter the details for the new daily task.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Task Name</Label>
+            <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-tight text-muted-foreground">Task Name</Label>
             <Input
               id="name"
               placeholder="e.g., Wipe down all gaming stations"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="font-bold"
             />
           </div>
           <div className="space-y-2">
-            <Label>Task Type</Label>
-            <RadioGroup value={type} onValueChange={(value) => setType(value as 'start-of-day' | 'end-of-day' | 'strategic')}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="start-of-day" id="start-of-day" />
-                <Label htmlFor="start-of-day">Start of Day</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="end-of-day" id="end-of-day" />
-                <Label htmlFor="end-of-day">End of Day</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="strategic" id="strategic" />
-                <Label htmlFor="strategic">Strategic</Label>
-              </div>
-            </RadioGroup>
+            <Label htmlFor="shift-type-select" className="text-[10px] font-black uppercase tracking-tight text-muted-foreground">Shift Assignment</Label>
+            <Select value={shiftType} onValueChange={(value: any) => setShiftType(value)}>
+              <SelectTrigger id="shift-type-select" className="font-bold uppercase text-[10px] w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="opening">Opening Shift</SelectItem>
+                <SelectItem value="closing">Closing Shift</SelectItem>
+                <SelectItem value="both">Both Shifts</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-            <Label>Assign to Employees</Label>
+            <Label className="text-[10px] font-black uppercase tracking-tight text-muted-foreground">Assign to Employees</Label>
             <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-background">
               <div className="flex items-center space-x-2 pb-1 border-b">
                 <Checkbox 
@@ -149,7 +146,7 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleSave} className="w-full font-bold">
+          <Button onClick={handleSave} className="w-full font-black uppercase tracking-widest h-12 shadow-lg">
             <Save className="mr-2 h-4 w-4" />
             Save Task
           </Button>

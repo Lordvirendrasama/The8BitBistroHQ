@@ -66,7 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!user || !activeShift) return;
     const newCompletedStatus = result ? true : !task.completed;
     await updateTask(activeShift.id, task.name, newCompletedStatus, user, result);
-    if (!newCompletedStatus && (task.type === 'start-of-day' || task.type === 'strategic')) {
+    if (!newCompletedStatus && (task.shiftType !== undefined || task.type === 'strategic')) {
       setTasksVisible(true);
     }
     toast({ title: "Audit Updated" });
@@ -99,7 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             onTaskToggle={handleTaskToggle}
             tasksVisible={tasksVisible}
             setTasksVisible={setTasksVisible}
-            uncompletedTaskCount={activeShift?.tasks.filter(t => !t.completed && (t.type === 'start-of-day' || t.type === 'strategic')).length || 0}
+            uncompletedTaskCount={activeShift?.tasks.filter(t => !t.completed && (t.shiftType !== undefined || t.type === 'strategic')).length || 0}
           />
           <main className="p-3 sm:p-6 lg:p-8 bg-transparent min-h-0 overflow-y-auto">
             <GlobalTimerNotifications />

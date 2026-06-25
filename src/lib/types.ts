@@ -278,7 +278,8 @@ export interface ShiftTask {
     name: string;
     completed: boolean;
     completedAt?: string;
-    type: 'start-of-day' | 'end-of-day' | 'strategic';
+    type?: 'start-of-day' | 'end-of-day' | 'strategic';
+    shiftType?: 'opening' | 'closing' | 'both' | string;
     ownerOnly?: boolean;
     verificationResult?: 'yes' | 'no';
     completedBy?: {
@@ -309,6 +310,7 @@ export interface Shift {
     status: 'active' | 'completed' | 'recovered';
     tasks: ShiftTask[];
     breaks: ShiftBreak[];
+    shiftType?: 'opening' | 'closing' | 'both' | string;
     lateMinutes?: number;
     earlyLeaveMinutes?: number;
     overtimeMinutes?: number;
@@ -331,7 +333,8 @@ export interface Shift {
 export interface Task {
   id: string;
   name: string;
-  type: 'start-of-day' | 'end-of-day' | 'strategic';
+  type?: 'start-of-day' | 'end-of-day' | 'strategic';
+  shiftType?: 'opening' | 'closing' | 'both' | string;
   ownerOnly?: boolean;
   assignedTo?: string[];
 }
@@ -496,6 +499,7 @@ export interface Employee {
   workStartTime?: string; // "HH:mm"
   workEndTime?: string;   // "HH:mm"
   gracePeriod?: number;   // default 5 minutes
+  assignedShift?: 'opening' | 'closing' | 'both' | string;
 }
 
 export interface Leave {

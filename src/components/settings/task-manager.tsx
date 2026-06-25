@@ -117,11 +117,11 @@ export function TaskManager() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [sortField, setSortField] = useState<'name' | 'type'>('type');
+  const [sortField, setSortField] = useState<'name' | 'shiftType'>('shiftType');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
 
-  const handleSort = (field: 'name' | 'type') => {
+  const handleSort = (field: 'name' | 'shiftType') => {
     if (sortField === field) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
@@ -148,8 +148,11 @@ export function TaskManager() {
     }
   };
 
-  const handleBulkChangeType = async (type: 'start-of-day' | 'end-of-day' | 'strategic') => {
-    const success = await bulkUpdateTasks(selectedTaskIds, { type });
+  const handleBulkChangeType = async (shiftType: 'opening' | 'closing' | 'both') => {
+    const success = await bulkUpdateTasks(selectedTaskIds, { 
+      shiftType,
+      type: shiftType === 'opening' ? 'start-of-day' : shiftType === 'closing' ? 'end-of-day' : 'strategic'
+    });
     if (success) {
       toast({
         title: 'Tasks Updated',
@@ -235,16 +238,16 @@ export function TaskManager() {
             return;
           }
 
-          let type: 'start-of-day' | 'end-of-day' | 'strategic';
+          let shiftType: 'opening' | 'closing' | 'both';
           const typeNormalized = typeInput.replace(/[\s_-]+/g, '');
-          if (['startofday', 'start', 'opening', 'open'].includes(typeNormalized)) {
-            type = 'start-of-day';
-          } else if (['endofday', 'end', 'closing', 'close'].includes(typeNormalized)) {
-            type = 'end-of-day';
-          } else if (['strategic', 'strat', 'owner'].includes(typeNormalized)) {
-            type = 'strategic';
+          if (['opening', 'open', 'startofday', 'start'].includes(typeNormalized)) {
+            shiftType = 'opening';
+          } else if (['closing', 'close', 'endofday', 'end'].includes(typeNormalized)) {
+            shiftType = 'closing';
+          } else if (['both', 'all', 'strategic', 'strat', 'owner'].includes(typeNormalized)) {
+            shiftType = 'both';
           } else {
-            errors.push(`Row ${rowNum}: Invalid type '${typeInput}'. Must be start-of-day, end-of-day, or strategic (or aliases like opening, closing, owner).`);
+            errors.push(`Row ${rowNum}: Invalid type '${typeInput}'. Must be opening, closing, or both (or aliases).`);
             return;
           }
 
@@ -254,7 +257,8 @@ export function TaskManager() {
 
           validTasks.push({
             name,
-            type,
+            shiftType,
+            type: shiftType === 'opening' ? 'start-of-day' : shiftType === 'closing' ? 'end-of-day' : 'strategic',
             ownerOnly,
             assignedTo,
           });
@@ -332,10 +336,14 @@ export function TaskManager() {
       if (sortField === 'name') {
         comparison = a.name.localeCompare(b.name);
         if (comparison === 0) {
-          comparison = a.type.localeCompare(b.type);
+          const typeA = a.shiftType || a.type || '';
+          const typeB = b.shiftType || b.type || '';
+          comparison = typeA.localeCompare(typeB);
         }
       } else {
-        comparison = a.type.localeCompare(b.type);
+        const typeA = a.shiftType || a.type || '';
+        const typeB = b.shiftType || b.type || '';
+        comparison = typeA.localeCompare(typeB);
         if (comparison === 0) {
           comparison = a.name.localeCompare(b.name);
         }
@@ -469,25 +477,25 @@ export function TaskManager() {
                       variant="ghost" 
                       size="sm" 
                       className="w-full justify-start font-bold text-xs"
-                      onClick={() => handleBulkChangeType('start-of-day')}
+                      onClick={() => handleBulkChangeType('opening')}
                     >
-                      <Sun className="h-3.5 w-3.5 mr-1.5 text-blue-500" /> Start of Day
+                      <Sun className="h-3.5 w-3.5 mr-1.5 text-blue-500" /> Opening Shift
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       className="w-full justify-start font-bold text-xs"
-                      onClick={() => handleBulkChangeType('end-of-day')}
+                      onClick={() => handleBulkChangeType('closing')}
                     >
-                      <Moon className="h-3.5 w-3.5 mr-1.5 text-zinc-400" /> End of Day
+                      <Moon className="h-3.5 w-3.5 mr-1.5 text-zinc-400" /> Closing Shift
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       className="w-full justify-start font-bold text-xs"
-                      onClick={() => handleBulkChangeType('strategic')}
+                      onClick={() => handleBulkChangeType('both')}
                     >
-                      <PlusCircle className="h-3.5 w-3.5 mr-1.5 text-primary" /> Strategic
+                      <PlusCircle className="h-3.5 w-3.5 mr-1.5 text-primary" /> Both Shifts
                     </Button>
                   </div>
                 </PopoverContent>
@@ -552,11 +560,11 @@ export function TaskManager() {
                     </TableHead>
                     <TableHead 
                       className="bg-muted/30 cursor-pointer select-none hover:bg-muted/40 transition-colors"
-                      onClick={() => handleSort('type')}
+                      onClick={() => handleSort('shiftType')}
                     >
                       <div className="flex items-center gap-1.5 font-bold">
-                        Type
-                        {sortField === 'type' ? (
+                        Shift Type
+                        {sortField === 'shiftType' ? (
                           sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
                         ) : (
                           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/50" />
@@ -602,10 +610,19 @@ export function TaskManager() {
                       </div>
                     </TableCell>
                     <TableCell>
-                        <Badge variant={task.type === 'start-of-day' ? 'default' : 'secondary'} className={cn(task.type === 'start-of-day' && 'bg-blue-500 hover:bg-blue-600')}>
-                        <div className="flex items-center gap-2">
-                            {task.type === 'start-of-day' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                            {task.type.replace(/-/g, ' ')}
+                        <Badge 
+                          variant={(task.shiftType || task.type) === 'opening' || (task.shiftType || task.type) === 'start-of-day' ? 'default' : 'secondary'} 
+                          className={cn(((task.shiftType || task.type) === 'opening' || (task.shiftType || task.type) === 'start-of-day') && 'bg-blue-500 hover:bg-blue-600')}
+                        >
+                        <div className="flex items-center gap-2 font-bold uppercase text-[9px]">
+                            {((task.shiftType || task.type) === 'opening' || (task.shiftType || task.type) === 'start-of-day') ? (
+                              <Sun className="h-3.5 w-3.5" />
+                            ) : ((task.shiftType || task.type) === 'closing' || (task.shiftType || task.type) === 'end-of-day') ? (
+                              <Moon className="h-3.5 w-3.5 text-zinc-400" />
+                            ) : (
+                              <Clock className="h-3.5 w-3.5 text-primary" />
+                            )}
+                            {(task.shiftType || task.type || '').replace(/-/g, ' ')}
                         </div>
                         </Badge>
                     </TableCell>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ListChecks, Minus, Sun, ShieldCheck, UserCheck, UserX, Clock, CheckCircle2, X } from 'lucide-react';
+import { ListChecks, Minus, Sun, Moon, ShieldCheck, UserCheck, UserX, Clock, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where } from 'firebase/firestore';
@@ -35,9 +35,9 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
 
   const { data: todayShifts } = useCollection<Shift>(shiftsQuery);
 
-  // Normal Start of Day Tasks (excluding ownerOnly if not owner)
+  // Shift Tasks (excluding ownerOnly if not owner)
   const sodTasks = useMemo(() => 
-    tasks.filter(t => t.type === 'start-of-day' && !t.completed && (!t.ownerOnly || isOwner)), 
+    tasks.filter(t => t.shiftType !== undefined && !t.completed && (!t.ownerOnly || isOwner)), 
   [tasks, isOwner]);
 
   // Strategic Verification Tasks (specifically for Viren)
@@ -203,19 +203,27 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
             </div>
           )}
 
-          {sodTasks.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 px-1 tracking-widest">
-                <Sun className="h-3 w-3 text-amber-500" />
-                Start of Day
-              </h4>
-              <div className="space-y-0.5 bg-muted/30 rounded-lg p-1.5 border border-dashed">
-                {sodTasks.map((task, idx) => (
-                  <TaskItem key={`${task.name}-${task.type}-${idx}`} task={task} />
-                ))}
+          {sodTasks.length > 0 && (() => {
+            const firstTaskShiftType = sodTasks[0]?.shiftType;
+            const shiftLabel = firstTaskShiftType === 'opening' ? 'Opening Shift' : firstTaskShiftType === 'closing' ? 'Closing Shift' : 'Shift';
+            return (
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 px-1 tracking-widest">
+                  {firstTaskShiftType === 'closing' ? (
+                    <Moon className="h-3.5 w-3.5 text-indigo-400" />
+                  ) : (
+                    <Sun className="h-3.5 w-3.5 text-amber-500" />
+                  )}
+                  {shiftLabel} Protocols
+                </h4>
+                <div className="space-y-0.5 bg-muted/30 rounded-lg p-1.5 border border-dashed">
+                  {sodTasks.map((task, idx) => (
+                    <TaskItem key={`${task.name}-${task.type}-${idx}`} task={task} />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </Card>

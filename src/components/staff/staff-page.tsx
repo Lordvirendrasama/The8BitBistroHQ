@@ -15,7 +15,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Clock, Coffee, Sun, Moon, LogOut, PlayCircle, ListChecks, Timer, AlertCircle, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { EndOfDayModal } from '@/components/staff/end-of-day-modal';
+import { CompleteShiftModal } from '@/components/staff/complete-shift-modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -100,22 +100,10 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
         await refreshShift();
     };
 
-    const startOfDayTasks = useMemo(() => {
+    const shiftTasks = useMemo(() => {
         if (!activeShift) return [];
         return activeShift.tasks.filter(task => {
-            if (task.type !== 'start-of-day') return false;
-            if (isOwnerView) return true;
-            if (task.assignedTo && task.assignedTo.length > 0) {
-                return task.assignedTo.includes(user?.username || '');
-            }
-            return true;
-        });
-    }, [activeShift, user, isOwnerView]);
-
-    const endOfDayTasks = useMemo(() => {
-        if (!activeShift) return [];
-        return activeShift.tasks.filter(task => {
-            if (task.type !== 'end-of-day') return false;
+            if (task.type === 'strategic') return false;
             if (isOwnerView) return true;
             if (task.assignedTo && task.assignedTo.length > 0) {
                 return task.assignedTo.includes(user?.username || '');
@@ -255,7 +243,7 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                 {activeBreak ? "End Break" : "Take Break"}
                             </Button>
                             <Button onClick={handleLogoutClick} size="lg" variant="destructive" className="h-12 px-6 font-black uppercase tracking-widest shadow-lg">
-                                <Clock className="mr-2 h-5 w-5"/> End Shift
+                                <Clock className="mr-2 h-5 w-5"/> Complete Shift
                             </Button>
                         </div>
                     ) : (
@@ -309,9 +297,8 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                 Real-time synchronization across all logged-in staff units.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-12 p-6 sm:p-8">
-                            <TaskList tasks={startOfDayTasks} title="Morning Protocols" />
-                            <TaskList tasks={endOfDayTasks} title="Closing Protocols" />
+                        <CardContent className="p-6 sm:p-8">
+                            <TaskList tasks={shiftTasks} title={`${activeShift.shiftType === 'opening' ? 'Opening' : activeShift.shiftType === 'closing' ? 'Closing' : 'Shift'} Protocols`} />
                         </CardContent>
                     </Card>
                 </div>
@@ -379,7 +366,7 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                 </CardContent>
             </Card>
 
-            <EndOfDayModal 
+            <CompleteShiftModal 
                 isOpen={isEndOfDayModalOpen}
                 onOpenChange={setIsEndOfDayModalOpen}
                 activeShift={activeShift}
