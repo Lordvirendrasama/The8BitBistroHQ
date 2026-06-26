@@ -1,0 +1,22 @@
+# Tasks
+
+- [x] Update types and schemas in `types.ts`
+  - Add `foodAllowanceBalance?: number` to `Employee`
+  - Add `STAFF_FOOD_ORDER` to `LogEntryType`
+  - Add `StaffOrder` interface
+- [x] Create `staff-orders.ts` firestore API module
+- [x] Update `employee-manager.tsx`
+  - Add `foodAllowanceBalance` to fields
+  - Add "Meal Quota" column to Table
+  - Add input field in Dialog
+  - Update `addEmployee` and seeds
+- [x] Create `staff-food-modal.tsx` component
+- [x] Modify `staff-page.tsx`
+  - Fetch employee data in real time
+  - Replace Break button with Staff Food button
+  - Wire up `StaffFoodModal`
+- [x] Update log tables and routes
+  - Update `log-table.tsx`
+  - Update `master-log/page.tsx`
+  - Update `settings/logs/page.tsx`
+- [/] Verify functionality

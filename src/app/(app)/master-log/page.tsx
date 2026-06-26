@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Star, Gift, Edit, Trash2, Save, MousePointerClick, History, Filter, Settings, Database, Shield } from 'lucide-react';
+import { UserPlus, Star, Gift, Edit, Trash2, Save, MousePointerClick, History, Filter, Settings, Database, Shield, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -27,7 +27,8 @@ const logTypes: LogEntryType[] = [
     'DATA_ACTION',
     'DATA_BACKFILLED',
     'UI_ACTION',
-    'USER_LOGIN'
+    'USER_LOGIN',
+    'STAFF_FOOD_ORDER'
 ];
 
 const getLogIcon = (type: LogEntryType) => {
@@ -56,6 +57,8 @@ const getLogIcon = (type: LogEntryType) => {
         return <History className="h-5 w-5 text-gray-500" />
     case 'USER_LOGIN':
         return <Shield className="h-5 w-5 text-purple-500" />;
+    case 'STAFF_FOOD_ORDER':
+        return <Utensils className="h-5 w-5 text-amber-500" />;
     default:
       return null;
   }
@@ -87,6 +90,8 @@ const getLogBadgeVariant = (type: LogEntryType) => {
             return 'bg-gray-500/20 text-gray-500 border-gray-500/50';
         case 'USER_LOGIN':
             return 'bg-purple-500/20 text-purple-500 border-purple-500/50';
+        case 'STAFF_FOOD_ORDER':
+            return 'bg-amber-500/20 text-amber-500 border-amber-500/50';
         default:
             return 'outline';
     }

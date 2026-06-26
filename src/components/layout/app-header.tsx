@@ -8,8 +8,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
-import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem, GamingPackage } from '@/lib/types';
+import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem, GamingPackage, Employee, BillItem } from '@/lib/types';
 import { CompleteShiftModal } from '@/components/staff/complete-shift-modal';
+import { addStaffOrder } from '@/firebase/firestore/staff-orders';
+import { StaffFoodModal } from '@/components/staff/staff-food-modal';
 import { AdminNotifications } from '@/components/admin/notifications';
 import { PendingNotifications } from '@/components/layout/pending-notifications';
 import { announceGlobally } from '@/components/notifications/global-timer-notifications';
@@ -567,162 +569,41 @@ const TodayExpenses = () => {
   );
 };
 
-const BreakTimerButton = ({ activeShift }: { activeShift: Shift | null }) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const activeBreak = useMemo(() => activeShift?.breaks?.find(b => !b.endTime), [activeShift]);
-  const isActive = !!activeBreak;
-  const [activeDurationMs, setActiveDurationMs] = useState<number>(0);
+const StaffFoodHeaderButton = ({ 
+  activeShift, 
+  currentEmployee, 
+  activeCycle, 
+  handleSaveStaffOrder 
+}: { 
+  activeShift: Shift | null;
+  currentEmployee: Employee | null;
+  activeCycle: string;
+  handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number) => Promise<void>;
+}) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Update elapsed timer and check for late break
-  useEffect(() => {
-    if (!activeBreak) {
-      setActiveDurationMs(0);
-      return;
-    }
-
-    const startTimeMs = new Date(activeBreak.startTime).getTime();
-    
-    const update = () => {
-      const now = Date.now();
-      const diff = Math.max(0, now - startTimeMs);
-      setActiveDurationMs(diff);
-
-      // Trigger late notification if over 1 hour (3600000 ms)
-      if (diff > 3600000 && !activeBreak.lateNotified && activeShift && user) {
-        notifyLateBreak(activeShift.id, user);
-      }
-    };
-
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [activeBreak, activeShift, user]);
-
-  const handleStart = async () => {
-    if (!user || !activeShift) return;
-    const success = await startBreak(activeShift.id, user);
-    if (success) {
-      toast({ title: "Break Started", description: "Your break timer is now active." });
-    } else {
-      toast({ title: "Error starting break", variant: "destructive" });
-    }
-  };
-
-  const handleStop = async () => {
-    if (!user || !activeShift) return;
-    const success = await endBreak(activeShift.id, user);
-    if (success) {
-      toast({ title: "Break Ended", description: "Welcome back." });
-    } else {
-      toast({ title: "Error stopping break", variant: "destructive" });
-    }
-  };
-
-  const formatTime = (ms: number) => {
-    if (ms <= 0) return "00:00";
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  if (!user || !activeShift) return null;
-
-  if (isActive) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className={cn(
-              "h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 text-white border rounded-lg font-black transition-all shrink-0 font-body shadow-md animate-pulse",
-              activeDurationMs > 3600000 ? "bg-destructive border-destructive hover:bg-destructive/90" : "bg-amber-500 border-amber-600 hover:bg-amber-600"
-            )}
-          >
-            <Coffee className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current text-white" />
-            <span className="font-mono text-[10px] sm:text-sm">{formatTime(activeDurationMs)}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-56 p-3 text-center space-y-2 border-2 shadow-2xl font-body" align="center">
-          <p className={cn("text-xs font-black uppercase", activeDurationMs > 3600000 ? "text-destructive" : "text-amber-600")}>
-            Break Period Active
-          </p>
-          <p className="text-[9px] text-muted-foreground uppercase font-bold">
-            Elapsed: {formatTime(activeDurationMs)}
-          </p>
-          <Button 
-            variant="destructive" 
-            size="sm" 
-            className="w-full h-8 font-black uppercase text-[10px] tracking-wider"
-            onClick={handleStop}
-          >
-            End Break
-          </Button>
-        </PopoverContent>
-      </Popover>
-    );
-  }
+  if (!currentEmployee || !activeShift) return null;
 
   return (
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-black transition-all shrink-0 font-body"
-      onClick={handleStart}
-    >
-      <Coffee className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-      <span className="text-[10px] sm:text-xs uppercase font-black">Take Break</span>
-    </Button>
-  );
-};
+    <>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-black transition-all shrink-0 font-body shadow-sm"
+        onClick={() => setIsModalOpen(true)}
+      >
+        <Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <span className="text-[10px] sm:text-xs uppercase font-black">Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})</span>
+      </Button>
 
-const OperatorBreakTime = ({ breaks }: { breaks?: import('@/lib/types').ShiftBreak[] }) => {
-  const [totalMs, setTotalMs] = useState(0);
-
-  useEffect(() => {
-    if (!breaks || breaks.length === 0) {
-      setTotalMs(0);
-      return;
-    }
-
-    const update = () => {
-      const now = Date.now();
-      let sum = 0;
-      for (const b of breaks) {
-        if (b.durationSeconds) sum += b.durationSeconds * 1000;
-        else if (b.startTime && !b.endTime) sum += Math.max(0, now - new Date(b.startTime).getTime());
-      }
-      setTotalMs(sum);
-    };
-
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [breaks]);
-
-  if (totalMs === 0) return null;
-
-  const totalSeconds = Math.floor(totalMs / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-  return (
-    <div className="flex items-center justify-between px-2 py-1 mb-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
-      <span className="text-[9px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-1.5">
-        <Coffee className="h-3 w-3" /> Break Time Today
-      </span>
-      <span className="text-xs font-mono font-black text-amber-600">
-        {hours > 0 ? `${hours}h ` : ''}{minutes}m
-      </span>
-    </div>
+      <StaffFoodModal
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        employee={currentEmployee}
+        activeCycle={activeCycle}
+        onSave={handleSaveStaffOrder}
+      />
+    </>
   );
 };
 
@@ -850,6 +731,44 @@ export function AppHeader({
     const { toast } = useToast();
     const router = useRouter();
     const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
+
+    // Fetch current logged-in employee record in real-time
+    const currentEmployeeQuery = useMemo(() => {
+        if (!db || !user?.username) return null;
+        return query(
+            collection(db, 'employees'),
+            where('username', '==', user.username)
+        );
+    }, [db, user]);
+    const { data: employeeDocs } = useCollection<Employee>(currentEmployeeQuery);
+    const currentEmployee = employeeDocs?.[0] || null;
+
+    // Fetch active settings/cycle in real-time
+    const settingsQuery = useMemo(() => {
+        if (!db) return null;
+        return query(collection(db, 'settings'));
+    }, [db]);
+    const { data: settingsDocs } = useCollection<any>(settingsQuery);
+    const appConfig = settingsDocs?.find(doc => doc.id === 'app_config');
+    const activeCycle = appConfig?.activeCycle || 'Launch Live';
+
+    const handleSaveStaffOrder = async (items: BillItem[], totalAmount: number, newBalance: number) => {
+        if (!currentEmployee) return;
+        try {
+            await addStaffOrder(currentEmployee.id, newBalance, {
+                employeeUsername: currentEmployee.username,
+                employeeDisplayName: currentEmployee.displayName,
+                items,
+                totalAmount,
+                timestamp: new Date().toISOString(),
+                cycle: activeCycle
+            });
+            toast({ title: "Order Placed Successfully", description: `₹${totalAmount.toLocaleString()} deducted from your allowance.` });
+        } catch (error) {
+            console.error("Error saving staff order:", error);
+            toast({ variant: "destructive", title: "Order Placement Failed", description: "Please try again later." });
+        }
+    };
 
     const activeStationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), where('status', 'in', ['in-use', 'paused'])), [db]);
     const { data: stations } = useCollection<Station>(activeStationsQuery);
@@ -1077,7 +996,14 @@ export function AppHeader({
                     {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} />}
                     {!isCustomerView && <OwnerConsumptionHeader />}
                     {!isCustomerView && <TodayExpenses />}
-                    {!isCustomerView && <BreakTimerButton activeShift={activeShift} />}
+                    {!isCustomerView && (
+                        <StaffFoodHeaderButton 
+                            activeShift={activeShift} 
+                            currentEmployee={currentEmployee}
+                            activeCycle={activeCycle}
+                            handleSaveStaffOrder={handleSaveStaffOrder}
+                        />
+                    )}
                     
                     <div className="flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2">
                         <PendingNotifications />
@@ -1114,7 +1040,16 @@ export function AppHeader({
                                 <p className="text-sm font-bold truncate">{user?.displayName}</p>
                                 <Badge variant="outline" className="text-[8px] uppercase h-4 font-bold">{user?.role}</Badge>
                             </div>
-                            <OperatorBreakTime breaks={activeShift?.breaks} />
+                            {currentEmployee && (
+                              <div className="flex items-center justify-between px-2 py-1.5 mb-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                                <span className="text-[9px] font-black uppercase text-emerald-600 tracking-wider flex items-center gap-1.5">
+                                  <Utensils className="h-3 w-3" /> Meal Quota
+                                </span>
+                                <span className="text-xs font-mono font-black text-emerald-600">
+                                  ₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()}
+                                </span>
+                              </div>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => { 
                                 announceGlobally("This is a test");

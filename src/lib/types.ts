@@ -165,6 +165,7 @@ export type LogEntryType =
     | 'REWARD_UPDATED'
     | 'REWARD_DELETED'
     | 'REFERRAL_BONUS'
+    | 'STAFF_FOOD_ORDER'
     | 'ADMIN_LOGIN';
 
 
@@ -500,6 +501,7 @@ export interface Employee {
   workEndTime?: string;   // "HH:mm"
   gracePeriod?: number;   // default 5 minutes
   assignedShift?: 'opening' | 'closing' | 'both' | string;
+  foodAllowanceBalance?: number;
 }
 
 export interface Leave {
@@ -530,6 +532,16 @@ export interface PolicySection {
   title: string;
   content: string;
   order: number;
+}
+
+export interface StaffOrder {
+  id?: string;
+  employeeUsername: string;
+  employeeDisplayName: string;
+  items: BillItem[];
+  totalAmount: number;
+  timestamp: string;
+  cycle: string;
 }
 
 

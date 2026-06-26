@@ -54,7 +54,8 @@ export function EmployeeManager() {
     overtimeMultiplier: 1.5,
     isActive: true,
     gracePeriod: 5,
-    assignedShift: 'opening'
+    assignedShift: 'opening',
+    foodAllowanceBalance: 1000
   });
 
   const empQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
@@ -83,7 +84,8 @@ export function EmployeeManager() {
             overtimeMultiplier: 1.5,
             isActive: true,
             gracePeriod: 5,
-            assignedShift: 'opening'
+            assignedShift: 'opening',
+            foodAllowanceBalance: 1000
           });
         }
         if (!hasMusaib) {
@@ -102,7 +104,8 @@ export function EmployeeManager() {
             overtimeMultiplier: 1.5,
             isActive: true,
             gracePeriod: 5,
-            assignedShift: 'closing'
+            assignedShift: 'closing',
+            foodAllowanceBalance: 1000
           });
         }
       };
@@ -127,7 +130,8 @@ export function EmployeeManager() {
       overtimeMultiplier: emp.overtimeMultiplier ?? 1.5,
       isActive: emp.isActive ?? true,
       gracePeriod: emp.gracePeriod ?? 5,
-      assignedShift: emp.assignedShift || 'opening'
+      assignedShift: emp.assignedShift || 'opening',
+      foodAllowanceBalance: emp.foodAllowanceBalance ?? 1000
     });
     setModalOpen(true);
   };
@@ -150,7 +154,7 @@ export function EmployeeManager() {
         username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', 
         weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '',
         workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true, gracePeriod: 5,
-        assignedShift: 'opening'
+        assignedShift: 'opening', foodAllowanceBalance: 1000
     });
   };
 
@@ -172,12 +176,13 @@ export function EmployeeManager() {
               <TableHead className="font-black uppercase text-[10px]">Operator</TableHead>
               <TableHead className="font-black uppercase text-[10px]">Role</TableHead>
               <TableHead className="font-black uppercase text-[10px]">Compensation</TableHead>
+              <TableHead className="font-black uppercase text-[10px]">Meal Quota</TableHead>
               <TableHead className="font-black uppercase text-[10px]">Shift Hours</TableHead>
               <TableHead className="text-right font-black uppercase text-[10px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? <TableRow><TableCell colSpan={5} className="h-32 text-center animate-pulse">Syncing Workforce...</TableCell></TableRow> : 
+            {loading ? <TableRow><TableCell colSpan={6} className="h-32 text-center animate-pulse">Syncing Workforce...</TableCell></TableRow> : 
               employees?.map(emp => (
                 <TableRow key={emp.id} className="hover:bg-muted/5">
                   <TableCell className="py-4">
@@ -200,6 +205,11 @@ export function EmployeeManager() {
                     <div className="flex items-center gap-1.5 font-mono font-bold text-xs">
                       <Banknote className="h-3 w-3 text-emerald-600" />
                       ₹{(emp.salary ?? 0).toLocaleString()} / {emp.salaryType || 'hourly'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-mono font-bold text-xs">
+                      ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -344,6 +354,10 @@ export function EmployeeManager() {
                     <SelectItem value="false">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase text-muted-foreground">Meal Allowance Quota (₹)</Label>
+                <Input type="number" value={formData.foodAllowanceBalance} onChange={e => setFormData({...formData, foodAllowanceBalance: Number(e.target.value)})} className="font-mono font-bold text-xs" />
               </div>
             </div>
           </div>

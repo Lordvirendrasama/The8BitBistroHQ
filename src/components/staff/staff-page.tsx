@@ -5,14 +5,16 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import type { Shift, ShiftTask } from '@/lib/types';
-import { getActiveOrStartShift, updateTask, startBreak, endBreak, endShift } from '@/firebase/firestore/shifts';
+import type { Shift, ShiftTask, Employee, BillItem } from '@/lib/types';
+import { getActiveOrStartShift, updateTask, endShift } from '@/firebase/firestore/shifts';
+import { addStaffOrder } from '@/firebase/firestore/staff-orders';
+import { StaffFoodModal } from '@/components/staff/staff-food-modal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Clock, Coffee, Sun, Moon, LogOut, PlayCircle, ListChecks, Timer, AlertCircle, Calendar } from 'lucide-react';
+import { Clock, Coffee, Sun, Moon, LogOut, PlayCircle, ListChecks, Timer, AlertCircle, Calendar, Utensils } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { CompleteShiftModal } from '@/components/staff/complete-shift-modal';
@@ -34,6 +36,27 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
     const [isLoadingShift, setIsLoadingShift] = useState(true);
     const [recentShifts, setRecentShifts] = useState<Shift[]>([]);
     const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
+    const [isStaffFoodModalOpen, setIsStaffFoodModalOpen] = useState(false);
+
+    // Fetch current logged-in employee record in real-time
+    const currentEmployeeQuery = useMemo(() => {
+        if (!db || !user?.username) return null;
+        return query(
+            collection(db, 'employees'),
+            where('username', '==', user.username)
+        );
+    }, [db, user]);
+    const { data: employeeDocs } = useCollection<Employee>(currentEmployeeQuery);
+    const currentEmployee = employeeDocs?.[0] || null;
+
+    // Fetch active settings/cycle in real-time
+    const settingsQuery = useMemo(() => {
+        if (!db) return null;
+        return query(collection(db, 'settings'));
+    }, [db]);
+    const { data: settingsDocs } = useCollection<any>(settingsQuery);
+    const appConfig = settingsDocs?.find(doc => doc.id === 'app_config');
+    const activeCycle = appConfig?.activeCycle || 'Launch Live';
 
     const isAdmin = user?.role === 'admin';
 
@@ -86,18 +109,22 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
         toast({ title: "Shift Started", description: "Your new shift has begun. Good luck!" });
     };
 
-    const handleToggleBreak = async () => {
-        if (!user || !activeShift) return;
-        const currentBreak = activeShift.breaks?.find(b => !b.endTime);
-        
-        if (currentBreak) {
-            await endBreak(activeShift.id, user);
-            toast({ title: "Break Ended", description: "Returning to duty." });
-        } else {
-            await startBreak(activeShift.id, user);
-            toast({ title: "Break Started", description: "Enjoy your rest period." });
+    const handleSaveStaffOrder = async (items: BillItem[], totalAmount: number, newBalance: number) => {
+        if (!currentEmployee) return;
+        try {
+            await addStaffOrder(currentEmployee.id, newBalance, {
+                employeeUsername: currentEmployee.username,
+                employeeDisplayName: currentEmployee.displayName,
+                items,
+                totalAmount,
+                timestamp: new Date().toISOString(),
+                cycle: activeCycle
+            });
+            toast({ title: "Order Placed Successfully", description: `₹${totalAmount.toLocaleString()} deducted from your allowance.` });
+        } catch (error) {
+            console.error("Error saving staff order:", error);
+            toast({ variant: "destructive", title: "Order Placement Failed", description: "Please try again later." });
         }
-        await refreshShift();
     };
 
     const shiftTasks = useMemo(() => {
@@ -170,7 +197,7 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
         return <div className="flex py-20 items-center justify-center font-headline text-xs animate-pulse">Accessing Shift Protocols...</div>;
     }
 
-    const activeBreak = activeShift?.breaks?.find(b => !b.endTime);
+    // Break functionality replaced with Staff Food
 
     const TaskList = ({ tasks, title }: { tasks: ShiftTask[], title: string }) => (
         <div>
@@ -231,17 +258,16 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                     </div>
                     {activeShift && user?.role !== 'guest' ? (
                         <div className="flex gap-2">
-                            <Button 
-                                variant="outline" 
-                                onClick={handleToggleBreak} 
-                                className={cn(
-                                    "h-12 px-6 font-black uppercase tracking-tight border-2 shadow-sm",
-                                    activeBreak ? "bg-amber-500 border-amber-600 text-white" : "border-amber-500/20 text-amber-600 hover:bg-amber-500 hover:text-white"
-                                )}
-                            >
-                                {activeBreak ? <Timer className="mr-2 h-5 w-5 animate-pulse" /> : <Coffee className="mr-2 h-5 w-5" />}
-                                {activeBreak ? "End Break" : "Take Break"}
-                            </Button>
+                            {currentEmployee && (
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => setIsStaffFoodModalOpen(true)} 
+                                    className="h-12 px-6 font-black uppercase tracking-tight border-2 shadow-sm border-amber-500/20 text-amber-600 hover:bg-amber-500 hover:text-white"
+                                >
+                                    <Utensils className="mr-2 h-5 w-5" />
+                                    Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})
+                                </Button>
+                            )}
                             <Button onClick={handleLogoutClick} size="lg" variant="destructive" className="h-12 px-6 font-black uppercase tracking-widest shadow-lg">
                                 <Clock className="mr-2 h-5 w-5"/> Complete Shift
                             </Button>
@@ -271,18 +297,17 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                 <p className="text-sm font-bold text-foreground">Operational Record: {activeShift.id.slice(0, 8).toUpperCase()}</p>
                             </div>
                             <div className="flex gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={handleToggleBreak} 
-                                    className={cn(
-                                        "h-10 px-4 font-black uppercase text-[10px] border-2",
-                                        activeBreak ? "bg-amber-500 text-white border-amber-600" : "text-amber-600 border-amber-500/20"
-                                    )}
-                                >
-                                    {activeBreak ? <Timer className="mr-1.5 h-3.5 w-3.5 animate-pulse" /> : <Coffee className="mr-1.5 h-3.5 w-3.5" />}
-                                    {activeBreak ? "On Break" : "Take Break"}
-                                </Button>
+                                {currentEmployee && (
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => setIsStaffFoodModalOpen(true)} 
+                                        className="h-10 px-4 font-black uppercase text-[10px] border-2 text-amber-600 border-amber-500/20 hover:bg-amber-500 hover:text-white"
+                                    >
+                                        <Utensils className="mr-1.5 h-3.5 w-3.5" />
+                                        Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})
+                                    </Button>
+                                )}
                                 <Button onClick={handleLogoutClick} size="sm" variant="destructive" className="h-10 px-4 font-black uppercase text-[10px] shadow-md">
                                     <Clock className="mr-1.5 h-3.5 w-3.5"/> Settle Day
                                 </Button>
@@ -373,6 +398,16 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                 onTaskToggle={handleTaskToggle}
                 onConfirmLogout={handleConfirmLogout}
             />
+
+            {currentEmployee && (
+                <StaffFoodModal
+                    isOpen={isStaffFoodModalOpen}
+                    onOpenChange={setIsStaffFoodModalOpen}
+                    employee={currentEmployee}
+                    activeCycle={activeCycle}
+                    onSave={handleSaveStaffOrder}
+                />
+            )}
         </div>
     );
 }

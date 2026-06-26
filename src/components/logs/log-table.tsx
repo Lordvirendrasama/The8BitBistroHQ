@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Star, Gift, Edit, Trash2, MousePointerClick, History, CreditCard, Settings, Database, Shield } from 'lucide-react';
+import { UserPlus, Star, Gift, Edit, Trash2, MousePointerClick, History, CreditCard, Settings, Database, Shield, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const getLogIcon = (type: LogEntryType) => {
@@ -38,6 +38,8 @@ const getLogIcon = (type: LogEntryType) => {
         return <History className="h-5 w-5 text-gray-500" />
     case 'ADMIN_LOGIN':
         return <Shield className="h-5 w-5 text-purple-500" />;
+    case 'STAFF_FOOD_ORDER':
+        return <Utensils className="h-5 w-5 text-amber-500" />;
     default:
       return null;
   }
@@ -69,6 +71,8 @@ const getLogBadgeVariant = (type: LogEntryType) => {
             return 'bg-gray-500/20 text-gray-500 border-gray-500/50';
         case 'ADMIN_LOGIN':
             return 'bg-purple-500/20 text-purple-500 border-purple-500/50';
+        case 'STAFF_FOOD_ORDER':
+            return 'bg-amber-500/20 text-amber-500 border-amber-500/50';
         default:
             return 'outline';
     }
