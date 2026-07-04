@@ -579,9 +579,42 @@ export function GlobalTimerNotifications() {
 
   const handleStartFinishing = async () => {
     if (activeEndAlert) {
-      await updateStation(activeEndAlert.station.id, {
+      const stationId = activeEndAlert.station.id;
+      const currentStation = stations?.find(s => s.id === stationId) || activeEndAlert.station;
+      
+      let endedTimeISO = new Date().toISOString();
+      
+      if (currentStation) {
+        let endedTimeMs = 0;
+        
+        if (activeEndAlert.memberName !== "EVERYONE") {
+          const member = currentStation.members.find(
+            m => m.name === activeEndAlert.memberName && m.status !== 'finished'
+          );
+          if (member?.endTime) {
+            endedTimeMs = new Date(member.endTime).getTime();
+          }
+        } else {
+          const endedMembers = currentStation.members.filter(
+            m => m.status !== 'finished' && m.endTime && new Date(m.endTime).getTime() <= Date.now()
+          );
+          if (endedMembers.length > 0) {
+            endedTimeMs = Math.max(...endedMembers.map(m => new Date(m.endTime!).getTime()));
+          }
+        }
+        
+        if (!endedTimeMs && currentStation.endTime) {
+          endedTimeMs = new Date(currentStation.endTime).getTime();
+        }
+        
+        if (endedTimeMs && endedTimeMs <= Date.now()) {
+          endedTimeISO = new Date(endedTimeMs).toISOString();
+        }
+      }
+
+      await updateStation(stationId, {
         status: 'finishing',
-        finishingStartTime: new Date().toISOString()
+        finishingStartTime: endedTimeISO
       });
       toast({ title: "Grace Period Started", description: "5 minutes wrap-up timer active." });
       setActiveEndAlert(null);
