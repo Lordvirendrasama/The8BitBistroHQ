@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { logUserLogin } from '@/firebase/firestore/logs';
+import { createAdminNotification } from '@/firebase/firestore/notifications';
 import { getFirestore, collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
 import { endShift } from '../firestore/shifts';
@@ -68,6 +69,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: 'staff', // Temporary until onAuthStateChanged fetches the real role
       };
       await logUserLogin(loggedInUser);
+
+      if (username.toLowerCase() === 'kaif') {
+        await createAdminNotification(
+          `<strong>Kaif</strong> has logged in.`,
+          loggedInUser,
+          'STAFF_LOGIN'
+        );
+      }
     } catch (error) {
       setLoading(false);
       throw new Error('Invalid PIN or user not found');

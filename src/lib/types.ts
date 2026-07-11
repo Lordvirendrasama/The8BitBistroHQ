@@ -372,7 +372,7 @@ export interface LiabilityPayment {
   };
 }
 
-export type AdminNotificationType = 'INCOMPLETE_SHIFT' | 'BILL_MODIFIED' | 'BILL_DELETED' | 'STAFF_NOTE' | 'BILL_DUE';
+export type AdminNotificationType = 'INCOMPLETE_SHIFT' | 'BILL_MODIFIED' | 'BILL_DELETED' | 'STAFF_NOTE' | 'BILL_DUE' | 'STAFF_LOGIN';
 
 export interface AdminNotification {
   id: string;

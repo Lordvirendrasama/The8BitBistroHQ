@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid } from 'lucide-react';
+import { useAuth } from '@/firebase/auth/use-user';
 
 const settingsNav = [
   { href: '/settings', label: 'Hub' },
@@ -27,6 +28,12 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const dynamicNav = [
+    ...settingsNav,
+    ...(user?.username === 'Viren' ? [{ href: '/settings/ex-employees', label: 'Ex Employees' }] : [])
+  ];
 
   return (
     <div className="space-y-8">
@@ -48,7 +55,7 @@ export default function SettingsLayout({
       </div>
 
       <div className="flex items-center gap-2 border-b pb-2 overflow-x-auto no-scrollbar">
-        {settingsNav.map((item) => (
+        {dynamicNav.map((item) => (
           <Button
             key={item.href}
             asChild

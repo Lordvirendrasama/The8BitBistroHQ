@@ -51,6 +51,8 @@ export default function LoginPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showMoney, setShowMoney] = useState(false);
+  const [logoTaps, setLogoTaps] = useState(0);
 
   // PIN State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -467,6 +469,21 @@ export default function LoginPage() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
+  const handleLogoClick = () => {
+    setLogoTaps(prev => {
+      const next = prev + 1;
+      if (next >= 4) {
+        setShowMoney(true);
+        toast({
+          title: "Easter Egg Unlocked!",
+          description: "Intake stats are now visible.",
+        });
+        return 0;
+      }
+      return next;
+    });
+  };
+
   return (
     <div className={cn(
       "relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background transition-all duration-1000 p-4",
@@ -492,25 +509,29 @@ export default function LoginPage() {
             </div>
             
             <div className="flex items-center gap-6">
-                <div className="text-right">
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
-                        <IndianRupee className="h-3 w-3" />
-                        Today's Intake
-                    </p>
-                    <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-emerald-500">
-                        ₹{todayCollection.toLocaleString()}
-                    </p>
-                </div>
-                <div className="text-right border-l border-foreground/10 pl-6">
-                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
-                        <TrendingUp className="h-3 w-3" />
-                        Projected
-                    </p>
-                    <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-blue-500">
-                        ₹{Math.floor(projectedTotal).toLocaleString()}
-                    </p>
-                </div>
-                <div className="text-right border-l border-foreground/10 pl-6">
+                {showMoney && (
+                    <>
+                        <div className="text-right">
+                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                                <IndianRupee className="h-3 w-3" />
+                                Today's Intake
+                            </p>
+                            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-emerald-500">
+                                ₹{todayCollection.toLocaleString()}
+                            </p>
+                        </div>
+                        <div className="text-right border-l border-foreground/10 pl-6">
+                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                                <TrendingUp className="h-3 w-3" />
+                                Projected
+                            </p>
+                            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-blue-500">
+                                ₹{Math.floor(projectedTotal).toLocaleString()}
+                            </p>
+                        </div>
+                    </>
+                )}
+                <div className={cn("text-right", showMoney && "border-l border-foreground/10 pl-6")}>
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] flex items-center justify-end gap-2">
                         <Clock className="h-3 w-3" />
                         Live Terminal
@@ -526,10 +547,11 @@ export default function LoginPage() {
             {/* Left Column: Logo & Logins */}
             <div className="lg:col-span-8 flex flex-col items-center gap-6 sm:gap-10 w-full">
                 <div 
-                  className="flex flex-col items-center animate-in fade-in zoom-in duration-1000 transition-transform duration-300 ease-out"
+                  className="flex flex-col items-center animate-in fade-in zoom-in duration-1000 transition-transform duration-300 ease-out cursor-pointer select-none"
                   style={{ transform: `translate(${logoX}px, ${logoY}px)` }}
+                  onClick={handleLogoClick}
                 >
-                    <div className="relative h-24 w-24 sm:h-32 sm:w-32 drop-shadow-[0_0_25px_rgba(239,0,53,0.2)] hover:scale-110 transition-transform">
+                    <div className="relative h-24 w-24 sm:h-32 sm:w-32 drop-shadow-[0_0_25px_rgba(239,0,53,0.2)] hover:scale-110 active:scale-95 duration-200 transition-transform">
                         <Image src="/logo.png" alt="The 8 Bit Bistro" width={128} height={128} className="object-contain" priority />
                     </div>
                     <p className="text-[8px] font-pixel mt-4 text-primary uppercase bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">Build v{APP_VERSION}</p>

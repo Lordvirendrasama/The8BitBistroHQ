@@ -6,7 +6,7 @@ import type { AdminNotification } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { Button } from '@/components/ui/button';
-import { X, FileWarning, ShieldAlert, Receipt, Trash2, StickyNote } from 'lucide-react';
+import { X, FileWarning, ShieldAlert, Receipt, Trash2, StickyNote, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { dismissAdminNotification } from '@/firebase/firestore/notifications';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -25,7 +25,7 @@ export function AdminNotifications() {
     return query(
       collection(db, 'adminNotifications'), 
       where('isRead', '==', false),
-      where('type', 'in', ['BILL_DELETED', 'BILL_MODIFIED', 'INCOMPLETE_SHIFT', 'BILL_DUE'])
+      where('type', 'in', ['BILL_DELETED', 'BILL_MODIFIED', 'INCOMPLETE_SHIFT', 'BILL_DUE', 'STAFF_LOGIN'])
     );
   }, [db]);
 
@@ -54,6 +54,8 @@ export function AdminNotifications() {
             return { icon: <Receipt className="h-4 w-4" />, title: 'Bill Edit Audit', color: 'text-amber-600 dark:text-amber-400' };
         case 'STAFF_NOTE':
             return { icon: <StickyNote className="h-4 w-4" />, title: 'Staff Briefing', color: 'text-blue-600 dark:text-blue-400' };
+        case 'STAFF_LOGIN':
+            return { icon: <User className="h-4 w-4" />, title: 'Staff Login Alert', color: 'text-emerald-600 dark:text-emerald-400' };
         default:
             return { icon: <FileWarning className="h-4 w-4" />, title: 'System Alert', color: 'text-amber-600 dark:text-amber-400' };
     }
