@@ -220,7 +220,7 @@ export function EmployeeManager() {
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(emp)} className="font-bold uppercase text-[10px]"><Edit className="mr-2 h-3 w-3"/> Edit Profile</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => deleteEmployee(emp.id)} className="text-destructive font-bold uppercase text-[10px]"><Trash className="mr-2 h-3 w-3"/> Remove</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateEmployee(emp.id, { isActive: false })} className="text-destructive font-bold uppercase text-[10px]"><Trash className="mr-2 h-3 w-3"/> Remove</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

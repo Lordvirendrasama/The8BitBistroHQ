@@ -19,14 +19,18 @@ import {
   ChevronDown, 
   ChevronUp, 
   IndianRupee,
-  Utensils
+  Utensils,
+  RotateCcw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Employee, StaffOrder } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { addEmployee, updateEmployee } from '@/firebase/firestore/employees';
 
 export default function ExEmployeesPage() {
   const { db } = useFirebase();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   // 1. Fetch all employees in database
   const employeesQuery = useMemo(() => (!db ? null : collection(db, 'employees')), [db]);
@@ -38,12 +42,67 @@ export default function ExEmployeesPage() {
 
   // Expanded states for order history accordion
   const [expandedEmployees, setExpandedEmployees] = useState<Record<string, boolean>>({});
+  const [isRestoring, setIsRestoring] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (username: string) => {
     setExpandedEmployees(prev => ({
       ...prev,
       [username]: !prev[username]
     }));
+  };
+
+  const handleRestore = async (emp: any) => {
+    if (isRestoring[emp.username]) return;
+    setIsRestoring(prev => ({ ...prev, [emp.username]: true }));
+
+    try {
+      if (!emp.isVirtual && emp.id) {
+        // Soft-deleted/deactivated employee
+        await updateEmployee(emp.id, { isActive: true });
+        toast({
+          title: "Operator Restored",
+          description: `${emp.displayName} has been successfully restored to the active registry.`
+        });
+      } else {
+        // Virtual/completely deleted employee
+        const newId = await addEmployee({
+          username: emp.username,
+          displayName: emp.displayName,
+          role: (emp.role as any) || 'staff',
+          salary: emp.salary || 6000,
+          salaryType: emp.salaryType || 'monthly',
+          weekOffDay: 4, // Thursday
+          joinDate: new Date().toISOString().slice(0, 10),
+          pin: '1234', // Default PIN for restored accounts
+          workStartTime: '09:00',
+          workEndTime: '15:00',
+          workingDaysPerWeek: 6,
+          overtimeMultiplier: 1.5,
+          isActive: true,
+          gracePeriod: 5,
+          assignedShift: 'opening',
+          foodAllowanceBalance: emp.foodAllowanceBalance ?? 1000
+        });
+
+        if (newId) {
+          toast({
+            title: "Operator Restored",
+            description: `${emp.displayName} restored as a new active profile. Default PIN is 1234. Please verify in Employees manager.`
+          });
+        } else {
+          throw new Error("Failed to create employee profile");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Error Restoring Operator",
+        description: "An unexpected error occurred during restoration."
+      });
+    } finally {
+      setIsRestoring(prev => ({ ...prev, [emp.username]: false }));
+    }
   };
 
   // Compile ex-employees list
@@ -198,6 +257,19 @@ export default function ExEmployeesPage() {
                         {totalSpent.toLocaleString()}
                       </span>
                     </div>
+                    <Button 
+                      onClick={() => handleRestore(emp)} 
+                      disabled={isRestoring[emp.username]}
+                      className="font-black uppercase tracking-tight text-[10px] h-9 border-2 flex items-center gap-1.5 bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 hover:text-primary-foreground transition-colors shrink-0"
+                      variant="outline"
+                    >
+                      {isRestoring[emp.username] ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      )}
+                      Restore Operator
+                    </Button>
                   </div>
                 </CardHeader>
 
