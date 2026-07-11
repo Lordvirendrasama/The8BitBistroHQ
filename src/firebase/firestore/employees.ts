@@ -30,6 +30,19 @@ export const updateEmployee = async (employeeId: string, updates: Partial<Employ
   const ref = doc(db, 'employees', employeeId);
   try {
     await updateDoc(ref, updates);
+
+    // Sync to userRoles collection if username or role has changed
+    if (updates.username !== undefined || updates.role !== undefined) {
+      const snap = await getDocs(query(collection(db, 'userRoles'), where('employeeId', '==', employeeId)));
+      for (const d of snap.docs) {
+        const roleRef = doc(db, 'userRoles', d.id);
+        const roleUpdates: any = {};
+        if (updates.username !== undefined) roleUpdates.username = updates.username;
+        if (updates.role !== undefined) roleUpdates.role = updates.role;
+        await updateDoc(roleRef, roleUpdates);
+      }
+    }
+
     return true;
   } catch (e) {
     console.error("Error updating employee:", e);
@@ -42,6 +55,14 @@ export const deleteEmployee = async (employeeId: string) => {
   const ref = doc(db, 'employees', employeeId);
   try {
     await deleteDoc(ref);
+
+    // Also delete any matching credentials in userRoles so they cannot log in
+    const snap = await getDocs(query(collection(db, 'userRoles'), where('employeeId', '==', employeeId)));
+    for (const d of snap.docs) {
+      const roleRef = doc(db, 'userRoles', d.id);
+      await deleteDoc(roleRef);
+    }
+
     return true;
   } catch (e) {
     console.error("Error deleting employee:", e);

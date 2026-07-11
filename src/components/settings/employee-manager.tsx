@@ -61,53 +61,47 @@ export function EmployeeManager() {
   const empQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
   const { data: employees, loading } = useCollection<Employee>(empQuery);
 
-  // Auto-seeding Kaif and Musaib if they don't exist
+  // Auto-seeding Kaif and Musaib if they don't exist and registry is empty
   useEffect(() => {
     if (loading || !employees) return;
-    const hasKaif = employees.some(e => e.username === 'kaif');
-    const hasMusaib = employees.some(e => e.username === 'musaib');
-    if (!hasKaif || !hasMusaib) {
+    if (employees.length === 0) {
       const seedData = async () => {
-        if (!hasKaif) {
-          await addEmployee({
-            username: 'kaif',
-            displayName: 'Kaif',
-            role: 'staff',
-            salary: 6000,
-            salaryType: 'monthly',
-            weekOffDay: 4, // Thursday
-            joinDate: new Date().toISOString().slice(0, 10),
-            pin: '1234',
-            workStartTime: '09:00',
-            workEndTime: '15:00',
-            workingDaysPerWeek: 6,
-            overtimeMultiplier: 1.5,
-            isActive: true,
-            gracePeriod: 5,
-            assignedShift: 'opening',
-            foodAllowanceBalance: 1000
-          });
-        }
-        if (!hasMusaib) {
-          await addEmployee({
-            username: 'musaib',
-            displayName: 'Musaib',
-            role: 'staff',
-            salary: 6000,
-            salaryType: 'monthly',
-            weekOffDay: 4, // Thursday
-            joinDate: new Date().toISOString().slice(0, 10),
-            pin: '1234',
-            workStartTime: '17:00',
-            workEndTime: '23:00',
-            workingDaysPerWeek: 6,
-            overtimeMultiplier: 1.5,
-            isActive: true,
-            gracePeriod: 5,
-            assignedShift: 'closing',
-            foodAllowanceBalance: 1000
-          });
-        }
+        await addEmployee({
+          username: 'kaif',
+          displayName: 'Kaif',
+          role: 'staff',
+          salary: 6000,
+          salaryType: 'monthly',
+          weekOffDay: 4, // Thursday
+          joinDate: new Date().toISOString().slice(0, 10),
+          pin: '1234',
+          workStartTime: '09:00',
+          workEndTime: '15:00',
+          workingDaysPerWeek: 6,
+          overtimeMultiplier: 1.5,
+          isActive: true,
+          gracePeriod: 5,
+          assignedShift: 'opening',
+          foodAllowanceBalance: 1000
+        });
+        await addEmployee({
+          username: 'musaib',
+          displayName: 'Musaib',
+          role: 'staff',
+          salary: 6000,
+          salaryType: 'monthly',
+          weekOffDay: 4, // Thursday
+          joinDate: new Date().toISOString().slice(0, 10),
+          pin: '1234',
+          workStartTime: '17:00',
+          workEndTime: '23:00',
+          workingDaysPerWeek: 6,
+          overtimeMultiplier: 1.5,
+          isActive: true,
+          gracePeriod: 5,
+          assignedShift: 'closing',
+          foodAllowanceBalance: 1000
+        });
       };
       seedData();
     }
