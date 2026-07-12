@@ -231,9 +231,9 @@ export function GlobalTimerNotifications() {
   const announcedWarnings = useRef<Set<string>>(new Set());
   const announcedEnds = useRef<Set<string>>(new Set());
   const processedAnnouncements = useRef<Set<string>>(new Set());
-  const [activeEndAlert, setActiveEndAlert] = useState<{ station: Station, memberName: string } | null>(null);
+  const [activeEndAlert, setActiveEndAlert] = useState<{ station: Station, memberName: string, endTime?: string | null } | null>(null);
   const [activeWarningAlert, setActiveWarningAlert] = useState<{ station: Station, memberName: string } | null>(null);
-  const activeEndAlertRef = useRef<{ station: Station, memberName: string } | null>(null);
+  const activeEndAlertRef = useRef<{ station: Station, memberName: string, endTime?: string | null } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isUnlocked = useRef(false);
   const sessionStartTime = useRef(new Date().toISOString());
@@ -433,14 +433,15 @@ export function GlobalTimerNotifications() {
             // Group announcement for multiple players
             endCandidates.forEach(m => announcedEnds.current.add(`${station.id}-${m.id}-ended`));
             playAnnouncement(`Time is up for ${station.name}. All sessions ended.`);
-            setActiveEndAlert({ station, memberName: "EVERYONE" });
+            const maxEndTime = new Date(Math.max(...endCandidates.map(m => new Date(m.endTime!).getTime()))).toISOString();
+            setActiveEndAlert({ station, memberName: "EVERYONE", endTime: maxEndTime });
             setActiveWarningAlert(null);
         } else if (endCandidates.length === 1) {
             // Individual announcement for single player
             const m = endCandidates[0];
             announcedEnds.current.add(`${station.id}-${m.id}-ended`);
             playAnnouncement(`Time is up for ${m.name} at ${station.name}.`);
-            setActiveEndAlert({ station, memberName: m.name });
+            setActiveEndAlert({ station, memberName: m.name, endTime: m.endTime });
             setActiveWarningAlert(null);
         }
 
@@ -584,7 +585,9 @@ export function GlobalTimerNotifications() {
       
       let endedTimeISO = new Date().toISOString();
       
-      if (currentStation) {
+      if (activeEndAlert.endTime) {
+        endedTimeISO = activeEndAlert.endTime;
+      } else if (currentStation) {
         let endedTimeMs = 0;
         
         if (activeEndAlert.memberName !== "EVERYONE") {
@@ -596,7 +599,7 @@ export function GlobalTimerNotifications() {
           }
         } else {
           const endedMembers = currentStation.members.filter(
-            m => m.status !== 'finished' && m.endTime && new Date(m.endTime).getTime() <= Date.now()
+            m => m.status !== 'finished' && m.endTime
           );
           if (endedMembers.length > 0) {
             endedTimeMs = Math.max(...endedMembers.map(m => new Date(m.endTime!).getTime()));
@@ -607,7 +610,7 @@ export function GlobalTimerNotifications() {
           endedTimeMs = new Date(currentStation.endTime).getTime();
         }
         
-        if (endedTimeMs && endedTimeMs <= Date.now()) {
+        if (endedTimeMs) {
           endedTimeISO = new Date(endedTimeMs).toISOString();
         }
       }

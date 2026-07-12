@@ -542,6 +542,7 @@ export interface StaffOrder {
   totalAmount: number;
   timestamp: string;
   cycle: string;
+  approved?: boolean;
 }
 
 

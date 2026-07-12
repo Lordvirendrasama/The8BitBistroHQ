@@ -8,7 +8,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/firebase/auth/use-user";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from 'react';
-import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem, GamingPackage, Employee, BillItem } from '@/lib/types';
+import type { Shift, ShiftTask, Station, Bill, Expense, LiabilityState, FixedBill, Settings, OwnerTask, OwnerConsumption, FoodItem, GamingPackage, Employee, BillItem, StaffOrder } from '@/lib/types';
 import { CompleteShiftModal } from '@/components/staff/complete-shift-modal';
 import { addStaffOrder } from '@/firebase/firestore/staff-orders';
 import { StaffFoodModal } from '@/components/staff/staff-food-modal';
@@ -18,7 +18,7 @@ import { announceGlobally } from '@/components/notifications/global-timer-notifi
 import { StaffNotepad } from '@/components/staff/staff-notepad';
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { cn, isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -569,6 +569,273 @@ const TodayExpenses = () => {
   );
 };
 
+const OwnerStaffFoodHeader = ({ 
+  activeShift, 
+  currentEmployee, 
+  activeCycle, 
+  handleSaveStaffOrder 
+}: { 
+  activeShift: Shift | null;
+  currentEmployee: Employee | null;
+  activeCycle: string;
+  handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number) => Promise<void>;
+}) => {
+  const { db } = useFirebase();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEmployeeUsername, setSelectedEmployeeUsername] = useState<string>('all');
+
+  const staffOrdersQuery = useMemo(() => !db ? null : collection(db, 'staffOrders'), [db]);
+  const { data: staffOrders } = useCollection<StaffOrder>(staffOrdersQuery);
+
+  const employeesQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
+  const { data: allEmployees } = useCollection<Employee>(employeesQuery);
+
+  const monthOrders = useMemo(() => {
+    if (!staffOrders) return [];
+    const now = new Date();
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    return staffOrders.filter(o => {
+      const d = new Date(o.timestamp);
+      return d >= start && d <= end;
+    }).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }, [staffOrders]);
+
+  const monthTotal = useMemo(() => monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0), [monthOrders]);
+
+  const filteredOrders = useMemo(() => {
+    if (selectedEmployeeUsername === 'all') return monthOrders;
+    return monthOrders.filter(o => o.employeeUsername === selectedEmployeeUsername);
+  }, [monthOrders, selectedEmployeeUsername]);
+
+  const stats = useMemo(() => {
+    const totalOrders = filteredOrders.length;
+    const totalSpent = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const avgSpent = totalOrders > 0 ? Math.round(totalSpent / totalOrders) : 0;
+    
+    const selectedEmp = allEmployees?.find(emp => emp.username === selectedEmployeeUsername);
+    const allowance = selectedEmp ? (selectedEmp.foodAllowanceBalance ?? 1000) : null;
+    
+    return {
+      totalOrders,
+      totalSpent,
+      avgSpent,
+      allowance
+    };
+  }, [filteredOrders, selectedEmployeeUsername, allEmployees]);
+
+  const overallPendingCount = useMemo(() => {
+    return monthOrders.filter(o => !o.approved).length;
+  }, [monthOrders]);
+
+  const employeeSummaries = useMemo(() => {
+    if (!allEmployees) return [];
+    return allEmployees.map(emp => {
+      const empOrders = monthOrders.filter(o => o.employeeUsername === emp.username);
+      const spent = empOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+      const count = empOrders.length;
+      const approvedCount = empOrders.filter(o => o.approved).length;
+      const pendingCount = count - approvedCount;
+      
+      return {
+        emp,
+        spent,
+        count,
+        pendingCount
+      };
+    }).sort((a, b) => b.spent - a.spent);
+  }, [allEmployees, monthOrders]);
+
+  const showAllowance = currentEmployee && activeShift;
+
+  const handlePopoverOpenChange = (open: boolean) => {
+    if (!open) {
+      setSelectedEmployeeUsername('all');
+    }
+  };
+
+  const handleApproveOrder = async (orderId: string) => {
+    if (!db) return;
+    try {
+      const orderRef = doc(db, 'staffOrders', orderId);
+      await updateDoc(orderRef, { approved: true });
+      toast({ title: "Order Approved", description: "The staff food order has been approved." });
+    } catch (error) {
+      console.error("Error approving staff order:", error);
+      toast({ variant: "destructive", title: "Approval Failed", description: "Could not approve the order." });
+    }
+  };
+
+  return (
+    <>
+      <Popover onOpenChange={handlePopoverOpenChange}>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-black transition-all shrink-0 font-body shadow-sm"
+          >
+            <Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <div className="flex flex-col items-start leading-tight">
+              <span className="font-mono text-[10px] sm:text-sm">₹{monthTotal.toLocaleString()}</span>
+            </div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0 overflow-hidden font-body border-2 shadow-2xl" align="center">
+          <div className="p-4 bg-amber-600 text-white flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Utensils className="h-4 w-4" />
+              <h4 className="font-black text-[10px] uppercase tracking-widest">Monthly Staff Food</h4>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2 bg-muted/20 border-b flex items-center justify-between gap-2">
+            <span className="text-[9px] font-black uppercase text-muted-foreground shrink-0">Filter Employee:</span>
+            <select 
+              value={selectedEmployeeUsername} 
+              onChange={(e) => setSelectedEmployeeUsername(e.target.value)}
+              className="bg-background border-2 border-primary/20 rounded px-1.5 py-0.5 text-[9px] font-black uppercase outline-none focus:border-primary/50 text-foreground cursor-pointer"
+            >
+              <option value="all">ALL EMPLOYEES</option>
+              {allEmployees?.map(emp => (
+                <option key={emp.id} value={emp.username}>
+                  {emp.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="p-3 bg-amber-50/50 border-b grid grid-cols-3 gap-2 text-center">
+            <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
+              <span className="text-[7px] font-black uppercase text-muted-foreground leading-none">Spent</span>
+              <span className="font-mono font-black text-amber-600 text-[11px] mt-1">₹{stats.totalSpent.toLocaleString()}</span>
+            </div>
+            <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
+              <span className="text-[7px] font-black uppercase text-muted-foreground leading-none">Orders</span>
+              <span className="font-mono font-black text-foreground text-[11px] mt-1">{stats.totalOrders}</span>
+            </div>
+            <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
+              {selectedEmployeeUsername === 'all' ? (
+                <>
+                  <span className="text-[7px] font-black uppercase text-amber-600 leading-none">Pending Approval</span>
+                  <span className="font-mono font-black text-amber-600 text-[11px] mt-1">{overallPendingCount}</span>
+                </>
+              ) : stats.allowance !== null ? (
+                <>
+                  <span className="text-[7px] font-black uppercase text-emerald-600 leading-none">Allowance Bal</span>
+                  <span className="font-mono font-black text-emerald-600 text-[11px] mt-1">₹{stats.allowance.toLocaleString()}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[7px] font-black uppercase text-muted-foreground leading-none">Avg Spent</span>
+                  <span className="font-mono font-black text-foreground text-[11px] mt-1">₹{stats.avgSpent.toLocaleString()}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {selectedEmployeeUsername === 'all' ? (
+            <ScrollArea className="max-h-[300px]">
+              <div className="divide-y">
+                {employeeSummaries.map(({ emp, spent, count, pendingCount }) => (
+                  <div 
+                    key={emp.id} 
+                    onClick={() => setSelectedEmployeeUsername(emp.username)}
+                    className="p-3 bg-card hover:bg-muted/5 transition-colors cursor-pointer flex justify-between items-center group"
+                  >
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] font-black uppercase text-foreground group-hover:text-primary transition-colors">
+                        {emp.displayName}
+                      </p>
+                      <p className="text-[8px] font-bold text-muted-foreground uppercase">
+                        Quota: ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()} • {count} orders
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {pendingCount > 0 && (
+                        <span className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[7px] font-black uppercase px-1.5 py-0.5 rounded">
+                          {pendingCount} Pending
+                        </span>
+                      )}
+                      <div className="text-right">
+                        <p className="font-mono font-black text-xs text-amber-600">₹{spent.toLocaleString()}</p>
+                        <p className="text-[7px] text-muted-foreground font-bold uppercase">This Month</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <ScrollArea className="max-h-[300px]">
+              <div className="divide-y">
+                {filteredOrders.length > 0 ? filteredOrders.map((o) => (
+                  <div key={o.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group relative flex justify-between items-center">
+                    <div className="space-y-0.5 min-w-0 pr-2">
+                      <p className="text-[10px] font-black uppercase text-foreground leading-tight truncate">
+                        {o.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                      </p>
+                      <p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                        <Clock className="h-2.5 w-2.5" /> {format(new Date(o.timestamp), 'MMM d, p')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-mono font-black text-xs text-amber-600">₹{o.totalAmount}</span>
+                      {o.approved ? (
+                        <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[8px] font-black uppercase px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          <CheckCircle2 className="h-2.5 w-2.5 fill-current" /> Approved
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[8px] font-black uppercase border-amber-500/30 text-amber-600 bg-amber-500/5 hover:bg-amber-500 hover:text-white animate-pulse"
+                          onClick={() => handleApproveOrder(o.id!)}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <div className="py-12 text-center space-y-2 opacity-30">
+                    <Utensils className="h-8 w-8 mx-auto text-muted-foreground" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">No Staff Food Recorded</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+          
+          {showAllowance && (
+            <div className="p-3 bg-muted/10 border-t border-dashed">
+              <Button 
+                className="w-full h-10 bg-amber-600 hover:bg-amber-700 text-white font-black uppercase text-[10px] tracking-widest shadow-lg"
+                onClick={() => setIsModalOpen(true)}
+              >
+                <Utensils className="mr-2 h-3.5 w-3.5" />
+                Place Staff Order
+              </Button>
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+
+      {showAllowance && (
+        <StaffFoodModal
+          isOpen={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          employee={currentEmployee}
+          activeCycle={activeCycle}
+          onSave={handleSaveStaffOrder}
+        />
+      )}
+    </>
+  );
+};
+
 const StaffFoodHeaderButton = ({ 
   activeShift, 
   currentEmployee, 
@@ -996,7 +1263,15 @@ export function AppHeader({
                     {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} />}
                     {!isCustomerView && <OwnerConsumptionHeader />}
                     {!isCustomerView && <TodayExpenses />}
-                    {!isCustomerView && (
+                    {!isCustomerView && user?.username === 'Viren' && (
+                        <OwnerStaffFoodHeader 
+                            activeShift={activeShift} 
+                            currentEmployee={currentEmployee}
+                            activeCycle={activeCycle}
+                            handleSaveStaffOrder={handleSaveStaffOrder}
+                        />
+                    )}
+                    {!isCustomerView && user?.username !== 'Viren' && (
                         <StaffFoodHeaderButton 
                             activeShift={activeShift} 
                             currentEmployee={currentEmployee}
