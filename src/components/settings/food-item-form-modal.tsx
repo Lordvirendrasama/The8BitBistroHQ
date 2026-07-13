@@ -120,7 +120,7 @@ export function FoodItemFormModal({ isOpen, onOpenChange, onSave, item }: FoodIt
                         {(!categories || categories.length === 0) && (
                             <div className="p-2 text-center text-xs text-muted-foreground">
                                 No categories found. 
-                                <Link href="/settings/categories" className="text-primary block font-bold mt-1">Manage Categories</Link>
+                                <Link href="/settings/menu?tab=categories" className="text-primary block font-bold mt-1">Manage Categories</Link>
                             </div>
                         )}
                     </SelectContent>

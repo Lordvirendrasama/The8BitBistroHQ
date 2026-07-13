@@ -9,14 +9,10 @@ import { useAuth } from '@/firebase/auth/use-user';
 
 const settingsNav = [
   { href: '/settings', label: 'Hub' },
-  { href: '/settings/loyalty', label: 'Loyalty Config' },
-  { href: '/settings/rewards', label: 'Rewards' },
-  { href: '/settings/menu', label: 'Food Menu' },
-  { href: '/settings/categories', label: 'Categories' },
-  { href: '/settings/packages', label: 'Gaming Packages' },
+  { href: '/settings/loyalty', label: 'Loyalty & Rewards' },
+  { href: '/settings/menu', label: 'Menu & Packages' },
   { href: '/settings/recharge-packs', label: 'Recharge Packs' },
   { href: '/settings/employees', label: 'Employees' },
-  { href: '/settings/leaves', label: 'Staff Leaves' },
   { href: '/settings/tasks', label: 'Shift Tasks' },
   { href: '/settings/logs', label: 'Logs' },
   { href: '/settings/data', label: 'Data' },
@@ -32,7 +28,6 @@ export default function SettingsLayout({
 
   const dynamicNav = [
     ...settingsNav,
-    ...(user?.username === 'Viren' ? [{ href: '/settings/ex-employees', label: 'Ex Employees' }] : [])
   ];
 
   return (

@@ -32,17 +32,30 @@ try {
   console.log('Successfully updated version files.');
 
   // 5. Git actions
-  console.log('Staging changes with git...');
-  execSync('git add .', { stdio: 'inherit' });
+  const hasGit = () => {
+    try {
+      execSync('git --version', { stdio: 'ignore' });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
 
-  const commitMessage = `Build v${newVersion}`;
-  console.log(`Committing: "${commitMessage}"...`);
-  execSync(`git commit -m "${commitMessage}" --allow-empty`, { stdio: 'inherit' });
+  if (hasGit()) {
+    console.log('Staging changes with git...');
+    execSync('git add .', { stdio: 'inherit' });
 
-  console.log('Pushing to GitHub origin main...');
-  execSync('git push origin main', { stdio: 'inherit' });
+    const commitMessage = `Build v${newVersion}`;
+    console.log(`Committing: "${commitMessage}"...`);
+    execSync(`git commit -m "${commitMessage}" --allow-empty`, { stdio: 'inherit' });
 
-  console.log('Deploy script successfully finished push to GitHub.');
+    console.log('Pushing to GitHub origin main...');
+    execSync('git push origin main', { stdio: 'inherit' });
+
+    console.log('Deploy script successfully finished push to GitHub.');
+  } else {
+    console.warn("WARNING: 'git' command not found in PATH. Skipping git staging, commit, and push.");
+  }
 } catch (error) {
   console.error('Deployment failed:', error.message);
   process.exit(1);

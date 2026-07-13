@@ -837,19 +837,17 @@ const OwnerStaffFoodHeader = ({
 };
 
 const StaffFoodHeaderButton = ({ 
-  activeShift, 
   currentEmployee, 
   activeCycle, 
   handleSaveStaffOrder 
 }: { 
-  activeShift: Shift | null;
   currentEmployee: Employee | null;
   activeCycle: string;
   handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number) => Promise<void>;
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  if (!currentEmployee || !activeShift) return null;
+  if (!currentEmployee) return null;
 
   return (
     <>
@@ -1273,7 +1271,6 @@ export function AppHeader({
                     )}
                     {!isCustomerView && user?.username !== 'Viren' && (
                         <StaffFoodHeaderButton 
-                            activeShift={activeShift} 
                             currentEmployee={currentEmployee}
                             activeCycle={activeCycle}
                             handleSaveStaffOrder={handleSaveStaffOrder}

@@ -18,6 +18,20 @@ export const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
       user: { uid: 'system', displayName: 'System' }
     });
 
+    // Sync to userRoles if there's an existing mapping for this username (relinking restored accounts)
+    const userRolesSnap = await getDocs(collection(db, 'userRoles'));
+    for (const d of userRolesSnap.docs) {
+      const data = d.data();
+      if (data.username && data.username.toLowerCase() === employeeData.username.toLowerCase()) {
+        const roleRef = doc(db, 'userRoles', d.id);
+        await updateDoc(roleRef, { 
+          employeeId: docRef.id,
+          username: employeeData.username,
+          role: employeeData.role
+        });
+      }
+    }
+
     return docRef.id;
   } catch (e) {
     console.error("Error adding employee:", e);

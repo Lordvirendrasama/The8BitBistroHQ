@@ -583,7 +583,7 @@ export default function OwnerDashboardPage() {
         <Button onClick={() => router.push('/dashboard')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-orange-600 hover:text-white transition-all shadow-md">
           <Play className="h-4 w-4" /> Start Station
         </Button>
-        <Button onClick={() => router.push('/settings/packages')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-pink-600 hover:text-white transition-all shadow-md">
+        <Button onClick={() => router.push('/settings/menu?tab=packages')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-pink-600 hover:text-white transition-all shadow-md">
           <Zap className="h-4 w-4" /> Create Offer
         </Button>
       </div>

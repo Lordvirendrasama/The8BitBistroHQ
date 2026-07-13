@@ -1,5 +1,14 @@
-import { GamingPackagesManager } from '@/components/settings/gaming-packages-manager';
+'use client';
 
-export default function GamingPackagesPage() {
-  return <GamingPackagesManager />;
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function SettingsPackagesPageRedirect() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/settings/menu?tab=packages');
+  }, [router]);
+
+  return <div className="p-8 text-center animate-pulse">Redirecting to Gaming Packages...</div>;
 }

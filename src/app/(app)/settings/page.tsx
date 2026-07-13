@@ -22,26 +22,17 @@ import { cn } from '@/lib/utils';
 
 const settingGroups = [
   {
-    title: "Loyalty & Config",
-    description: "Points, XP rules, and active cycles.",
+    title: "Loyalty & Rewards",
+    description: "Points, XP rules, and rewards.",
     items: [
-      { href: '/settings/loyalty', label: 'Loyalty Config', icon: Gem, color: 'text-primary' },
-      { href: '/settings/rewards', label: 'Reward Catalog', icon: PieChart, color: 'text-emerald-600' },
+      { href: '/settings/loyalty', label: 'Loyalty & Rewards', icon: Gem, color: 'text-primary' },
     ]
   },
   {
-    title: "Bistro & Menu",
-    description: "Manage food items and categories.",
+    title: "Bistro & Gaming",
+    description: "Food menu, categories, and gaming rates.",
     items: [
-      { href: '/settings/menu', label: 'Food Menu', icon: Utensils, color: 'text-orange-600' },
-      { href: '/settings/categories', label: 'Categories', icon: Tag, color: 'text-blue-600' },
-    ]
-  },
-  {
-    title: "Gaming Packages",
-    description: "Session rates and prepaid packs.",
-    items: [
-      { href: '/settings/packages', label: 'Gaming Packages', icon: Gamepad2, color: 'text-primary' },
+      { href: '/settings/menu', label: 'Menu & Packages', icon: Utensils, color: 'text-orange-600' },
       { href: '/settings/recharge-packs', label: 'Recharge Packs', icon: Zap, color: 'text-yellow-500' },
     ]
   },
@@ -50,7 +41,6 @@ const settingGroups = [
     description: "Staff management and scheduling.",
     items: [
       { href: '/settings/employees', label: 'Employees', icon: Users, color: 'text-indigo-600' },
-      { href: '/settings/leaves', label: 'Staff Leaves', icon: CalendarDays, color: 'text-pink-600' },
       { href: '/settings/tasks', label: 'Shift Tasks', icon: ListChecks, color: 'text-emerald-600' },
     ]
   },
@@ -66,7 +56,7 @@ const settingGroups = [
 
 export default function SettingsHubPage() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
       {settingGroups.map((group, gIdx) => (
         <div key={gIdx} className="space-y-4">
           <div className="px-1">

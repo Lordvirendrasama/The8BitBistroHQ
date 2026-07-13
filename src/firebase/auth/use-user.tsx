@@ -70,9 +70,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       await logUserLogin(loggedInUser);
 
-      if (username.toLowerCase() === 'kaif') {
+      if (username.toLowerCase() !== 'viren') {
+        const displayUsername = username.charAt(0).toUpperCase() + username.slice(1);
         await createAdminNotification(
-          `<strong>Kaif</strong> has logged in.`,
+          `<strong>${displayUsername}</strong> has logged in.`,
           loggedInUser,
           'STAFF_LOGIN'
         );

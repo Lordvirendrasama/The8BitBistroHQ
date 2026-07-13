@@ -256,35 +256,31 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                 : 'Bistro OS Status: Off Duty'}
                         </p>
                     </div>
-                    {activeShift && user?.role !== 'guest' ? (
-                        <div className="flex gap-2">
-                            {currentEmployee && (
-                                <Button 
-                                    variant="outline" 
-                                    onClick={() => setIsStaffFoodModalOpen(true)} 
-                                    className="h-12 px-6 font-black uppercase tracking-tight border-2 shadow-sm border-amber-500/20 text-amber-600 hover:bg-amber-500 hover:text-white"
-                                >
-                                    <Utensils className="mr-2 h-5 w-5" />
-                                    Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})
-                                </Button>
-                            )}
+                    <div className="flex gap-2">
+                        {currentEmployee && user?.role !== 'guest' && (
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsStaffFoodModalOpen(true)} 
+                                className="h-12 px-6 font-black uppercase tracking-tight border-2 shadow-sm border-amber-500/20 text-amber-600 hover:bg-amber-500 hover:text-white"
+                            >
+                                <Utensils className="mr-2 h-5 w-5" />
+                                Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})
+                            </Button>
+                        )}
+                        {activeShift && user?.role !== 'guest' ? (
                             <Button onClick={handleLogoutClick} size="lg" variant="destructive" className="h-12 px-6 font-black uppercase tracking-widest shadow-lg">
                                 <Clock className="mr-2 h-5 w-5"/> Complete Shift
                             </Button>
-                        </div>
-                    ) : (
-                        <div className="text-right">
-                            {user?.role !== 'guest' ? (
-                                <Button onClick={handleStartShift} size="lg" className="h-14 px-8 font-black uppercase tracking-[0.2em] shadow-xl">
-                                    <PlayCircle className="mr-2 h-6 w-6 text-emerald-400"/> Initialize Shift
-                                </Button>
-                            ) : (
-                                <Button onClick={handleLogoutClick} size="lg" variant="secondary" className="font-bold">
-                                    <LogOut className="mr-2 h-5 w-5"/> Log Out
-                                </Button>
-                            )}
-                        </div>
-                    )}
+                        ) : user?.role !== 'guest' ? (
+                            <Button onClick={handleStartShift} size="lg" className="h-12 px-8 font-black uppercase tracking-wider shadow-xl">
+                                <PlayCircle className="mr-2 h-5 w-5 text-emerald-400"/> Initialize Shift
+                            </Button>
+                        ) : (
+                            <Button onClick={handleLogoutClick} size="lg" variant="secondary" className="font-bold">
+                                <LogOut className="mr-2 h-5 w-5"/> Log Out
+                            </Button>
+                        )}
+                    </div>
                 </div>
             )}
 
