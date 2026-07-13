@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { useAuth } from '@/firebase/auth/use-user';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import type { Shift, ShiftTask } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
@@ -13,10 +13,12 @@ import { StartOfDayTasks } from '@/components/staff/start-of-day-tasks';
 import { GlobalTimerNotifications } from '@/components/notifications/global-timer-notifications';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { CustomerViewProvider } from '@/context/customer-view-context';
+import { ShieldAlert } from 'lucide-react';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const { db } = useFirebase();
   const { toast } = useToast();
 
@@ -72,9 +74,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     toast({ title: "Audit Updated" });
   };
 
+  // Determine path restrictions dynamically
+  const hasAccess = useMemo(() => {
+    if (loading || !user) return false;
+
+    const isAdmin = user.role === 'admin';
+    const isOwner = user.username === 'Viren';
+
+    // 1. Owner-only routes
+    const ownerOnlyPrefixes = ['/scan', '/owner-tasks', '/owner-dashboard', '/financials/loan', '/financials/rent', '/financials/burden-selector'];
+    const isOwnerRoute = ownerOnlyPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+    if (isOwnerRoute && !isOwner) return false;
+
+    // 2. Admin-only routes
+    const adminOnlyPrefixes = ['/settings', '/users', '/analytics', '/attendance', '/leaves', '/staff'];
+    const isAdminRoute = adminOnlyPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+    if (isAdminRoute && !isAdmin) return false;
+
+    // 3. Financials routes (except spending & stock)
+    const isFinancialsRoute = pathname.startsWith('/financials') && !pathname.startsWith('/financials/spending');
+    if (isFinancialsRoute && !isAdmin) return false;
+
+    return true;
+  }, [user, loading, pathname]);
+
+  // Route security redirection and user check
   useEffect(() => {
-    if (!loading && !user) router.push('/login');
-  }, [user, loading, router]);
+    if (loading) return;
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    if (!hasAccess) {
+      toast({
+        title: "Access Restricted",
+        description: "You do not have the required operator clearances to view this terminal.",
+        variant: "destructive"
+      });
+      router.push('/dashboard');
+    }
+  }, [user, loading, hasAccess, router, toast]);
 
   if (loading || isLoadingShift) {
     return (
@@ -111,7 +152,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 employees={activeShift.employees}
               />
             )}
-            <div className="max-w-full">{children}</div>
+            <div className="max-w-full">
+              {hasAccess ? children : (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                  <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                    <ShieldAlert className="h-6 w-6 animate-pulse" />
+                  </div>
+                  <h2 className="font-headline text-lg tracking-wider text-destructive uppercase">Access Restricted</h2>
+                  <p className="text-xs text-muted-foreground max-w-sm uppercase font-bold tracking-tight">
+                    You do not have the required operator clearances to view this terminal. Redirecting...
+                  </p>
+                </div>
+              )}
+            </div>
           </main>
         </SidebarInset>
       </SidebarProvider>
