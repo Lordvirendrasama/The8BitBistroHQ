@@ -96,93 +96,75 @@ export default function SettingsLogsPage() {
     );
   };
 
-  const subNav = [
-    { href: '/settings/logs', label: 'Master Log' },
-    { href: '/settings/logs/payments', label: 'Payments' },
-    { href: '/settings/logs/xp', label: 'XP' },
-    { href: '/settings/logs/rewards', label: 'Rewards' },
-    { href: '/settings/logs/admin-activity', label: 'Logins' },
-  ];
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {subNav.map(item => (
-          <Button key={item.href} asChild variant={pathname === item.href ? 'secondary' : 'outline'} size="sm" className="h-8 text-xs font-bold">
-            <Link href={item.href}>{item.label}</Link>
-          </Button>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardTitle>Master System Log</CardTitle>
-                <CardDescription>Real-time audit of all system interactions.</CardDescription>
-            </div>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                        <Filter className="mr-2 h-4 w-4" />
-                        Filter Types
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Event Categories</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <ScrollArea className="h-72">
-                        {logTypes.map(logType => (
-                            <DropdownMenuCheckboxItem
-                                key={logType}
-                                checked={selectedLogTypes.includes(logType)}
-                                onCheckedChange={() => handleFilterChange(logType)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                {logType.replace(/_/g, ' ')}
-                            </DropdownMenuCheckboxItem>
-                        ))}
-                    </ScrollArea>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Event</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead className="text-right">Time</TableHead>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+              <CardTitle>Master System Log</CardTitle>
+              <CardDescription>Real-time audit of all system interactions.</CardDescription>
+          </div>
+          <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                      <Filter className="mr-2 h-4 w-4" />
+                      Filter Types
+                  </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Event Categories</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <ScrollArea className="h-72">
+                      {logTypes.map(logType => (
+                          <DropdownMenuCheckboxItem
+                              key={logType}
+                              checked={selectedLogTypes.includes(logType)}
+                              onCheckedChange={() => handleFilterChange(logType)}
+                              onSelect={(e) => e.preventDefault()}
+                          >
+                              {logType.replace(/_/g, ' ')}
+                          </DropdownMenuCheckboxItem>
+                      ))}
+                  </ScrollArea>
+              </DropdownMenuContent>
+          </DropdownMenu>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Event</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>User</TableHead>
+              <TableHead className="text-right">Time</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={4} className="text-center py-10">Loading logs...</TableCell></TableRow>
+            ) : sortedLogs.map((log) => (
+              <TableRow key={log.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    {getLogIcon(log.type)}
+                    <Badge variant="outline" className={cn("font-bold text-[10px]", getLogBadgeVariant(log.type))}>
+                      {log.type.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm" dangerouslySetInnerHTML={{ __html: log.description }} />
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                    {log.user?.displayName || 'System'}
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground text-xs">
+                  {format(new Date(log.timestamp), 'PPpp')}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-10">Loading logs...</TableCell></TableRow>
-              ) : sortedLogs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {getLogIcon(log.type)}
-                      <Badge variant="outline" className={cn("font-bold text-[10px]", getLogBadgeVariant(log.type))}>
-                        {log.type.replace(/_/g, ' ')}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm" dangerouslySetInnerHTML={{ __html: log.description }} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                      {log.user?.displayName || 'System'}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground text-xs">
-                    {format(new Date(log.timestamp), 'PPpp')}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
