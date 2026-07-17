@@ -410,7 +410,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
           <DialogTitle className="font-headline text-xl sm:text-2xl text-primary tracking-tight uppercase">
               {step === 'selection' ? 'ASSIGN PLAYERS' : 'CONFIGURE LOGINS'}
           </DialogTitle>
-          <DialogDescription className="text-xs uppercase font-bold text-muted-foreground opacity-60">
+          <DialogDescription className="text-sm uppercase font-bold text-muted-foreground opacity-60">
             {station.name} &bull; {selectedPlayers.length} / {playerLimit} PLAYERS
           </DialogDescription>
         </DialogHeader>
@@ -420,17 +420,17 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                 <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-left-4 duration-300">
                     <div className="p-3 sm:p-4 flex-1 flex flex-col min-h-0">
                         <div className="space-y-3 shrink-0 mb-4">
-                            <h3 className="text-xs font-bold text-foreground uppercase tracking-normal opacity-80">1. MEMBER SELECTION</h3>
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-normal opacity-80">1. MEMBER SELECTION</h3>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="SEARCH MEMBERS..." className="pl-10 h-10 border-2 bg-muted/5 text-xs font-bold uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={selectedPlayers.length >= playerLimit} />
+                                <Input placeholder="SEARCH MEMBERS..." className="pl-10 h-10 border-2 bg-muted/5 text-sm font-bold uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={selectedPlayers.length >= playerLimit} />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <Button 
                                     onClick={handleAddGuest} 
                                     disabled={selectedPlayers.length >= playerLimit} 
                                     variant="outline" 
-                                    className="h-10 border-2 uppercase text-xs font-bold gap-2 bg-emerald-500/5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                    className="h-10 border-2 uppercase text-sm font-bold gap-2 bg-emerald-500/5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                                 >
                                     <UserPlus className="h-4 w-4" /> GUEST
                                 </Button>
@@ -442,7 +442,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                     <Button 
                                         disabled={selectedPlayers.length >= playerLimit} 
                                         variant="outline" 
-                                        className="h-10 border-2 uppercase text-xs font-bold gap-2 bg-emerald-500/5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                        className="h-10 border-2 uppercase text-sm font-bold gap-2 bg-emerald-500/5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                                     >
                                         <UserPlus2 className="h-4 w-4" /> MEMBER
                                     </Button>
@@ -458,21 +458,21 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                             <Avatar className="h-10 w-10 border-2 border-primary/10"><AvatarImage src={member.avatarUrl} /><AvatarFallback>{member.name[0]}</AvatarFallback></Avatar>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-bold uppercase leading-none truncate text-foreground">{member.name}</p>
-                                                <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">@{member.username}</p>
+                                                <p className="text-sm text-muted-foreground font-bold uppercase mt-1">@{member.username}</p>
                                             </div>
-                                            {balance > 0 && <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 text-[10px] font-bold uppercase"><Zap className="h-3 w-3 fill-current" />{formatPackageDuration(balance)}</div>}
+                                            {balance > 0 && <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 text-sm font-bold uppercase"><Zap className="h-3 w-3 fill-current" />{formatPackageDuration(balance)}</div>}
                                         </div>
                                     );
                                 })}
                             </div>
                         </ScrollArea>
                         <div className="space-y-2 shrink-0">
-                            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-normal pl-1">SESSION TRAY ({selectedPlayers.length}/{playerLimit})</h3>
+                            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-normal pl-1">SESSION TRAY ({selectedPlayers.length}/{playerLimit})</h3>
                             <div className="flex flex-wrap gap-2 p-2.5 rounded-xl bg-muted/10 min-h-[60px] border-2 border-dashed border-muted-foreground/20">
                                 {selectedPlayers.map((player, pIdx) => (
                                     <div key={`${player.id}-${pIdx}`} className="flex items-center gap-2 p-1 pr-3 rounded-full bg-card border-2 shadow-sm animate-in zoom-in-95 duration-200">
-                                        <Avatar className="h-6 w-6"><AvatarImage src={player.avatarUrl} /><AvatarFallback className="text-[10px] font-bold">{player.name[0]}</AvatarFallback></Avatar>
-                                        <span className="text-xs font-bold uppercase truncate max-w-[80px] text-foreground">{player.name}</span>
+                                        <Avatar className="h-6 w-6"><AvatarImage src={player.avatarUrl} /><AvatarFallback className="text-sm font-bold">{player.name[0]}</AvatarFallback></Avatar>
+                                        <span className="text-sm font-bold uppercase truncate max-w-[80px] text-foreground">{player.name}</span>
                                         <button onClick={() => handleRemovePlayer(player.id)} className="ml-1 opacity-40 hover:opacity-100 transition-opacity"><X className="h-3.5 w-3.5 text-destructive"/></button>
                                     </div>
                                 ))}
@@ -480,7 +480,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                         </div>
                     </div>
                     <DialogFooter className="p-4 shrink-0 bg-muted/5 border-t">
-                        <Button onClick={() => { setStep('configuration'); if (selectedPlayers.length > 0) setActiveConfigPlayerId(selectedPlayers[0].id); }} disabled={selectedPlayers.length === 0} className="w-full font-headline text-xs h-12 uppercase shadow-xl">CONTINUE TO LOGINS <ChevronRight className="ml-2 h-4 w-4" /></Button>
+                        <Button onClick={() => { setStep('configuration'); if (selectedPlayers.length > 0) setActiveConfigPlayerId(selectedPlayers[0].id); }} disabled={selectedPlayers.length === 0} className="w-full font-headline text-sm h-12 uppercase shadow-xl">CONTINUE TO LOGINS <ChevronRight className="ml-2 h-4 w-4" /></Button>
                     </DialogFooter>
                 </div>
             )}
@@ -489,8 +489,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                 <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="p-3 sm:p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
                         <div className="flex items-center justify-between shrink-0 mb-3">
-                            <h3 className="text-xs font-bold text-foreground uppercase tracking-normal opacity-80">2. SESSION LOGINS</h3>
-                            <Button variant="ghost" size="sm" onClick={() => setStep('selection')} className="h-8 uppercase text-[10px] font-bold text-muted-foreground hover:text-primary"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> CHANGE PLAYERS</Button>
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-normal opacity-80">2. SESSION LOGINS</h3>
+                            <Button variant="ghost" size="sm" onClick={() => setStep('selection')} className="h-8 uppercase text-sm font-bold text-muted-foreground hover:text-primary"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> CHANGE PLAYERS</Button>
                         </div>
                         <div className="space-y-1.5 mb-4 shrink-0 overflow-y-auto max-h-[30%] sm:max-h-[25%] border-b pb-3">
                             {selectedPlayers.map((player) => {
@@ -500,18 +500,18 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                 return (
                                     <div key={player.id} onClick={() => setActiveConfigPlayerId(player.id)} className={cn("p-2 rounded-lg border-2 transition-all cursor-pointer flex items-center justify-between", isSelected ? "border-primary bg-primary/[0.03] ring-2 ring-primary/10 shadow-md" : "border-muted hover:border-primary/20 bg-card", hasSelection && !isSelected && "border-green-500/30 opacity-80")}>
                                         <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8 border-2 border-background shadow-sm"><AvatarImage src={player.avatarUrl} /><AvatarFallback className="text-xs font-bold">{player.name[0]}</AvatarFallback></Avatar>
+                                            <Avatar className="h-8 w-8 border-2 border-background shadow-sm"><AvatarImage src={player.avatarUrl} /><AvatarFallback className="text-sm font-bold">{player.name[0]}</AvatarFallback></Avatar>
                                             <div className="min-w-0">
-                                                <p className="text-xs font-bold uppercase leading-tight truncate">{player.name}</p>
+                                                <p className="text-sm font-bold uppercase leading-tight truncate">{player.name}</p>
                                                 {hasSelection ? (
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-bold uppercase text-green-600 block truncate max-w-[140px]">{config.name}</span>
-                                                        {config.reminderDuration && <Badge className="h-4 text-[9px] font-bold bg-amber-500">{formatPackageDuration(config.reminderDuration)}</Badge>}
+                                                        <span className="text-sm font-bold uppercase text-green-600 block truncate max-w-[140px]">{config.name}</span>
+                                                        {config.reminderDuration && <Badge className="h-4 text-sm font-bold bg-amber-500">{formatPackageDuration(config.reminderDuration)}</Badge>}
                                                     </div>
-                                                ) : <p className="text-[10px] text-muted-foreground font-bold uppercase">Tap to configure</p>}
+                                                ) : <p className="text-sm text-muted-foreground font-bold uppercase">Tap to configure</p>}
                                             </div>
                                         </div>
-                                        {hasSelection && !isSelected && <Badge variant="outline" className="h-5 px-2 text-[9px] font-bold bg-green-50 text-green-700 border-green-200 uppercase">READY</Badge>}
+                                        {hasSelection && !isSelected && <Badge variant="outline" className="h-5 px-2 text-sm font-bold bg-green-50 text-green-700 border-green-200 uppercase">READY</Badge>}
                                     </div>
                                 );
                             })}
@@ -520,11 +520,11 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             <div className="flex-1 flex flex-col min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden">
                                 <div className="p-2 border-2 border-dashed rounded-2xl bg-muted/5 flex-1 flex flex-col overflow-hidden">
                                     <div className="flex items-center justify-between px-2 mb-2.5">
-                                        <h4 className="text-[10px] font-bold uppercase text-muted-foreground tracking-normal">LOGGING IN: <strong className="text-foreground">{selectedPlayers.find(p => p.id === activeConfigPlayerId)?.name}</strong></h4>
+                                        <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal">LOGGING IN: <strong className="text-foreground">{selectedPlayers.find(p => p.id === activeConfigPlayerId)?.name}</strong></h4>
                                     </div>
                                     <div className="flex gap-3 mb-3 shrink-0">
-                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'walkin' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'walkin')}><Gamepad2 className="h-4 w-4" /> QUICK PLAY</Button>
-                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'recharge' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'recharge')}><Zap className="h-4 w-4" /> RECHARGE</Button>
+                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'walkin' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-sm font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'walkin')}><Gamepad2 className="h-4 w-4" /> QUICK PLAY</Button>
+                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'recharge' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-sm font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'recharge')}><Zap className="h-4 w-4" /> RECHARGE</Button>
                                     </div>
                                     <ScrollArea className="flex-1 bg-background/50 rounded-xl border-2 min-h-0">
                                         <div className="p-2.5 space-y-2.5 pb-12 font-body">
@@ -539,15 +539,15 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                              <div className={cn("p-4 rounded-xl border-2 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 transition-all shadow-md", isSelected ? "border-yellow-500 ring-2 ring-yellow-500/20" : "border-yellow-500/10")}>
                                                                  <div className="flex justify-between items-center">
                                                                      <div className="min-w-0">
-                                                                         <p className="text-[10px] font-bold uppercase text-yellow-500/80 tracking-normal">TOTAL COMBINED BALANCE</p>
-                                                                         <div className="flex items-center gap-2 text-2xl font-bold text-yellow-500 font-mono tracking-tighter"><Zap className="h-5 w-5 fill-current" /> {formatPackageDuration(totalBalance)}</div>
+                                                                         <p className="text-sm font-bold uppercase text-yellow-500/80 tracking-normal">TOTAL COMBINED BALANCE</p>
+                                                                         <div className="flex items-center gap-2 text-2xl font-bold text-yellow-500 font-mono tracking-tight"><Zap className="h-5 w-5 fill-current" /> {formatPackageDuration(totalBalance)}</div>
                                                                      </div>
                                                                      {!isSelected ? (
-                                                                         <Button size="sm" onClick={() => handlePickConfig(activeConfigPlayerId, 'pool', true)} className="h-9 px-5 text-xs font-bold bg-yellow-500 text-black uppercase shadow-lg hover:bg-yellow-600">
+                                                                         <Button size="sm" onClick={() => handlePickConfig(activeConfigPlayerId, 'pool', true)} className="h-9 px-5 text-sm font-bold bg-yellow-500 text-black uppercase shadow-lg hover:bg-yellow-600">
                                                                              Use Pool
                                                                          </Button>
                                                                      ) : (
-                                                                         <Badge className="bg-green-600 text-white text-xs font-bold uppercase h-6 shadow-sm">
+                                                                         <Badge className="bg-green-600 text-white text-sm font-bold uppercase h-6 shadow-sm">
                                                                              <CheckCircle2 className="h-4 w-4 mr-1.5"/> Selected
                                                                          </Badge>
                                                                      )}
@@ -555,7 +555,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
                                                                  {isSelected && (
                                                                      <div className="mt-4 pt-4 border-t border-yellow-500/20 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                                                                         <p className="text-[9px] font-black uppercase text-yellow-500/80 tracking-widest px-1">Duration to Deduct</p>
+                                                                         <p className="text-sm font-bold uppercase text-yellow-500/80 tracking-normal px-1">Duration to Deduct</p>
                                                                          <div className="grid grid-cols-4 gap-1.5">
                                                                              {[1800, 3600, 7200].map(s => {
                                                                                  const isCurrent = configs[activeConfigPlayerId].reminderDuration === s;
@@ -565,7 +565,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                                          variant="outline" 
                                                                                          size="sm" 
                                                                                          className={cn(
-                                                                                             "h-8 text-[10px] font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                                                             "h-8 text-sm font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
                                                                                              isCurrent && "bg-yellow-500 text-black border-yellow-500"
                                                                                          )}
                                                                                          onClick={() => handleSetPoolDuration(activeConfigPlayerId, s)}
@@ -579,7 +579,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                                  variant="outline" 
                                                                                  size="sm" 
                                                                                  className={cn(
-                                                                                     "h-8 text-[10px] font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                                                     "h-8 text-sm font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
                                                                                      configs[activeConfigPlayerId].reminderDuration === totalBalance && "bg-yellow-500 text-black border-yellow-500"
                                                                                  )}
                                                                                  onClick={() => handleSetPoolDuration(activeConfigPlayerId, totalBalance)}
@@ -594,7 +594,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                                 <Input 
                                                                                     type="number" 
                                                                                     placeholder="Custom Mins..." 
-                                                                                    className="h-8 pl-7 text-[10px] font-bold border-yellow-200 bg-white/50 focus-visible:ring-yellow-500"
+                                                                                    className="h-8 pl-7 text-sm font-bold border-yellow-200 bg-white/50 focus-visible:ring-yellow-500"
                                                                                     onChange={(e) => {
                                                                                         const mins = parseInt(e.target.value);
                                                                                         if (mins > 0) {
@@ -605,7 +605,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                                 />
                                                                             </div>
                                                                             {configs[activeConfigPlayerId].reminderDuration && (
-                                                                                <div className="text-[10px] font-black text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
+                                                                                <div className="text-sm font-bold text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
                                                                                     USING: {formatPackageDuration(configs[activeConfigPlayerId].reminderDuration!)}
                                                                                 </div>
                                                                             )}
@@ -616,7 +616,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                         );
                                                     })()}
                                                     <div className="space-y-2.5">
-                                                        <p className="text-[10px] font-bold uppercase text-muted-foreground px-1 tracking-normal">INDIVIDUAL PACKS</p>
+                                                        <p className="text-sm font-bold uppercase text-muted-foreground px-1 tracking-normal">INDIVIDUAL PACKS</p>
                                                         {getMemberActiveRecharges(activeConfigPlayerId).map((r, rIdx) => {
                                                             const isSelected = configs[activeConfigPlayerId]?.rechargeId === r.id;
                                                             return (
@@ -631,17 +631,17 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                 >
                                                                     <div className="flex justify-between items-center">
                                                                         <div className="min-w-0">
-                                                                            <p className="text-xs font-bold uppercase truncate opacity-80">{r.packageName}</p>
-                                                                            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase"><Clock className="h-3 w-3" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
+                                                                            <p className="text-sm font-bold uppercase truncate opacity-80">{r.packageName}</p>
+                                                                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase"><Clock className="h-3 w-3" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
                                                                         </div>
-                                                                        <Button size="sm" variant="ghost" onClick={() => handlePickConfig(activeConfigPlayerId, r, true)} className="h-7 px-3 text-[10px] font-bold uppercase hover:bg-primary/10">Select</Button>
+                                                                        <Button size="sm" variant="ghost" onClick={() => handlePickConfig(activeConfigPlayerId, r, true)} className="h-7 px-3 text-sm font-bold uppercase hover:bg-primary/10">Select</Button>
                                                                     </div>
                                                                 </div>
                                                             );
                                                         })}
                                                     </div>
                                                     <div className="pt-3">
-                                                        <p className="text-[10px] font-bold uppercase text-muted-foreground text-center mb-3 tracking-normal border-t pt-3">--- BUY NEW PACK ---</p>
+                                                        <p className="text-sm font-bold uppercase text-muted-foreground text-center mb-3 tracking-normal border-t pt-3">--- BUY NEW PACK ---</p>
                                                         <div className="space-y-2">
                                                              {rechargePackages.map(pkg => {
                                                                 const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
@@ -658,21 +658,21 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                     >
                                                                         <div className="min-w-0">
                                                                             <div className="flex items-center gap-2">
-                                                                                <p className={cn("text-xs font-bold uppercase truncate group-hover:text-yellow-600", isSelected && "text-yellow-600 font-black")}>{pkg.name}</p>
+                                                                                <p className={cn("text-sm font-bold uppercase truncate group-hover:text-yellow-600", isSelected && "text-yellow-600 font-bold")}>{pkg.name}</p>
                                                                                 {isSelected && (
-                                                                                    <Badge className="h-5 px-2 text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase flex items-center gap-1 animate-in fade-in-50 zoom-in-95 duration-200">
+                                                                                    <Badge className="h-5 px-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white font-bold uppercase flex items-center gap-1 animate-in fade-in-50 zoom-in-95 duration-200">
                                                                                         <CheckCircle2 className="h-3 w-3" /> SELECTED
                                                                                     </Badge>
                                                                                 )}
                                                                             </div>
                                                                             <div className="flex items-center gap-2 mt-1">
-                                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
-                                                                                {pkg.playerCapacity && pkg.playerCapacity > 1 && <Badge variant="outline" className="h-4 text-[8px] border-primary/20 text-primary uppercase font-bold">{pkg.playerCapacity}P</Badge>}
+                                                                                <p className="text-sm font-bold text-muted-foreground uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
+                                                                                {pkg.playerCapacity && pkg.playerCapacity > 1 && <Badge variant="outline" className="h-4 text-sm border-primary/20 text-primary uppercase font-bold">{pkg.playerCapacity}P</Badge>}
                                                                             </div>
                                                                         </div>
                                                                         <span className={cn(
                                                                             "text-sm font-bold transition-colors",
-                                                                            isSelected ? "text-yellow-500 font-black scale-105" : "text-primary"
+                                                                            isSelected ? "text-yellow-500 font-bold scale-105" : "text-primary"
                                                                         )}>
                                                                             ₹{pkg.price}
                                                                         </span>
@@ -702,28 +702,28 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                 <div className="min-w-0">
                                                                     <div className="flex items-center gap-2">
                                                                         <p className={cn(
-                                                                            "text-xs font-bold uppercase truncate group-hover:text-primary", 
-                                                                            isSelected ? "text-primary font-black" : (pkg.isPriorityOffer && "text-amber-500")
+                                                                            "text-sm font-bold uppercase truncate group-hover:text-primary", 
+                                                                            isSelected ? "text-primary font-bold" : (pkg.isPriorityOffer && "text-amber-500")
                                                                         )}>
                                                                             {pkg.name}
                                                                             {pkg.isPriorityOffer && <Star className="inline h-3.5 w-3.5 ml-1.5 fill-amber-500 text-amber-500" />}
                                                                         </p>
                                                                         {pkg.playerCapacity && pkg.playerCapacity > 1 ? (
-                                                                            <Badge variant="outline" className="h-4 text-[8px] bg-primary/5 border-primary/30 text-primary font-black uppercase flex items-center gap-1"><Users className="h-2.5 w-2.5" />{pkg.playerCapacity}P</Badge>
+                                                                            <Badge variant="outline" className="h-4 text-sm bg-primary/5 border-primary/30 text-primary font-bold uppercase flex items-center gap-1"><Users className="h-2.5 w-2.5" />{pkg.playerCapacity}P</Badge>
                                                                         ) : (
-                                                                            <Badge variant="outline" className="h-4 text-[8px] border-muted text-muted-foreground uppercase flex items-center gap-1"><User className="h-2.5 w-2.5" />1P</Badge>
+                                                                            <Badge variant="outline" className="h-4 text-sm border-muted text-muted-foreground uppercase flex items-center gap-1"><User className="h-2.5 w-2.5" />1P</Badge>
                                                                         )}
                                                                         {isSelected && (
-                                                                            <Badge className="h-5 px-2 text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase flex items-center gap-1 animate-in fade-in-50 zoom-in-95 duration-200">
+                                                                            <Badge className="h-5 px-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white font-bold uppercase flex items-center gap-1 animate-in fade-in-50 zoom-in-95 duration-200">
                                                                                 <CheckCircle2 className="h-3 w-3" /> SELECTED
                                                                             </Badge>
                                                                         )}
                                                                     </div>
-                                                                    <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-normal flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatPackageDuration(pkg.duration)}</p>
+                                                                    <p className="text-sm font-bold text-primary mt-1 uppercase tracking-normal flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatPackageDuration(pkg.duration)}</p>
                                                                 </div>
                                                                 <span className={cn(
                                                                     "font-mono font-bold text-base transition-colors",
-                                                                    isSelected ? "text-primary font-black scale-105" : "text-foreground"
+                                                                    isSelected ? "text-primary font-bold scale-105" : "text-foreground"
                                                                 )}>
                                                                     ₹{pkg.price}
                                                                 </span>
@@ -731,33 +731,33 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                         );
                                                     })}
                                                     <div className="pt-3">
-                                                        <p className="text-[10px] font-bold uppercase text-muted-foreground text-center mb-3 tracking-normal border-t pt-3">--- CUSTOM QUICK PLAY ---</p>
+                                                        <p className="text-sm font-bold uppercase text-muted-foreground text-center mb-3 tracking-normal border-t pt-3">--- CUSTOM QUICK PLAY ---</p>
                                                         <div className="p-3 rounded-xl border-2 border-dashed bg-card shadow-sm space-y-3">
                                                             <div className="grid grid-cols-2 gap-3">
                                                                 <div className="space-y-1">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">Minutes</Label>
+                                                                    <Label className="text-sm font-bold uppercase text-muted-foreground">Minutes</Label>
                                                                     <Input 
                                                                         type="number" 
                                                                         placeholder="e.g. 1" 
                                                                         value={customMinutes} 
                                                                         onChange={(e) => setCustomMinutes(e.target.value)}
-                                                                        className="h-10 text-xs font-bold font-mono"
+                                                                        className="h-10 text-sm font-bold font-mono"
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">Charge (₹)</Label>
+                                                                    <Label className="text-sm font-bold uppercase text-muted-foreground">Charge (₹)</Label>
                                                                     <Input 
                                                                         type="number" 
                                                                         placeholder="e.g. 10" 
                                                                         value={customPrice} 
                                                                         onChange={(e) => setCustomPrice(e.target.value)}
-                                                                        className="h-10 text-xs font-bold font-mono"
+                                                                        className="h-10 text-sm font-bold font-mono"
                                                                     />
                                                                 </div>
                                                             </div>
                                                             <Button 
                                                                 onClick={() => handlePickCustomWalkin(activeConfigPlayerId)} 
-                                                                className="w-full h-10 text-xs font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90"
+                                                                className="w-full h-10 text-sm font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90"
                                                                 disabled={!customMinutes}
                                                             >
                                                                 Set Custom Time
@@ -765,7 +765,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ) : <div className="h-40 flex items-center justify-center opacity-30 italic text-xs font-bold uppercase tracking-normal text-center px-10">Choose a login type above</div>}
+                                            ) : <div className="h-40 flex items-center justify-center opacity-30 italic text-sm font-bold uppercase tracking-normal text-center px-10">Choose a login type above</div>}
                                         </div>
                                     </ScrollArea>
                                 </div>

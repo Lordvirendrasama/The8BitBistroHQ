@@ -36,11 +36,11 @@
   }
 
   .dark {
-    --bg-primary: #000000;
-    --bg-secondary: #080808;
-    --bg-surface: #111111;
-    --bg-card: #161616;
-    --bg-elevated: #1D1D1D;
+    --bg-primary: #111111;
+    --bg-secondary: #141414;
+    --bg-surface: #181818;
+    --bg-card: #181818;
+    --bg-elevated: #222222;
     
     --brand-red: #EF0035;
     --brand-green: #1FF202;
@@ -49,19 +49,19 @@
     --foreground: #ffffff;
     
     --card: var(--bg-card);
-    --card-foreground: #fafafa;
+    --card-foreground: #ffffff;
     
     --popover: var(--bg-elevated);
-    --popover-foreground: #fafafa;
+    --popover-foreground: #ffffff;
     
     --primary: var(--brand-red);
     --primary-foreground: #ffffff;
     
-    --secondary: var(--bg-surface);
-    --secondary-foreground: #fafafa;
+    --secondary: var(--bg-secondary);
+    --secondary-foreground: #c7c7c7;
     
     --muted: var(--bg-secondary);
-    --muted-foreground: #a1a1aa;
+    --muted-foreground: #8a8a8a;
     
     --accent: var(--brand-green);
     --accent-foreground: #000000;
@@ -69,17 +69,17 @@
     --destructive: var(--brand-red);
     --destructive-foreground: #ffffff;
     
-    --border: rgba(255, 255, 255, 0.06);
-    --input: rgba(255, 255, 255, 0.06);
+    --border: #2a2a2a;
+    --input: #2a2a2a;
     --ring: var(--brand-red);
 
-    --sidebar-background: var(--bg-secondary);
-    --sidebar-foreground: #fafafa;
+    --sidebar-background: var(--bg-primary);
+    --sidebar-foreground: #ffffff;
     --sidebar-primary: var(--brand-red);
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: var(--bg-surface);
-    --sidebar-accent-foreground: #fafafa;
-    --sidebar-border: rgba(255, 255, 255, 0.06);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #2a2a2a;
     --sidebar-ring: var(--brand-red);
   }
 }
@@ -89,39 +89,25 @@
     @apply border-border;
   }
   body {
-    background: radial-gradient(
-      circle at top left,
-      rgba(239, 0, 53, 0.08),
-      transparent 35%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      rgba(31, 242, 2, 0.05),
-      transparent 40%
-    ),
-    #000000;
+    background-color: var(--background);
     @apply text-foreground font-body;
     line-height: 1.5;
-    letter-spacing: -0.01em;
+    letter-spacing: normal;
   }
   
   .font-display {
-    font-family: var(--font-outfit), sans-serif;
     @apply font-black tracking-tight leading-[1.1];
   }
   
   .font-headline {
-    font-family: var(--font-outfit), sans-serif;
     @apply font-extrabold tracking-tight leading-none;
   }
 
   .font-body {
-    font-family: var(--font-outfit), sans-serif;
   }
 
   .font-pixel {
-    font-family: var(--font-pixel), sans-serif;
-    @apply tracking-normal;
+    @apply font-bold tracking-normal uppercase;
   }
 }
 
@@ -142,13 +128,9 @@
 .bg-card,
 .bg-popover,
 [role="dialog"] {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0)
-  ), rgba(20, 20, 20, 0.85) !important;
-  backdrop-filter: blur(20px) !important;
+  background-color: var(--card) !important;
   border-width: 1px;
   border-style: solid;
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--border);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.3) !important;
 }

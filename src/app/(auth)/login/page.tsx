@@ -454,7 +454,7 @@ export default function LoginPage() {
       <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
         <div className="flex flex-col items-center gap-4">
             <Zap className="h-12 w-12 text-primary animate-pulse" />
-            <p className="font-headline text-[10px] tracking-widest text-primary animate-pulse uppercase">Entering World...</p>
+            <p className="font-headline text-sm tracking-normal text-primary animate-pulse uppercase">Entering World...</p>
         </div>
       </div>
     );
@@ -499,7 +499,7 @@ export default function LoginPage() {
       )}>
         <div className="w-full flex justify-between items-end px-2 animate-in fade-in slide-in-from-top-4 duration-1000">
             <div className="text-left">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
                     <Calendar className="h-3 w-3" />
                     {currentTime.toLocaleDateString('en-US', { weekday: 'long' })}
                 </p>
@@ -512,31 +512,31 @@ export default function LoginPage() {
                 {showMoney && (
                     <>
                         <div className="text-right">
-                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                            <p className="text-sm font-bold text-emerald-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
                                 <IndianRupee className="h-3 w-3" />
                                 Today's Intake
                             </p>
-                            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-emerald-500">
+                            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight tabular-nums leading-none text-emerald-500">
                                 ₹{todayCollection.toLocaleString()}
                             </p>
                         </div>
                         <div className="text-right border-l border-foreground/10 pl-6">
-                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                            <p className="text-sm font-bold text-blue-500 uppercase tracking-[0.3em] flex items-center justify-end gap-2">
                                 <TrendingUp className="h-3 w-3" />
                                 Projected
                             </p>
-                            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none text-blue-500">
+                            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight tabular-nums leading-none text-blue-500">
                                 ₹{Math.floor(projectedTotal).toLocaleString()}
                             </p>
                         </div>
                     </>
                 )}
                 <div className={cn("text-right", showMoney && "border-l border-foreground/10 pl-6")}>
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] flex items-center justify-end gap-2">
+                    <p className="text-sm font-bold text-primary uppercase tracking-[0.3em] flex items-center justify-end gap-2">
                         <Clock className="h-3 w-3" />
                         Live Terminal
                     </p>
-                    <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter tabular-nums leading-none">
+                    <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight tabular-nums leading-none">
                         {currentTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </p>
                 </div>
@@ -554,7 +554,7 @@ export default function LoginPage() {
                     <div className="relative h-24 w-24 sm:h-32 sm:w-32 drop-shadow-[0_0_25px_rgba(239,0,53,0.2)] hover:scale-110 active:scale-95 duration-200 transition-transform">
                         <Image src="/logo.png" alt="The 8 Bit Bistro" width={128} height={128} className="object-contain" priority />
                     </div>
-                    <p className="text-[8px] font-pixel mt-4 text-primary uppercase bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">Build v{APP_VERSION}</p>
+                    <p className="text-sm font-pixel mt-4 text-primary uppercase bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10">Build v{APP_VERSION}</p>
                 </div>
 
                 {activeOffers.length > 0 && (
@@ -563,23 +563,23 @@ export default function LoginPage() {
                             <div className="flex items-center justify-between mb-4 border-b border-foreground/5 pb-3">
                                 <div className="flex items-center gap-2">
                                     <Gamepad2 className="h-3 w-3 text-emerald-500" />
-                                    <span className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Power-Ups</span>
+                                    <span className="text-muted-foreground font-bold text-sm uppercase tracking-normal">Power-Ups</span>
                                 </div>
-                                <Badge variant="outline" className="h-4 text-[8px] border-emerald-500/20 text-emerald-600 bg-emerald-500/5 font-black uppercase">Today's Deals</Badge>
+                                <Badge variant="outline" className="h-4 text-sm border-emerald-500/20 text-emerald-600 bg-emerald-500/5 font-bold uppercase">Today's Deals</Badge>
                             </div>
                             <div className="space-y-2">
                                 {activeOffers.map((pkg) => (
                                     <div key={pkg.id} className="flex justify-between items-center p-3 rounded-xl border-2 bg-amber-500/5 border-amber-500/20 transition-all group">
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <p className="font-bold text-[10px] uppercase truncate text-amber-600">{pkg.name}</p>
-                                                <Badge className="h-3.5 px-1 bg-amber-500 text-[7px] font-black">BOOST</Badge>
+                                                <p className="font-bold text-sm uppercase truncate text-amber-600">{pkg.name}</p>
+                                                <Badge className="h-3.5 px-1 bg-amber-500 text-sm font-bold">BOOST</Badge>
                                             </div>
-                                            <p className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">
+                                            <p className="text-sm font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">
                                                 {formatDuration(pkg.duration)} Session
                                             </p>
                                         </div>
-                                        <span className="font-mono font-black text-sm text-primary">₹{pkg.price}</span>
+                                        <span className="font-mono font-bold text-sm text-primary">₹{pkg.price}</span>
                                     </div>
                                 ))}
                             </div>
@@ -599,12 +599,12 @@ export default function LoginPage() {
                                     emp.role === 'admin' ? "border-primary/10" : emp.role === 'staff' ? "border-emerald-500/10" : "border-blue-500/10"
                                 )}>
                                     {isOnline ? (
-                                        <Badge className="absolute top-2 left-2 bg-emerald-500 hover:bg-emerald-500 text-white text-[7px] font-black h-4 px-1.5 border-none shadow-sm animate-pulse flex items-center gap-1">
+                                        <Badge className="absolute top-2 left-2 bg-emerald-500 hover:bg-emerald-500 text-white text-sm font-bold h-4 px-1.5 border-none shadow-sm animate-pulse flex items-center gap-1">
                                             <Circle className="h-1 w-1 fill-current" />
                                             ONLINE
                                         </Badge>
                                     ) : (
-                                        <Badge variant="secondary" className="absolute top-2 left-2 text-[7px] font-black h-4 px-1.5 bg-muted/50 text-muted-foreground/60 border-none shadow-none">
+                                        <Badge variant="secondary" className="absolute top-2 left-2 text-sm font-bold h-4 px-1.5 bg-muted/50 text-muted-foreground/60 border-none shadow-none">
                                             OFFLINE
                                         </Badge>
                                     )}
@@ -615,16 +615,16 @@ export default function LoginPage() {
                                     emp.role === 'staff' ? <Users className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-500 group-hover:scale-110 transition-transform" /> : 
                                     <User className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 group-hover:scale-110 transition-transform" />}
                                     
-                                    <span className="font-headline text-[10px] tracking-tight uppercase leading-none mt-1">{emp.displayName}</span>
+                                    <span className="font-headline text-sm tracking-tight uppercase leading-none mt-1">{emp.displayName}</span>
                                     
                                     {isOnline && activeShift ? (
-                                        <div className="flex flex-col items-center text-[8px] font-mono font-bold text-muted-foreground mt-0.5 space-y-0.5 leading-none">
+                                        <div className="flex flex-col items-center text-sm font-mono font-bold text-muted-foreground mt-0.5 space-y-0.5 leading-none">
                                             <span>Logged In: {formatLoginTime(activeShift.startTime)}</span>
                                             <span>Shift: {formatShiftHours(emp.workStartTime, emp.workEndTime)}</span>
                                             <span>Worked: {getHoursWorked(activeShift.startTime)}</span>
                                         </div>
                                     ) : (
-                                        <span className="text-[8px] font-black opacity-40 uppercase tracking-widest leading-none mt-0.5">
+                                        <span className="text-sm font-bold opacity-40 uppercase tracking-normal leading-none mt-0.5">
                                             {emp.role === 'admin' ? 'Master Console' : emp.role === 'staff' ? 'Operator Entrance' : 'Visitor Terminal'}
                                         </span>
                                     )}
@@ -644,13 +644,13 @@ export default function LoginPage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="font-body w-36 border-2">
-                                            <DropdownMenuLabel className="text-[8px] font-black uppercase text-muted-foreground tracking-widest px-2 py-1.5">Console Menu</DropdownMenuLabel>
+                                            <DropdownMenuLabel className="text-sm font-bold uppercase text-muted-foreground tracking-normal px-2 py-1.5">Console Menu</DropdownMenuLabel>
                                             <DropdownMenuItem 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleViewAttendance(emp);
                                                 }}
-                                                className="font-bold text-xs uppercase cursor-pointer"
+                                                className="font-bold text-sm uppercase cursor-pointer"
                                             >
                                                 View Attendance
                                             </DropdownMenuItem>
@@ -660,7 +660,7 @@ export default function LoginPage() {
                                                         e.stopPropagation();
                                                         handleLogoutClick(emp, activeShift);
                                                     }}
-                                                    className="font-bold text-xs uppercase text-destructive focus:text-destructive cursor-pointer"
+                                                    className="font-bold text-sm uppercase text-destructive focus:text-destructive cursor-pointer"
                                                 >
                                                     Logout
                                                 </DropdownMenuItem>
@@ -675,11 +675,11 @@ export default function LoginPage() {
                         <div className="col-span-full py-12 flex flex-col items-center gap-4 opacity-50 bg-card/20 rounded-3xl border-2 border-dashed">
                             <RefreshCcw className="h-10 w-10 animate-spin text-muted-foreground" />
                             <div className="text-center">
-                                <p className="font-headline text-[10px] tracking-widest uppercase">No Operator Profiles Detected</p>
+                                <p className="font-headline text-sm tracking-normal uppercase">No Operator Profiles Detected</p>
                                 <button 
                                     onClick={handleManualSeed} 
                                     disabled={isSeeding}
-                                    className="text-[10px] font-black uppercase text-primary hover:underline mt-2 flex items-center justify-center gap-2"
+                                    className="text-sm font-bold uppercase text-primary hover:underline mt-2 flex items-center justify-center gap-2"
                                 >
                                     {isSeeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
                                     Initialize Default Profiles
@@ -696,7 +696,7 @@ export default function LoginPage() {
                 <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
                     <div className="flex items-center gap-2 mb-4 border-b border-foreground/5 pb-2">
                         <Users className="h-4 w-4 text-emerald-500" />
-                        <span className="font-headline text-xs tracking-widest text-muted-foreground uppercase font-black">STAFF ONLINE</span>
+                        <span className="font-headline text-sm tracking-normal text-muted-foreground uppercase font-bold">STAFF ONLINE</span>
                     </div>
                     {activeShifts && activeShifts.length > 0 ? (
                         <div className="space-y-4">
@@ -716,7 +716,7 @@ export default function LoginPage() {
                                 });
 
                                 if (filteredActiveShifts.length === 0) {
-                                    return <p className="text-[10px] italic font-bold text-muted-foreground uppercase opacity-50 py-2">No staff currently clocked in</p>;
+                                    return <p className="text-sm italic font-bold text-muted-foreground uppercase opacity-50 py-2">No staff currently clocked in</p>;
                                 }
 
                                 return filteredActiveShifts.map(emp => {
@@ -731,10 +731,10 @@ export default function LoginPage() {
                                             <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5 animate-pulse shrink-0" />
                                             <div>
                                                 <p className="font-bold text-sm text-foreground uppercase leading-none">{emp.displayName}</p>
-                                                <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">
+                                                <p className="text-sm text-muted-foreground font-bold uppercase mt-1">
                                                     Logged In: <span className="text-foreground/80">{loginTime}</span>
                                                 </p>
-                                                <p className="text-[10px] text-muted-foreground font-bold uppercase">
+                                                <p className="text-sm text-muted-foreground font-bold uppercase">
                                                     Worked: <span className="text-emerald-500">{workedStr}</span>
                                                 </p>
                                             </div>
@@ -744,7 +744,7 @@ export default function LoginPage() {
                             })()}
                         </div>
                     ) : (
-                        <p className="text-[10px] italic font-bold text-muted-foreground uppercase opacity-50 py-2">No staff currently clocked in</p>
+                        <p className="text-sm italic font-bold text-muted-foreground uppercase opacity-50 py-2">No staff currently clocked in</p>
                     )}
                 </div>
 
@@ -752,22 +752,22 @@ export default function LoginPage() {
                 <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
                     <div className="flex items-center gap-2 mb-4 border-b border-foreground/5 pb-2">
                         <Gamepad2 className="h-4 w-4 text-blue-500" />
-                        <span className="font-headline text-xs tracking-widest text-muted-foreground uppercase font-black">TOP SELLERS</span>
+                        <span className="font-headline text-sm tracking-normal text-muted-foreground uppercase font-bold">TOP SELLERS</span>
                     </div>
                     {topSellers.length > 0 ? (
                         <div className="space-y-3 font-body">
                             {topSellers.map((item, idx) => (
-                                <div key={item.name} className="flex items-center justify-between text-xs font-bold uppercase animate-in fade-in duration-300">
+                                <div key={item.name} className="flex items-center justify-between text-sm font-bold uppercase animate-in fade-in duration-300">
                                     <div className="flex items-center gap-2 truncate">
-                                        <span className="font-mono text-primary text-[10px]">{idx + 1}.</span>
+                                        <span className="font-mono text-primary text-sm">{idx + 1}.</span>
                                         <span className="text-foreground truncate">{item.name}</span>
                                     </div>
-                                    <span className="text-muted-foreground/60 text-[10px] shrink-0">{item.qty} Sold</span>
+                                    <span className="text-muted-foreground/60 text-sm shrink-0">{item.qty} Sold</span>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-[10px] italic font-bold text-muted-foreground uppercase opacity-50 py-2">No product sales today</p>
+                        <p className="text-sm italic font-bold text-muted-foreground uppercase opacity-50 py-2">No product sales today</p>
                     )}
                 </div>
 
@@ -775,9 +775,9 @@ export default function LoginPage() {
                 <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
                     <div className="flex items-center gap-2 mb-3 border-b border-foreground/5 pb-2">
                         <TrendingUp className="h-4 w-4 text-emerald-500" />
-                        <span className="font-headline text-xs tracking-widest text-muted-foreground uppercase font-black">TODAY</span>
+                        <span className="font-headline text-sm tracking-normal text-muted-foreground uppercase font-bold">TODAY</span>
                     </div>
-                    <div className="space-y-2.5 text-xs font-bold uppercase">
+                    <div className="space-y-2.5 text-sm font-bold uppercase">
                         <div className="flex justify-between items-center text-muted-foreground">
                             <span>Gaming:</span>
                             <span className="text-foreground font-mono">₹{registerSnapshot.gaming.toLocaleString()}</span>
@@ -791,7 +791,7 @@ export default function LoginPage() {
                             <span className="text-foreground font-mono">₹{registerSnapshot.coffee.toLocaleString()}</span>
                         </div>
                         <div className="border-t border-foreground/5 my-2" />
-                        <div className="flex justify-between items-center text-sm font-black">
+                        <div className="flex justify-between items-center text-sm font-bold">
                             <span className="text-emerald-500">Total:</span>
                             <span className="text-emerald-500 font-mono text-base">₹{registerSnapshot.total.toLocaleString()}</span>
                         </div>
@@ -800,7 +800,7 @@ export default function LoginPage() {
             </div>
         </div>
 
-        <p className="text-[8px] font-mono text-muted-foreground/30 uppercase tracking-widest text-center">
+        <p className="text-sm font-mono text-muted-foreground/30 uppercase tracking-normal text-center">
             BISTRO_OS_v{APP_VERSION} // DYNAMIC_AUTH_ENABLED // STABLE_BUILD
         </p>
       </main>
@@ -811,7 +811,7 @@ export default function LoginPage() {
               <KeyRound className="h-5 sm:h-6 w-5 sm:w-6" />
               Verification
             </DialogTitle>
-            <DialogDescription className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground">
+            <DialogDescription className="font-bold text-sm sm:text-sm uppercase tracking-normal text-muted-foreground">
               Enter the unique 4-digit PIN for <strong>{pendingUser?.displayName}</strong>.
             </DialogDescription>
           </DialogHeader>
@@ -824,13 +824,13 @@ export default function LoginPage() {
               value={pinInput}
               onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
               onKeyDown={(e) => e.key === 'Enter' && verifyPinAndLogin()}
-              className="h-14 sm:h-16 w-40 sm:w-48 text-center text-3xl sm:text-4xl font-mono font-black tracking-[0.5em] border-2 border-muted bg-muted/10 focus-visible:ring-primary"
+              className="h-14 sm:h-16 w-40 sm:w-48 text-center text-3xl sm:text-4xl font-mono font-bold tracking-[0.5em] border-2 border-muted bg-muted/10 focus-visible:ring-primary"
               placeholder="****"
               autoFocus
             />
           </div>
           <DialogFooter>
-            <Button onClick={verifyPinAndLogin} className="w-full h-12 sm:h-14 font-black uppercase tracking-widest text-base sm:text-lg shadow-xl">
+            <Button onClick={verifyPinAndLogin} className="w-full h-12 sm:h-14 font-bold uppercase tracking-normal text-base sm:text-lg shadow-xl">
               Unlock Console
               <ArrowRight className="ml-2 h-4 sm:h-5 w-4 sm:w-5" />
             </Button>
@@ -846,25 +846,25 @@ export default function LoginPage() {
               <KeyRound className="h-5 sm:h-6 w-5 sm:w-6" />
               Logout {logoutTargetUser?.displayName}?
             </DialogTitle>
-            <DialogDescription className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground">
+            <DialogDescription className="font-bold text-sm sm:text-sm uppercase tracking-normal text-muted-foreground">
               Confirm your identity to terminate the shift session.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-2">
-            <div className="bg-muted/10 border-2 rounded-xl p-4 space-y-2 text-xs font-mono font-bold">
+            <div className="bg-muted/10 border-2 rounded-xl p-4 space-y-2 text-sm font-mono font-bold">
               <div className="flex justify-between items-center border-b border-dashed pb-1.5">
-                <span className="text-muted-foreground uppercase text-[10px]">Login Time</span>
+                <span className="text-muted-foreground uppercase text-sm">Login Time</span>
                 <span>{formatLoginTime(logoutTargetShift?.startTime)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground uppercase text-[10px]">Current Hours</span>
+                <span className="text-muted-foreground uppercase text-sm">Current Hours</span>
                 <span className="text-primary">{getHoursWorked(logoutTargetShift?.startTime)}</span>
               </div>
             </div>
 
             <div className="flex flex-col items-center gap-2">
-              <label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest self-start">Verification PIN</label>
+              <label className="text-sm font-bold uppercase text-muted-foreground tracking-normal self-start">Verification PIN</label>
               <Input
                 type="password"
                 inputMode="numeric"
@@ -873,7 +873,7 @@ export default function LoginPage() {
                 value={logoutPinInput}
                 onChange={(e) => setLogoutPinInput(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={(e) => e.key === 'Enter' && handleExecuteLogout()}
-                className="h-12 w-full text-center text-2xl font-mono font-black tracking-[0.4em] border-2 bg-muted/5 focus-visible:ring-destructive"
+                className="h-12 w-full text-center text-2xl font-mono font-bold tracking-[0.4em] border-2 bg-muted/5 focus-visible:ring-destructive"
                 placeholder="****"
               />
             </div>
@@ -889,7 +889,7 @@ export default function LoginPage() {
                 setLogoutTargetShift(null);
                 setLogoutPinInput('');
               }}
-              className="flex-1 font-black uppercase tracking-widest h-11 text-xs"
+              className="flex-1 font-bold uppercase tracking-normal h-11 text-sm"
             >
               Cancel
             </Button>
@@ -897,7 +897,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleExecuteLogout} 
               disabled={isLoggingOut || !logoutPinInput}
-              className="flex-1 font-black uppercase tracking-widest h-11 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="flex-1 font-bold uppercase tracking-normal h-11 text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isLoggingOut ? 'Ending Shift...' : 'End Shift'}
             </Button>

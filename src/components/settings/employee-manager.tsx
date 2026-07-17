@@ -157,9 +157,9 @@ export function EmployeeManager() {
       <CardHeader className="flex flex-row items-center justify-between bg-muted/10">
         <div>
           <CardTitle className="font-headline text-xl flex items-center gap-2"><Users className="text-primary" /> Staff Registry</CardTitle>
-          <CardDescription className="text-xs font-bold uppercase tracking-widest">Manage employee profiles, salaries, and weekly offs.</CardDescription>
+          <CardDescription className="text-sm font-bold uppercase tracking-normal">Manage employee profiles, salaries, and weekly offs.</CardDescription>
         </div>
-        <Button onClick={() => { setSelectedEmp(null); setModalOpen(true); }} className="font-black uppercase tracking-tight h-10 shadow-lg">
+        <Button onClick={() => { setSelectedEmp(null); setModalOpen(true); }} className="font-bold uppercase tracking-tight h-10 shadow-lg">
           <PlusCircle className="mr-2 h-4 w-4" /> Add Operator
         </Button>
       </CardHeader>
@@ -167,12 +167,12 @@ export function EmployeeManager() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/20">
-              <TableHead className="font-black uppercase text-[10px]">Operator</TableHead>
-              <TableHead className="font-black uppercase text-[10px]">Role</TableHead>
-              <TableHead className="font-black uppercase text-[10px]">Compensation</TableHead>
-              <TableHead className="font-black uppercase text-[10px]">Meal Quota</TableHead>
-              <TableHead className="font-black uppercase text-[10px]">Shift Hours</TableHead>
-              <TableHead className="text-right font-black uppercase text-[10px]">Actions</TableHead>
+              <TableHead className="font-bold uppercase text-sm">Operator</TableHead>
+              <TableHead className="font-bold uppercase text-sm">Role</TableHead>
+              <TableHead className="font-bold uppercase text-sm">Compensation</TableHead>
+              <TableHead className="font-bold uppercase text-sm">Meal Quota</TableHead>
+              <TableHead className="font-bold uppercase text-sm">Shift Hours</TableHead>
+              <TableHead className="text-right font-bold uppercase text-sm">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -181,37 +181,37 @@ export function EmployeeManager() {
                 <TableRow key={emp.id} className="hover:bg-muted/5">
                   <TableCell className="py-4">
                     <div className="flex flex-col">
-                      <span className="font-black uppercase text-sm">{emp.displayName}</span>
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase">@{emp.username}</span>
+                      <span className="font-bold uppercase text-sm">{emp.displayName}</span>
+                      <span className="text-sm font-bold text-muted-foreground uppercase">@{emp.username}</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1.5 items-center">
-                      <Badge variant="outline" className="font-black uppercase text-[9px] border-primary/20 text-primary">{emp.role}</Badge>
+                      <Badge variant="outline" className="font-bold uppercase text-sm border-primary/20 text-primary">{emp.role}</Badge>
                       {emp.isActive === false ? (
-                        <Badge className="bg-destructive text-white font-black uppercase text-[8px] px-1.5 py-0.5 rounded">INACTIVE</Badge>
+                        <Badge className="bg-destructive text-white font-bold uppercase text-sm px-1.5 py-0.5 rounded">INACTIVE</Badge>
                       ) : (
-                        <Badge className="bg-emerald-600 text-white font-black uppercase text-[8px] px-1.5 py-0.5 rounded">ACTIVE</Badge>
+                        <Badge className="bg-emerald-600 text-white font-bold uppercase text-sm px-1.5 py-0.5 rounded">ACTIVE</Badge>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 font-mono font-bold text-xs">
+                    <div className="flex items-center gap-1.5 font-mono font-bold text-sm">
                       <Banknote className="h-3 w-3 text-emerald-600" />
                       ₹{(emp.salary ?? 0).toLocaleString()} / {emp.salaryType || 'hourly'}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-mono font-bold text-xs">
+                    <div className="font-mono font-bold text-sm">
                       ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-tight">{emp.workStartTime || '11:00'} - {emp.workEndTime || '23:00'}</span>
-                        <span className="text-[8px] font-bold text-muted-foreground uppercase">{DAYS[emp.weekOffDay] || 'N/A'} OFF</span>
+                        <span className="text-sm font-bold uppercase tracking-tight">{emp.workStartTime || '11:00'} - {emp.workEndTime || '23:00'}</span>
+                        <span className="text-sm font-bold text-muted-foreground uppercase">{DAYS[emp.weekOffDay] || 'N/A'} OFF</span>
                         {emp.assignedShift && (
-                          <Badge variant="outline" className="w-fit text-[8px] font-black uppercase tracking-tight mt-1 bg-primary/5 text-primary border-primary/20">{emp.assignedShift} Shift</Badge>
+                          <Badge variant="outline" className="w-fit text-sm font-bold uppercase tracking-tight mt-1 bg-primary/5 text-primary border-primary/20">{emp.assignedShift} Shift</Badge>
                         )}
                     </div>
                   </TableCell>
@@ -219,8 +219,8 @@ export function EmployeeManager() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(emp)} className="font-bold uppercase text-[10px]"><Edit className="mr-2 h-3 w-3"/> Edit Profile</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateEmployee(emp.id, { isActive: false })} className="text-destructive font-bold uppercase text-[10px]"><Trash className="mr-2 h-3 w-3"/> Remove</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(emp)} className="font-bold uppercase text-sm"><Edit className="mr-2 h-3 w-3"/> Edit Profile</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateEmployee(emp.id, { isActive: false })} className="text-destructive font-bold uppercase text-sm"><Trash className="mr-2 h-3 w-3"/> Remove</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -239,23 +239,23 @@ export function EmployeeManager() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Display Name</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Display Name</Label>
                 <Input value={formData.displayName} onChange={e => setFormData({...formData, displayName: e.target.value})} className="font-bold" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Username</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Username</Label>
                 <Input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="font-bold" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Terminal PIN (4-Digit)</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Terminal PIN (4-Digit)</Label>
                 <Input type="password" maxLength={4} value={formData.pin} onChange={e => setFormData({...formData, pin: e.target.value})} className="font-mono text-center tracking-[0.5em]" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Access Role</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Access Role</Label>
                 <Select value={formData.role} onValueChange={(v: any) => setFormData({...formData, role: v})}>
-                  <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="staff">Staff</SelectItem>
@@ -267,24 +267,24 @@ export function EmployeeManager() {
 
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Shift Starts</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Shift Starts</Label>
                 <Input type="time" value={formData.workStartTime} onChange={e => setFormData({...formData, workStartTime: e.target.value})} className="font-bold" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Shift Ends</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Shift Ends</Label>
                 <Input type="time" value={formData.workEndTime} onChange={e => setFormData({...formData, workEndTime: e.target.value})} className="font-bold" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Salary Amount</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Salary Amount</Label>
                 <Input type="number" value={formData.salary || ''} onChange={e => setFormData({...formData, salary: Number(e.target.value)})} className="font-mono" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Salary Type</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Salary Type</Label>
                 <Select value={formData.salaryType} onValueChange={(v: any) => setFormData({...formData, salaryType: v})}>
-                  <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly">Monthly Fixed</SelectItem>
                     <SelectItem value="hourly">Hourly Rate</SelectItem>
@@ -295,36 +295,36 @@ export function EmployeeManager() {
             {formData.salaryType === 'monthly' && (
               <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Working Days / Week</Label>
+                  <Label className="text-sm font-bold uppercase text-muted-foreground">Working Days / Week</Label>
                   <Input type="number" min={1} max={7} value={formData.workingDaysPerWeek || ''} onChange={e => setFormData({...formData, workingDaysPerWeek: Number(e.target.value)})} className="font-mono" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Overtime Multiplier</Label>
+                  <Label className="text-sm font-bold uppercase text-muted-foreground">Overtime Multiplier</Label>
                   <Input type="number" step="0.1" value={formData.overtimeMultiplier || ''} onChange={e => setFormData({...formData, overtimeMultiplier: Number(e.target.value)})} className="font-mono" />
                 </div>
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Weekly Off Day</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Weekly Off Day</Label>
                 <Select value={String(formData.weekOffDay)} onValueChange={v => setFormData({...formData, weekOffDay: Number(v)})}>
-                  <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {DAYS.map((d, i) => <SelectItem key={i} value={String(i)}>{d.toUpperCase()}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Join Date</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Join Date</Label>
                 <Input type="date" value={formData.joinDate} onChange={e => setFormData({...formData, joinDate: e.target.value})} className="font-bold" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Assigned Shift</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Assigned Shift</Label>
                 <Select value={formData.assignedShift} onValueChange={v => setFormData({...formData, assignedShift: v})}>
-                  <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="opening">Opening</SelectItem>
                     <SelectItem value="closing">Closing</SelectItem>
@@ -333,16 +333,16 @@ export function EmployeeManager() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Grace Period (Mins)</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Grace Period (Mins)</Label>
                 <Input type="number" min={0} value={formData.gracePeriod ?? 5} onChange={e => setFormData({...formData, gracePeriod: Number(e.target.value)})} className="font-bold" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Status</Label>
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Status</Label>
                 <Select value={String(formData.isActive)} onValueChange={v => setFormData({...formData, isActive: v === 'true'})}>
-                  <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="true">Active</SelectItem>
                     <SelectItem value="false">Inactive</SelectItem>
@@ -350,13 +350,13 @@ export function EmployeeManager() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">Meal Allowance Quota (₹)</Label>
-                <Input type="number" value={formData.foodAllowanceBalance} onChange={e => setFormData({...formData, foodAllowanceBalance: Number(e.target.value)})} className="font-mono font-bold text-xs" />
+                <Label className="text-sm font-bold uppercase text-muted-foreground">Meal Allowance Quota (₹)</Label>
+                <Input type="number" value={formData.foodAllowanceBalance} onChange={e => setFormData({...formData, foodAllowanceBalance: Number(e.target.value)})} className="font-mono font-bold text-sm" />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSave} disabled={isSubmitting} className="w-full h-12 font-black uppercase tracking-widest shadow-xl">Apply Profile Changes</Button>
+            <Button onClick={handleSave} disabled={isSubmitting} className="w-full h-12 font-bold uppercase tracking-normal shadow-xl">Apply Profile Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

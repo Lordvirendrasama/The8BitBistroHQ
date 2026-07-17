@@ -87,7 +87,7 @@ export function AppUpdatesDropdown() {
         <Button variant="outline" size="icon" className="h-10 w-10 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all rounded-xl relative group">
           <Sparkles className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
           {updates && updates.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-white text-[8px] font-black flex items-center justify-center rounded-full ring-2 ring-background">
+            <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[20px] px-1 bg-primary text-white text-xs font-bold flex items-center justify-center rounded-full ring-2 ring-background">
               {updates.filter(u => u.status === 'pending').length}
             </span>
           )}
@@ -97,9 +97,9 @@ export function AppUpdatesDropdown() {
         <div className="p-4 bg-primary text-white flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 fill-current" />
-            <h4 className="font-black text-[10px] uppercase tracking-widest">Dev Roadmap</h4>
+            <h4 className="font-bold text-sm uppercase tracking-normal">Dev Roadmap</h4>
           </div>
-          <span className="text-[8px] font-black uppercase opacity-60">Strategic Checklist</span>
+          <span className="text-sm font-bold uppercase opacity-60">Strategic Checklist</span>
         </div>
 
         <div className="p-3 border-b bg-muted/20">
@@ -109,7 +109,7 @@ export function AppUpdatesDropdown() {
               value={newUpdate}
               onChange={(e) => setNewUpdate(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              className="h-9 font-black uppercase text-[10px] tracking-tight bg-background border-2 border-primary/10 focus-visible:ring-primary"
+              className="h-9 font-bold uppercase text-sm tracking-tight bg-background border-2 border-primary/10 focus-visible:ring-primary"
             />
             <Button 
               size="icon" 
@@ -144,7 +144,7 @@ export function AppUpdatesDropdown() {
                         <Input 
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
-                          className="h-8 text-xs font-bold uppercase"
+                          className="h-8 text-sm font-bold uppercase"
                           autoFocus
                         />
                         <Button size="icon" className="h-8 w-8 shrink-0 bg-emerald-600" onClick={() => saveEdit(item.id)}>
@@ -157,18 +157,18 @@ export function AppUpdatesDropdown() {
                     ) : (
                       <div className="space-y-1">
                         <p className={cn(
-                          "text-xs font-bold uppercase tracking-tight leading-relaxed transition-all",
+                          "text-sm font-bold uppercase tracking-tight leading-relaxed transition-all",
                           item.status === 'completed' ? "line-through text-muted-foreground opacity-50" : "text-foreground"
                         )}>
                           {item.text}
                         </p>
                         <div className="flex items-center gap-3">
-                          <p className="text-[8px] font-black uppercase text-muted-foreground flex items-center gap-1">
+                          <p className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1">
                             <Clock className="h-2 w-2" />
                             {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                           </p>
                           {item.status === 'completed' && (
-                            <Badge className="h-3 px-1.5 bg-emerald-600 text-[7px] font-black uppercase">Built</Badge>
+                            <Badge className="h-3 px-1.5 bg-emerald-600 text-sm font-bold uppercase">Built</Badge>
                           )}
                         </div>
                       </div>
@@ -200,14 +200,14 @@ export function AppUpdatesDropdown() {
             )) : (
               <div className="py-20 text-center space-y-2 opacity-30">
                 <Plus className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Horizon Clear</p>
+                <p className="text-sm font-bold uppercase tracking-normal">Horizon Clear</p>
               </div>
             )}
           </div>
         </ScrollArea>
         
         <div className="p-3 bg-muted/10 border-t border-dashed">
-          <p className="text-[8px] font-black uppercase text-center text-muted-foreground tracking-[0.2em]">Strategic Build Tracker</p>
+          <p className="text-sm font-bold uppercase text-center text-muted-foreground tracking-[0.2em]">Strategic Build Tracker</p>
         </div>
       </PopoverContent>
     </Popover>

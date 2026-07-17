@@ -101,12 +101,12 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                     {liveStatus && (
                         <div className="mt-1.5 flex items-center gap-2">
                             {liveStatus.present ? (
-                                <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-500/20 text-[9px] font-black uppercase">
+                                <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-500/20 text-sm font-bold uppercase">
                                     <UserCheck className="h-2.5 w-2.5" />
                                     LIVE: IN AT {liveStatus.time}
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-1.5 bg-destructive/5 text-destructive px-2 py-0.5 rounded-full border border-destructive/20 text-[9px] font-black uppercase">
+                                <div className="flex items-center gap-1.5 bg-destructive/5 text-destructive px-2 py-0.5 rounded-full border border-destructive/20 text-sm font-bold uppercase">
                                     <UserX className="h-2.5 w-2.5" />
                                     NO RECORD FOUND
                                 </div>
@@ -115,7 +115,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                     )}
 
                     {isAdmin && !isStrategic && !task.ownerOnly && (
-                        <p className="text-[9px] text-destructive/80 font-bold uppercase mt-1 tracking-tighter">
+                        <p className="text-sm text-destructive/80 font-bold uppercase mt-1 tracking-tight">
                             (Pending: {employeeNames})
                         </p>
                     )}
@@ -127,7 +127,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                     <Button 
                         size="sm" 
                         variant="outline" 
-                        className="flex-1 h-8 text-[10px] font-black uppercase tracking-widest border-emerald-500/30 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+                        className="flex-1 h-8 text-sm font-bold uppercase tracking-normal border-emerald-500/30 text-emerald-600 hover:bg-emerald-500 hover:text-white"
                         onClick={() => onTaskToggle(task, 'yes')}
                     >
                         YES
@@ -135,7 +135,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                     <Button 
                         size="sm" 
                         variant="outline" 
-                        className="flex-1 h-8 text-[10px] font-black uppercase tracking-widest border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+                        className="flex-1 h-8 text-sm font-bold uppercase tracking-normal border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
                         onClick={() => onTaskToggle(task, 'no')}
                     >
                         NO
@@ -147,9 +147,9 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
                 <div className="flex items-center justify-between bg-muted/20 rounded-lg p-2 border border-dashed animate-in fade-in duration-300">
                     <div className="flex items-center gap-2">
                         <CheckCircle2 className={cn("h-3.5 w-3.5", task.verificationResult === 'yes' ? "text-emerald-500" : "text-destructive")} />
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Verified:</span>
+                        <span className="text-sm font-bold uppercase tracking-normal opacity-60">Verified:</span>
                         <Badge variant="outline" className={cn(
-                            "text-[9px] font-black uppercase h-4 px-1.5",
+                            "text-sm font-bold uppercase h-4 px-1.5",
                             task.verificationResult === 'yes' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
                         )}>
                             {task.verificationResult === 'no' ? 'ABSENT' : task.verificationResult?.toUpperCase()}
@@ -177,7 +177,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
             <ListChecks className="h-5 w-5 text-primary" />
             {isOwner ? 'Operational Audit' : 'Daily Shift Tasks'}
           </CardTitle>
-          <CardDescription className="text-[10px] uppercase font-black tracking-widest text-primary/60">
+          <CardDescription className="text-sm uppercase font-bold tracking-normal text-primary/60">
               {isOwner ? 'STRATEGIC VERIFICATION' : 'Pending Accountability'}
           </CardDescription>
         </div>
@@ -191,7 +191,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
         <div className="p-4 space-y-6">
           {strategicTasks.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5 px-1 tracking-[0.2em]">
+              <h4 className="text-sm font-bold uppercase text-primary flex items-center gap-1.5 px-1 tracking-[0.2em]">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Strategic Verification
               </h4>
@@ -208,7 +208,7 @@ export function StartOfDayTasks({ tasks, onTaskToggle, onMinimize, employees }: 
             const shiftLabel = firstTaskShiftType === 'opening' ? 'Opening Shift' : firstTaskShiftType === 'closing' ? 'Closing Shift' : 'Shift';
             return (
               <div className="space-y-2">
-                <h4 className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 px-1 tracking-widest">
+                <h4 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1.5 px-1 tracking-normal">
                   {firstTaskShiftType === 'closing' ? (
                     <Moon className="h-3.5 w-3.5 text-indigo-400" />
                   ) : (

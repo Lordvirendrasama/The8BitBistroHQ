@@ -28,7 +28,7 @@ export default function LogsLayout({
               key={item.href}
               href={item.href}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all shrink-0 active:scale-95 border",
+                "px-3 py-1.5 rounded-lg text-sm uppercase tracking-wider font-bold transition-all shrink-0 active:scale-95 border",
                 isActive
                   ? "bg-primary/10 text-primary border-primary/25 shadow-[0_0_10px_rgba(239,0,53,0.1)] font-extrabold"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5 border-transparent"

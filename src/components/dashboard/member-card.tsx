@@ -111,21 +111,21 @@ export function MemberCard({
           <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col items-center gap-1">
-            <CardTitle className={cn("font-black tracking-tight", "text-xl")}>{member.name}</CardTitle>
-            <Badge variant="outline" className={cn("text-[10px] font-black uppercase px-2", tierColors[member.tier])}>
+            <CardTitle className={cn("font-bold tracking-tight", "text-xl")}>{member.name}</CardTitle>
+            <Badge variant="outline" className={cn("text-sm font-bold uppercase px-2", tierColors[member.tier])}>
                 {member.tier} Tier
             </Badge>
         </div>
-        <CardDescription className={cn('text-xs font-medium', isGold && 'text-foreground/80')}>@{member.username} &bull; Level {member.level}</CardDescription>
+        <CardDescription className={cn('text-sm font-medium', isGold && 'text-foreground/80')}>@{member.username} &bull; Level {member.level}</CardDescription>
         <div className="flex items-center gap-4 mt-1">
             <div className={cn("flex items-center gap-1", isGold ? "text-yellow-600 dark:text-yellow-400" : "text-yellow-500")}>
                 <Coins className="h-4 w-4" />
-                <span className="font-black text-lg">{member.points.toLocaleString()}</span>
+                <span className="font-bold text-lg">{member.points.toLocaleString()}</span>
             </div>
             {totalBalanceSeconds > 0 && (
                 <div className="flex items-center gap-1 text-primary">
                     <Zap className="h-4 w-4 fill-current" />
-                    <span className="font-black text-lg">{formatBalance(totalBalanceSeconds)}</span>
+                    <span className="font-bold text-lg">{formatBalance(totalBalanceSeconds)}</span>
                 </div>
             )}
         </div>
@@ -138,7 +138,7 @@ export function MemberCard({
           </div>
         )}
         <div>
-          <div className="mb-1 flex justify-between text-[10px] uppercase font-bold text-muted-foreground">
+          <div className="mb-1 flex justify-between text-sm uppercase font-bold text-muted-foreground">
             <span>Level {member.level + 1} Progress</span>
             <span>
               {currentLevelXp.toLocaleString()} / {xpPerLevel.toLocaleString()} XP
@@ -149,40 +149,40 @@ export function MemberCard({
       </CardContent>
       {onGrantXp && (
         <CardFooter className="flex-col gap-2 p-2 pt-0">
-          <div className="w-full flex text-[10px] font-bold text-muted-foreground justify-between px-1 mb-1 uppercase tracking-tighter">
+          <div className="w-full flex text-sm font-bold text-muted-foreground justify-between px-1 mb-1 uppercase tracking-tight">
             <span>Joined {new Date(member.joinDate).toLocaleDateString()}</span>
             <span>Spent ₹{member.totalSpent.toLocaleString()}</span>
           </div>
           <div className="w-full grid grid-cols-2 gap-2">
             <Button 
                 variant="secondary" 
-                className="font-black uppercase text-[10px] tracking-widest bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 border border-yellow-500/20"
+                className="font-bold uppercase text-sm tracking-normal bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 border border-yellow-500/20"
                 onClick={() => setIsRechargeOpen(true)}
             >
                 <Zap className="mr-1.5 h-3.5 w-3.5" /> Recharge
             </Button>
-            <Button asChild variant="secondary" className="font-bold tracking-wider text-xs">
+            <Button asChild variant="secondary" className="font-bold tracking-wider text-sm">
                 <Link href={`/claim-rewards?memberId=${member.id}`}>
                     Rewards
                 </Link>
             </Button>
-            <Button variant="secondary" className="font-bold text-xs" onClick={() => handleCopy(member.name, 'Name')}>
+            <Button variant="secondary" className="font-bold text-sm" onClick={() => handleCopy(member.name, 'Name')}>
                 <User className="mr-2 h-3.5 w-3.5" />
                 Name
             </Button>
-            <Button variant="secondary" className="font-bold text-xs" onClick={() => handleCopy(member.phone || '', 'Number')}>
+            <Button variant="secondary" className="font-bold text-sm" onClick={() => handleCopy(member.phone || '', 'Number')}>
                 <Phone className="mr-2 h-3.5 w-3.5" />
                 Phone
             </Button>
             {hasPending ? (
-              <Button variant="destructive" className="font-bold text-xs" onClick={() => handleClearPending(member.id)}>
+              <Button variant="destructive" className="font-bold text-sm" onClick={() => handleClearPending(member.id)}>
                 <FileWarning className="mr-2 h-3.5 w-3.5" />
                 Clear Due
               </Button>
             ) : (
               <AddPendingModal member={member} onAddPending={handleAddPending} />
             )}
-            <Button asChild variant="secondary" className="font-bold tracking-wider text-xs">
+            <Button asChild variant="secondary" className="font-bold tracking-wider text-sm">
                 <Link href={`/members/${member.id}`}>
                     <Eye className="mr-2 h-3.5 w-3.5" />
                     Profile

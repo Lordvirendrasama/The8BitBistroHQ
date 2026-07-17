@@ -124,7 +124,7 @@ const IndividualPlayerTimer = ({
     return (
         <div className="flex flex-col items-end ml-auto mr-3 gap-0.5">
             <span className={cn(
-                "font-mono font-bold text-xs px-2 py-0.5 rounded border shadow-sm",
+                "font-mono font-bold text-sm px-2 py-0.5 rounded border shadow-sm",
                 member.status === 'paused' ? "text-zinc-400 bg-zinc-800/30 border-zinc-800/50" :
                 rem <= 0 ? "text-destructive bg-destructive/10 border-destructive/20 animate-pulse" : 
                 rem < 5 * 60 * 1000 ? "text-yellow-500 bg-yellow-500/10 border-yellow-500/20" : 
@@ -133,7 +133,7 @@ const IndividualPlayerTimer = ({
                 {formatTime(rem)}
             </span>
             {poolRem !== null && (
-                <span className="text-[8px] font-black uppercase tracking-tighter text-muted-foreground/50 flex items-center gap-1">
+                <span className="text-sm font-bold uppercase tracking-tight text-muted-foreground/50 flex items-center gap-1">
                     <Zap className="h-2 w-2 fill-current" /> {formatTime(poolRem * 1000)} Account
                 </span>
             )}
@@ -267,7 +267,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             </CardTitle>
             {shortestMember ? (
                 <>
-                    <span className="text-[10px] font-bold uppercase text-primary tracking-normal flex items-center gap-1.5 bg-background/80 border border-primary/10 px-2 py-0.5 rounded-full w-fit shadow-sm">
+                    <span className="text-sm font-bold uppercase text-primary tracking-normal flex items-center gap-1.5 bg-background/80 border border-primary/10 px-2 py-0.5 rounded-full w-fit shadow-sm">
                         <User className="h-2.5 w-2.5" />
                         {shortestMember.name}
                     </span>
@@ -303,7 +303,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     }
 
                         return (
-                            <div className="flex items-center gap-1 text-[9px] font-black text-zinc-400 bg-zinc-800/50 px-2 py-0.5 rounded-full border border-zinc-700 animate-in fade-in zoom-in-95 duration-500">
+                            <div className="flex items-center gap-1 text-sm font-bold text-zinc-400 bg-zinc-800/50 px-2 py-0.5 rounded-full border border-zinc-700 animate-in fade-in zoom-in-95 duration-500">
                                <Zap className="h-2.5 w-2.5 fill-current" />
                                <span className="font-mono">{formatTime(displayBalance * 1000)} ACCOUNT</span>
                             </div>
@@ -311,13 +311,13 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     })()}
                 </>
             ) : station.status !== 'available' && (
-                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest opacity-60">Food Only Order</span>
+                <span className="text-sm font-bold uppercase text-muted-foreground tracking-normal opacity-60">Food Only Order</span>
             )}
         </div>
 
         <div className="flex flex-col items-end gap-1">
             <Badge variant="outline" className={cn(
-                "font-bold uppercase text-[10px] tracking-tight",
+                "font-bold uppercase text-sm tracking-tight",
                 !isRunning && !isPaused && !isFinishing && 'bg-accent/10 text-accent border-accent/20',
                 isPaused && 'bg-zinc-800/50 text-zinc-400 border-zinc-800',
                 isRunning && !isTimeLow && !isTimeUp && 'bg-zinc-800 text-white border-zinc-700',
@@ -336,15 +336,15 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             {isFinishing ? (
                 <div className="flex flex-col items-center">
                     <div className={cn(
-                        "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none",
+                        "text-4xl font-bold font-mono tracking-tight tabular-nums leading-none",
                         isGraceOver ? "text-destructive" : "text-yellow-500"
                     )}>
                         {graceRemaining < 0 ? `-${formatTime(Math.abs(graceRemaining))}` : formatTime(graceRemaining)}
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] mt-2 opacity-60">Grace Period</span>
+                    <span className="text-sm font-bold uppercase tracking-[0.2em] mt-2 opacity-60">Grace Period</span>
                     {isGraceOver && (
                         <div className="mt-2 flex flex-col items-center gap-1 animate-in zoom-in-95 duration-300">
-                            <Badge variant="destructive" className="h-5 px-3 text-[8px] font-black uppercase tracking-widest gap-1 shadow-lg">
+                            <Badge variant="destructive" className="h-5 px-3 text-sm font-bold uppercase tracking-normal gap-1 shadow-lg">
                                 <AlertTriangle className="h-3 w-3" /> REQUIRES 30-MIN PACKAGE
                             </Badge>
                         </div>
@@ -353,7 +353,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             ) : (
                 <>
                     <div className={cn(
-                        "text-4xl font-bold font-mono tracking-tighter tabular-nums leading-none transition-colors",
+                        "text-4xl font-bold font-mono tracking-tight tabular-nums leading-none transition-colors",
                         isTimeUp && "text-destructive",
                         isTimeLow && "text-yellow-500"
                         )}>
@@ -362,13 +362,13 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                             : isRunning ? (
                                 <div className="flex flex-col items-center">
                                     <Utensils className="h-8 w-8 mb-1 text-zinc-400" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Bistro Order</span>
+                                    <span className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-400">Bistro Order</span>
                                 </div>
                             ) : "00:00"}
                     </div>
                     {showTwoTimers && (
                         <div className="mt-1.5 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-                            <div className="text-[9px] font-bold uppercase text-muted-foreground opacity-60 tracking-widest leading-none mb-0.5">Next Expiry</div>
+                            <div className="text-sm font-bold uppercase text-muted-foreground opacity-60 tracking-normal leading-none mb-0.5">Next Expiry</div>
                             <div className={cn(
                                 "text-base font-bold font-mono tracking-tight tabular-nums leading-none",
                                 minRemaining <= 0 ? "text-destructive" : minRemaining < 5 * 60 * 1000 ? "text-yellow-500" : "text-muted-foreground/80"
@@ -379,7 +379,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     )}
                     {isPaused && (
                         <div className="mt-2 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-                            <div className="text-[9px] font-bold uppercase text-zinc-400 opacity-80 tracking-widest leading-none mb-0.5">Paused For</div>
+                            <div className="text-sm font-bold uppercase text-zinc-400 opacity-80 tracking-normal leading-none mb-0.5">Paused For</div>
                             <div className="text-base font-bold font-mono text-zinc-400 tracking-tight tabular-nums leading-none">
                                 {formatTime(pauseDuration)}
                             </div>
@@ -394,7 +394,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="w-full h-7 flex justify-between items-center px-2 hover:bg-muted/50 text-[9px] font-black uppercase tracking-widest text-muted-foreground rounded-lg border border-dashed border-muted-foreground/20"
+                    className="w-full h-7 flex justify-between items-center px-2 hover:bg-muted/50 text-sm font-bold uppercase tracking-normal text-muted-foreground rounded-lg border border-dashed border-muted-foreground/20"
                     onClick={() => setIsOrderVisible(!isOrderVisible)}
                 >
                     <div className="flex items-center gap-1.5">
@@ -414,7 +414,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                         <ScrollArea className="h-24 w-full">
                             <div className="space-y-1.5 pr-3">
                                 {allOrderItems.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center text-[9px] font-bold group/item">
+                                    <div key={idx} className="flex justify-between items-center text-sm font-bold group/item">
                                         <span className="truncate flex-1 uppercase tracking-tight text-foreground/80">
                                             {item.quantity}x {item.name.replace(/^(Time: |Buy Recharge: |Recharge: )/i, '')}
                                         </span>
@@ -446,7 +446,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                             >
                                 <Avatar className="h-10 w-10">
                                     <AvatarImage src={member.avatarUrl} />
-                                    <AvatarFallback className="text-[10px] font-bold">{member.name.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback className="text-sm font-bold">{member.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 {shortestMember?.id === member.id && !isTimeUp && !isFinishing && (
                                     <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full p-0.5 shadow-sm ring-1 ring-background">
@@ -465,7 +465,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             ) : (
                 <div className="flex flex-col items-center gap-1 text-muted-foreground/40">
                     <User className="h-5 w-5" />
-                    <span className="text-[8px] font-bold uppercase tracking-normal">Idle Session</span>
+                    <span className="text-sm font-bold uppercase tracking-normal">Idle Session</span>
                 </div>
             )}
             </div>
@@ -473,8 +473,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             {(isRunning || isPaused || isFinishing) && (station.members || []).length > 0 && (
                 <PopoverContent className="w-80 p-0 overflow-hidden shadow-2xl border-2 font-body" align="center">
                     <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session Audit</p>
-                        <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary uppercase">{(station.members || []).length} Players</Badge>
+                        <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Session Audit</p>
+                        <Badge variant="outline" className="text-sm font-bold border-primary/20 text-primary uppercase">{(station.members || []).length} Players</Badge>
                     </div>
                     <ScrollArea className="max-h-72">
                         <div className="divide-y">
@@ -485,18 +485,18 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                         <div className="flex items-center gap-3 min-w-0 flex-1">
                                             <Avatar className="h-8 w-8 border shadow-sm">
                                                 <AvatarImage src={member.avatarUrl} />
-                                                <AvatarFallback className="text-[10px] font-bold">{member.name[0]}</AvatarFallback>
+                                                <AvatarFallback className="text-sm font-bold">{member.name[0]}</AvatarFallback>
                                             </Avatar>
                                             <div className="min-w-0">
-                                                <p className={cn("text-xs font-bold uppercase truncate", member.status === 'finished' && "line-through opacity-40")}>{member.name}</p>
+                                                <p className={cn("text-sm font-bold uppercase truncate", member.status === 'finished' && "line-through opacity-40")}>{member.name}</p>
                                                 {member.status !== 'finished' ? (
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">
+                                                    <p className="text-sm font-bold text-muted-foreground uppercase opacity-60">
                                                         {member.endTime ? 'Live Timer' : 'Open Order'}
                                                     </p>
                                                 ) : leftEarly ? (
-                                                    <Badge variant="destructive" className="h-3.5 text-[6px] font-black uppercase bg-amber-500 border-none">Left Early</Badge>
+                                                    <Badge variant="destructive" className="h-3.5 text-sm font-bold uppercase bg-amber-500 border-none">Left Early</Badge>
                                                 ) : (
-                                                    <p className="text-[9px] font-bold text-emerald-600 uppercase opacity-60">Session Done</p>
+                                                    <p className="text-sm font-bold text-emerald-600 uppercase opacity-60">Session Done</p>
                                                 )}
                                             </div>
                                         </div>
@@ -518,7 +518,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                                     <Button 
                                                         variant="destructive" 
                                                         size="sm" 
-                                                        className="h-8 px-3 text-[10px] font-bold uppercase shadow-sm shrink-0"
+                                                        className="h-8 px-3 text-sm font-bold uppercase shadow-sm shrink-0"
                                                         onClick={() => {
                                                             onStopPlayer?.(station.id, member.id);
                                                             if ((station.members || []).filter(m => m.status !== 'finished').length <= 1) {
@@ -532,7 +532,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                                             )}
                                             {member.status === 'finished' && (
                                                 <Badge variant="outline" className={cn(
-                                                    "h-5 px-2 text-[9px] font-bold uppercase",
+                                                    "h-5 px-2 text-sm font-bold uppercase",
                                                     leftEarly ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
                                                 )}>{leftEarly ? 'EARLY' : 'DONE'}</Badge>
                                             )}
@@ -543,7 +543,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                         </div>
                     </ScrollArea>
                     <div className="p-3 bg-muted/10 border-t">
-                        <Button variant="outline" size="sm" className="w-full h-9 text-[10px] font-bold uppercase tracking-widest gap-2" onClick={() => setIsManageOpen(false)}>
+                        <Button variant="outline" size="sm" className="w-full h-9 text-sm font-bold uppercase tracking-normal gap-2" onClick={() => setIsManageOpen(false)}>
                             Close Audit
                         </Button>
                     </div>
@@ -553,7 +553,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
         <div className="flex flex-col items-center gap-1 mt-2">
             {station.startTime && (isRunning || isPaused || isFinishing) && (
-                <div className="text-[9px] font-bold text-muted-foreground flex items-center gap-1.5 bg-muted/30 px-3 py-1 rounded-full shadow-inner">
+                <div className="text-sm font-bold text-muted-foreground flex items-center gap-1.5 bg-muted/30 px-3 py-1 rounded-full shadow-inner">
                     <Clock className="h-3 w-3" />
                     <span>Started: {new Date(station.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
@@ -565,11 +565,11 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
       <CardFooter className="flex flex-col gap-2 p-3 pt-2 bg-muted/5 border-t">
           {station.status === 'available' ? (
               <div className="grid grid-cols-2 gap-2 w-full">
-                  <Button onClick={() => onToggleTimer(station)} variant={station.type === 'ps5' ? 'default' : 'outline'} size="sm" className="font-bold uppercase h-11 tracking-tight text-xs shadow-sm">
+                  <Button onClick={() => onToggleTimer(station)} variant={station.type === 'ps5' ? 'default' : 'outline'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm shadow-sm">
                       <Play className="h-4 w-4 mr-1.5 shrink-0" />
                       <span>{station.type === 'ps5' ? 'Start' : 'Play'}</span>
                   </Button>
-                  <Button onClick={() => onOpenBillModal(station)} variant={station.type === 'ps5' ? 'outline' : 'default'} size="sm" className="font-bold uppercase h-11 tracking-tight text-xs border-2">
+                  <Button onClick={() => onOpenBillModal(station)} variant={station.type === 'ps5' ? 'outline' : 'default'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm border-2">
                       <Utensils className="h-4 w-4 mr-1.5 shrink-0" />
                       <span>Food</span>
                   </Button>
@@ -580,50 +580,50 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                       {isFinishing ? (
                           <Button onClick={handleCancelFinishing} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm text-primary">
                               <X className="h-3.5 w-3.5" />
-                              <span className="text-[8px] font-bold uppercase leading-none">Cancel</span>
+                              <span className="text-sm font-bold uppercase leading-none">Cancel</span>
                           </Button>
                       ) : isRunning ? (
                           <Button onClick={() => onToggleTimer(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                               <Pause className="h-3.5 w-3.5" />
-                              <span className="text-[8px] font-bold uppercase leading-none">Pause</span>
+                              <span className="text-sm font-bold uppercase leading-none">Pause</span>
                           </Button>
                       ) : (
                           <Button onClick={() => onToggleTimer(station)} variant="default" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 bg-blue-600 hover:bg-blue-700 shadow-md">
                               <Play className="h-3.5 w-3.5" />
-                              <span className="text-[8px] font-bold uppercase leading-none">Resume</span>
+                              <span className="text-sm font-bold uppercase leading-none">Resume</span>
                           </Button>
                       )}
                       <Button onClick={() => onOpenEditTimeModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                           <Timer className="h-3.5 w-3.5" />
-                          <span className="text-[8px] font-bold uppercase leading-none">Time</span>
+                          <span className="text-sm font-bold uppercase leading-none">Time</span>
                       </Button>
                       <Button onClick={() => onOpenJoinModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                           <UserPlus className="h-3.5 w-3.5"/>
-                          <span className="text-[8px] font-bold uppercase leading-none">Join</span>
+                          <span className="text-sm font-bold uppercase leading-none">Join</span>
                       </Button>
                       <Button onClick={() => onOpenMoveModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
                           <ArrowRightLeft className="h-3.5 w-3.5"/>
-                          <span className="text-[8px] font-bold uppercase leading-none">Move</span>
+                          <span className="text-sm font-bold uppercase leading-none">Move</span>
                       </Button>
                   </div>
                   
                   <div className="w-full">
                       {isFinishing ? (
                           <div className="grid grid-cols-2 gap-1.5">
-                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-black uppercase tracking-tight text-[10px] shadow-lg animate-in zoom-in-95 duration-300">
+                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm shadow-lg animate-in zoom-in-95 duration-300">
                                 <StopCircle className="h-4 w-4 mr-1.5"/> Stop & Settle
                             </Button>
-                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
                                 <Utensils className="h-4 w-4 mr-1.5" /> Food
                             </Button>
                           </div>
                       ) : (
                           <div className="grid grid-cols-2 gap-1.5">
-                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs shadow-md">
+                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm shadow-md">
                                 <StopCircle className="h-4 w-4 mr-1.5"/> Stop All
                             </Button>
 
-                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-xs border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
                                 <Utensils className="h-4 w-4 mr-1.5" /> Food
                             </Button>
                           </div>

@@ -130,7 +130,7 @@ export function OwnerTaskList() {
     });
   }, [tasks, searchQuery, statusFilter]);
 
-  if (loading) return <div className="p-12 text-center text-xs uppercase tracking-tight animate-pulse">Syncing Strategic Roadmap...</div>;
+  if (loading) return <div className="p-12 text-center text-sm uppercase tracking-tight animate-pulse">Syncing Strategic Roadmap...</div>;
   if (error) return <div className="p-12 text-center text-destructive font-bold">Error connecting to mission control.</div>;
   if (!isMounted) return null;
 
@@ -144,10 +144,10 @@ export function OwnerTaskList() {
           </h2>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={() => { setEditingTask(null); setIsSeparatorMode(true); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-3 text-[10px] border-2 border-dashed">
+          <Button variant="outline" onClick={() => { setEditingTask(null); setIsSeparatorMode(true); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-3 text-sm border-2 border-dashed">
             <ListPlus className="mr-2 h-4 w-4" /> Add Header
           </Button>
-          <Button onClick={() => { setEditingTask(null); setIsSeparatorMode(false); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-4 text-[10px] shadow-lg">
+          <Button onClick={() => { setEditingTask(null); setIsSeparatorMode(false); setIsModalOpen(true); }} className="flex-1 font-normal uppercase tracking-tight h-10 px-4 text-sm shadow-lg">
             <Plus className="mr-2 h-4 w-4" /> New Action
           </Button>
         </div>
@@ -156,23 +156,23 @@ export function OwnerTaskList() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Filter tasks..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 h-10 text-xs font-normal uppercase" />
+          <Input placeholder="Filter tasks..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 h-10 text-sm font-normal uppercase" />
         </div>
         <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-          <SelectTrigger className="w-full sm:w-[180px] h-10 text-[10px] font-normal uppercase">
+          <SelectTrigger className="w-full sm:w-[180px] h-10 text-sm font-normal uppercase">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-[10px] uppercase font-normal">All Items</SelectItem>
-            <SelectItem value="pending" className="text-[10px] uppercase font-normal">Pending</SelectItem>
-            <SelectItem value="completed" className="text-[10px] uppercase font-normal">Completed</SelectItem>
+            <SelectItem value="all" className="text-sm uppercase font-normal">All Items</SelectItem>
+            <SelectItem value="pending" className="text-sm uppercase font-normal">Pending</SelectItem>
+            <SelectItem value="completed" className="text-sm uppercase font-normal">Completed</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <Card className="border-2 shadow-none overflow-hidden">
         <CardContent className="p-0">
-          <div className="hidden sm:grid grid-cols-[40px_50px_1fr_80px_140px_100px] bg-muted/30 border-b py-3 px-4 text-[10px] font-normal uppercase tracking-tight text-muted-foreground">
+          <div className="hidden sm:grid grid-cols-[40px_50px_1fr_80px_140px_100px] bg-muted/30 border-b py-3 px-4 text-sm font-normal uppercase tracking-tight text-muted-foreground">
             <div className="text-center">Pos</div>
             <div className="text-center">Done</div>
             <div>Task</div>
@@ -217,14 +217,14 @@ export function OwnerTaskList() {
                             <div className="w-full min-w-0 mb-3 sm:mb-0">
                               <div className="flex flex-col">
                                 <span className={cn(
-                                  "font-normal uppercase text-xs sm:text-sm tracking-tight",
+                                  "font-normal uppercase text-sm sm:text-sm tracking-tight",
                                   task.isSeparator ? "text-primary font-bold" : "text-foreground",
                                   task.status === 'completed' && "line-through opacity-50"
                                 )}>
                                   {task.title}
                                 </span>
                                 {!task.isSeparator && task.description && (
-                                  <span className="text-[10px] text-muted-foreground line-clamp-1 italic font-normal">{task.description}</span>
+                                  <span className="text-sm text-muted-foreground line-clamp-1 italic font-normal">{task.description}</span>
                                 )}
                               </div>
                             </div>
@@ -245,7 +245,7 @@ export function OwnerTaskList() {
                             {!task.isSeparator && (
                               <div className="w-full sm:w-auto mb-3 sm:mb-0">
                                 <span className={cn(
-                                  "text-[10px] font-mono px-2 py-1 rounded bg-muted text-muted-foreground font-normal uppercase whitespace-nowrap",
+                                  "text-sm font-mono px-2 py-1 rounded bg-muted text-muted-foreground font-normal uppercase whitespace-nowrap",
                                   task.status === 'pending' && isPast(new Date(task.dueDateTime)) && !isToday(new Date(task.dueDateTime)) && "bg-destructive text-white"
                                 )}>
                                   {format(new Date(task.dueDateTime), 'MMM d, p')}
@@ -276,7 +276,7 @@ export function OwnerTaskList() {
           {filteredTasks.length === 0 && (
             <div className="h-48 flex flex-col items-center justify-center opacity-30">
               <AlertCircle className="h-8 w-8 mb-2" />
-              <p className="font-normal uppercase text-[10px] tracking-widest">Clear Horizons: No Tasks Found</p>
+              <p className="font-normal uppercase text-sm tracking-normal">Clear Horizons: No Tasks Found</p>
             </div>
           )}
         </CardContent>
@@ -291,48 +291,48 @@ export function OwnerTaskList() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">Title</Label>
+              <Label className="text-sm font-normal uppercase tracking-normal text-muted-foreground">Title</Label>
               <Input value={formData.title} onChange={e => setFormData(p => ({...p, title: e.target.value}))} placeholder="e.g. MARKETING GOALS" className="font-normal h-12 text-lg uppercase border-2" />
             </div>
             {!isSeparatorMode && (
               <>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">Description (Optional)</Label>
-                  <Input value={formData.description} onChange={e => setFormData(p => ({...p, description: e.target.value}))} placeholder="Brief details..." className="font-normal uppercase text-xs border-2" />
+                  <Label className="text-sm font-normal uppercase tracking-normal text-muted-foreground">Description (Optional)</Label>
+                  <Input value={formData.description} onChange={e => setFormData(p => ({...p, description: e.target.value}))} placeholder="Brief details..." className="font-normal uppercase text-sm border-2" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">Focus Area</Label>
+                    <Label className="text-sm font-normal uppercase tracking-normal text-muted-foreground">Focus Area</Label>
                     <Select value={formData.category} onValueChange={(v: any) => setFormData(p => ({...p, category: v}))}>
-                      <SelectTrigger className="h-10 text-xs font-normal uppercase"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10 text-sm font-normal uppercase"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="strategic" className="text-xs uppercase font-normal">Strategic</SelectItem>
-                        <SelectItem value="bill" className="text-xs uppercase font-normal">Financial</SelectItem>
-                        <SelectItem value="maintenance" className="text-xs uppercase font-normal">Operations</SelectItem>
+                        <SelectItem value="strategic" className="text-sm uppercase font-normal">Strategic</SelectItem>
+                        <SelectItem value="bill" className="text-sm uppercase font-normal">Financial</SelectItem>
+                        <SelectItem value="maintenance" className="text-sm uppercase font-normal">Operations</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">Priority</Label>
+                    <Label className="text-sm font-normal uppercase tracking-normal text-muted-foreground">Priority</Label>
                     <Select value={formData.priority} onValueChange={(v: any) => setFormData(p => ({...p, priority: v}))}>
-                      <SelectTrigger className="h-10 text-xs font-normal uppercase"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10 text-sm font-normal uppercase"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low" className="text-xs uppercase font-normal">Low</SelectItem>
-                        <SelectItem value="medium" className="text-xs uppercase font-normal">Medium</SelectItem>
-                        <SelectItem value="high" className="text-xs uppercase font-normal">High</SelectItem>
+                        <SelectItem value="low" className="text-sm uppercase font-normal">Low</SelectItem>
+                        <SelectItem value="medium" className="text-sm uppercase font-normal">Medium</SelectItem>
+                        <SelectItem value="high" className="text-sm uppercase font-normal">High</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">Due By</Label>
+                  <Label className="text-sm font-normal uppercase tracking-normal text-muted-foreground">Due By</Label>
                   <Input type="datetime-local" value={formData.dueDateTime} onChange={e => setFormData(p => ({...p, dueDateTime: e.target.value}))} className="h-10 font-normal border-2" />
                 </div>
               </>
             )}
           </div>
           <DialogFooter>
-            <Button onClick={handleSave} className="w-full font-normal uppercase h-14 text-lg shadow-xl tracking-widest">
+            <Button onClick={handleSave} className="w-full font-normal uppercase h-14 text-lg shadow-xl tracking-normal">
               {editingTask ? 'Apply Changes' : 'Add to Roadmap'}
             </Button>
           </DialogFooter>

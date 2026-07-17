@@ -73,7 +73,7 @@ export function PendingClaims({ onGrantXp }: PendingClaimsProps) {
           </CardHeader>
           <CardContent>
             <p>XP to grant: <span className="font-bold text-primary">{claim.xpToGrant.toLocaleString()} XP</span></p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
                 ({claim.baseXp} base XP &times; {claim.tierMultiplier}x multiplier)
             </p>
           </CardContent>

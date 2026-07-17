@@ -194,14 +194,14 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
     const greeting = getGreeting();
 
     if (userLoading || isLoadingShift) {
-        return <div className="flex py-20 items-center justify-center font-headline text-xs animate-pulse">Accessing Shift Protocols...</div>;
+        return <div className="flex py-20 items-center justify-center font-headline text-sm animate-pulse">Accessing Shift Protocols...</div>;
     }
 
     // Break functionality replaced with Staff Food
 
     const TaskList = ({ tasks, title }: { tasks: ShiftTask[], title: string }) => (
         <div>
-            <h3 className="mb-4 text-lg font-black uppercase tracking-tight text-foreground">{title}</h3>
+            <h3 className="mb-4 text-lg font-bold uppercase tracking-tight text-foreground">{title}</h3>
             <div className="space-y-4">
                 {tasks.map((task, idx) => (
                     <div key={`${task.name}-${task.type}-${idx}`} className="flex items-center space-x-3 group">
@@ -222,11 +222,11 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                 {task.name}
                             </Label>
                              {task.completed && task.completedBy ? (
-                                <p className="text-[10px] font-black uppercase text-green-600 mt-0.5">
+                                <p className="text-sm font-bold uppercase text-green-600 mt-0.5">
                                     Verified by {task.completedBy.displayName}
                                 </p>
                             ) : isAdmin ? (
-                                <p className="text-[10px] font-bold text-destructive/60 uppercase mt-0.5 tracking-tighter">
+                                <p className="text-sm font-bold text-destructive/60 uppercase mt-0.5 tracking-tight">
                                     (Pending Verification)
                                 </p>
                             ) : null}
@@ -234,7 +234,7 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                     </div>
                 ))}
                 {tasks.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4 italic uppercase font-bold opacity-30 tracking-widest">No tasks defined</p>
+                    <p className="text-sm text-muted-foreground text-center py-4 italic uppercase font-bold opacity-30 tracking-normal">No tasks defined</p>
                 )}
             </div>
         </div>
@@ -248,7 +248,7 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                         <h1 className="font-headline text-4xl tracking-wider text-foreground flex items-center gap-3">
                             {greeting.icon} {greeting.text}, {user?.displayName}!
                         </h1>
-                        <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-widest">
+                        <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal">
                             {user?.role === 'guest'
                                 ? 'Viewing the operational audit checklist.'
                                 : activeShift
@@ -261,18 +261,18 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                             <Button 
                                 variant="outline" 
                                 onClick={() => setIsStaffFoodModalOpen(true)} 
-                                className="h-12 px-6 font-black uppercase tracking-tight border-2 shadow-sm border-amber-500/20 text-amber-600 hover:bg-amber-500 hover:text-white"
+                                className="h-12 px-6 font-bold uppercase tracking-tight border-2 shadow-sm border-amber-500/20 text-amber-600 hover:bg-amber-500 hover:text-white"
                             >
                                 <Utensils className="mr-2 h-5 w-5" />
                                 Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})
                             </Button>
                         )}
                         {activeShift && user?.role !== 'guest' ? (
-                            <Button onClick={handleLogoutClick} size="lg" variant="destructive" className="h-12 px-6 font-black uppercase tracking-widest shadow-lg">
+                            <Button onClick={handleLogoutClick} size="lg" variant="destructive" className="h-12 px-6 font-bold uppercase tracking-normal shadow-lg">
                                 <Clock className="mr-2 h-5 w-5"/> Complete Shift
                             </Button>
                         ) : user?.role !== 'guest' ? (
-                            <Button onClick={handleStartShift} size="lg" className="h-12 px-8 font-black uppercase tracking-wider shadow-xl">
+                            <Button onClick={handleStartShift} size="lg" className="h-12 px-8 font-bold uppercase tracking-wider shadow-xl">
                                 <PlayCircle className="mr-2 h-5 w-5 text-emerald-400"/> Initialize Shift
                             </Button>
                         ) : (
@@ -289,7 +289,7 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                     {isOwnerView && (
                         <div className="flex justify-between items-center bg-emerald-500/5 p-4 rounded-xl border-2 border-dashed border-emerald-500/20">
                             <div>
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active Shift Master</p>
+                                <p className="text-sm font-bold text-emerald-600 uppercase tracking-normal">Active Shift Master</p>
                                 <p className="text-sm font-bold text-foreground">Operational Record: {activeShift.id.slice(0, 8).toUpperCase()}</p>
                             </div>
                             <div className="flex gap-2">
@@ -298,13 +298,13 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                         variant="outline" 
                                         size="sm"
                                         onClick={() => setIsStaffFoodModalOpen(true)} 
-                                        className="h-10 px-4 font-black uppercase text-[10px] border-2 text-amber-600 border-amber-500/20 hover:bg-amber-500 hover:text-white"
+                                        className="h-10 px-4 font-bold uppercase text-sm border-2 text-amber-600 border-amber-500/20 hover:bg-amber-500 hover:text-white"
                                     >
                                         <Utensils className="mr-1.5 h-3.5 w-3.5" />
                                         Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})
                                     </Button>
                                 )}
-                                <Button onClick={handleLogoutClick} size="sm" variant="destructive" className="h-10 px-4 font-black uppercase text-[10px] shadow-md">
+                                <Button onClick={handleLogoutClick} size="sm" variant="destructive" className="h-10 px-4 font-bold uppercase text-sm shadow-md">
                                     <Clock className="mr-1.5 h-3.5 w-3.5"/> Settle Day
                                 </Button>
                             </div>
@@ -314,7 +314,7 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                     <Card className="border-2 shadow-none overflow-hidden">
                         <CardHeader className="bg-muted/10 border-b">
                             <CardTitle className="flex items-center gap-2 uppercase tracking-tight"><ListChecks className="text-primary" /> Operational Ledger</CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-widest opacity-60">
+                            <CardDescription className="text-sm font-bold uppercase tracking-normal opacity-60">
                                 Real-time synchronization across all logged-in staff units.
                             </CardDescription>
                         </CardHeader>
@@ -330,11 +330,11 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                             <AlertCircle className="h-12 w-12 text-primary opacity-20" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xl font-headline tracking-tighter uppercase">Station Idle</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">A daily record must be initialized to begin checklists.</p>
+                            <p className="text-xl font-headline tracking-tight uppercase">Station Idle</p>
+                            <p className="text-sm text-muted-foreground uppercase font-bold tracking-normal">A daily record must be initialized to begin checklists.</p>
                         </div>
                         {(!isOwnerView || isAdmin) && (
-                            <Button onClick={handleStartShift} size="lg" className="mt-4 font-black uppercase tracking-widest h-12 px-8">
+                            <Button onClick={handleStartShift} size="lg" className="mt-4 font-bold uppercase tracking-normal h-12 px-8">
                                 Initialize Daily Record
                             </Button>
                         )}
@@ -344,8 +344,8 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
 
             <Card className="border-2 shadow-none overflow-hidden">
                 <CardHeader className="bg-muted/10 border-b">
-                    <CardTitle className="text-lg font-black uppercase">Recent Shift Cycles</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">History of final settlements.</CardDescription>
+                    <CardTitle className="text-lg font-bold uppercase">Recent Shift Cycles</CardTitle>
+                    <CardDescription className="text-sm font-bold uppercase tracking-normal">History of final settlements.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="divide-y">
@@ -357,8 +357,8 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                             <Calendar className="h-5 w-5 text-muted-foreground" />
                                         </div>
                                         <div>
-                                            <p className="font-black uppercase text-xs sm:text-sm tracking-tight">{format(new Date(shift.startTime), 'EEEE, MMMM d')}</p>
-                                            <p className="text-[10px] font-mono font-bold text-muted-foreground uppercase">
+                                            <p className="font-bold uppercase text-sm sm:text-sm tracking-tight">{format(new Date(shift.startTime), 'EEEE, MMMM d')}</p>
+                                            <p className="text-sm font-mono font-bold text-muted-foreground uppercase">
                                                 {format(new Date(shift.startTime), 'p')} - {shift.endTime ? format(new Date(shift.endTime), 'p') : 'Ongoing'}
                                             </p>
                                         </div>
@@ -368,18 +368,18 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                             {(shift.employees || []).map(emp => (
                                                 <Avatar key={emp.username} className="h-7 w-7 border-2 border-background shadow-sm">
                                                     <AvatarImage src={`https://picsum.photos/seed/${emp.username}/40/40`} />
-                                                    <AvatarFallback className="text-[8px] font-black">{emp.displayName.charAt(0)}</AvatarFallback>
+                                                    <AvatarFallback className="text-sm font-bold">{emp.displayName.charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                             ))}
                                         </div>
-                                        <Badge variant={(shift.tasks || []).every(t => t.completed) ? 'default' : 'secondary'} className={cn("text-[9px] font-black uppercase tracking-tighter h-6", (shift.tasks || []).every(t => t.completed) ? 'bg-emerald-600' : '')}>
+                                        <Badge variant={(shift.tasks || []).every(t => t.completed) ? 'default' : 'secondary'} className={cn("text-sm font-bold uppercase tracking-tight h-6", (shift.tasks || []).every(t => t.completed) ? 'bg-emerald-600' : '')}>
                                             {(shift.tasks || []).filter(t => t.completed).length} / {(shift.tasks || []).length} TASKS
                                         </Badge>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="py-20 text-center text-[10px] font-black uppercase opacity-30 italic tracking-widest">
+                            <div className="py-20 text-center text-sm font-bold uppercase opacity-30 italic tracking-normal">
                                 {user?.role === 'guest' ? 'Visitor Access Restricted' : 'No completion records detected.'}
                             </div>
                         )}

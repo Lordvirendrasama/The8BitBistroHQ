@@ -315,7 +315,7 @@ export default function UserManagementPage() {
   };
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse opacity-30">Accessing Master Registry...</div>;
+    return <div className="flex h-screen items-center justify-center font-headline text-sm animate-pulse opacity-30">Accessing Master Registry...</div>;
   }
 
   if (error) {
@@ -324,7 +324,7 @@ export default function UserManagementPage() {
   
   const SortableHeader = ({ sortKey, children }: { sortKey: SortableKeys, children: React.ReactNode }) => (
     <TableHead>
-        <Button variant="ghost" onClick={() => requestSort(sortKey)} className="h-8 font-black uppercase text-[10px] tracking-widest px-2">
+        <Button variant="ghost" onClick={() => requestSort(sortKey)} className="h-8 font-bold uppercase text-sm tracking-normal px-2">
             {children}
             <span className="ml-2">{getSortIndicator(sortKey)}</span>
         </Button>
@@ -410,12 +410,12 @@ export default function UserManagementPage() {
     }, [member, isRunning, isPaused, activeSession, assignedMember]);
 
     if (displaySeconds <= 0) {
-        return <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">0h 0m 0s</span>;
+        return <span className="text-sm font-bold text-muted-foreground/40 uppercase tracking-tight">0h 0m 0s</span>;
     }
 
     return (
         <div className={cn(
-            "flex items-center gap-1.5 font-black text-xs transition-colors",
+            "flex items-center gap-1.5 font-bold text-sm transition-colors",
             isRunning ? "text-primary animate-pulse" : "text-yellow-600"
         )}>
             <Zap className={cn("h-3.5 w-3.5", isRunning ? "fill-primary" : "fill-current")} />
@@ -431,7 +431,7 @@ export default function UserManagementPage() {
         <h1 className="font-headline text-4xl tracking-wider text-foreground">
           User Management
         </h1>
-        <p className="mt-2 text-muted-foreground font-bold uppercase text-[10px] tracking-[0.2em]">
+        <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-[0.2em]">
           VIEW, EDIT, AND AUDIT ALL LOYALTY PROGRAM MEMBERS.
         </p>
       </div>
@@ -440,8 +440,8 @@ export default function UserManagementPage() {
         <CardHeader className="bg-muted/10 border-b">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Active Members Registry</CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
+                <CardTitle className="text-lg font-bold uppercase tracking-tight">Active Members Registry</CardTitle>
+                <CardDescription className="text-sm font-bold uppercase tracking-normal mt-1">
                     Total: <strong>{filteredMembers?.length || 0}</strong> &bull; Selected: <strong>{selectedMembers.length}</strong>
                 </CardDescription>
             </div>
@@ -450,7 +450,7 @@ export default function UserManagementPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                       placeholder="SEARCH BY NAME..."
-                      className="pl-10 h-10 border-2 font-black uppercase text-[10px] tracking-tight bg-background"
+                      className="pl-10 h-10 border-2 font-bold uppercase text-sm tracking-tight bg-background"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -458,7 +458,7 @@ export default function UserManagementPage() {
               {selectedMembers.length > 0 && (
                 <Dialog open={isBroadcastModalOpen} onOpenChange={setIsBroadcastModalOpen}>
                   <DialogTrigger asChild>
-                      <Button className="h-10 font-black uppercase tracking-tight gap-2 shadow-lg">
+                      <Button className="h-10 font-bold uppercase tracking-tight gap-2 shadow-lg">
                           <MessageSquare className="h-4 w-4" />
                           Broadcast
                       </Button>
@@ -472,7 +472,7 @@ export default function UserManagementPage() {
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                           <div className="space-y-2">
-                            <Label htmlFor="broadcastMessage" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Message Body</Label>
+                            <Label htmlFor="broadcastMessage" className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Message Body</Label>
                             <Textarea 
                                 id="broadcastMessage"
                                 placeholder="TYPE YOUR MESSAGE HERE..."
@@ -485,7 +485,7 @@ export default function UserManagementPage() {
                       </div>
                       <DialogFooter className="gap-2">
                           <Button variant="outline" onClick={() => setIsBroadcastModalOpen(false)} className="font-bold uppercase">Cancel</Button>
-                          <Button onClick={handleSendBroadcast} className="font-black uppercase tracking-tight shadow-xl">Send Now</Button>
+                          <Button onClick={handleSendBroadcast} className="font-bold uppercase tracking-tight shadow-xl">Send Now</Button>
                       </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -506,12 +506,12 @@ export default function UserManagementPage() {
                 </TableHead>
                 <SortableHeader sortKey="name">Member Identity</SortableHeader>
                 <SortableHeader sortKey="tier">Tier</SortableHeader>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest">Balance</TableHead>
+                <TableHead className="font-bold uppercase text-sm tracking-normal">Balance</TableHead>
                 <SortableHeader sortKey="level">LVL</SortableHeader>
                 <SortableHeader sortKey="points">PTS</SortableHeader>
                 <SortableHeader sortKey="totalSpent">Total Spent</SortableHeader>
                 <SortableHeader sortKey="joinDate">Joined</SortableHeader>
-                <TableHead className="text-right pr-6 font-black uppercase text-[10px] tracking-widest">Actions</TableHead>
+                <TableHead className="text-right pr-6 font-bold uppercase text-sm tracking-normal">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -535,22 +535,22 @@ export default function UserManagementPage() {
                             <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
-                            <span className="font-black uppercase text-xs sm:text-sm tracking-tight">{member.name}</span>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">@{member.username}</span>
+                            <span className="font-bold uppercase text-sm sm:text-sm tracking-tight">{member.name}</span>
+                            <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">@{member.username}</span>
                         </div>
                         </div>
                     </TableCell>
                     <TableCell>
-                        <Badge variant="outline" className={cn("font-black uppercase text-[9px] px-2", tierColors[member.tier])}>{member.tier}</Badge>
+                        <Badge variant="outline" className={cn("font-bold uppercase text-sm px-2", tierColors[member.tier])}>{member.tier}</Badge>
                     </TableCell>
                     <TableCell>
                         <RealTimeBalance member={member} />
                     </TableCell>
 
-                    <TableCell className="font-black text-sm">{member.level}</TableCell>
-                    <TableCell className="font-black text-sm text-yellow-500">{member.points.toLocaleString()}</TableCell>
-                    <TableCell className="font-mono font-black text-sm">₹{member.totalSpent.toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] font-bold text-muted-foreground uppercase whitespace-nowrap">
+                    <TableCell className="font-bold text-sm">{member.level}</TableCell>
+                    <TableCell className="font-bold text-sm text-yellow-500">{member.points.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono font-bold text-sm">₹{member.totalSpent.toLocaleString()}</TableCell>
+                    <TableCell className="text-sm font-bold text-muted-foreground uppercase whitespace-nowrap">
                         {new Date(member.joinDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </TableCell>
                     <TableCell className="text-right pr-6">
@@ -563,11 +563,11 @@ export default function UserManagementPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Identity Operations</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => handleEdit(member)} className="font-bold text-xs gap-2">
+                            <DropdownMenuLabel className="text-sm font-bold uppercase opacity-50">Identity Operations</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => handleEdit(member)} className="font-bold text-sm gap-2">
                                 <Edit className="h-3.5 w-3.5" /> Edit Profile
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => router.push(`/members/${member.id}`)} className="font-bold text-xs gap-2">
+                            <DropdownMenuItem onSelect={() => router.push(`/members/${member.id}`)} className="font-bold text-sm gap-2">
                                 <Clock className="h-3.5 w-3.5" /> View Activity
                             </DropdownMenuItem>
                             <DropdownMenuItem 
@@ -577,7 +577,7 @@ export default function UserManagementPage() {
                                     setPointsAmount('');
                                     setIsPointsModalOpen(true);
                                 }} 
-                                className="font-bold text-xs gap-2 text-yellow-600"
+                                className="font-bold text-sm gap-2 text-yellow-600"
                             >
                                 <Zap className="h-3.5 w-3.5" /> Manage Points
                             </DropdownMenuItem>
@@ -589,13 +589,13 @@ export default function UserManagementPage() {
                                     setTimeMinutes('0');
                                     setIsTimeModalOpen(true);
                                 }} 
-                                className="font-bold text-xs gap-2 text-blue-500"
+                                className="font-bold text-sm gap-2 text-blue-500"
                             >
                                 <Clock className="h-3.5 w-3.5" /> Edit Time Balance
                             </DropdownMenuItem>
                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem 
-                                    className="text-destructive font-bold text-xs gap-2"
+                                    className="text-destructive font-bold text-sm gap-2"
                                     onSelect={() => logUserAction(`Opened 'Delete Member' dialog for ${member.name} from User Management list.`)}
                                 >
                                 <Trash className="h-3.5 w-3.5" /> Remove Member
@@ -612,7 +612,7 @@ export default function UserManagementPage() {
                             </AlertDialogHeader>
                             <AlertDialogFooter className="gap-2">
                             <AlertDialogCancel onClick={() => logUserAction('Cancelled member deletion from User Management list.')} className="font-bold">ABORT</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(member)} className="bg-destructive hover:bg-destructive/90 font-black uppercase shadow-lg">YES, DESTROY DATA</AlertDialogAction>
+                            <AlertDialogAction onClick={() => handleDelete(member)} className="bg-destructive hover:bg-destructive/90 font-bold uppercase shadow-lg">YES, DESTROY DATA</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                         </AlertDialog>
@@ -633,22 +633,22 @@ export default function UserManagementPage() {
                           Adjust points or log a bill for <strong>{selectedMemberForPoints.name}</strong>.
                       </DialogDescription>
                   </DialogHeader>
-                  <div className="bg-muted/30 p-3 rounded-lg border flex justify-between text-xs mt-2">
+                  <div className="bg-muted/30 p-3 rounded-lg border flex justify-between text-sm mt-2">
                       <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Level</span>
-                          <span className="font-black text-sm">{selectedMemberForPoints.level}</span>
+                          <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Level</span>
+                          <span className="font-bold text-sm">{selectedMemberForPoints.level}</span>
                       </div>
                       <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Points</span>
-                          <span className="font-black text-yellow-600 text-sm">{selectedMemberForPoints.points?.toLocaleString() || 0}</span>
+                          <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Points</span>
+                          <span className="font-bold text-yellow-600 text-sm">{selectedMemberForPoints.points?.toLocaleString() || 0}</span>
                       </div>
                       <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">XP</span>
-                          <span className="font-black text-primary text-sm">{selectedMemberForPoints.xp?.toLocaleString() || 0}</span>
+                          <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">XP</span>
+                          <span className="font-bold text-primary text-sm">{selectedMemberForPoints.xp?.toLocaleString() || 0}</span>
                       </div>
                       <div className="flex flex-col text-right">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Spent</span>
-                          <span className="font-black font-mono text-sm">₹{selectedMemberForPoints.totalSpent?.toLocaleString() || 0}</span>
+                          <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Total Spent</span>
+                          <span className="font-bold font-mono text-sm">₹{selectedMemberForPoints.totalSpent?.toLocaleString() || 0}</span>
                       </div>
                   </div>
                   <div className="space-y-4 py-4">
@@ -656,27 +656,27 @@ export default function UserManagementPage() {
                           <Button 
                               variant={pointsAction === 'add_points' ? 'default' : 'outline'} 
                               onClick={() => setPointsAction('add_points')}
-                              className="flex-1 font-black uppercase text-xs"
+                              className="flex-1 font-bold uppercase text-sm"
                           >
                               Add Points
                           </Button>
                           <Button 
                               variant={pointsAction === 'remove_points' ? 'default' : 'outline'} 
                               onClick={() => setPointsAction('remove_points')}
-                              className="flex-1 font-black uppercase text-xs"
+                              className="flex-1 font-bold uppercase text-sm"
                           >
                               Remove Points
                           </Button>
                           <Button 
                               variant={pointsAction === 'add_bill' ? 'default' : 'outline'} 
                               onClick={() => setPointsAction('add_bill')}
-                              className="flex-1 font-black uppercase text-xs"
+                              className="flex-1 font-bold uppercase text-sm"
                           >
                               Add Bill Paid
                           </Button>
                       </div>
                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                          <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">
                               {pointsAction === 'add_bill' ? 'Bill Amount (₹)' : 'Points Amount'}
                           </Label>
                           <Input
@@ -691,7 +691,7 @@ export default function UserManagementPage() {
                   </div>
                   <DialogFooter className="gap-2">
                       <Button variant="outline" onClick={() => setIsPointsModalOpen(false)} className="font-bold uppercase">Cancel</Button>
-                      <Button onClick={handlePointsSubmit} className="font-black uppercase tracking-tight shadow-xl">Confirm</Button>
+                      <Button onClick={handlePointsSubmit} className="font-bold uppercase tracking-tight shadow-xl">Confirm</Button>
                   </DialogFooter>
               </DialogContent>
           </Dialog>
@@ -712,21 +712,21 @@ export default function UserManagementPage() {
                           <Button 
                               variant={timeAction === 'add' ? 'default' : 'outline'} 
                               onClick={() => setTimeAction('add')}
-                              className={cn("flex-1 font-black uppercase text-xs", timeAction === 'add' && "bg-blue-600 hover:bg-blue-700")}
+                              className={cn("flex-1 font-bold uppercase text-sm", timeAction === 'add' && "bg-blue-600 hover:bg-blue-700")}
                           >
                               Add Time
                           </Button>
                           <Button 
                               variant={timeAction === 'remove' ? 'destructive' : 'outline'} 
                               onClick={() => setTimeAction('remove')}
-                              className={cn("flex-1 font-black uppercase text-xs", timeAction === 'remove' && "bg-destructive hover:bg-destructive/90")}
+                              className={cn("flex-1 font-bold uppercase text-sm", timeAction === 'remove' && "bg-destructive hover:bg-destructive/90")}
                           >
                               Remove Time
                           </Button>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hours</Label>
+                              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Hours</Label>
                               <Input
                                   type="number"
                                   min="0"
@@ -737,7 +737,7 @@ export default function UserManagementPage() {
                               />
                           </div>
                           <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Minutes</Label>
+                              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Minutes</Label>
                               <Input
                                   type="number"
                                   min="0"
@@ -752,7 +752,7 @@ export default function UserManagementPage() {
                   </div>
                   <DialogFooter className="gap-2">
                       <Button variant="outline" onClick={() => setIsTimeModalOpen(false)} className="font-bold uppercase">Cancel</Button>
-                      <Button onClick={handleTimeSubmit} className="font-black uppercase tracking-tight shadow-xl">Confirm</Button>
+                      <Button onClick={handleTimeSubmit} className="font-bold uppercase tracking-tight shadow-xl">Confirm</Button>
                   </DialogFooter>
               </DialogContent>
           </Dialog>

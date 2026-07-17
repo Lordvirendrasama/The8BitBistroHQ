@@ -210,7 +210,7 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
           <DialogTitle className="font-headline text-2xl uppercase tracking-wider flex items-center gap-2">
             <Calculator className="h-6 w-6 text-primary" /> Payroll Engine
           </DialogTitle>
-          <DialogDescription className="font-bold text-xs uppercase tracking-widest text-muted-foreground">
+          <DialogDescription className="font-bold text-sm uppercase tracking-normal text-muted-foreground">
             Compute dynamic monthly compensation based on attendance and compliance.
           </DialogDescription>
         </DialogHeader>
@@ -218,7 +218,7 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
         <div className="px-6 py-4 space-y-6 bg-muted/10">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1">
+              <Label className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1">
                 <CalendarIcon className="h-3 w-3" /> Target Month
               </Label>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -235,7 +235,7 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1">
+              <Label className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1">
                 Target Operator
               </Label>
               <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
@@ -255,7 +255,7 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
 
           <div className="flex items-center space-x-3 bg-muted/20 p-4 rounded-xl border-2">
             <Switch id="paid-offs" checked={isWeeklyOffPaid} onCheckedChange={setIsWeeklyOffPaid} />
-            <Label htmlFor="paid-offs" className="text-[10px] font-black uppercase tracking-widest cursor-pointer opacity-70">
+            <Label htmlFor="paid-offs" className="text-sm font-bold uppercase tracking-normal cursor-pointer opacity-70">
               Count Weekly Offs As Paid Working Days
             </Label>
           </div>
@@ -265,25 +265,25 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Card className="p-3 border-2 shadow-none bg-background flex flex-col items-center justify-center text-center">
-                  <span className="text-[9px] font-black uppercase text-muted-foreground">Base Salary</span>
-                  <span className="text-xl font-mono font-black text-foreground mt-1">₹{calculation.monthlySalary.toLocaleString()}</span>
+                  <span className="text-sm font-bold uppercase text-muted-foreground">Base Salary</span>
+                  <span className="text-xl font-mono font-bold text-foreground mt-1">₹{calculation.monthlySalary.toLocaleString()}</span>
                 </Card>
                 <Card className="p-3 border-2 shadow-none bg-background flex flex-col items-center justify-center text-center">
-                  <span className="text-[9px] font-black uppercase text-muted-foreground">Daily Rate</span>
-                  <span className="text-xl font-mono font-black text-emerald-600 mt-1">₹{calculation.dailyRate.toFixed(2)}</span>
+                  <span className="text-sm font-bold uppercase text-muted-foreground">Daily Rate</span>
+                  <span className="text-xl font-mono font-bold text-emerald-600 mt-1">₹{calculation.dailyRate.toFixed(2)}</span>
                 </Card>
                 <Card className="p-3 border-2 shadow-none bg-primary text-primary-foreground flex flex-col items-center justify-center text-center">
-                  <span className="text-[9px] font-black uppercase opacity-80">Final Payout</span>
-                  <span className="text-2xl font-mono font-black mt-1">₹{calculation.finalSalary.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="text-sm font-bold uppercase opacity-80">Final Payout</span>
+                  <span className="text-2xl font-mono font-bold mt-1">₹{calculation.finalSalary.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </Card>
               </div>
 
               <div className="bg-background border-2 rounded-xl p-4 space-y-4 shadow-inner">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <h4 className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
                   <Clock className="h-3 w-3" /> Formula Diagnostic
                 </h4>
                 
-                <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-xs font-mono font-bold">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm font-mono font-bold">
                     <div className="flex justify-between items-center border-b border-dashed pb-1">
                         <span className="text-muted-foreground">Days in Month</span>
                         <span>{calculation.daysInMonth}</span>
@@ -334,7 +334,7 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
 
                 <Separator className="my-2" />
 
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2 text-sm">
                     <div className="flex justify-between items-center font-bold text-muted-foreground">
                         <span>Absence Deductions</span>
                         <span className="font-mono text-red-500">
@@ -351,7 +351,7 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
                             : '₹0'}
                         </span>
                     </div>
-                    <div className="flex justify-between items-center text-sm font-black uppercase text-foreground pt-1 border-t border-dashed">
+                    <div className="flex justify-between items-center text-sm font-bold uppercase text-foreground pt-1 border-t border-dashed">
                         <span>Total Deductions</span>
                         <span className="font-mono text-red-500">-₹{calculation.deduction.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
                     </div>
@@ -364,11 +364,11 @@ export function SalaryCalculator({ open, onOpenChange }: SalaryCalculatorProps) 
 
           {!calculation && selectedEmpId && (
               <div className="h-32 flex items-center justify-center border-2 border-dashed rounded-xl">
-                  <span className="text-xs font-black uppercase tracking-widest text-muted-foreground animate-pulse">Running Computations...</span>
+                  <span className="text-sm font-bold uppercase tracking-normal text-muted-foreground animate-pulse">Running Computations...</span>
               </div>
           )}
         </div>
-        <div className="p-4 bg-muted/20 border-t-2 text-center text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+        <div className="p-4 bg-muted/20 border-t-2 text-center text-sm font-bold uppercase tracking-normal text-muted-foreground">
             Algorithm: FINAL FORMULA
         </div>
       </DialogContent>

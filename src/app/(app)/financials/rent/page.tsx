@@ -12,7 +12,7 @@ export default function RentPage() {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center space-y-4 text-center">
         <ShieldAlert className="h-16 w-16 text-destructive" />
-        <h1 className="text-4xl font-headline uppercase tracking-tighter">Access Denied</h1>
+        <h1 className="text-4xl font-headline uppercase tracking-tight">Access Denied</h1>
         <p className="text-muted-foreground max-w-md font-medium">
           Lease and backlog data is restricted to the Owner (Viren).
         </p>
@@ -27,7 +27,7 @@ export default function RentPage() {
           <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-amber-600" />
           LEASE LEDGER
         </h1>
-        <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs sm:text-sm pl-1">
+        <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-sm sm:text-sm pl-1">
           MANAGEMENT OF MONTHLY RENT OBLIGATIONS AND BACKLOG ARREARS.
         </p>
       </div>

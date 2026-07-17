@@ -260,15 +260,15 @@ export function BillModal({
                 <div className="flex justify-between items-start gap-2 pr-8">
                     <div className="min-w-0">
                         <DialogTitle className="font-headline tracking-[0.1em] text-lg md:text-2xl text-primary truncate">{station.name}</DialogTitle>
-                        <DialogDescription className="font-bold text-[8px] uppercase tracking-widest text-muted-foreground hidden sm:block">
+                        <DialogDescription className="font-bold text-sm uppercase tracking-normal text-muted-foreground hidden sm:block">
                             Station Management
                         </DialogDescription>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
                         {(station.members || []).map(m => (
                             <Badge key={m.id} variant="outline" className="h-5 md:h-7 gap-1 pl-1 pr-2 rounded-full bg-muted/50 border-primary/20">
-                                <Avatar className="h-3.5 w-3.5 md:h-5 md:w-5 border-none"><AvatarFallback className="text-[6px] md:text-[9px]">{m.name[0]}</AvatarFallback></Avatar>
-                                <span className="font-black text-[6px] md:text-[9px] uppercase truncate max-w-[45px]">{m.name}</span>
+                                <Avatar className="h-3.5 w-3.5 md:h-5 md:w-5 border-none"><AvatarFallback className="text-sm md:text-sm">{m.name[0]}</AvatarFallback></Avatar>
+                                <span className="font-bold text-sm md:text-sm uppercase truncate max-w-[45px]">{m.name}</span>
                             </Badge>
                         ))}
                     </div>
@@ -283,7 +283,7 @@ export function BillModal({
                 <button 
                     onClick={() => setActiveTab('menu')}
                     className={cn(
-                        "flex-1 h-10 font-black uppercase text-[9px] tracking-widest border-b-4 transition-all", 
+                        "flex-1 h-10 font-bold uppercase text-sm tracking-normal border-b-4 transition-all", 
                         activeTab === 'menu' ? "border-primary text-primary bg-primary/5" : "border-transparent text-muted-foreground"
                     )}
                 >
@@ -292,12 +292,12 @@ export function BillModal({
                 <button 
                     onClick={() => setActiveTab('review')}
                     className={cn(
-                        "flex-1 h-10 font-black uppercase text-[9px] tracking-widest border-b-4 transition-all flex items-center justify-center gap-2", 
+                        "flex-1 h-10 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
                         activeTab === 'review' ? "border-primary text-primary bg-primary/5" : "border-transparent text-muted-foreground"
                     )}
                 >
                     Review
-                    <Badge className="font-mono h-3.5 px-1 min-w-[16px] bg-primary text-primary-foreground text-[8px]">{billItems.length}</Badge>
+                    <Badge className="font-mono h-3.5 px-1 min-w-[16px] bg-primary text-primary-foreground text-sm">{billItems.length}</Badge>
                 </button>
             </div>
 
@@ -308,7 +308,7 @@ export function BillModal({
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                             <Input 
                                 placeholder="SEARCH ITEMS..." 
-                                className="pl-7 h-8 md:h-10 bg-background border-none font-black uppercase tracking-tight text-[9px] md:text-xs"
+                                className="pl-7 h-8 md:h-10 bg-background border-none font-bold uppercase tracking-tight text-sm md:text-sm"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
@@ -322,11 +322,11 @@ export function BillModal({
                                 className={cn(
                                     "px-4 py-2.5 text-center border-b-2 transition-all whitespace-nowrap shrink-0",
                                     activeCategory === cat 
-                                        ? "border-primary text-primary font-black bg-primary/5" 
+                                        ? "border-primary text-primary font-bold bg-primary/5" 
                                         : "border-transparent text-muted-foreground font-bold"
                                 )}
                             >
-                                <span className="text-[13px] md:text-[14px] uppercase tracking-[0.1em]">{cat}</span>
+                                <span className="text-sm md:text-[14px] uppercase tracking-[0.1em]">{cat}</span>
                             </button>
                         ))}
                     </div>
@@ -346,7 +346,7 @@ export function BillModal({
                         className={cn(
                             "px-5 py-4 text-left border-l-4 transition-all",
                             activeCategory === cat 
-                                ? "bg-primary/10 border-primary text-primary font-black" 
+                                ? "bg-primary/10 border-primary text-primary font-bold" 
                                 : "border-transparent text-muted-foreground font-bold hover:bg-muted"
                         )}
                     >
@@ -363,12 +363,12 @@ export function BillModal({
                         
                         {/* STICKY QUICK ADD BAR */}
                         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b pb-3 mb-4 shrink-0">
-                            <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 px-1">Quick Add</p>
+                            <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground mb-1.5 px-1">Quick Add</p>
                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-[10px] font-black uppercase tracking-tight shrink-0 gap-1"
+                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
                                     onClick={() => handleQuickAdd('time', '1 hour')}
                                 >
                                     +1 Hour
@@ -376,7 +376,7 @@ export function BillModal({
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-[10px] font-black uppercase tracking-tight shrink-0 gap-1"
+                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
                                     onClick={() => handleQuickAdd('time', 'half')}
                                 >
                                     +30 Min
@@ -384,7 +384,7 @@ export function BillModal({
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-[10px] font-black uppercase tracking-tight shrink-0 gap-1"
+                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
                                     onClick={() => handleQuickAdd('food', 'cold coffee')}
                                 >
                                     Cold Coffee
@@ -392,7 +392,7 @@ export function BillModal({
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-[10px] font-black uppercase tracking-tight shrink-0 gap-1"
+                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
                                     onClick={() => handleQuickAdd('food', 'water')}
                                 >
                                     Water
@@ -400,7 +400,7 @@ export function BillModal({
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-[10px] font-black uppercase tracking-tight shrink-0 gap-1"
+                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
                                     onClick={() => handleQuickAdd('food', 'fries')}
                                 >
                                     Fries
@@ -411,7 +411,7 @@ export function BillModal({
                         {/* SESSION MASTER CATEGORY */}
                         {filteredGaming.length > 0 && (
                             <div key="SESSION" id="category-section-SESSION" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
                                     <Gamepad2 className="h-3.5 w-3.5" /> SESSION
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
@@ -421,7 +421,7 @@ export function BillModal({
                                             onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
                                             className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                         >
-                                            <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
                                             <div className="flex justify-between items-end">
                                                 <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{pkg.price}</span>
                                                 <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -435,7 +435,7 @@ export function BillModal({
                         {/* FOOD MASTER CATEGORY */}
                         {menuByMasterCategory.FOOD.length > 0 && (
                             <div key="FOOD" id="category-section-FOOD" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
                                     FOOD
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
@@ -445,7 +445,7 @@ export function BillModal({
                                             onClick={() => handleAddItem(item)}
                                             className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                         >
-                                            <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
                                             <div className="flex justify-between items-end">
                                                 <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
                                                 <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -459,7 +459,7 @@ export function BillModal({
                         {/* BEVERAGES MASTER CATEGORY */}
                         {menuByMasterCategory.BEVERAGES.length > 0 && (
                             <div key="BEVERAGES" id="category-section-BEVERAGES" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
                                     BEVERAGES
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
@@ -469,7 +469,7 @@ export function BillModal({
                                             onClick={() => handleAddItem(item)}
                                             className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                         >
-                                            <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
                                             <div className="flex justify-between items-end">
                                                 <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
                                                 <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -483,7 +483,7 @@ export function BillModal({
                         {/* ADD ONS MASTER CATEGORY */}
                         {menuByMasterCategory['ADD ONS'].length > 0 && (
                             <div key="ADD ONS" id="category-section-ADD-ONS" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-[9px] md:text-xs tracking-widest text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
                                     ADD ONS
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
@@ -493,7 +493,7 @@ export function BillModal({
                                             onClick={() => handleAddItem(item)}
                                             className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
                                         >
-                                            <p className="font-black uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
                                             <div className="flex justify-between items-end">
                                                 <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
                                                 <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -512,7 +512,7 @@ export function BillModal({
                 <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 md:hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <Button 
                         onClick={() => setActiveTab('review')}
-                        className="rounded-full shadow-2xl bg-primary text-primary-foreground font-black text-xs px-6 py-5 border-2 border-background flex items-center gap-2 tracking-wide uppercase"
+                        className="rounded-full shadow-2xl bg-primary text-primary-foreground font-bold text-sm px-6 py-5 border-2 border-background flex items-center gap-2 tracking-wide uppercase"
                     >
                         <ShoppingBag className="h-4 w-4" />
                         CURRENT TAB: {billItems.length} Items • ₹{totalBeforeDiscount}
@@ -527,35 +527,35 @@ export function BillModal({
             )}>
                 <div className="p-4 border-b bg-muted/10 shrink-0 flex justify-between items-center">
                     <div>
-                        <h3 className="font-black text-xs md:text-sm uppercase tracking-wide flex items-center gap-1.5 text-foreground">
+                        <h3 className="font-bold text-sm md:text-sm uppercase tracking-wide flex items-center gap-1.5 text-foreground">
                             <ShoppingBag className="h-4 w-4 text-primary" />
                             CURRENT TAB
                         </h3>
-                        <p className="text-[10px] font-black text-primary uppercase mt-0.5 tracking-wider">{station.name}</p>
+                        <p className="text-sm font-bold text-primary uppercase mt-0.5 tracking-wider">{station.name}</p>
                     </div>
-                    <Badge className="font-mono h-5 px-2 bg-primary text-primary-foreground text-xs">{billItems.length} Items</Badge>
+                    <Badge className="font-mono h-5 px-2 bg-primary text-primary-foreground text-sm">{billItems.length} Items</Badge>
                 </div>
 
                 {/* Session Status Timeline Indicator */}
                 {station.status === 'in-use' && station.startTime && (
                     <div className="p-3 border-b bg-muted/5 space-y-2 shrink-0">
-                        <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground pl-1">SESSION STATUS</p>
+                        <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">SESSION STATUS</p>
                         <div className="grid grid-cols-3 gap-2 text-center">
                             <div className="p-1.5 rounded-lg bg-card border">
-                                <p className="text-[7px] font-black uppercase text-muted-foreground">Started</p>
-                                <p className="font-mono font-bold text-[11px] mt-0.5 text-foreground">
+                                <p className="text-sm font-bold uppercase text-muted-foreground">Started</p>
+                                <p className="font-mono font-bold text-sm mt-0.5 text-foreground">
                                     {new Date(station.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                                 </p>
                             </div>
                             <div className="p-1.5 rounded-lg bg-card border">
-                                <p className="text-[7px] font-black uppercase text-muted-foreground">Ends</p>
-                                <p className="font-mono font-bold text-[11px] mt-0.5 text-foreground">
+                                <p className="text-sm font-bold uppercase text-muted-foreground">Ends</p>
+                                <p className="font-mono font-bold text-sm mt-0.5 text-foreground">
                                     {station.endTime ? new Date(station.endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Open'}
                                 </p>
                             </div>
                             <div className="p-1.5 rounded-lg bg-card border">
-                                <p className="text-[7px] font-black uppercase text-muted-foreground">Remaining</p>
-                                <p className="font-mono font-bold text-[11px] mt-0.5 text-primary animate-pulse">
+                                <p className="text-sm font-bold uppercase text-muted-foreground">Remaining</p>
+                                <p className="font-mono font-bold text-sm mt-0.5 text-primary animate-pulse">
                                     {(() => {
                                         if (!station.endTime) return 'Open Play';
                                         const end = new Date(station.endTime).getTime();
@@ -576,23 +576,23 @@ export function BillModal({
                             {billItems.length > 0 ? billItems.map((item, idx) => (
                                 <TableRow key={`${item.itemId}-${idx}`} className="border-b hover:bg-transparent">
                                     <TableCell className="py-2.5 pl-0">
-                                        <p className="font-black text-[13px] md:text-[14px] uppercase leading-tight">{item.name}</p>
-                                        <p className="text-[10px] md:text-xs font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
+                                        <p className="font-bold text-sm md:text-[14px] uppercase leading-tight">{item.name}</p>
+                                        <p className="text-sm md:text-sm font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
                                     </TableCell>
                                     <TableCell className="py-2.5 px-0">
                                         <div className="flex items-center justify-end gap-1.5">
                                             <button onClick={() => handleUpdateQuantityByIndex(idx, item.quantity - 1)} className="text-muted-foreground hover:text-destructive"><MinusCircle className="h-4 w-4" /></button>
-                                            <span className="min-w-3 text-center font-black text-xs">{item.quantity}</span>
+                                            <span className="min-w-3 text-center font-bold text-sm">{item.quantity}</span>
                                             <button onClick={() => handleAddItem({ id: item.itemId, name: item.name, price: item.price })} className="text-muted-foreground hover:text-green-600"><PlusCircle className="h-4 w-4" /></button>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right py-2.5 pr-0 font-black text-[13px] md:text-[14px] font-mono whitespace-nowrap text-primary">
+                                    <TableCell className="text-right py-2.5 pr-0 font-bold text-sm md:text-[14px] font-mono whitespace-nowrap text-primary">
                                         ₹{(item.price * item.quantity).toLocaleString()}
                                     </TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-16 text-[9px] italic font-bold text-muted-foreground uppercase tracking-widest opacity-40">
+                                    <TableCell colSpan={3} className="text-center py-16 text-sm italic font-bold text-muted-foreground uppercase tracking-normal opacity-40">
                                         No items added
                                     </TableCell>
                                 </TableRow>
@@ -603,12 +603,12 @@ export function BillModal({
 
                 <div className="p-4 border-t bg-muted/20 space-y-2 shrink-0">
                     {initialPackagePrice > 0 && (
-                        <div className="flex justify-between items-center text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        <div className="flex justify-between items-center text-sm font-bold uppercase text-muted-foreground tracking-wider">
                             <span>Initial Package</span>
                             <span className="font-mono">₹{initialPackagePrice.toLocaleString()}</span>
                         </div>
                     )}
-                    <div className="flex justify-between items-center text-xs font-black uppercase text-foreground">
+                    <div className="flex justify-between items-center text-sm font-bold uppercase text-foreground">
                         <span>Subtotal</span>
                         <span className="font-mono text-primary text-base">₹{totalBeforeDiscount.toLocaleString()}</span>
                     </div>
@@ -618,10 +618,10 @@ export function BillModal({
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2 p-2.5 md:p-3 border-t bg-background shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
           <div className="flex gap-2 w-full sm:flex-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-black uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-[11px] md:text-[12px]">Cancel</Button>
-            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-black uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-[11px] md:text-[12px]"><Save className="mr-1 h-3.5 w-3.5" /> Save</Button>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-bold uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-sm md:text-sm">Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-bold uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-sm md:text-sm"><Save className="mr-1 h-3.5 w-3.5" /> Save</Button>
           </div>
-          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-black uppercase tracking-[0.1em] h-12 md:h-14 shadow-lg text-[13px] md:text-[15px] bg-primary text-primary-foreground"><CreditCard className="mr-1.5 h-4 w-4 md:h-5 md:w-5"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
+          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-bold uppercase tracking-[0.1em] h-12 md:h-14 shadow-lg text-sm md:text-[15px] bg-primary text-primary-foreground"><CreditCard className="mr-1.5 h-4 w-4 md:h-5 md:w-5"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

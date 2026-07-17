@@ -160,7 +160,7 @@ export function LiabilityDashboard() {
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-50">
         <Activity className="h-10 w-10 animate-spin text-primary" />
-        <p className="font-headline text-[10px] tracking-widest uppercase">Syncing Mission Core...</p>
+        <p className="font-headline text-sm tracking-normal uppercase">Syncing Mission Core...</p>
       </div>
     );
   }
@@ -182,18 +182,18 @@ export function LiabilityDashboard() {
       {/* 1. TOTAL DEBT HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-0">
         <div className="space-y-1">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Financial Reality Balances</h2>
+            <h2 className="text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground">Financial Reality Balances</h2>
             <div className="flex items-center gap-3">
                 <Wallet className="h-8 w-8 text-primary" />
-                <h1 className="text-4xl font-headline tracking-tighter">{formatCurrency(state.loanBalance + state.rentBalance)}</h1>
-                <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[10px] h-6 px-3">Live Liability</Badge>
+                <h1 className="text-4xl font-headline tracking-tight">{formatCurrency(state.loanBalance + state.rentBalance)}</h1>
+                <Badge variant="outline" className="border-primary/20 text-primary font-bold uppercase text-sm h-6 px-3">Live Liability</Badge>
             </div>
         </div>
         <div className="flex gap-3">
             <Button variant="outline" size="icon" onClick={() => setIsConfigModalOpen(true)} className="h-14 w-14 border-2">
                 <Settings2 className="h-6 w-6" />
             </Button>
-            <Button onClick={() => setIsPayModalOpen(true)} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl bg-primary hover:bg-primary/90 text-white">
+            <Button onClick={() => setIsPayModalOpen(true)} className="h-14 px-10 font-bold uppercase tracking-normal shadow-xl bg-primary hover:bg-primary/90 text-white">
                 <Zap className="mr-2 h-5 w-5 fill-current" />
                 Record Payment
             </Button>
@@ -207,24 +207,24 @@ export function LiabilityDashboard() {
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-headline text-primary tracking-tight">BUSINESS LOAN</CardTitle>
-                        <CardDescription className="text-[10px] font-black uppercase tracking-widest opacity-60">9% APR • MONTHLY COMPOUNDING</CardDescription>
+                        <CardDescription className="text-sm font-bold uppercase tracking-normal opacity-60">9% APR • MONTHLY COMPOUNDING</CardDescription>
                     </div>
-                    <Badge className="bg-primary text-white font-black text-[10px]">TRUTH</Badge>
+                    <Badge className="bg-primary text-white font-bold text-sm">TRUTH</Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
                 <div className="flex justify-between items-end">
                     <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Balance Owed</p>
-                        <p className="text-3xl font-black font-mono tracking-tighter">{formatCurrency(state.loanBalance)}</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal">Balance Owed</p>
+                        <p className="text-3xl font-bold font-mono tracking-tight">{formatCurrency(state.loanBalance)}</p>
                     </div>
                     <div className="text-right space-y-1">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Principal Paid</p>
-                        <p className="text-xl font-black font-mono text-emerald-600">{formatCurrency(state.totalLoanPaid)}</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal">Principal Paid</p>
+                        <p className="text-xl font-bold font-mono text-emerald-600">{formatCurrency(state.totalLoanPaid)}</p>
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                    <div className="flex justify-between text-sm font-bold uppercase tracking-normal">
                         <span>Repayment Progress</span>
                         <span>{loanProgress.toFixed(1)}%</span>
                     </div>
@@ -238,25 +238,25 @@ export function LiabilityDashboard() {
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-headline tracking-tight">DEFERRED RENT</CardTitle>
-                        <CardDescription className="text-[10px] font-black uppercase tracking-widest opacity-60">INTEREST-FREE ARREARS</CardDescription>
+                        <CardDescription className="text-sm font-bold uppercase tracking-normal opacity-60">INTEREST-FREE ARREARS</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="font-black text-[10px]">TRUTH</Badge>
+                    <Badge variant="secondary" className="font-bold text-sm">TRUTH</Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-6 space-y-8">
                 <div className="flex justify-between items-end">
                     <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Total Backlog</p>
-                        <p className="text-3xl font-black font-mono tracking-tighter text-amber-600">{formatCurrency(state.rentBalance)}</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal">Total Backlog</p>
+                        <p className="text-3xl font-bold font-mono tracking-tight text-amber-600">{formatCurrency(state.rentBalance)}</p>
                     </div>
                     <div className="text-right space-y-1">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Duration Behind</p>
-                        <p className="text-xl font-black font-mono">{Math.ceil(state.rentBalance / (state.monthlyRent || 1))} MONTHS</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal">Duration Behind</p>
+                        <p className="text-xl font-bold font-mono">{Math.ceil(state.rentBalance / (state.monthlyRent || 1))} MONTHS</p>
                     </div>
                 </div>
                 <div className="p-4 rounded-xl border-2 border-dashed bg-amber-500/5 flex items-center gap-3">
                     <AlertCircle className="text-amber-600 h-5 w-5" />
-                    <p className="text-[10px] font-bold text-amber-700 uppercase leading-tight">Increments automatically by {formatCurrency(state.monthlyRent)} every month.</p>
+                    <p className="text-sm font-bold text-amber-700 uppercase leading-tight">Increments automatically by {formatCurrency(state.monthlyRent)} every month.</p>
                 </div>
             </CardContent>
         </Card>
@@ -270,11 +270,11 @@ export function LiabilityDashboard() {
                     <CardTitle className="font-headline text-2xl tracking-tight text-primary flex items-center gap-2">
                         <Target className="h-6 w-6" /> MISSION TO ZERO: {missionYear}
                     </CardTitle>
-                    <CardDescription className="font-bold text-[9px] uppercase tracking-widest text-primary/60">Strategy Engine: Required daily intake to reach zero debt by the deadline.</CardDescription>
+                    <CardDescription className="font-bold text-sm uppercase tracking-normal text-primary/60">Strategy Engine: Required daily intake to reach zero debt by the deadline.</CardDescription>
                 </div>
                 <div className="flex bg-muted/30 p-1 rounded-xl border-2 border-primary/10">
                     {[2026, 2027, 2028, 2029, 2030].map(year => (
-                        <button key={year} onClick={() => setMissionYear(year)} className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all", missionYear === year ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-primary")}>
+                        <button key={year} onClick={() => setMissionYear(year)} className={cn("px-3 py-1.5 rounded-lg text-sm font-bold uppercase transition-all", missionYear === year ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-primary")}>
                             {year}
                         </button>
                     ))}
@@ -284,7 +284,7 @@ export function LiabilityDashboard() {
         <CardContent className="pt-8 space-y-10">
             <div className="max-w-md space-y-4">
                 <div className="flex justify-between items-center">
-                    <Label className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                    <Label className="text-sm font-bold uppercase tracking-normal flex items-center gap-2">
                         <TrendingUp className="h-3 w-3 text-primary" />
                         Expected Monthly Growth
                     </Label>
@@ -292,7 +292,7 @@ export function LiabilityDashboard() {
                 </div>
                 <div className="flex items-center gap-4 bg-muted/20 p-1 rounded-xl border-2">
                     {[2, 4, 5, 6, 8, 10].map(rate => (
-                        <button key={rate} onClick={() => setGrowthRate(rate)} className={cn("flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all", growthRate === rate ? "bg-background text-primary shadow-sm border" : "text-muted-foreground hover:text-primary")}>
+                        <button key={rate} onClick={() => setGrowthRate(rate)} className={cn("flex-1 py-2 rounded-lg text-sm font-bold uppercase transition-all", growthRate === rate ? "bg-background text-primary shadow-sm border" : "text-muted-foreground hover:text-primary")}>
                             {rate}%
                         </button>
                     ))}
@@ -303,8 +303,8 @@ export function LiabilityDashboard() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 sm:gap-0">
                     {/* LEFT SIDE: EARNED TODAY */}
                     <div className="space-y-1 w-full sm:w-auto">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Earned Today</p>
-                        <p className={cn("text-5xl sm:text-7xl font-black font-mono tracking-tighter leading-none transition-colors", earnedColor)}>
+                        <p className="text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-70">Earned Today</p>
+                        <p className={cn("text-5xl sm:text-7xl font-bold font-mono tracking-tight leading-none transition-colors", earnedColor)}>
                             ₹{Math.round(revToday).toLocaleString()}
                         </p>
                     </div>
@@ -312,20 +312,20 @@ export function LiabilityDashboard() {
                     {/* RIGHT SIDE: MISSION TARGET */}
                     <div className="flex flex-wrap items-end gap-6 sm:gap-10 w-full sm:w-auto">
                         <div className="text-right space-y-1">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-primary/70">Remaining</p>
-                            <p className="text-3xl font-black font-mono tracking-tight text-primary tabular-nums">
+                            <p className="text-sm font-bold uppercase tracking-normal text-primary/70">Remaining</p>
+                            <p className="text-3xl font-bold font-mono tracking-tight text-primary tabular-nums">
                                 ₹{Math.round(remainingTarget).toLocaleString()}
                             </p>
                         </div>
                         <div className="text-right space-y-1 border-l-2 border-dashed border-muted pl-6">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-70">Progress</p>
-                            <p className="text-3xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                            <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground opacity-70">Progress</p>
+                            <p className="text-3xl font-bold font-mono tracking-tight text-foreground tabular-nums">
                                 {performancePct.toFixed(1)}%
                             </p>
                         </div>
                         <div className="text-right space-y-1 border-l-2 border-dashed border-muted pl-6">
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Daily Mission Target</p>
-                            <p className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                            <p className="text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-70">Daily Mission Target</p>
+                            <p className="text-3xl sm:text-5xl font-bold font-mono tracking-tight text-foreground tabular-nums">
                                 ₹{Math.round(activeGoalTotal).toLocaleString()}
                             </p>
                         </div>
@@ -348,7 +348,7 @@ export function LiabilityDashboard() {
                             if (pos >= 100) return null;
                             return (
                                 <div key={i} className="absolute top-0 bottom-0 w-[2px] bg-white/40 z-10" style={{ left: `${pos}%` }}>
-                                    <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[8px] font-black text-muted-foreground whitespace-nowrap">{m.l}</span>
+                                    <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-sm font-bold text-muted-foreground whitespace-nowrap">{m.l}</span>
                                 </div>
                             );
                         });
@@ -359,35 +359,35 @@ export function LiabilityDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div className={cn("p-4 rounded-2xl border-2 transition-all relative", includeFixed ? "bg-card border-primary/20 shadow-md" : "bg-muted/10 opacity-40")}>
                     <div className="flex justify-between items-center mb-3">
-                        <Badge variant="outline" className="text-[8px] font-black">STEP 1</Badge>
+                        <Badge variant="outline" className="text-sm font-bold">STEP 1</Badge>
                         <Switch checked={includeFixed} onCheckedChange={setIncludeFixed} />
                     </div>
-                    <p className="text-[9px] font-black uppercase text-muted-foreground">Fixed Overheads</p>
-                    <p className="text-xl font-black mt-1">₹{Math.round(ladderGoals.g1).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                    <p className="text-sm font-bold uppercase text-muted-foreground">Fixed Overheads</p>
+                    <p className="text-xl font-bold mt-1">₹{Math.round(ladderGoals.g1).toLocaleString()}<span className="text-sm opacity-50 ml-1">/DAY</span></p>
                 </div>
                 <div className={cn("p-4 rounded-2xl border-2 transition-all relative", includeLoan ? "bg-card border-primary/20 shadow-md" : "bg-muted/10 opacity-40")}>
                     <div className="flex justify-between items-center mb-3">
-                        <Badge variant="outline" className="text-[8px] font-black text-primary border-primary/40">STEP 2</Badge>
+                        <Badge variant="outline" className="text-sm font-bold text-primary border-primary/40">STEP 2</Badge>
                         <Switch checked={includeLoan} onCheckedChange={setIncludeLoan} />
                     </div>
-                    <p className="text-[9px] font-black uppercase text-primary">EMI Debt Share</p>
-                    <p className="text-xl font-black mt-1 text-primary">₹{Math.round(ladderGoals.g2).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                    <p className="text-sm font-bold uppercase text-primary">EMI Debt Share</p>
+                    <p className="text-xl font-bold mt-1 text-primary">₹{Math.round(ladderGoals.g2).toLocaleString()}<span className="text-sm opacity-50 ml-1">/DAY</span></p>
                 </div>
                 <div className={cn("p-4 rounded-2xl border-2 transition-all relative", includeRent ? "bg-card border-primary/20 shadow-md" : "bg-muted/10 opacity-40")}>
                     <div className="flex justify-between items-center mb-3">
-                        <Badge variant="outline" className="text-[8px] font-black text-emerald-600 border-emerald-400">STEP 3</Badge>
+                        <Badge variant="outline" className="text-sm font-bold text-emerald-600 border-emerald-400">STEP 3</Badge>
                         <Switch checked={includeRent} onCheckedChange={setIncludeRent} />
                     </div>
-                    <p className="text-[9px] font-black uppercase text-emerald-600">Current Lease</p>
-                    <p className="text-xl font-black mt-1 text-emerald-600">₹{Math.round(ladderGoals.g3).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                    <p className="text-sm font-bold uppercase text-emerald-600">Current Lease</p>
+                    <p className="text-xl font-bold mt-1 text-emerald-600">₹{Math.round(ladderGoals.g3).toLocaleString()}<span className="text-sm opacity-50 ml-1">/DAY</span></p>
                 </div>
                 <div className={cn("p-4 rounded-2xl border-2 transition-all relative", includeBacklog ? "bg-card border-primary/20 shadow-md" : "bg-muted/10 opacity-40")}>
                     <div className="flex justify-between items-center mb-3">
-                        <Badge variant="outline" className="text-[8px] font-black text-amber-600 border-amber-400">STEP 4</Badge>
+                        <Badge variant="outline" className="text-sm font-bold text-amber-600 border-amber-400">STEP 4</Badge>
                         <Switch checked={includeBacklog} onCheckedChange={setIncludeBacklog} />
                     </div>
-                    <p className="text-[9px] font-black uppercase text-amber-600">Backlog Wipe</p>
-                    <p className="text-xl font-black mt-1 text-amber-600">₹{Math.round(ladderGoals.g4).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                    <p className="text-sm font-bold uppercase text-amber-600">Backlog Wipe</p>
+                    <p className="text-xl font-bold mt-1 text-amber-600">₹{Math.round(ladderGoals.g4).toLocaleString()}<span className="text-sm opacity-50 ml-1">/DAY</span></p>
                 </div>
             </div>
         </CardContent>
@@ -400,44 +400,44 @@ export function LiabilityDashboard() {
                 <Timer className="text-primary h-6 w-6" />
                 <div>
                     <CardTitle className="text-xl font-headline tracking-tight uppercase">Actual Payoff Clock</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Reality Engine: Estimates freedom based on REAL SURPLUS + Growth.</CardDescription>
+                    <CardDescription className="text-sm font-bold uppercase tracking-normal">Reality Engine: Estimates freedom based on REAL SURPLUS + Growth.</CardDescription>
                 </div>
             </div>
         </CardHeader>
         <CardContent className="p-0">
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-b">
                 <div className="p-6 space-y-2">
-                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                    <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal flex items-center gap-2">
                         <Activity className="h-3 w-3 text-primary" /> Monthly Velocity
                     </p>
-                    <p className="text-2xl font-black font-mono">{formatCurrency(velocity)}</p>
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase">Repayment capacity based on 30-day rolling surplus.</p>
+                    <p className="text-2xl font-bold font-mono">{formatCurrency(velocity)}</p>
+                    <p className="text-sm font-bold text-muted-foreground uppercase">Repayment capacity based on 30-day rolling surplus.</p>
                 </div>
                 <div className="p-6 space-y-2 bg-primary/[0.02]">
-                    <p className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                    <p className="text-sm font-bold uppercase text-primary tracking-normal flex items-center gap-2">
                         <Target className="h-3 w-3" /> Days to Freedom
                     </p>
-                    <p className="text-2xl font-black font-mono text-primary">
+                    <p className="text-2xl font-bold font-mono text-primary">
                         {simResults?.payoffDate ? `${differenceInDays(simResults.payoffDate, new Date()).toLocaleString()} DAYS` : "NOT SUSTAINABLE"}
                     </p>
-                    <p className="text-[8px] font-bold text-primary/60 uppercase">Calculated using behavioral throughput.</p>
+                    <p className="text-sm font-bold text-primary/60 uppercase">Calculated using behavioral throughput.</p>
                 </div>
                 <div className="p-6 space-y-2 bg-emerald-500/[0.02]">
-                    <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
+                    <p className="text-sm font-bold uppercase text-emerald-600 tracking-normal flex items-center gap-2">
                         <CalendarIcon className="h-3 w-3" /> Freedom Month
                     </p>
-                    <p className="text-2xl font-black font-mono text-emerald-600 uppercase">
+                    <p className="text-2xl font-bold font-mono text-emerald-600 uppercase">
                         {simResults?.payoffDate ? format(simResults.payoffDate, 'MMM yyyy') : "N/A"}
                     </p>
-                    <p className="text-[8px] font-bold text-emerald-600/60 uppercase">Estimated zero-debt crossing month.</p>
+                    <p className="text-sm font-bold text-emerald-600/60 uppercase">Estimated zero-debt crossing month.</p>
                 </div>
             </div>
             <div className="p-6 bg-muted/5">
                 <div className="flex items-start gap-4">
                     <div className="bg-primary/10 p-2 rounded-lg"><Info className="text-primary h-5 w-5" /></div>
                     <div className="space-y-1">
-                        <h4 className="text-xs font-black uppercase tracking-tight">How the Velocity Engine works</h4>
-                        <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
+                        <h4 className="text-sm font-bold uppercase tracking-tight">How the Velocity Engine works</h4>
+                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">
                             The system scans your last 30 business days. It calculates <strong>Revenue - (Bills + Expenses)</strong> for each day to find your <strong>Daily Surplus</strong>. 
                             This surplus is converted to a monthly repayment capacity. The Payoff Clock then simulates months of interest compounding against this capacity + your expected growth 
                             to find the exact date you kill the loan.

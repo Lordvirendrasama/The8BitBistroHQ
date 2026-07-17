@@ -144,13 +144,13 @@ export default function MemberProfilePage() {
                         member.recharges.filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0).map(r => (
                             <div key={r.id} className="p-3 rounded-lg border bg-background space-y-2">
                                 <div className="flex justify-between items-start">
-                                    <p className="font-black text-xs uppercase">{r.packageName}</p>
-                                    <Badge variant="outline" className="text-[10px] h-5 font-mono">{formatDuration(r.remainingDuration)} left</Badge>
+                                    <p className="font-bold text-sm uppercase">{r.packageName}</p>
+                                    <Badge variant="outline" className="text-sm h-5 font-mono">{formatDuration(r.remainingDuration)} left</Badge>
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase font-bold">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground uppercase font-bold">
                                     <Clock className="h-3 w-3" /> Purchased: {format(new Date(r.purchaseDate), 'PP')}
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-destructive uppercase font-black">
+                                <div className="flex items-center gap-2 text-sm text-destructive uppercase font-bold">
                                     <Zap className="h-3 w-3" /> Expiry: {format(new Date(r.expiryDate), 'PP')}
                                 </div>
                                 <Progress value={(r.remainingDuration / r.totalDuration) * 100} className="h-1.5" />

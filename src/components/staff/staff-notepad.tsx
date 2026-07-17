@@ -114,7 +114,7 @@ export function StaffNotepad() {
         <Button variant="outline" size="icon" className="relative h-8 w-8 rounded-lg border-primary/20 shadow-sm">
           <StickyNote className="h-4 w-4 text-primary" />
           {unreadCount > 0 && (
-            <Badge variant="destructive" className="absolute -right-1 -top-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] rounded-full ring-2 ring-background font-black">
+            <Badge variant="destructive" className="absolute -right-1.5 -top-1.5 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold">
               {unreadCount}
             </Badge>
           )}
@@ -126,25 +126,25 @@ export function StaffNotepad() {
             <StickyNote className="text-primary h-6 w-6" />
             Staff Notepad
           </DialogTitle>
-          <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground mt-1 tracking-widest">
+          <DialogDescription className="font-bold text-sm uppercase text-muted-foreground mt-1 tracking-normal">
             OPERATIONAL LOG & BRIEFING TOOL
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 rounded-none bg-background border-b h-12 p-0">
-            <TabsTrigger value="write" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all gap-2">
+            <TabsTrigger value="write" className="rounded-none h-full font-bold uppercase text-sm tracking-normal data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all gap-2">
               <PencilLine className="h-3.5 w-3.5" /> Compose
             </TabsTrigger>
-            <TabsTrigger value="history" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all gap-2">
+            <TabsTrigger value="history" className="rounded-none h-full font-bold uppercase text-sm tracking-normal data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all gap-2">
               <History className="h-3.5 w-3.5" /> History
-              {unreadCount > 0 && <Badge className="ml-1 h-3.5 px-1 bg-primary text-[7px]">{unreadCount}</Badge>}
+              {unreadCount > 0 && <Badge className="ml-1 h-3.5 px-1 bg-primary text-sm">{unreadCount}</Badge>}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="write" className="p-6 m-0 space-y-4 animate-in fade-in-50 slide-in-from-left-2 duration-300">
             <div className="space-y-2">
-              <Label htmlFor="staff-note" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Message Body</Label>
+              <Label htmlFor="staff-note" className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Message Body</Label>
               <Textarea
                 id="staff-note"
                 placeholder="Report an issue, suggest a change, or provide a shift update..."
@@ -156,7 +156,7 @@ export function StaffNotepad() {
             <Button 
               onClick={handleSendNote} 
               disabled={isSubmitting || !note.trim()} 
-              className="w-full font-black uppercase h-14 shadow-xl tracking-widest text-sm"
+              className="w-full font-bold uppercase h-14 shadow-xl tracking-normal text-sm"
             >
               <Send className="mr-2 h-4 w-4" />
               {isSubmitting ? 'Sending...' : 'Send Briefing'}
@@ -176,23 +176,23 @@ export function StaffNotepad() {
                         !item.isRead && isOwner ? "border-primary/30 bg-primary/[0.02]" : "bg-card"
                       )}>
                         <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-2 text-[9px] font-black uppercase text-muted-foreground tracking-tighter">
+                          <div className="flex items-center gap-2 text-sm font-bold uppercase text-muted-foreground tracking-tight">
                             <Clock className="h-3 w-3" />
                             {format(new Date(item.timestamp), 'MMM d, h:mm a')}
                             <span className="opacity-40">•</span>
                             <span className="text-primary/80">{item.triggeredBy?.displayName}</span>
                           </div>
                           {item.isRead ? (
-                            <Badge variant="outline" className="h-4 text-[7px] bg-emerald-50 text-emerald-600 border-emerald-200 uppercase font-black px-1.5">
+                            <Badge variant="outline" className="h-4 text-sm bg-emerald-50 text-emerald-600 border-emerald-200 uppercase font-bold px-1.5">
                               <CheckCircle2 className="h-2 w-2 mr-1" /> Seen
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="h-4 text-[7px] bg-primary/5 text-primary border-primary/20 uppercase font-black px-1.5">
+                            <Badge variant="outline" className="h-4 text-sm bg-primary/5 text-primary border-primary/20 uppercase font-bold px-1.5">
                               <Circle className="h-2 w-2 mr-1 fill-current" /> New
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs font-medium text-foreground leading-relaxed">
+                        <p className="text-sm font-medium text-foreground leading-relaxed">
                           {cleanMessage}
                         </p>
                         {isOwner && !item.isRead && (
@@ -201,7 +201,7 @@ export function StaffNotepad() {
                               variant="ghost" 
                               size="sm" 
                               onClick={() => handleAcknowledge(item.id)}
-                              className="h-7 px-2 text-[8px] font-black uppercase tracking-widest text-primary hover:bg-primary/10"
+                              className="h-7 px-2 text-sm font-bold uppercase tracking-normal text-primary hover:bg-primary/10"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               Acknowledge
@@ -217,7 +217,7 @@ export function StaffNotepad() {
                 ) : (
                   <div className="py-20 text-center space-y-3 opacity-30">
                     <History className="h-10 w-10 mx-auto text-muted-foreground" />
-                    <p className="font-headline text-[10px] tracking-widest uppercase">No previous notes</p>
+                    <p className="font-headline text-sm tracking-normal uppercase">No previous notes</p>
                   </div>
                 )}
               </div>

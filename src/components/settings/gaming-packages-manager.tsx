@@ -151,7 +151,7 @@ export function GamingPackagesManager() {
     <TableHead className={cn("p-0 bg-muted/30", className)}>
         <button 
             onClick={() => handleSort(sortKey)}
-            className="w-full h-full px-4 py-3 flex items-center justify-start gap-2 hover:bg-primary/5 transition-colors font-black uppercase text-[10px]"
+            className="w-full h-full px-4 py-3 flex items-center justify-start gap-2 hover:bg-primary/5 transition-colors font-bold uppercase text-sm"
         >
             {label}
             <ArrowUpDown className={cn(
@@ -171,19 +171,19 @@ export function GamingPackagesManager() {
                 <Gamepad2 className="h-6 w-6 text-primary" />
                 Session Packages
             </CardTitle>
-            <CardDescription className="font-bold text-xs uppercase tracking-widest">Manage console rates, table passes, and add-time offers.</CardDescription>
+            <CardDescription className="font-bold text-sm uppercase tracking-normal">Manage console rates, table passes, and add-time offers.</CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                     placeholder="Search packages..." 
-                    className="pl-10 h-10 border-2 font-bold text-xs uppercase bg-background"
+                    className="pl-10 h-10 border-2 font-bold text-sm uppercase bg-background"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Button size="sm" className="w-full sm:w-auto font-black uppercase tracking-tight h-10 shadow-lg" onClick={handleAdd}>
+            <Button size="sm" className="w-full sm:w-auto font-bold uppercase tracking-tight h-10 shadow-lg" onClick={handleAdd}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Package
             </Button>
@@ -192,7 +192,7 @@ export function GamingPackagesManager() {
       </CardHeader>
       <CardContent className="p-0">
         {loading && (
-            <div className="py-20 text-center opacity-50 font-bold uppercase tracking-widest animate-pulse">
+            <div className="py-20 text-center opacity-50 font-bold uppercase tracking-normal animate-pulse">
                 Loading Catalog...
             </div>
         )}
@@ -207,27 +207,27 @@ export function GamingPackagesManager() {
                     <SortableHeader label="Purpose" sortKey="purpose" />
                     <SortableHeader label="Duration" sortKey="duration" className="text-center" />
                     <SortableHeader label="Price" sortKey="price" className="text-center" />
-                    <TableHead className="text-right font-black uppercase text-[10px] bg-muted/30 pr-6">Actions</TableHead>
+                    <TableHead className="text-right font-bold uppercase text-sm bg-muted/30 pr-6">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
                 {filteredAndSortedPackages.map((pkg) => (
                     <TableRow key={pkg.id} className="hover:bg-muted/20 transition-colors">
-                    <TableCell className="font-black uppercase text-xs sm:text-sm py-4">{pkg.name}</TableCell>
+                    <TableCell className="font-bold uppercase text-sm sm:text-sm py-4">{pkg.name}</TableCell>
                     <TableCell>
                         <div className="flex gap-1.5">
-                            {pkg.isPriorityOffer && <Badge variant="outline" className="text-[8px] h-4 uppercase bg-amber-500/10 text-amber-600 border-amber-500/20">PRIORITY</Badge>}
-                            {pkg.isBoardGamePass && <Badge variant="outline" className="text-[8px] h-4 uppercase bg-blue-500/10 text-blue-600 border-blue-500/20">BOARD GAME</Badge>}
-                            {pkg.isRechargePack && <Badge variant="outline" className="text-[8px] h-4 uppercase bg-yellow-500/10 text-yellow-600 border-yellow-500/20">RECHARGE</Badge>}
-                            {pkg.isAddTimePackage && <Badge variant="outline" className="text-[8px] h-4 uppercase bg-primary/10 text-primary border-primary/20">ADD TIME</Badge>}
-                            {!pkg.isBoardGamePass && !pkg.isRechargePack && !pkg.isAddTimePackage && <Badge variant="outline" className="text-[8px] h-4 uppercase bg-green-500/10 text-green-600 border-green-500/20">WALK-IN</Badge>}
+                            {pkg.isPriorityOffer && <Badge variant="outline" className="text-sm h-4 uppercase bg-amber-500/10 text-amber-600 border-amber-500/20">PRIORITY</Badge>}
+                            {pkg.isBoardGamePass && <Badge variant="outline" className="text-sm h-4 uppercase bg-blue-500/10 text-blue-600 border-blue-500/20">BOARD GAME</Badge>}
+                            {pkg.isRechargePack && <Badge variant="outline" className="text-sm h-4 uppercase bg-yellow-500/10 text-yellow-600 border-yellow-500/20">RECHARGE</Badge>}
+                            {pkg.isAddTimePackage && <Badge variant="outline" className="text-sm h-4 uppercase bg-primary/10 text-primary border-primary/20">ADD TIME</Badge>}
+                            {!pkg.isBoardGamePass && !pkg.isRechargePack && !pkg.isAddTimePackage && <Badge variant="outline" className="text-sm h-4 uppercase bg-green-500/10 text-green-600 border-green-500/20">WALK-IN</Badge>}
                         </div>
                     </TableCell>
                     <TableCell className="text-center">
-                        <span className="font-mono font-bold text-xs">{formatDuration(pkg.duration)}</span>
+                        <span className="font-mono font-bold text-sm">{formatDuration(pkg.duration)}</span>
                     </TableCell>
                     <TableCell className="text-center">
-                        <span className="font-mono font-black text-sm text-primary">₹{pkg.price.toLocaleString()}</span>
+                        <span className="font-mono font-bold text-sm text-primary">₹{pkg.price.toLocaleString()}</span>
                     </TableCell>
                     <TableCell className="text-right pr-6">
                         <AlertDialog>
@@ -239,12 +239,12 @@ export function GamingPackagesManager() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40 font-body">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => handleEdit(pkg)} className="font-bold text-xs">
+                            <DropdownMenuLabel className="text-sm uppercase font-bold opacity-50">Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => handleEdit(pkg)} className="font-bold text-sm">
                                 <Edit className="mr-2 h-3.5 w-3.5" /> Edit Details
                             </DropdownMenuItem>
                             <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-destructive font-bold text-xs" onSelect={() => logUserAction(`Opened delete for ${pkg.name}`)}>
+                                <DropdownMenuItem className="text-destructive font-bold text-sm" onSelect={() => logUserAction(`Opened delete for ${pkg.name}`)}>
                                     <Trash className="mr-2 h-3.5 w-3.5" /> Remove
                                 </DropdownMenuItem>
                             </AlertDialogTrigger>
@@ -252,7 +252,7 @@ export function GamingPackagesManager() {
                         </DropdownMenu>
                         <AlertDialogContent className="border-4 border-destructive font-body">
                             <AlertDialogHeader>
-                            <AlertDialogTitle className="font-headline text-lg text-destructive uppercase tracking-tighter">Delete Package?</AlertDialogTitle>
+                            <AlertDialogTitle className="font-headline text-lg text-destructive uppercase tracking-tight">Delete Package?</AlertDialogTitle>
                             <AlertDialogDescription className="font-bold text-foreground">
                                 This will permanently delete <strong>{pkg.name}</strong> from the system.
                             </AlertDialogDescription>
@@ -271,7 +271,7 @@ export function GamingPackagesManager() {
                         <TableCell colSpan={5} className="h-48 text-center bg-muted/5">
                             <div className="flex flex-col items-center justify-center opacity-30">
                                 <Search className="h-10 w-10 mb-2" />
-                                <p className="font-headline text-xs tracking-widest">No matching packages found</p>
+                                <p className="font-headline text-sm tracking-normal">No matching packages found</p>
                             </div>
                         </TableCell>
                     </TableRow>

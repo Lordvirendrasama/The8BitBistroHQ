@@ -186,7 +186,7 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
                             value={rechargeHours} 
                             onChange={(e) => setRechargeHours(e.target.value)} 
                         />
-                        <p className="text-[9px] font-bold uppercase text-muted-foreground mt-1 text-center">Hours</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground mt-1 text-center">Hours</p>
                     </div>
                     <div className="flex-1">
                         <Input 
@@ -196,7 +196,7 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
                             value={rechargeMinutes} 
                             onChange={(e) => setRechargeMinutes(e.target.value)} 
                         />
-                        <p className="text-[9px] font-bold uppercase text-muted-foreground mt-1 text-center">Minutes</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground mt-1 text-center">Minutes</p>
                     </div>
                 </div>
             </div>

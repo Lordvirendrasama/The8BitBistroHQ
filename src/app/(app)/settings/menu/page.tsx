@@ -19,13 +19,13 @@ export default function CombinedMenuPage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full max-w-[600px] grid-cols-3">
-          <TabsTrigger value="menu" className="font-bold uppercase text-[10px] tracking-wider">
+          <TabsTrigger value="menu" className="font-bold uppercase text-sm tracking-wider">
             Food Menu
           </TabsTrigger>
-          <TabsTrigger value="categories" className="font-bold uppercase text-[10px] tracking-wider">
+          <TabsTrigger value="categories" className="font-bold uppercase text-sm tracking-wider">
             Categories
           </TabsTrigger>
-          <TabsTrigger value="packages" className="font-bold uppercase text-[10px] tracking-wider">
+          <TabsTrigger value="packages" className="font-bold uppercase text-sm tracking-wider">
             Gaming Packages
           </TabsTrigger>
         </TabsList>

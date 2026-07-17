@@ -122,7 +122,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen items-center justify-center bg-background font-body">
         <div className="flex flex-col items-center gap-4">
             <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="font-headline text-[10px] tracking-widest text-muted-foreground animate-pulse uppercase">Syncing Bistro OS...</p>
+            <p className="font-headline text-sm tracking-normal text-muted-foreground animate-pulse uppercase">Syncing Bistro OS...</p>
         </div>
       </div>
     );
@@ -159,7 +159,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <ShieldAlert className="h-6 w-6 animate-pulse" />
                   </div>
                   <h2 className="font-headline text-lg tracking-wider text-destructive uppercase">Access Restricted</h2>
-                  <p className="text-xs text-muted-foreground max-w-sm uppercase font-bold tracking-tight">
+                  <p className="text-sm text-muted-foreground max-w-sm uppercase font-bold tracking-tight">
                     You do not have the required operator clearances to view this terminal. Redirecting...
                   </p>
                 </div>

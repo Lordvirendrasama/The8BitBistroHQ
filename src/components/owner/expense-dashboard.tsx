@@ -60,33 +60,33 @@ export function ExpenseDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-destructive/5 border-destructive/20">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-destructive" />
               Monthly Spend
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black text-destructive">₹{stats.monthlyTotal.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total expenses for {format(new Date(), 'MMMM yyyy')}</p>
+            <div className="text-3xl font-bold text-destructive">₹{stats.monthlyTotal.toLocaleString()}</div>
+            <p className="text-sm text-muted-foreground mt-1">Total expenses for {format(new Date(), 'MMMM yyyy')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" />
               Entries
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">{stats.currentMonthExpenses.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Records added this month</p>
+            <div className="text-3xl font-bold">{stats.currentMonthExpenses.length}</div>
+            <p className="text-sm text-muted-foreground mt-1">Records added this month</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
               <Users className="h-4 w-4" />
               Contributors
             </CardTitle>
@@ -96,7 +96,7 @@ export function ExpenseDashboard() {
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">Viren</Badge>
               <Badge variant="outline" className="bg-secondary text-secondary-foreground">Abbas</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Staff & Owner records combined</p>
+            <p className="text-sm text-muted-foreground mt-2">Staff & Owner records combined</p>
           </CardContent>
         </Card>
       </div>
@@ -104,7 +104,7 @@ export function ExpenseDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+            <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
               Daily Expense Breakdown
             </CardTitle>
@@ -132,7 +132,7 @@ export function ExpenseDashboard() {
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       return (
-                        <div className="bg-card border rounded-lg p-2 shadow-xl text-xs font-bold">
+                        <div className="bg-card border rounded-lg p-2 shadow-xl text-sm font-bold">
                           <p className="text-muted-foreground">{payload[0].payload.date}</p>
                           <p className="text-primary text-sm">₹{payload[0].value?.toLocaleString()}</p>
                         </div>
@@ -149,7 +149,7 @@ export function ExpenseDashboard() {
 
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-lg font-black uppercase tracking-tight">Recent Audit</CardTitle>
+            <CardTitle className="text-lg font-bold uppercase tracking-tight">Recent Audit</CardTitle>
             <CardDescription>Latest unified expenses.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -160,19 +160,19 @@ export function ExpenseDashboard() {
                     <TableCell className="py-3">
                       <div className="space-y-0.5">
                         <p className="text-sm font-bold leading-none">{e.description}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-black">
+                        <p className="text-sm text-muted-foreground uppercase font-bold">
                           {format(new Date(e.timestamp), 'MMM d')} • By {e.addedBy.displayName}
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right py-3 font-mono font-black text-destructive">
+                    <TableCell className="text-right py-3 font-mono font-bold text-destructive">
                       ₹{e.amount.toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))}
                 {stats.currentMonthExpenses.length === 0 && (
                   <TableRow>
-                    <TableCell className="text-center py-12 text-muted-foreground italic text-xs">No records this month.</TableCell>
+                    <TableCell className="text-center py-12 text-muted-foreground italic text-sm">No records this month.</TableCell>
                   </TableRow>
                 )}
               </TableBody>

@@ -192,17 +192,17 @@ export function DataManagement() {
                     </div>
                     <div>
                         <CardTitle className="font-headline text-2xl tracking-tight">Phase Management</CardTitle>
-                        <CardDescription className="font-bold text-xs uppercase tracking-widest text-primary/60">Seal current testing history and start live operations.</CardDescription>
+                        <CardDescription className="font-bold text-sm uppercase tracking-normal text-primary/60">Seal current testing history and start live operations.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
             <CardContent className="pt-8 space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="space-y-4">
-                        <Label className="text-[10px] uppercase font-black tracking-[0.3em] opacity-50 block">Currently Sealing Under</Label>
+                        <Label className="text-sm uppercase font-bold tracking-[0.3em] opacity-50 block">Currently Sealing Under</Label>
                         <div className="p-6 rounded-2xl bg-muted/20 border-2 border-dashed flex flex-col justify-center h-32">
-                            <p className="text-3xl font-black uppercase text-foreground truncate">{currentActiveName || 'Unlabeled'}</p>
-                            <div className="flex items-center gap-2 mt-2 text-[10px] font-bold text-muted-foreground uppercase">
+                            <p className="text-3xl font-bold uppercase text-foreground truncate">{currentActiveName || 'Unlabeled'}</p>
+                            <div className="flex items-center gap-2 mt-2 text-sm font-bold text-muted-foreground uppercase">
                                 <Clock className="h-3 w-3" />
                                 <span>Phase Active Since: {cycleStartDate ? format(new Date(cycleStartDate), 'PPP p') : 'Beginning of Time'}</span>
                             </div>
@@ -211,17 +211,17 @@ export function DataManagement() {
 
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-primary block">Start New Phase Name</Label>
+                            <Label className="text-sm uppercase font-bold tracking-[0.3em] text-primary block">Start New Phase Name</Label>
                             <Input 
                                 value={newPhaseName} 
                                 onChange={e => setNewPhaseName(e.target.value)} 
                                 placeholder="e.g. Launch"
-                                className="font-black uppercase h-14 text-xl border-2 focus-visible:ring-primary w-full"
+                                className="font-bold uppercase h-14 text-xl border-2 focus-visible:ring-primary w-full"
                             />
                         </div>
                         
                         <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-muted-foreground block">Effective Transition Date</Label>
+                            <Label className="text-sm uppercase font-bold tracking-[0.3em] text-muted-foreground block">Effective Transition Date</Label>
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <Input 
                                     type="datetime-local"
@@ -231,29 +231,29 @@ export function DataManagement() {
                                 />
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <Button disabled={isSavingCycle || !newPhaseName || !isValid(new Date(transitionDate))} className="h-12 px-8 font-black uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
+                                        <Button disabled={isSavingCycle || !newPhaseName || !isValid(new Date(transitionDate))} className="h-12 px-8 font-bold uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
                                             <ArrowRight className="mr-2 h-5 w-5" />
                                             Transition
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent className="border-4 border-primary">
                                         <AlertDialogHeader>
-                                            <AlertDialogTitle className="text-2xl font-black uppercase">Start Launch Phase?</AlertDialogTitle>
+                                            <AlertDialogTitle className="text-2xl font-bold uppercase">Start Launch Phase?</AlertDialogTitle>
                                             <AlertDialogDescription className="text-lg font-medium text-foreground">
                                                 Existing records up to <strong>{safeFormatTransitionDate()}</strong> will be sealed as <strong>"{currentActiveName}"</strong>. 
                                                 New records from that point will be tagged as <strong>"{newPhaseName}"</strong>. 
                                                 <br/><br/>
-                                                <span className="text-primary font-black">MEMBER XP AND LEVELS ARE NOT AFFECTED.</span>
+                                                <span className="text-primary font-bold">MEMBER XP AND LEVELS ARE NOT AFFECTED.</span>
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleStartNewPhase} className="bg-primary hover:bg-primary/90 font-black uppercase px-8">Seal & Launch</AlertDialogAction>
+                                            <AlertDialogAction onClick={handleStartNewPhase} className="bg-primary hover:bg-primary/90 font-bold uppercase px-8">Seal & Launch</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
                             </div>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">* Use 2026-03-01 05:00 AM for the Cafe Launch day.</p>
+                            <p className="text-sm font-bold text-muted-foreground uppercase opacity-60">* Use 2026-03-01 05:00 AM for the Cafe Launch day.</p>
                         </div>
                     </div>
                 </div>
@@ -276,15 +276,15 @@ export function DataManagement() {
             <CardContent className="space-y-8 pt-8">
                 <div className="max-w-2xl space-y-6">
                     <div className="space-y-3">
-                        <Label className="text-[10px] uppercase font-black tracking-widest flex items-center gap-2"><Filter className="h-3 w-3 text-primary"/> Choose Phase to Download</Label>
+                        <Label className="text-sm uppercase font-bold tracking-normal flex items-center gap-2"><Filter className="h-3 w-3 text-primary"/> Choose Phase to Download</Label>
                         <Select value={exportCycle} onValueChange={setExportCycle}>
-                            <SelectTrigger className="h-14 text-sm font-black uppercase bg-muted/5 border-2">
+                            <SelectTrigger className="h-14 text-sm font-bold uppercase bg-muted/5 border-2">
                                 <SelectValue placeholder="Select phase..." />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all_cycles" className="font-bold uppercase text-[10px]">Everything (Entire History)</SelectItem>
+                                <SelectItem value="all_cycles" className="font-bold uppercase text-sm">Everything (Entire History)</SelectItem>
                                 {availableCycles.map(c => (
-                                    <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-[10px]">
+                                    <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-sm">
                                         {c.name}
                                     </SelectItem>
                                 ))}
@@ -298,8 +298,8 @@ export function DataManagement() {
                             <div className="flex items-center gap-3">
                                 <Calendar className="h-5 w-5 text-primary" />
                                 <div className="space-y-0.5">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Detected Cycle Range</p>
-                                    <p className="font-black text-sm uppercase">
+                                    <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal">Detected Cycle Range</p>
+                                    <p className="font-bold text-sm uppercase">
                                         {selectedCycleMetadata.start ? format(new Date(selectedCycleMetadata.start), 'MMM d, p') : 'Unknown'} 
                                         <ArrowRight className="inline mx-2 h-3 w-3 opacity-50" /> 
                                         {selectedCycleMetadata.end ? format(new Date(selectedCycleMetadata.end), 'MMM d, p') : 'Now'}
@@ -313,7 +313,7 @@ export function DataManagement() {
                     <div className="pt-2">
                         <button 
                             onClick={() => setShowOverrides(!showOverrides)}
-                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                            className="text-sm font-bold uppercase tracking-normal text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
                         >
                             {showOverrides ? <ChevronUp className="h-3 w-3"/> : <ChevronDown className="h-3 w-3"/>}
                             {showOverrides ? 'Hide Surgical Overrides' : 'Set custom sub-window (Optional)'}
@@ -322,12 +322,12 @@ export function DataManagement() {
                         {showOverrides && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 animate-in fade-in zoom-in-95 duration-200">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground pl-1">Start Within Phase</Label>
-                                    <Input type="datetime-local" value={exportStart} onChange={e => setExportStart(e.target.value)} className="h-12 text-xs font-mono border-2" />
+                                    <Label className="text-sm uppercase font-bold tracking-normal text-muted-foreground pl-1">Start Within Phase</Label>
+                                    <Input type="datetime-local" value={exportStart} onChange={e => setExportStart(e.target.value)} className="h-12 text-sm font-mono border-2" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground pl-1">End Within Phase</Label>
-                                    <Input type="datetime-local" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="h-12 text-xs font-mono border-2" />
+                                    <Label className="text-sm uppercase font-bold tracking-normal text-muted-foreground pl-1">End Within Phase</Label>
+                                    <Input type="datetime-local" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="h-12 text-sm font-mono border-2" />
                                 </div>
                             </div>
                         )}
@@ -335,15 +335,15 @@ export function DataManagement() {
                 </div>
                 
                 <div className="flex flex-wrap gap-4 pt-6 border-t border-dashed">
-                    <Button onClick={() => handleExport('ledger')} disabled={isExportingLedger} className="bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-tight h-16 px-12 shadow-2xl text-lg flex-1 sm:flex-none">
+                    <Button onClick={() => handleExport('ledger')} disabled={isExportingLedger} className="bg-emerald-600 hover:bg-emerald-700 font-bold uppercase tracking-tight h-16 px-12 shadow-2xl text-lg flex-1 sm:flex-none">
                         <ReceiptIndianRupee className="mr-3 h-6 w-6" />
                         Accounting Ledger
                     </Button>
-                    <Button onClick={() => handleExport('filtered')} disabled={isExporting} className="bg-primary font-black uppercase tracking-tight h-16 px-12 shadow-2xl text-lg flex-1 sm:flex-none">
+                    <Button onClick={() => handleExport('filtered')} disabled={isExporting} className="bg-primary font-bold uppercase tracking-tight h-16 px-12 shadow-2xl text-lg flex-1 sm:flex-none">
                         <Download className="mr-3 h-6 w-6" />
                         Full Cycle Backup
                     </Button>
-                    <Button onClick={handleExportGoogleContacts} disabled={isExportingContacts} variant="secondary" className="font-black uppercase tracking-tight h-16 px-12 shadow-xl text-lg border-2 border-primary/20 hover:border-primary/50 flex-1 sm:flex-none">
+                    <Button onClick={handleExportGoogleContacts} disabled={isExportingContacts} variant="secondary" className="font-bold uppercase tracking-tight h-16 px-12 shadow-xl text-lg border-2 border-primary/20 hover:border-primary/50 flex-1 sm:flex-none">
                         <UserPlus className="mr-3 h-6 w-6 text-primary" />
                         Google Contacts
                     </Button>
@@ -359,7 +359,7 @@ export function DataManagement() {
                         <Tag className="text-amber-500 h-6 w-6" />
                         <CardTitle className="font-headline text-lg">Retro-Labeler</CardTitle>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleLoadLastCycleRange} className="font-black uppercase text-[9px] tracking-widest h-8 px-3 border-2 hover:bg-amber-500/10">
+                    <Button variant="outline" size="sm" onClick={handleLoadLastCycleRange} className="font-bold uppercase text-sm tracking-normal h-8 px-3 border-2 hover:bg-amber-500/10">
                         <Zap className="mr-1.5 h-3.5 w-3.5 text-amber-500" />
                         Previous Phase Window
                     </Button>
@@ -367,21 +367,21 @@ export function DataManagement() {
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] uppercase font-black tracking-widest">Apply Label</Label>
+                            <Label className="text-sm uppercase font-bold tracking-normal">Apply Label</Label>
                             <Input value={retroCycle} onChange={e => setRetroCycle(e.target.value)} placeholder="e.g. TESTING 1" className="font-bold h-10 uppercase" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] uppercase font-black tracking-widest">From</Label>
-                            <Input type="datetime-local" value={retroStart} onChange={e => setRetroStart(e.target.value)} className="h-10 text-xs font-mono border-2" />
+                            <Label className="text-sm uppercase font-bold tracking-normal">From</Label>
+                            <Input type="datetime-local" value={retroStart} onChange={e => setRetroStart(e.target.value)} className="h-10 text-sm font-mono border-2" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] uppercase font-black tracking-widest">To</Label>
-                            <Input type="datetime-local" value={retroEnd} onChange={e => setRetroEnd(e.target.value)} className="h-10 text-xs font-mono border-2" />
+                            <Label className="text-sm uppercase font-bold tracking-normal">To</Label>
+                            <Input type="datetime-local" value={retroEnd} onChange={e => setRetroEnd(e.target.value)} className="h-10 text-sm font-mono border-2" />
                         </div>
                     </div>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="outline" disabled={isTagging || !retroCycle} className="w-full border-2 border-amber-500/50 hover:bg-amber-500/10 font-black uppercase text-[10px] h-12 shadow-md">
+                            <Button variant="outline" disabled={isTagging || !retroCycle} className="w-full border-2 border-amber-500/50 hover:bg-amber-500/10 font-bold uppercase text-sm h-12 shadow-md">
                                 {isTagging ? 'Tagging...' : 'Run Retroactive Tagging'}
                             </Button>
                         </AlertDialogTrigger>
@@ -403,26 +403,26 @@ export function DataManagement() {
 
             <Card className="bg-destructive/5 border-2 border-destructive/20">
                 <CardHeader>
-                    <CardTitle className="text-lg font-black uppercase text-destructive">Danger Zone</CardTitle>
+                    <CardTitle className="text-lg font-bold uppercase text-destructive">Danger Zone</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" className="w-full font-black uppercase h-16 shadow-lg">
+                            <Button variant="destructive" className="w-full font-bold uppercase h-16 shadow-lg">
                                 <Trash2 className="mr-2 h-5 w-5" />
                                 Wipe All History
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="border-4 border-destructive">
                             <AlertDialogHeader>
-                                <AlertDialogTitle className="text-2xl font-black text-destructive">PERMANENT WIPEOUT?</AlertDialogTitle>
+                                <AlertDialogTitle className="text-2xl font-bold text-destructive">PERMANENT WIPEOUT?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-lg font-bold">
                                     Deletes EVERY document across ALL cycles. Irreversible.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={async () => { await deleteAllData(); window.location.reload(); }} className="bg-destructive hover:bg-destructive/90 font-black uppercase">Destroy Everything</AlertDialogAction>
+                                <AlertDialogAction onClick={async () => { await deleteAllData(); window.location.reload(); }} className="bg-destructive hover:bg-destructive/90 font-bold uppercase">Destroy Everything</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>

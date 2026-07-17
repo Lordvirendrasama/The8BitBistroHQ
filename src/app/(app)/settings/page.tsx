@@ -60,8 +60,8 @@ export default function SettingsHubPage() {
       {settingGroups.map((group, gIdx) => (
         <div key={gIdx} className="space-y-4">
           <div className="px-1">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h3>
-            <p className="text-[10px] font-bold text-muted-foreground opacity-60 uppercase">{group.description}</p>
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h3>
+            <p className="text-sm font-bold text-muted-foreground opacity-60 uppercase">{group.description}</p>
           </div>
           <div className="space-y-2">
             {group.items.map((item, iIdx) => (
@@ -72,7 +72,7 @@ export default function SettingsHubPage() {
                       <div className={cn("p-2 rounded-lg bg-muted group-hover:bg-primary/10 transition-colors", item.color)}>
                         <item.icon className="h-5 w-5" />
                       </div>
-                      <span className="font-black uppercase text-xs tracking-tight group-hover:text-primary transition-colors">{item.label}</span>
+                      <span className="font-bold uppercase text-sm tracking-tight group-hover:text-primary transition-colors">{item.label}</span>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   </CardContent>

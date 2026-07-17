@@ -66,7 +66,7 @@ function parseMarkdown(text: string): React.ReactNode {
 
       if (trimmed.startsWith('### ')) {
         elements.push(
-          <h3 key={lineIndex} className="text-base font-black uppercase tracking-tight text-primary mt-4 mb-2">
+          <h3 key={lineIndex} className="text-base font-bold uppercase tracking-tight text-primary mt-4 mb-2">
             {parseInline(trimmed.substring(4))}
           </h3>
         );
@@ -78,13 +78,13 @@ function parseMarkdown(text: string): React.ReactNode {
         );
       } else if (trimmed.startsWith('## ')) {
         elements.push(
-          <h2 key={lineIndex} className="text-lg font-black uppercase tracking-tight text-primary mt-5 mb-3 border-b-2 pb-1 border-primary/20">
+          <h2 key={lineIndex} className="text-lg font-bold uppercase tracking-tight text-primary mt-5 mb-3 border-b-2 pb-1 border-primary/20">
             {parseInline(trimmed.substring(3))}
           </h2>
         );
       } else if (trimmed.startsWith('# ')) {
         elements.push(
-          <h1 key={lineIndex} className="text-xl font-black uppercase tracking-widest text-primary mt-6 mb-4 border-b-2 pb-1.5 border-primary/20">
+          <h1 key={lineIndex} className="text-xl font-bold uppercase tracking-normal text-primary mt-6 mb-4 border-b-2 pb-1.5 border-primary/20">
             {parseInline(trimmed.substring(2))}
           </h1>
         );
@@ -293,7 +293,7 @@ export default function PoliciesPage() {
             <BookOpen className="h-8 w-8 text-primary" />
             Bistro Handbooks
           </h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-widest">
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal">
             Official operational guidelines and conduct policies for all staff.
           </p>
         </div>
@@ -307,7 +307,7 @@ export default function PoliciesPage() {
       </div>
 
       {loading && (
-        <div className="py-20 text-center text-xs font-headline tracking-widest animate-pulse uppercase">
+        <div className="py-20 text-center text-sm font-headline tracking-normal animate-pulse uppercase">
           Loading policies...
         </div>
       )}
@@ -317,7 +317,7 @@ export default function PoliciesPage() {
           <CardContent className="py-8 flex flex-col items-center justify-center text-center gap-2">
             <AlertCircle className="h-8 w-8 text-destructive" />
             <p className="font-bold text-destructive">Error loading handbook data</p>
-            <p className="text-xs text-muted-foreground">{error.message}</p>
+            <p className="text-sm text-muted-foreground">{error.message}</p>
           </CardContent>
         </Card>
       )}
@@ -329,18 +329,18 @@ export default function PoliciesPage() {
               <ClipboardList className="h-12 w-12 text-primary opacity-20" />
             </div>
             <div className="space-y-1">
-              <p className="text-xl font-headline tracking-tighter uppercase">No handbook sections found</p>
-              <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
+              <p className="text-xl font-headline tracking-tight uppercase">No handbook sections found</p>
+              <p className="text-sm text-muted-foreground uppercase font-bold tracking-normal">
                 Initialize the default operational policies to get started.
               </p>
             </div>
             {isOwner ? (
-              <Button onClick={handleInitializeDefaults} size="lg" className="mt-4 font-black uppercase tracking-widest h-12 px-8">
+              <Button onClick={handleInitializeDefaults} size="lg" className="mt-4 font-bold uppercase tracking-normal h-12 px-8">
                 <Sparkles className="mr-2 h-5 w-5 text-emerald-400" />
                 Initialize Default Policies
               </Button>
             ) : (
-              <p className="text-xs italic text-muted-foreground uppercase tracking-widest mt-2">No policies have been defined yet.</p>
+              <p className="text-sm italic text-muted-foreground uppercase tracking-normal mt-2">No policies have been defined yet.</p>
             )}
           </CardContent>
         </Card>
@@ -359,7 +359,7 @@ export default function PoliciesPage() {
           </CardHeader>
           <CardContent className="p-5 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-title" className="font-bold text-xs uppercase text-muted-foreground">Section Title</Label>
+              <Label htmlFor="new-title" className="font-bold text-sm uppercase text-muted-foreground">Section Title</Label>
               <Input
                 id="new-title"
                 placeholder="e.g. 5. Social Media & External Communications"
@@ -369,7 +369,7 @@ export default function PoliciesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-content" className="font-bold text-xs uppercase text-muted-foreground">Section Content</Label>
+              <Label htmlFor="new-content" className="font-bold text-sm uppercase text-muted-foreground">Section Content</Label>
               <Textarea
                 id="new-content"
                 placeholder="Enter detailed guidelines..."
@@ -380,10 +380,10 @@ export default function PoliciesPage() {
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setIsAdding(false)} className="font-bold uppercase tracking-wider text-xs">
+              <Button variant="outline" onClick={() => setIsAdding(false)} className="font-bold uppercase tracking-wider text-sm">
                 Cancel
               </Button>
-              <Button onClick={handleSaveNew} className="font-bold uppercase tracking-wider text-xs">
+              <Button onClick={handleSaveNew} className="font-bold uppercase tracking-wider text-sm">
                 <Save className="mr-1.5 h-4 w-4" />
                 Create Section
               </Button>
@@ -412,7 +412,7 @@ export default function PoliciesPage() {
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor={`edit-title-${policy.id}`} className="font-bold text-xs uppercase text-muted-foreground">Section Title</Label>
+                      <Label htmlFor={`edit-title-${policy.id}`} className="font-bold text-sm uppercase text-muted-foreground">Section Title</Label>
                       <Input
                         id={`edit-title-${policy.id}`}
                         value={editTitle}
@@ -421,7 +421,7 @@ export default function PoliciesPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`edit-content-${policy.id}`} className="font-bold text-xs uppercase text-muted-foreground">Section Content</Label>
+                      <Label htmlFor={`edit-content-${policy.id}`} className="font-bold text-sm uppercase text-muted-foreground">Section Content</Label>
                       <Textarea
                         id={`edit-content-${policy.id}`}
                         value={editContent}
@@ -431,10 +431,10 @@ export default function PoliciesPage() {
                       />
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={handleCancelEdit} className="font-bold uppercase tracking-wider text-xs">
+                      <Button variant="outline" onClick={handleCancelEdit} className="font-bold uppercase tracking-wider text-sm">
                         Cancel
                       </Button>
-                      <Button onClick={() => handleSaveEdit(policy.id)} className="font-bold uppercase tracking-wider text-xs">
+                      <Button onClick={() => handleSaveEdit(policy.id)} className="font-bold uppercase tracking-wider text-sm">
                         <Save className="mr-1.5 h-4 w-4" />
                         Save Changes
                       </Button>
@@ -457,7 +457,7 @@ export default function PoliciesPage() {
                   className="p-5 flex items-center justify-between cursor-pointer select-none"
                 >
                   <div className="flex-1 min-w-0 pr-4">
-                    <h2 className={cn("text-base font-black uppercase tracking-tight transition-colors", isExpanded ? "text-primary" : "text-foreground")}>
+                    <h2 className={cn("text-base font-bold uppercase tracking-tight transition-colors", isExpanded ? "text-primary" : "text-foreground")}>
                       {policy.title}
                     </h2>
                   </div>

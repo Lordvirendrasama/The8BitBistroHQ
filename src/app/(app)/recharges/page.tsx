@@ -71,7 +71,7 @@ export default function RechargesPage() {
           <Zap className="h-10 w-10 text-yellow-500 fill-current" />
           RECHARGE HUB
         </h1>
-        <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
+        <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-sm pl-1">
           Manage member time balances and prepaid transactions.
         </p>
       </div>
@@ -83,14 +83,14 @@ export default function RechargesPage() {
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <CardTitle className="text-xl font-black uppercase">Find Member</CardTitle>
-                  <CardDescription className="font-bold text-[10px] uppercase tracking-widest">Search by name or username to start a recharge.</CardDescription>
+                  <CardTitle className="text-xl font-bold uppercase">Find Member</CardTitle>
+                  <CardDescription className="font-bold text-sm uppercase tracking-normal">Search by name or username to start a recharge.</CardDescription>
                 </div>
                 <div className="relative w-full sm:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                     placeholder="SEARCH MEMBERS..." 
-                    className="pl-10 h-12 bg-background border-2 font-black uppercase tracking-tight text-xs"
+                    className="pl-10 h-12 bg-background border-2 font-bold uppercase tracking-tight text-sm"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                   />
@@ -99,7 +99,7 @@ export default function RechargesPage() {
             </CardHeader>
             <CardContent>
               {membersLoading ? (
-                <div className="h-64 flex items-center justify-center font-headline text-xs animate-pulse opacity-30">Accessing Member Database...</div>
+                <div className="h-64 flex items-center justify-center font-headline text-sm animate-pulse opacity-30">Accessing Member Database...</div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {filteredMembers.map(member => {
@@ -115,12 +115,12 @@ export default function RechargesPage() {
                               <AvatarFallback>{member.name[0]}</AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
-                              <p className="font-black uppercase text-sm truncate leading-tight">{member.name}</p>
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">@{member.username}</p>
+                              <p className="font-bold uppercase text-sm truncate leading-tight">{member.name}</p>
+                              <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal truncate">@{member.username}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="h-4 text-[8px] font-black uppercase bg-primary/5 text-primary border-primary/10">Lvl {member.level}</Badge>
+                                <Badge variant="outline" className="h-4 text-sm font-bold uppercase bg-primary/5 text-primary border-primary/10">Lvl {member.level}</Badge>
                                 {totalBalanceSeconds > 0 && (
-                                  <div className="flex items-center gap-1 text-[10px] font-black text-yellow-600">
+                                  <div className="flex items-center gap-1 text-sm font-bold text-yellow-600">
                                     <Zap className="h-2.5 w-2.5 fill-current" />
                                     <span>{formatDuration(totalBalanceSeconds)}</span>
                                   </div>
@@ -131,7 +131,7 @@ export default function RechargesPage() {
                           <Button 
                             onClick={() => handleOpenRecharge(member)}
                             size="sm" 
-                            className="h-10 px-4 font-black uppercase tracking-tight bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg shrink-0 ml-2"
+                            className="h-10 px-4 font-bold uppercase tracking-tight bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg shrink-0 ml-2"
                           >
                             Recharge
                           </Button>
@@ -141,7 +141,7 @@ export default function RechargesPage() {
                   })}
                   {filteredMembers.length === 0 && (
                     <div className="col-span-full py-20 text-center border-2 border-dashed rounded-xl bg-background/50">
-                      <p className="font-headline text-[10px] tracking-widest opacity-30">No members match your search</p>
+                      <p className="font-headline text-sm tracking-normal opacity-30">No members match your search</p>
                     </div>
                   )}
                 </div>
@@ -156,14 +156,14 @@ export default function RechargesPage() {
             <CardHeader className="bg-muted/30 border-b shrink-0">
               <div className="flex items-center gap-2">
                 <History className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Recent Activity</CardTitle>
+                <CardTitle className="text-lg font-bold uppercase tracking-tight">Recent Activity</CardTitle>
               </div>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Latest recharge transactions recorded.</CardDescription>
+              <CardDescription className="text-sm font-bold uppercase tracking-normal">Latest recharge transactions recorded.</CardDescription>
             </CardHeader>
             <ScrollArea className="flex-1 min-h-0 bg-muted/5">
               <CardContent className="p-0">
                 {logsLoading ? (
-                  <div className="p-12 text-center text-[10px] font-bold uppercase animate-pulse">Syncing Logs...</div>
+                  <div className="p-12 text-center text-sm font-bold uppercase animate-pulse">Syncing Logs...</div>
                 ) : (
                   <div className="divide-y">
                     {recentLogs.map(log => {
@@ -173,19 +173,19 @@ export default function RechargesPage() {
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex items-center gap-2">
                               {method === 'cash' ? <Banknote className="h-3 w-3 text-green-600" /> : <Smartphone className="h-3 w-3 text-primary" />}
-                              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{method}</span>
+                              <span className="text-sm font-bold uppercase text-muted-foreground tracking-normal">{method}</span>
                             </div>
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}</span>
+                            <span className="text-sm font-bold text-muted-foreground uppercase">{formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}</span>
                           </div>
-                          <p className="text-xs leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: log.description }} />
+                          <p className="text-sm leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: log.description }} />
                           <div className="flex items-center gap-1 mt-2">
-                            <Badge variant="outline" className="h-4 text-[8px] font-bold uppercase opacity-60">Processed by {log.user?.displayName || 'System'}</Badge>
+                            <Badge variant="outline" className="h-4 text-sm font-bold uppercase opacity-60">Processed by {log.user?.displayName || 'System'}</Badge>
                           </div>
                         </div>
                       );
                     })}
                     {(!recentLogs || recentLogs.length === 0) && (
-                      <div className="p-12 text-center text-xs italic text-muted-foreground opacity-50">No recent recharges found.</div>
+                      <div className="p-12 text-center text-sm italic text-muted-foreground opacity-50">No recent recharges found.</div>
                     )}
                   </div>
                 )}

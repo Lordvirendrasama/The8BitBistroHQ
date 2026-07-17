@@ -164,7 +164,7 @@ export function LoanTracker() {
   }, [state, missionYear, dailyOverheads, growthRate, bills, expenses]);
 
   if (isProcessing || !state) {
-    return <div className="p-20 text-center animate-pulse uppercase font-black text-xs">Syncing Loan Protocols...</div>;
+    return <div className="p-20 text-center animate-pulse uppercase font-bold text-sm">Syncing Loan Protocols...</div>;
   }
 
   const performancePct = Math.min(100, (revToday / (goal || 1)) * 100);
@@ -174,18 +174,18 @@ export function LoanTracker() {
     <div className="space-y-8 max-w-7xl mx-auto font-body">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Strategic Debt Recovery</h2>
+            <h2 className="text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground">Strategic Debt Recovery</h2>
             <div className="flex items-center gap-3">
                 <Landmark className="h-8 w-8 text-primary" />
-                <h1 className="text-4xl font-headline tracking-tighter">{formatCurrency(state.loanBalance)}</h1>
-                <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[10px]">Active Principal</Badge>
+                <h1 className="text-4xl font-headline tracking-tight">{formatCurrency(state.loanBalance)}</h1>
+                <Badge variant="outline" className="border-primary/20 text-primary font-bold uppercase text-sm">Active Principal</Badge>
             </div>
         </div>
         <div className="flex gap-3">
             <Button variant="outline" size="icon" onClick={() => setIsConfigModalOpen(true)} className="h-14 w-14 border-2">
                 <Settings2 className="h-6 w-6" />
             </Button>
-            <Button onClick={() => setIsPayModalOpen(true)} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl bg-primary text-white">
+            <Button onClick={() => setIsPayModalOpen(true)} className="h-14 px-10 font-bold uppercase tracking-normal shadow-xl bg-primary text-white">
                 <Zap className="mr-2 h-5 w-5 fill-current" />
                 Record Repayment
             </Button>
@@ -198,24 +198,24 @@ export function LoanTracker() {
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-headline text-primary tracking-tight uppercase">Payoff Progress</CardTitle>
-                        <CardDescription className="text-[10px] font-black uppercase tracking-widest opacity-60">Interest Rate: {state.annualInterestRate}% APR • Compounded Monthly</CardDescription>
+                        <CardDescription className="text-sm font-bold uppercase tracking-normal opacity-60">Interest Rate: {state.annualInterestRate}% APR • Compounded Monthly</CardDescription>
                     </div>
-                    <Badge className="bg-emerald-600 text-white font-black text-[10px] uppercase">Repaying</Badge>
+                    <Badge className="bg-emerald-600 text-white font-bold text-sm uppercase">Repaying</Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-6 space-y-10">
                 <div className="grid grid-cols-2 gap-8">
                     <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Original Principal</p>
-                        <p className="text-2xl font-black font-mono">{formatCurrency(state.loanPrincipalStart)}</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal">Original Principal</p>
+                        <p className="text-2xl font-bold font-mono">{formatCurrency(state.loanPrincipalStart)}</p>
                     </div>
                     <div className="text-right space-y-1">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Total Repaid</p>
-                        <p className="text-2xl font-black font-mono text-emerald-600">{formatCurrency(state.totalLoanPaid)}</p>
+                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal">Total Repaid</p>
+                        <p className="text-2xl font-bold font-mono text-emerald-600">{formatCurrency(state.totalLoanPaid)}</p>
                     </div>
                 </div>
                 <div className="space-y-3">
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                    <div className="flex justify-between text-sm font-bold uppercase tracking-normal">
                         <span>Repayment Milestone</span>
                         <span>{loanProgress.toFixed(1)}% Completed</span>
                     </div>
@@ -228,37 +228,37 @@ export function LoanTracker() {
 
         <Card className="border-2 border-primary/20 bg-primary/5 shadow-xl relative overflow-hidden">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                     <Target className="h-4 w-4" /> Daily Recovery Goal
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-1">
-                    <p className="text-4xl font-black font-mono tracking-tighter">₹{Math.round(goal).toLocaleString()}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Target daily intake to hit {missionYear} deadline.</p>
+                    <p className="text-4xl font-bold font-mono tracking-tight">₹{Math.round(goal).toLocaleString()}</p>
+                    <p className="text-sm font-bold text-muted-foreground uppercase">Target daily intake to hit {missionYear} deadline.</p>
                 </div>
                 
                 {/* INTEREST VS PRINCIPAL SPLIT */}
                 <div className="p-4 rounded-xl bg-background/50 border-2 border-dashed space-y-3">
-                    <h4 className="text-[8px] font-black uppercase tracking-widest opacity-50">Surgical Debt Split</h4>
+                    <h4 className="text-sm font-bold uppercase tracking-normal opacity-50">Surgical Debt Split</h4>
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <Percent className="h-3 w-3 text-primary" />
-                            <span className="text-[10px] font-bold uppercase">Bare Min (Interest)</span>
+                            <span className="text-sm font-bold uppercase">Bare Min (Interest)</span>
                         </div>
-                        <span className="font-mono font-black text-sm">₹{Math.round(interestDaily).toLocaleString()}</span>
+                        <span className="font-mono font-bold text-sm">₹{Math.round(interestDaily).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <Zap className="h-3 w-3 text-primary fill-current" />
-                            <span className="text-[10px] font-bold uppercase">Recovery (Principal)</span>
+                            <span className="text-sm font-bold uppercase">Recovery (Principal)</span>
                         </div>
-                        <span className="font-mono font-black text-sm">₹{Math.round(principalDaily).toLocaleString()}</span>
+                        <span className="font-mono font-bold text-sm">₹{Math.round(principalDaily).toLocaleString()}</span>
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <div className="flex justify-between text-[9px] font-black uppercase">
+                    <div className="flex justify-between text-sm font-bold uppercase">
                         <span className="opacity-60">Today's Performance</span>
                         <span className="text-primary">{performancePct.toFixed(1)}%</span>
                     </div>
@@ -267,7 +267,7 @@ export function LoanTracker() {
                 <div className="pt-4 border-t border-dashed border-primary/20">
                     <div className="flex bg-muted/30 p-1 rounded-lg border">
                         {[2027, 2028, 2029, 2030].map(y => (
-                            <button key={y} onClick={() => setMissionYear(y)} className={cn("flex-1 py-1.5 rounded text-[9px] font-black uppercase transition-all", missionYear === y ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-primary")}>
+                            <button key={y} onClick={() => setMissionYear(y)} className={cn("flex-1 py-1.5 rounded text-sm font-bold uppercase transition-all", missionYear === y ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-primary")}>
                                 {y}
                             </button>
                         ))}
@@ -283,7 +283,7 @@ export function LoanTracker() {
                 <Timer className="text-primary h-6 w-6" />
                 <div>
                     <CardTitle className="text-xl font-headline tracking-tight uppercase">Reality Payoff Clock</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Estimates freedom based on REAL SURPLUS + {growthRate}% Projected Growth.</CardDescription>
+                    <CardDescription className="text-sm font-bold uppercase tracking-normal">Estimates freedom based on REAL SURPLUS + {growthRate}% Projected Growth.</CardDescription>
                 </div>
             </div>
         </CardHeader>
@@ -292,11 +292,11 @@ export function LoanTracker() {
             <div className="p-6 border-b bg-muted/5">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                        <Label className="text-sm font-bold uppercase tracking-normal text-primary flex items-center gap-2">
                             <TrendingUp className="h-3 w-3" />
                             Surplus Velocity Accelerator
                         </Label>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Project your expected annual revenue growth to see freedom impact.</p>
+                        <p className="text-sm font-bold text-muted-foreground uppercase">Project your expected annual revenue growth to see freedom impact.</p>
                     </div>
                     <div className="flex bg-background border-2 rounded-xl p-1 shadow-inner overflow-x-auto no-scrollbar max-w-full">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rate => (
@@ -304,7 +304,7 @@ export function LoanTracker() {
                                 key={rate}
                                 onClick={() => setGrowthRate(rate)}
                                 className={cn(
-                                    "w-8 h-8 shrink-0 rounded-lg text-[10px] font-black transition-all",
+                                    "w-8 h-8 shrink-0 rounded-lg text-sm font-bold transition-all",
                                     growthRate === rate ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                                 )}
                             >
@@ -317,36 +317,36 @@ export function LoanTracker() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-b">
                 <div className="p-6 space-y-2">
-                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                    <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal flex items-center gap-2">
                         <Activity className="h-3 w-3 text-primary" /> Surplus Velocity
                     </p>
-                    <p className="text-2xl font-black font-mono">{formatCurrency(velocity)}</p>
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase">Estimated monthly surplus available for repayment.</p>
+                    <p className="text-2xl font-bold font-mono">{formatCurrency(velocity)}</p>
+                    <p className="text-sm font-bold text-muted-foreground uppercase">Estimated monthly surplus available for repayment.</p>
                 </div>
                 <div className="p-6 space-y-2 bg-primary/[0.02]">
-                    <p className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                    <p className="text-sm font-bold uppercase text-primary tracking-normal flex items-center gap-2">
                         <CalendarIcon className="h-3 w-3" /> Zero-Debt Month
                     </p>
-                    <p className="text-2xl font-black font-mono text-primary uppercase">
+                    <p className="text-2xl font-bold font-mono text-primary uppercase">
                         {simResults?.payoffDate ? format(simResults.payoffDate, 'MMMM yyyy') : "NOT SUSTAINABLE"}
                     </p>
-                    <p className="text-[8px] font-bold text-primary/60 uppercase">Calculated using longitudinal behavioral data.</p>
+                    <p className="text-sm font-bold text-primary/60 uppercase">Calculated using longitudinal behavioral data.</p>
                 </div>
                 <div className="p-6 space-y-2 bg-emerald-500/[0.02]">
-                    <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
+                    <p className="text-sm font-bold uppercase text-emerald-600 tracking-normal flex items-center gap-2">
                         <Timer className="h-3 w-3" /> Time Remaining
                     </p>
-                    <p className="text-2xl font-black font-mono text-emerald-600 uppercase">
+                    <p className="text-2xl font-bold font-mono text-emerald-600 uppercase">
                         {simResults?.payoffDate ? `${differenceInDays(simResults.payoffDate, new Date()).toLocaleString()} DAYS` : "N/A"}
                     </p>
-                    <p className="text-[8px] font-bold text-emerald-600/60 uppercase">The exact countdown to financial freedom.</p>
+                    <p className="text-sm font-bold text-emerald-600/60 uppercase">The exact countdown to financial freedom.</p>
                 </div>
             </div>
             <div className="p-6 bg-muted/5 flex items-start gap-4">
                 <div className="bg-primary/10 p-2 rounded-lg"><Info className="text-primary h-5 w-5" /></div>
                 <div className="space-y-1">
-                    <h4 className="text-xs font-black uppercase tracking-tight">Understanding the Velocity Engine</h4>
-                    <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
+                    <h4 className="text-sm font-bold uppercase tracking-tight">Understanding the Velocity Engine</h4>
+                    <p className="text-sm text-muted-foreground font-medium leading-relaxed">
                         This is not a theoretical number. The system scans your actual revenue and fixed overheads over the last 30 days to determine how much surplus cash you generate. 
                         It then simulates interest compounding monthly against that surplus—factoring in your selected <strong>growth projection</strong>—to find the exact date your balance hits zero.
                     </p>
@@ -362,10 +362,10 @@ export function LoanTracker() {
                     <History className="text-primary h-6 w-6" />
                     <div>
                         <CardTitle className="text-lg font-headline tracking-tight uppercase">Strategic Repayment Projection</CardTitle>
-                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Amortization schedule at {growthRate}% month-on-month growth.</CardDescription>
+                        <CardDescription className="text-sm font-bold uppercase tracking-normal">Amortization schedule at {growthRate}% month-on-month growth.</CardDescription>
                     </div>
                 </div>
-                <Badge variant="outline" className="font-black uppercase text-[10px] border-primary/30 text-primary">Next 36 Months</Badge>
+                <Badge variant="outline" className="font-bold uppercase text-sm border-primary/30 text-primary">Next 36 Months</Badge>
             </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -373,10 +373,10 @@ export function LoanTracker() {
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                         <TableRow className="bg-muted/20">
-                            <TableHead className="font-black uppercase text-[10px] pl-6 py-4">Target Month</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] text-center">Interest Added</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] text-center">Projected Payment</TableHead>
-                            <TableHead className="text-right font-black uppercase text-[10px] pr-6">Remaining Principal</TableHead>
+                            <TableHead className="font-bold uppercase text-sm pl-6 py-4">Target Month</TableHead>
+                            <TableHead className="font-bold uppercase text-sm text-center">Interest Added</TableHead>
+                            <TableHead className="font-bold uppercase text-sm text-center">Projected Payment</TableHead>
+                            <TableHead className="text-right font-bold uppercase text-sm pr-6">Remaining Principal</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -384,20 +384,20 @@ export function LoanTracker() {
                             <TableRow key={idx} className={cn("hover:bg-muted/5 transition-colors", step.balance <= 0 && "bg-emerald-500/5")}>
                                 <TableCell className="pl-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center font-black text-[10px]">
+                                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center font-bold text-sm">
                                             {idx + 1}
                                         </div>
-                                        <span className="font-black uppercase text-xs">{step.month}</span>
+                                        <span className="font-bold uppercase text-sm">{step.month}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    <span className="text-xs font-mono text-destructive font-bold">+ ₹{Math.round(step.interest).toLocaleString()}</span>
+                                    <span className="text-sm font-mono text-destructive font-bold">+ ₹{Math.round(step.interest).toLocaleString()}</span>
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <div className="flex flex-col items-center">
-                                        <span className="text-sm font-mono text-emerald-600 font-black">- ₹{Math.round(step.payment).toLocaleString()}</span>
+                                        <span className="text-sm font-mono text-emerald-600 font-bold">- ₹{Math.round(step.payment).toLocaleString()}</span>
                                         {idx > 0 && (
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">
+                                            <span className="text-sm font-bold text-muted-foreground uppercase">
                                                 Incl. {(idx * (growthRate/12)).toFixed(1)}% Growth
                                             </span>
                                         )}
@@ -405,7 +405,7 @@ export function LoanTracker() {
                                 </TableCell>
                                 <TableCell className="text-right pr-6">
                                     <div className="flex flex-col items-end">
-                                        <span className={cn("font-mono font-black text-lg tabular-nums", step.balance <= 0 ? "text-emerald-600" : "text-foreground")}>
+                                        <span className={cn("font-mono font-bold text-lg tabular-nums", step.balance <= 0 ? "text-emerald-600" : "text-foreground")}>
                                             {step.balance <= 0 ? 'PAID OFF' : formatCurrency(step.balance)}
                                         </span>
                                         <div className="w-24 h-1 bg-muted rounded-full mt-1 overflow-hidden">
@@ -420,11 +420,11 @@ export function LoanTracker() {
                         ))}
                         {projectionLedger.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">
+                                <TableCell colSpan={4} className="h-64 text-center opacity-30 italic font-bold uppercase text-sm tracking-normal">
                                     <div className="flex flex-col items-center gap-2">
                                         <AlertCircle className="h-8 w-8" />
                                         <p>Current surplus is too low to cover monthly interest.</p>
-                                        <p className="text-[8px]">Increase growth rate or revenue to see projection.</p>
+                                        <p className="text-sm">Increase growth rate or revenue to see projection.</p>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -434,7 +434,7 @@ export function LoanTracker() {
             </ScrollArea>
             <div className="p-4 bg-muted/10 border-t flex items-center justify-center gap-2">
                 <ChevronDown className="h-4 w-4 animate-bounce opacity-30" />
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-30">End of 36 Month Strategic window</span>
+                <span className="text-sm font-bold uppercase tracking-normal opacity-30">End of 36 Month Strategic window</span>
             </div>
         </CardContent>
       </Card>

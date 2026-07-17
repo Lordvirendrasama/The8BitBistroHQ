@@ -74,8 +74,8 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
   return (
     <Card className="flex flex-col border-2 shadow-xl">
       <CardHeader className="items-center pb-0 bg-muted/10 border-b">
-        <CardTitle className="font-headline tracking-widest text-2xl uppercase">REVENUE BY PILLAR</CardTitle>
-        <CardDescription className="font-bold text-[10px] uppercase tracking-widest">Distribution of income across bistro channels.</CardDescription>
+        <CardTitle className="font-headline tracking-normal text-2xl uppercase">REVENUE BY PILLAR</CardTitle>
+        <CardDescription className="font-bold text-sm uppercase tracking-normal">Distribution of income across bistro channels.</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-6 pt-10">
         <div className="h-[350px] w-full">
@@ -127,7 +127,7 @@ export function ProductSalesChart({ bills, gamingPackages }: ProductSalesChartPr
                 verticalAlign="bottom" 
                 height={36} 
                 iconType="circle"
-                formatter={(value) => <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{value}</span>}
+                formatter={(value) => <span className="text-sm font-bold uppercase tracking-normal text-muted-foreground ml-1">{value}</span>}
               />
             </PieChart>
           </ResponsiveContainer>

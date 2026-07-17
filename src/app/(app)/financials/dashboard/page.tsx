@@ -141,14 +141,14 @@ export default function FinancialDashboardPage() {
     };
   }, [bills, expenses, fixedBills, inventory, selectedDate, liabilityState, appSettings]);
 
-  if (!stats) return <div className="p-12 text-center font-headline text-xs animate-pulse opacity-50">Syncing Financial Core...</div>;
+  if (!stats) return <div className="p-12 text-center font-headline text-sm animate-pulse opacity-50">Syncing Financial Core...</div>;
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-4xl tracking-wider text-foreground uppercase">Profit Monitor</h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Real-time health audit for business cycle {stats.targetDateStr}</p>
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal">Real-time health audit for business cycle {stats.targetDateStr}</p>
         </div>
         <div className="flex items-center gap-3">
             <div className="flex items-center bg-muted/30 rounded-xl p-1 border-2 border-dashed">
@@ -157,7 +157,7 @@ export default function FinancialDashboardPage() {
                 </Button>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="ghost" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest">
+                        <Button variant="ghost" className="h-10 px-4 font-bold uppercase text-sm tracking-normal">
                             <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
                             {isBusinessToday(selectedDate) ? "Today's Cycle" : format(selectedDate, 'PPP').toUpperCase()}
                         </Button>
@@ -180,8 +180,8 @@ export default function FinancialDashboardPage() {
                     <AlertCircle className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                    <p className="text-[8px] font-black uppercase text-muted-foreground leading-none">Survival Goal</p>
-                    <p className="text-sm font-black font-mono">₹{Math.round(stats.activeDailyBurden + stats.dailyStockEstimate).toLocaleString()}<span className="text-[8px] ml-1 opacity-50">/DAY</span></p>
+                    <p className="text-sm font-bold uppercase text-muted-foreground leading-none">Survival Goal</p>
+                    <p className="text-sm font-bold font-mono">₹{Math.round(stats.activeDailyBurden + stats.dailyStockEstimate).toLocaleString()}<span className="text-sm ml-1 opacity-50">/DAY</span></p>
                 </div>
             </div>
         </div>
@@ -193,25 +193,25 @@ export default function FinancialDashboardPage() {
         stats.profitToday < -100 ? "border-destructive/40 bg-destructive/[0.03]" : "border-amber-500/40 bg-amber-500/[0.03]"
       )}>
         <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xs font-black uppercase tracking-[0.3em] opacity-60">Net Position: {isBusinessToday(selectedDate) ? "Today" : format(selectedDate, 'MMM dd')}</CardTitle>
+            <CardTitle className="text-sm font-bold uppercase tracking-[0.3em] opacity-60">Net Position: {isBusinessToday(selectedDate) ? "Today" : format(selectedDate, 'MMM dd')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center">
             <div className={cn(
-                "text-6xl sm:text-8xl font-black font-mono tracking-tighter tabular-nums",
+                "text-6xl sm:text-8xl font-bold font-mono tracking-tight tabular-nums",
                 stats.profitToday > 0 ? "text-emerald-600" : stats.profitToday < 0 ? "text-destructive" : "text-amber-600"
             )}>
                 {stats.profitToday < 0 && '-' }₹{Math.abs(Math.round(stats.profitToday)).toLocaleString()}
             </div>
             <div className="flex items-center gap-2 mt-4">
                 {stats.profitToday > 0 ? <CheckCircle2 className="text-emerald-600 h-5 w-5" /> : <TrendingDown className="text-destructive h-5 w-5" />}
-                <span className="font-black uppercase text-xs tracking-widest">
+                <span className="font-bold uppercase text-sm tracking-normal">
                     {stats.profitToday > 0 ? "Target Achieved" : "Operational Deficit"}
                 </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full mt-12 pt-8 border-t border-dashed">
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <h3 className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-3 w-3 text-emerald-600" />
                         Inflow Breakdown
                     </h3>
@@ -225,7 +225,7 @@ export default function FinancialDashboardPage() {
                             <span className="font-mono">₹{Math.round(stats.revFoodToday).toLocaleString()}</span>
                         </div>
                         <Separator className="bg-emerald-500/20" />
-                        <div className="flex justify-between items-center text-lg font-black uppercase text-emerald-600">
+                        <div className="flex justify-between items-center text-lg font-bold uppercase text-emerald-600">
                             <span>Total Revenue</span>
                             <span className="font-mono">₹{Math.round(stats.revToday).toLocaleString()}</span>
                         </div>
@@ -233,7 +233,7 @@ export default function FinancialDashboardPage() {
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <h3 className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
                         <TrendingDown className="h-3 w-3 text-destructive" />
                         Outflow Breakdown
                     </h3>
@@ -251,7 +251,7 @@ export default function FinancialDashboardPage() {
                             <span className="font-mono">₹{Math.round(stats.expToday).toLocaleString()}</span>
                         </div>
                         <Separator className="bg-destructive/20" />
-                        <div className="flex justify-between items-center text-lg font-black uppercase text-destructive">
+                        <div className="flex justify-between items-center text-lg font-bold uppercase text-destructive">
                             <span>Total Outflow</span>
                             <span className="font-mono">₹{Math.round(stats.totalExpToday).toLocaleString()}</span>
                         </div>
@@ -264,15 +264,15 @@ export default function FinancialDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="border-2 bg-muted/5">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                <CardTitle className="text-sm font-bold uppercase tracking-normal flex items-center gap-2 text-muted-foreground">
                     <Package className="h-4 w-4" /> Monthly Stock Purchase
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-3xl font-black">₹{Math.round(stats.monthStock).toLocaleString()}</div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Inventory bought in {format(selectedDate, 'MMMM')}</p>
+                <div className="text-3xl font-bold">₹{Math.round(stats.monthStock).toLocaleString()}</div>
+                <p className="text-sm font-bold text-muted-foreground uppercase mt-1">Inventory bought in {format(selectedDate, 'MMMM')}</p>
                 <div className="mt-4 pt-4 border-t border-dashed">
-                    <div className="flex justify-between text-[10px] font-black uppercase">
+                    <div className="flex justify-between text-sm font-bold uppercase">
                         <span>Daily Weighted Avg</span>
                         <span className="text-primary">₹{Math.round(stats.dailyStockEstimate)}</span>
                     </div>
@@ -282,15 +282,15 @@ export default function FinancialDashboardPage() {
 
         <Card className="border-2 bg-muted/5">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                <CardTitle className="text-sm font-bold uppercase tracking-normal flex items-center gap-2 text-muted-foreground">
                     <ReceiptIndianRupee className="h-4 w-4" /> Cumulative Burden
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-3xl font-black">₹{Math.round(stats.monthBurden).toLocaleString()}</div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Enabled burdens for period</p>
+                <div className="text-3xl font-bold">₹{Math.round(stats.monthBurden).toLocaleString()}</div>
+                <p className="text-sm font-bold text-muted-foreground uppercase mt-1">Enabled burdens for period</p>
                 <div className="mt-4 pt-4 border-t border-dashed">
-                    <div className="flex justify-between text-[10px] font-black uppercase">
+                    <div className="flex justify-between text-sm font-bold uppercase">
                         <span>Daily Weighted Burden</span>
                         <span className="text-primary">₹{Math.round(stats.activeDailyBurden)}</span>
                     </div>
@@ -300,21 +300,21 @@ export default function FinancialDashboardPage() {
 
         <Card className="border-2 bg-muted/5">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                <CardTitle className="text-sm font-bold uppercase tracking-normal flex items-center gap-2 text-muted-foreground">
                     <BarChart3 className="h-4 w-4" /> {format(selectedDate, 'MMMM')} Outlook
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className={cn("text-3xl font-black", stats.profitMonth >= 0 ? "text-emerald-600" : "text-destructive")}>
+                <div className={cn("text-3xl font-bold", stats.profitMonth >= 0 ? "text-emerald-600" : "text-destructive")}>
                     {stats.profitMonth < 0 && '-' }₹{Math.abs(Math.round(stats.profitMonth)).toLocaleString()}
                 </div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Net profit for target month</p>
+                <p className="text-sm font-bold text-muted-foreground uppercase mt-1">Net profit for target month</p>
                 <div className="mt-4 pt-4 border-t border-dashed space-y-1">
-                    <div className="flex justify-between text-[9px] font-bold uppercase opacity-60">
+                    <div className="flex justify-between text-sm font-bold uppercase opacity-60">
                         <span>Revenue</span>
                         <span>₹{Math.round(stats.revMonth).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-[9px] font-bold uppercase opacity-60">
+                    <div className="flex justify-between text-sm font-bold uppercase opacity-60">
                         <span>Combined Costs</span>
                         <span>₹{Math.round(stats.monthBurden + stats.expMonth + stats.monthStock).toLocaleString()}</span>
                     </div>
@@ -328,7 +328,7 @@ export default function FinancialDashboardPage() {
             <Info className="text-white h-8 w-8" />
         </div>
         <div className="text-center sm:text-left">
-            <h4 className="font-black uppercase tracking-tight text-lg">Financial Modeling Notice</h4>
+            <h4 className="font-bold uppercase tracking-tight text-lg">Financial Modeling Notice</h4>
             <p className="text-sm text-muted-foreground max-w-2xl font-medium mt-1">
                 You are currently viewing the audit for <strong>{format(selectedDate, 'PPPP')}</strong>. The survival goal is based on the average inventory replenishment and the <strong>Strategic Burdens</strong> you enabled in settings. The business day rollover is set to 5:00 AM.
             </p>

@@ -118,7 +118,7 @@ export default function FixedBillsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-4xl tracking-wider text-foreground">FIXED OVERHEADS</h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">MANAGEMENT OF RECURRING OPERATIONAL BILLS & SUBSCRIPTIONS</p>
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal">MANAGEMENT OF RECURRING OPERATIONAL BILLS & SUBSCRIPTIONS</p>
         </div>
         {user?.role === 'admin' && (
             <Dialog open={isModalOpen} onOpenChange={(open) => {
@@ -126,7 +126,7 @@ export default function FixedBillsPage() {
                 if (!open) resetForm();
             }}>
                 <DialogTrigger asChild>
-                    <Button onClick={() => setEditingBill(null)} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl">
+                    <Button onClick={() => setEditingBill(null)} className="h-12 px-6 font-bold uppercase tracking-tight shadow-xl">
                         <Plus className="mr-2 h-5 w-5" /> New Recurring Bill
                     </Button>
                 </DialogTrigger>
@@ -138,40 +138,40 @@ export default function FixedBillsPage() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Bill Name</Label>
+                            <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Bill Name</Label>
                             <Input value={formData.name} onChange={e => setFormData(p => ({...p, name: e.target.value}))} placeholder="e.g. SHOP RENT" className="font-bold uppercase" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Amount (₹)</Label>
+                                <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Amount (₹)</Label>
                                 <Input type="number" value={formData.amount || ''} onChange={e => setFormData(p => ({...p, amount: Number(e.target.value)}))} placeholder="0" className="font-mono font-bold" />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cycle</Label>
+                                <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Cycle</Label>
                                 <Select value={formData.repeatCycle} onValueChange={(v: RepeatCycle) => setFormData(p => ({...p, repeatCycle: v}))}>
-                                    <SelectTrigger className="font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="daily" className="text-[10px] uppercase font-bold">Daily</SelectItem>
-                                        <SelectItem value="weekly" className="text-[10px] uppercase font-bold">Weekly</SelectItem>
-                                        <SelectItem value="monthly" className="text-[10px] uppercase font-bold">Monthly</SelectItem>
-                                        <SelectItem value="yearly" className="text-[10px] uppercase font-bold">Yearly</SelectItem>
+                                        <SelectItem value="daily" className="text-sm uppercase font-bold">Daily</SelectItem>
+                                        <SelectItem value="weekly" className="text-sm uppercase font-bold">Weekly</SelectItem>
+                                        <SelectItem value="monthly" className="text-sm uppercase font-bold">Monthly</SelectItem>
+                                        <SelectItem value="yearly" className="text-sm uppercase font-bold">Yearly</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Next Due Date</Label>
+                                <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Next Due Date</Label>
                                 <Input type="date" value={formData.nextDueDate} onChange={e => setFormData(p => ({...p, nextDueDate: e.target.value}))} className="font-bold h-10" />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payment Method</Label>
+                                <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Payment Method</Label>
                                 <Input value={formData.paymentMethod} onChange={e => setFormData(p => ({...p, paymentMethod: e.target.value}))} placeholder="UPI/Cash" className="font-bold uppercase" />
                             </div>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button onClick={handleSave} disabled={isSubmitting} className="w-full h-14 font-black uppercase tracking-widest shadow-xl">
+                        <Button onClick={handleSave} disabled={isSubmitting} className="w-full h-14 font-bold uppercase tracking-normal shadow-xl">
                             {editingBill ? 'Save Audit Changes' : 'Create Permanent Record'}
                         </Button>
                     </DialogFooter>
@@ -183,25 +183,25 @@ export default function FixedBillsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-2 shadow-sm bg-primary/5 border-primary/20">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                     <Wallet className="h-4 w-4" /> Total Monthly Overheads
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-4xl font-black text-primary font-mono tabular-nums">₹{Math.round(stats.monthly).toLocaleString()}</div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">Combined normalized cost per 30 days</p>
+                <div className="text-4xl font-bold text-primary font-mono tabular-nums">₹{Math.round(stats.monthly).toLocaleString()}</div>
+                <p className="text-sm font-bold text-muted-foreground uppercase mt-1 tracking-normal">Combined normalized cost per 30 days</p>
             </CardContent>
         </Card>
 
         <Card className="border-2 shadow-sm bg-muted/30">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                     <TrendingDown className="h-4 w-4" /> Total Daily Burden
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-4xl font-black font-mono tabular-nums">₹{Math.round(stats.daily).toLocaleString()}</div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">Fixed operational cost per day</p>
+                <div className="text-4xl font-bold font-mono tabular-nums">₹{Math.round(stats.daily).toLocaleString()}</div>
+                <p className="text-sm font-bold text-muted-foreground uppercase mt-1 tracking-normal">Fixed operational cost per day</p>
             </CardContent>
         </Card>
       </div>
@@ -211,17 +211,17 @@ export default function FixedBillsPage() {
           <Table>
             <TableHeader className="bg-muted/20">
               <TableRow>
-                <TableHead className="font-black uppercase text-[10px] pl-6">Service/Bill Name</TableHead>
-                <TableHead className="font-black uppercase text-[10px] text-center">Amount</TableHead>
-                <TableHead className="font-black uppercase text-[10px] text-center">Daily Burden</TableHead>
-                <TableHead className="font-black uppercase text-[10px]">Frequency</TableHead>
-                <TableHead className="font-black uppercase text-[10px]">Due Date</TableHead>
-                <TableHead className="text-right font-black uppercase text-[10px] pr-6">Status</TableHead>
+                <TableHead className="font-bold uppercase text-sm pl-6">Service/Bill Name</TableHead>
+                <TableHead className="font-bold uppercase text-sm text-center">Amount</TableHead>
+                <TableHead className="font-bold uppercase text-sm text-center">Daily Burden</TableHead>
+                <TableHead className="font-bold uppercase text-sm">Frequency</TableHead>
+                <TableHead className="font-bold uppercase text-sm">Due Date</TableHead>
+                <TableHead className="text-right font-bold uppercase text-sm pr-6">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="h-48 text-center animate-pulse font-headline text-[10px]">Loading Accounts...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="h-48 text-center animate-pulse font-headline text-sm">Loading Accounts...</TableCell></TableRow>
               ) : bills?.map((bill) => {
                 const isOverdue = isPast(new Date(bill.nextDueDate)) && !isToday(new Date(bill.nextDueDate));
                 const daysLeft = differenceInDays(new Date(bill.nextDueDate), new Date());
@@ -233,24 +233,24 @@ export default function FixedBillsPage() {
                                 <div className="p-2 bg-primary/5 rounded-lg">
                                     <ReceiptIndianRupee className="h-4 w-4 text-primary" />
                                 </div>
-                                <span className="font-black uppercase text-xs sm:text-sm">{bill.name}</span>
+                                <span className="font-bold uppercase text-sm sm:text-sm">{bill.name}</span>
                             </div>
                         </TableCell>
-                        <TableCell className="text-center font-mono font-black">₹{bill.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-center font-mono font-bold">₹{bill.amount.toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Badge variant="outline" className="h-5 text-[9px] font-black border-emerald-500/20 text-emerald-600 bg-emerald-500/5">
+                            <Badge variant="outline" className="h-5 text-sm font-bold border-emerald-500/20 text-emerald-600 bg-emerald-500/5">
                                 ₹{getDailyCost(bill)}/day
                             </Badge>
                         </TableCell>
                         <TableCell>
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{bill.repeatCycle}</span>
+                            <span className="text-sm font-bold uppercase text-muted-foreground tracking-normal">{bill.repeatCycle}</span>
                         </TableCell>
                         <TableCell>
                             <div className="flex flex-col">
-                                <span className={cn("text-[10px] font-black uppercase", isOverdue ? "text-destructive" : "text-foreground")}>
+                                <span className={cn("text-sm font-bold uppercase", isOverdue ? "text-destructive" : "text-foreground")}>
                                     {format(new Date(bill.nextDueDate), 'MMM dd, yyyy')}
                                 </span>
-                                <span className="text-[8px] font-bold text-muted-foreground uppercase">
+                                <span className="text-sm font-bold text-muted-foreground uppercase">
                                     {isOverdue ? 'Overdue' : daysLeft === 0 ? 'Due Today' : `${daysLeft} days left`}
                                 </span>
                             </div>
@@ -260,7 +260,7 @@ export default function FixedBillsPage() {
                                 <Button size="icon" variant="ghost" onClick={() => handleEdit(bill)} className="h-8 w-8 text-muted-foreground hover:text-primary">
                                     <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => handlePay(bill.id)} className="h-8 px-3 font-black uppercase text-[9px] border-2 border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all">
+                                <Button size="sm" variant="outline" onClick={() => handlePay(bill.id)} className="h-8 px-3 font-bold uppercase text-sm border-2 border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all">
                                     <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark Paid
                                 </Button>
                                 {user?.role === 'admin' && (
@@ -278,7 +278,7 @@ export default function FixedBillsPage() {
                     <TableCell colSpan={6} className="h-64 text-center opacity-30">
                         <div className="flex flex-col items-center justify-center italic">
                             <ReceiptIndianRupee className="h-12 w-12 mb-2" />
-                            <p className="font-headline text-[10px] tracking-widest uppercase">No permanent bills configured.</p>
+                            <p className="font-headline text-sm tracking-normal uppercase">No permanent bills configured.</p>
                         </div>
                     </TableCell>
                 </TableRow>

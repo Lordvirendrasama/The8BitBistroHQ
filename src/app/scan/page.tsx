@@ -154,7 +154,7 @@ export default function ScanPage() {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="font-headline text-[10px] tracking-widest uppercase animate-pulse">Establishing Connection...</p>
+                <p className="font-headline text-sm tracking-normal uppercase animate-pulse">Establishing Connection...</p>
             </div>
         );
     }
@@ -172,7 +172,7 @@ export default function ScanPage() {
                 <h1 className="font-pixel text-3xl text-white mb-2">
                     SCAN <span className="text-primary">&</span> PLAY
                 </h1>
-                <p className="text-primary/60 text-[10px] uppercase tracking-[0.3em] font-black italic">The 8 Bit Bistro OS</p>
+                <p className="text-primary/60 text-sm uppercase tracking-[0.3em] font-bold italic">The 8 Bit Bistro OS</p>
             </header>
 
             <div className="w-full relative z-10">
@@ -185,7 +185,7 @@ export default function ScanPage() {
                                     <QRCodeSVG value={currentUrl || 'https://the8bitbistro.com'} size={160} />
                                 </div>
                                 <h3 className="font-headline text-xl text-center mb-2">IDENTIFY YOURSELF</h3>
-                                <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest text-center opacity-70">
+                                <p className="text-muted-foreground text-sm font-bold uppercase tracking-normal text-center opacity-70">
                                     Search for your profile below to link this device
                                 </p>
                             </CardContent>
@@ -197,7 +197,7 @@ export default function ScanPage() {
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary w-5 h-5" />
                                 <Input
                                     placeholder="SEARCH NAME OR USERNAME..."
-                                    className="pl-12 h-16 bg-white/5 border-white/10 focus:border-primary/50 text-white font-black tracking-widest uppercase text-xs rounded-2xl transition-all relative z-10"
+                                    className="pl-12 h-16 bg-white/5 border-white/10 focus:border-primary/50 text-white font-bold tracking-normal uppercase text-sm rounded-2xl transition-all relative z-10"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -216,7 +216,7 @@ export default function ScanPage() {
                                         </div>
                                         <div className="text-left relative z-10">
                                             <p className="font-headline text-xl tracking-tight group-hover:text-black transition-colors">{m.name}</p>
-                                            <p className="text-[10px] font-black text-muted-foreground group-hover:text-black/60 uppercase tracking-widest">@{m.username || 'user'}</p>
+                                            <p className="text-sm font-bold text-muted-foreground group-hover:text-black/60 uppercase tracking-normal">@{m.username || 'user'}</p>
                                         </div>
                                     </button>
                                 ))}
@@ -224,13 +224,13 @@ export default function ScanPage() {
 
                             {searchQuery.length > 0 && filteredMembers.length === 0 && (
                                 <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-[2rem] opacity-40">
-                                    <p className="font-headline text-xs tracking-widest uppercase">No Intel Found</p>
+                                    <p className="font-headline text-sm tracking-normal uppercase">No Intel Found</p>
                                 </div>
                             )}
                             {!searchQuery && (
                                 <div className="flex flex-col items-center py-12 text-white/20 gap-4 border-2 border-dashed border-white/5 rounded-[2rem]">
                                     <User className="w-10 h-10" />
-                                    <p className="font-headline text-[10px] tracking-[0.3em] uppercase">Awaiting Input</p>
+                                    <p className="font-headline text-sm tracking-[0.3em] uppercase">Awaiting Input</p>
                                 </div>
                             )}
                         </div>
@@ -247,8 +247,8 @@ export default function ScanPage() {
                                         <img src={currentMember?.avatarUrl || PlaceHolderImages[0].imageUrl} alt="Avatar" className="w-full h-full object-cover" />
                                     </div>
                                     <div className="text-black">
-                                        <h2 className="font-headline text-3xl tracking-tighter leading-none mb-1">{currentMember?.name.split(' ')[0].toUpperCase()}</h2>
-                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Verified Member</p>
+                                        <h2 className="font-headline text-3xl tracking-tight leading-none mb-1">{currentMember?.name.split(' ')[0].toUpperCase()}</h2>
+                                        <p className="text-sm font-bold uppercase tracking-normal opacity-60">Verified Member</p>
                                     </div>
                                 </div>
                                 <button onClick={handleLogout} className="p-4 bg-black/10 hover:bg-black/20 text-black hover:scale-95 rounded-[1rem] transition-all" title="Unlink Phone">
@@ -265,8 +265,8 @@ export default function ScanPage() {
                                 <Check className="w-10 h-10 text-primary" />
                             </div>
                             <div className="text-center relative z-10 space-y-2">
-                                <p className="font-headline text-3xl tracking-tighter uppercase text-primary">Request Sent!</p>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">
+                                <p className="font-headline text-3xl tracking-tight uppercase text-primary">Request Sent!</p>
+                                <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/40">
                                     Staff will assign your console shortly
                                 </p>
                             </div>
@@ -279,7 +279,7 @@ export default function ScanPage() {
                                             <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
                                         </div>
                                     ))}
-                                    <div className="w-12 h-12 rounded-full border-2 border-white/20 bg-white/5 flex items-center justify-center text-[9px] font-black uppercase tracking-tight text-white/60">
+                                    <div className="w-12 h-12 rounded-full border-2 border-white/20 bg-white/5 flex items-center justify-center text-sm font-bold uppercase tracking-tight text-white/60">
                                         {fullParty.length}P
                                     </div>
                                 </div>
@@ -287,7 +287,7 @@ export default function ScanPage() {
 
                             <button
                                 onClick={handleNewRequest}
-                                className="relative z-10 px-8 py-3 bg-white/10 hover:bg-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                className="relative z-10 px-8 py-3 bg-white/10 hover:bg-white/20 rounded-2xl text-sm font-bold uppercase tracking-normal transition-all"
                             >
                                 Send Another Request
                             </button>
@@ -305,11 +305,11 @@ export default function ScanPage() {
                                         <img src={currentMember?.avatarUrl || PlaceHolderImages[0].imageUrl} alt="Avatar" className="w-full h-full object-cover" />
                                     </div>
                                     <div className="text-black">
-                                        <h2 className="font-headline text-3xl tracking-tighter leading-none mb-1">{currentMember?.name.split(' ')[0].toUpperCase()}</h2>
+                                        <h2 className="font-headline text-3xl tracking-tight leading-none mb-1">{currentMember?.name.split(' ')[0].toUpperCase()}</h2>
                                         <div className="flex items-center gap-2">
-                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Verified Member</p>
+                                            <p className="text-sm font-bold uppercase tracking-normal opacity-60">Verified Member</p>
                                             <div className="w-1 h-1 rounded-full bg-black/20" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest bg-black/10 px-2 py-0.5 rounded-full">
+                                            <p className="text-sm font-bold uppercase tracking-normal bg-black/10 px-2 py-0.5 rounded-full">
                                                 {Math.floor(((currentMember?.recharges || [])
                                                     .filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
                                                     .reduce((sum, r) => sum + r.remainingDuration, 0)) / 3600)} HRS LEFT
@@ -329,8 +329,8 @@ export default function ScanPage() {
                             <div className="flex items-center gap-3 px-2">
                                 <span className="w-2 h-8 bg-primary rounded-full" />
                                 <div>
-                                    <h3 className="font-headline text-xl tracking-tighter">YOUR PARTY</h3>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Add friends playing with you</p>
+                                    <h3 className="font-headline text-xl tracking-tight">YOUR PARTY</h3>
+                                    <p className="text-sm font-bold uppercase tracking-normal text-white/30">Add friends playing with you</p>
                                 </div>
                             </div>
 
@@ -343,7 +343,7 @@ export default function ScanPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-headline text-sm tracking-tight truncate">{currentMember?.name}</p>
-                                        <p className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Host</p>
+                                        <p className="text-sm font-bold uppercase text-primary/60 tracking-normal">Host</p>
                                     </div>
                                     <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
                                         <Zap className="w-3 h-3 text-black fill-current" />
@@ -358,7 +358,7 @@ export default function ScanPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-headline text-sm tracking-tight truncate">{p.name}</p>
-                                            <p className="text-[9px] font-black uppercase text-white/30 tracking-widest">Player</p>
+                                            <p className="text-sm font-bold uppercase text-white/30 tracking-normal">Player</p>
                                         </div>
                                         <button
                                             onClick={() => handleRemovePartyMember(p.id)}
@@ -377,7 +377,7 @@ export default function ScanPage() {
                                         <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 w-4 h-4" />
                                         <Input
                                             placeholder="ADD A PLAYER..."
-                                            className="pl-11 h-12 bg-white/5 border-white/10 focus:border-primary/30 text-white font-black tracking-widest uppercase text-[10px] rounded-xl transition-all"
+                                            className="pl-11 h-12 bg-white/5 border-white/10 focus:border-primary/30 text-white font-bold tracking-normal uppercase text-sm rounded-xl transition-all"
                                             value={partySearchQuery}
                                             onChange={(e) => setPartySearchQuery(e.target.value)}
                                         />
@@ -393,7 +393,7 @@ export default function ScanPage() {
                                             </div>
                                             <div className="text-left min-w-0 flex-1">
                                                 <p className="font-headline text-sm tracking-tight truncate">{m.name}</p>
-                                                <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">@{m.username || 'member'}</p>
+                                                <p className="text-sm font-bold text-white/30 uppercase tracking-normal">@{m.username || 'member'}</p>
                                             </div>
                                             <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                                                 <Users className="text-primary w-3.5 h-3.5" />
@@ -408,11 +408,11 @@ export default function ScanPage() {
                         <div className="flex items-center justify-between px-4 py-3 bg-white/5 border border-white/10 rounded-2xl">
                             <div className="flex items-center gap-3">
                                 <Gamepad2 className="text-primary w-5 h-5" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">PS5 Consoles</span>
+                                <span className="text-sm font-bold uppercase tracking-normal text-white/60">PS5 Consoles</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className={`w-2 h-2 rounded-full ${availableStations.length > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-destructive'}`} />
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${availableStations.length > 0 ? 'text-emerald-400' : 'text-destructive'}`}>
+                                <span className={`text-sm font-bold uppercase tracking-normal ${availableStations.length > 0 ? 'text-emerald-400' : 'text-destructive'}`}>
                                     {availableStations.length > 0 ? `${availableStations.length} Available` : 'Arena Full'}
                                 </span>
                             </div>
@@ -422,7 +422,7 @@ export default function ScanPage() {
                         <button
                             disabled={isSending || availableStations.length === 0}
                             onClick={handleSendRequest}
-                            className={`w-full h-18 py-5 rounded-[1.8rem] font-headline text-xl tracking-tighter uppercase flex items-center justify-center gap-3 transition-all shadow-2xl ${
+                            className={`w-full h-18 py-5 rounded-[1.8rem] font-headline text-xl tracking-tight uppercase flex items-center justify-center gap-3 transition-all shadow-2xl ${
                                 availableStations.length === 0
                                     ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
                                     : 'bg-primary text-black hover:scale-[1.02] hover:shadow-primary/30 active:scale-[0.98]'
@@ -441,7 +441,7 @@ export default function ScanPage() {
                         {/* Footer */}
                         <div className="pt-4 flex flex-col items-center gap-4 opacity-20 group cursor-default">
                             <div className="h-[1px] w-12 bg-white/20 group-hover:w-full transition-all duration-1000" />
-                            <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white/50">Project Afterlight 8.0</p>
+                            <p className="text-sm font-bold uppercase tracking-[0.5em] text-white/50">Project Afterlight 8.0</p>
                         </div>
                     </div>
                 )}

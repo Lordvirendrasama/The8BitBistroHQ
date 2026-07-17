@@ -122,7 +122,7 @@ export function AddTimeModal({ isOpen, onOpenChange, onAddTime, gamingPackages, 
                         <RadioGroupItem value="custom" id="custom-option" />
                         <div className="flex-1">
                             <p className="font-bold flex items-center gap-2"><Sparkles className="h-4 w-4 text-yellow-500"/> Custom Time Adjustment</p>
-                            <p className="text-xs text-muted-foreground">Add any duration and set a price.</p>
+                            <p className="text-sm text-muted-foreground">Add any duration and set a price.</p>
                         </div>
                     </Label>
 
@@ -130,7 +130,7 @@ export function AddTimeModal({ isOpen, onOpenChange, onAddTime, gamingPackages, 
                         <div className="p-3 border rounded-md bg-muted/20 space-y-3 mt-2 animate-in fade-in zoom-in-95 duration-200">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                    <Label htmlFor="custom-min" className="text-xs">Minutes to Add</Label>
+                                    <Label htmlFor="custom-min" className="text-sm">Minutes to Add</Label>
                                     <Input 
                                         id="custom-min" 
                                         type="number" 
@@ -141,7 +141,7 @@ export function AddTimeModal({ isOpen, onOpenChange, onAddTime, gamingPackages, 
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <Label htmlFor="custom-price" className="text-xs">Price per Player (₹)</Label>
+                                    <Label htmlFor="custom-price" className="text-sm">Price per Player (₹)</Label>
                                     <Input 
                                         id="custom-price" 
                                         type="number" 
@@ -176,7 +176,7 @@ export function AddTimeModal({ isOpen, onOpenChange, onAddTime, gamingPackages, 
                         ) : (
                             selectedPackage && <p className="text-lg font-bold">Total: ₹{(selectedPackage.price * quantity).toLocaleString()}</p>
                         )}
-                        <p className="text-xs text-muted-foreground">{station?.members.length || 0} players in session</p>
+                        <p className="text-sm text-muted-foreground">{station?.members.length || 0} players in session</p>
                     </div>
                 </div>
               </div>

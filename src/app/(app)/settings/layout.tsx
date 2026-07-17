@@ -47,12 +47,12 @@ export default function SettingsLayout({
           <h1 className="font-headline text-3xl md:text-4xl tracking-wider text-foreground">
             Settings & Admin
           </h1>
-          <p className="mt-2 text-muted-foreground font-bold uppercase text-[10px] tracking-widest opacity-80">
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal opacity-80">
             Central management for loyalty mechanics, menu, rewards, and workforce.
           </p>
         </div>
         {!isHub && (
-          <Button asChild variant="outline" className="h-10 border-2 font-black uppercase text-[10px] tracking-widest hover:bg-primary/10 hover:text-primary transition-all self-start md:self-auto">
+          <Button asChild variant="outline" className="h-10 border-2 font-bold uppercase text-sm tracking-normal hover:bg-primary/10 hover:text-primary transition-all self-start md:self-auto">
             <Link href="/settings">
               <LayoutGrid className="mr-2 h-4 w-4" />
               Back to Hub
@@ -79,7 +79,7 @@ export default function SettingsLayout({
                 key={item.href} 
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-lg text-[10px] md:text-xs uppercase tracking-wider transition-all duration-300 shrink-0 font-bold active:scale-95",
+                  "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm md:text-sm uppercase tracking-wider transition-all duration-300 shrink-0 font-bold active:scale-95",
                   isActive 
                     ? "bg-primary text-white shadow-[0_0_15px_rgba(239,0,53,0.35)] border border-primary/20" 
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"

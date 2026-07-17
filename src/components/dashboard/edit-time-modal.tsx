@@ -190,15 +190,15 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="px-6 pt-6 pb-2 border-b bg-muted/5">
-          <DialogTitle className="font-headline text-xl sm:text-2xl text-primary tracking-tighter">EDIT TIMER: {station?.name}</DialogTitle>
-          <DialogDescription className="font-black uppercase text-[8px] tracking-[0.2em] text-muted-foreground">Adjust session duration for active or stopped players.</DialogDescription>
+          <DialogTitle className="font-headline text-xl sm:text-2xl text-primary tracking-tight">EDIT TIMER: {station?.name}</DialogTitle>
+          <DialogDescription className="font-bold uppercase text-sm tracking-[0.2em] text-muted-foreground">Adjust session duration for active or stopped players.</DialogDescription>
         </DialogHeader>
 
         <div className="p-4 space-y-4">
             {/* TARGET SELECTION */}
             <div className="space-y-2">
                 <div className="flex justify-between items-center px-1">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-1.5">
                         <Users className="h-3 w-3" />
                         Target Players
                     </Label>
@@ -206,7 +206,7 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                         variant="ghost" 
                         size="sm" 
                         onClick={selectAllPlayers}
-                        className="h-6 px-2 text-[8px] font-black uppercase tracking-tighter hover:text-primary"
+                        className="h-6 px-2 text-sm font-bold uppercase tracking-tight hover:text-primary"
                     >
                         FOR ALL PLAYERS
                     </Button>
@@ -229,12 +229,12 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                             >
                                 <Avatar className="h-5 w-5 border border-background/20">
                                     <AvatarImage src={member.avatarUrl} />
-                                    <AvatarFallback className="text-[8px] font-black">{member.name[0]}</AvatarFallback>
+                                    <AvatarFallback className="text-sm font-bold">{member.name[0]}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col items-start leading-none">
-                                    <span className="text-[9px] font-black uppercase tracking-tight truncate max-w-[80px]">{member.name}</span>
+                                    <span className="text-sm font-bold uppercase tracking-tight truncate max-w-[80px]">{member.name}</span>
                                     {isFinished && (
-                                        <span className="text-[6px] font-black uppercase text-destructive tracking-widest mt-0.5">STOPPED</span>
+                                        <span className="text-sm font-bold uppercase text-destructive tracking-normal mt-0.5">STOPPED</span>
                                     )}
                                 </div>
                                 {isSelected && <CheckCircle2 className="h-2.5 w-2.5" />}
@@ -246,8 +246,8 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
 
             <Tabs value={tab} onValueChange={(v) => setTab(v as 'add' | 'reduce')} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-muted/20 h-12 p-1 rounded-xl">
-                    <TabsTrigger value="add" className="font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">Add Time</TabsTrigger>
-                    <TabsTrigger value="reduce" className="font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">Reduce Time</TabsTrigger>
+                    <TabsTrigger value="add" className="font-bold uppercase text-sm tracking-normal data-[state=active]:bg-background data-[state=active]:shadow-sm">Add Time</TabsTrigger>
+                    <TabsTrigger value="reduce" className="font-bold uppercase text-sm tracking-normal data-[state=active]:bg-background data-[state=active]:shadow-sm">Reduce Time</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="add" className="space-y-4 pt-4 animate-in fade-in slide-in-from-left-2 duration-300">
@@ -265,15 +265,15 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                                         <RadioGroupItem value={pkg.id} id={pkg.id} />
                                         <div className="space-y-0.5">
                                             <div className="flex items-center gap-2">
-                                                <p className="font-black text-[11px] uppercase tracking-tight">{pkg.name}</p>
+                                                <p className="font-bold text-sm uppercase tracking-tight">{pkg.name}</p>
                                                 {pkg.isPriorityOffer && <Star className="h-3 w-3 text-amber-500 fill-current" />}
                                             </div>
-                                            <div className="flex items-center gap-2 text-[8px] font-bold text-muted-foreground uppercase tracking-widest">
+                                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-normal">
                                                 <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatPackageDuration(pkg.duration)}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="font-mono font-black text-sm text-primary">₹{pkg.price}</span>
+                                    <span className="font-mono font-bold text-sm text-primary">₹{pkg.price}</span>
                                 </Label>
                             ))}
 
@@ -285,8 +285,8 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                             >
                                 <RadioGroupItem value="custom" id="custom-option" />
                                 <div className="flex-1">
-                                    <p className="font-black text-[11px] uppercase tracking-tight flex items-center gap-2"><Sparkles className="h-3 w-3 text-yellow-500"/> Custom Duration</p>
-                                    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Manual entry</p>
+                                    <p className="font-bold text-sm uppercase tracking-tight flex items-center gap-2"><Sparkles className="h-3 w-3 text-yellow-500"/> Custom Duration</p>
+                                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Manual entry</p>
                                 </div>
                             </Label>
 
@@ -305,8 +305,8 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                                             >
                                                 <RadioGroupItem value="account" id="account-option" />
                                                 <div className="flex-1">
-                                                    <p className="font-black text-[11px] uppercase tracking-tight flex items-center gap-2 text-yellow-600"><Zap className="h-3 w-3 fill-current"/> Use Account Balance</p>
-                                                    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Extend timer to match registry pool</p>
+                                                    <p className="font-bold text-sm uppercase tracking-tight flex items-center gap-2 text-yellow-600"><Zap className="h-3 w-3 fill-current"/> Use Account Balance</p>
+                                                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Extend timer to match registry pool</p>
                                                 </div>
                                             </Label>
                                         );
@@ -319,12 +319,12 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                                 <div className="p-3 border-2 border-dashed rounded-xl bg-muted/10 space-y-3 mt-2 animate-in zoom-in-95 duration-200">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
-                                            <Label className="text-[8px] font-black uppercase tracking-widest opacity-50 pl-1">Minutes</Label>
-                                            <Input type="number" value={customMinutes} onChange={e => setCustomMinutes(e.target.value)} placeholder="0" className="h-9 font-mono font-black text-xs" />
+                                            <Label className="text-sm font-bold uppercase tracking-normal opacity-50 pl-1">Minutes</Label>
+                                            <Input type="number" value={customMinutes} onChange={e => setCustomMinutes(e.target.value)} placeholder="0" className="h-9 font-mono font-bold text-sm" />
                                         </div>
                                         <div className="space-y-1">
-                                            <Label className="text-[8px] font-black uppercase tracking-widest opacity-50 pl-1">Price / Player</Label>
-                                            <Input type="number" value={customPrice} onChange={e => setCustomPrice(e.target.value)} placeholder="0" className="h-9 font-mono font-black text-xs" />
+                                            <Label className="text-sm font-bold uppercase tracking-normal opacity-50 pl-1">Price / Player</Label>
+                                            <Input type="number" value={customPrice} onChange={e => setCustomPrice(e.target.value)} placeholder="0" className="h-9 font-mono font-bold text-sm" />
                                         </div>
                                     </div>
                                 </div>
@@ -335,18 +335,18 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                     <div className="pt-2 border-t border-dashed">
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground">BILLING PREVIEW</p>
-                                <p className="text-[10px] font-bold text-foreground uppercase">{selectedPlayerIds.length} Packages to be Added</p>
+                                <p className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground">BILLING PREVIEW</p>
+                                <p className="text-sm font-bold text-foreground uppercase">{selectedPlayerIds.length} Packages to be Added</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-xl font-black text-primary font-mono tracking-tighter">
+                                <p className="text-xl font-bold text-primary font-mono tracking-tight">
                                     ₹{((selectedPackageId === 'custom' ? (parseInt(customPrice, 10) || 0) : (selectedPackage?.price || 0)) * selectedPlayerIds.length).toLocaleString()}
                                 </p>
                             </div>
                         </div>
                     </div>
                     
-                    <Button onClick={handleConfirmAdd} className="w-full h-12 font-black uppercase tracking-[0.1em] shadow-xl" disabled={!canConfirmAdd}>
+                    <Button onClick={handleConfirmAdd} className="w-full h-12 font-bold uppercase tracking-[0.1em] shadow-xl" disabled={!canConfirmAdd}>
                         <Plus className="mr-2 h-4 w-4" /> Finalize Addition
                     </Button>
                 </TabsContent>
@@ -364,7 +364,7 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                                 >
                                     <RadioGroupItem value={opt.value} id={`reduce-${opt.value}`} className="sr-only" />
                                     <History className={cn("h-5 w-5 mb-1.5", reduceValue === opt.value ? "text-destructive" : "text-muted-foreground")} />
-                                    <span className="font-black uppercase text-[10px] tracking-tight">{opt.label}</span>
+                                    <span className="font-bold uppercase text-sm tracking-tight">{opt.label}</span>
                                 </Label>
                             ))}
                         </div>
@@ -372,23 +372,23 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
 
                     {reduceValue === 'custom' && (
                         <div className="p-4 border-2 border-dashed rounded-xl bg-destructive/[0.02] space-y-2 animate-in slide-in-from-top-2 duration-200">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-destructive/70 px-1">Minutes to Subtract</Label>
+                            <Label className="text-sm font-bold uppercase tracking-normal text-destructive/70 px-1">Minutes to Subtract</Label>
                             <Input 
                                 type="number"
                                 placeholder="ENTER MINUTES..."
                                 value={reduceCustomAmount}
                                 onChange={(e) => setReduceCustomAmount(e.target.value)}
-                                className="h-10 font-black font-mono text-center border-destructive/20 focus-visible:ring-destructive"
+                                className="h-10 font-bold font-mono text-center border-destructive/20 focus-visible:ring-destructive"
                             />
                         </div>
                     )}
 
                     <div className="pt-2 border-t border-dashed">
-                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">IMPACT</p>
-                        <p className="text-[10px] font-bold text-foreground uppercase">Subtracting from {selectedPlayerIds.length} players' timers.</p>
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">IMPACT</p>
+                        <p className="text-sm font-bold text-foreground uppercase">Subtracting from {selectedPlayerIds.length} players' timers.</p>
                     </div>
 
-                    <Button variant="destructive" onClick={handleConfirmReduce} className="w-full h-12 font-black uppercase tracking-[0.1em] shadow-xl" disabled={selectedPlayerIds.length === 0 || (reduceValue === 'custom' && !reduceCustomAmount)}>
+                    <Button variant="destructive" onClick={handleConfirmReduce} className="w-full h-12 font-bold uppercase tracking-[0.1em] shadow-xl" disabled={selectedPlayerIds.length === 0 || (reduceValue === 'custom' && !reduceCustomAmount)}>
                         <Minus className="mr-2 h-4 w-4" /> Subtract Time
                     </Button>
                 </TabsContent>

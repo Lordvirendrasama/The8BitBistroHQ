@@ -94,19 +94,19 @@ export function FoodMenuManager() {
                 <Utensils className="h-6 w-6 text-primary" />
                 Manage Menu Catalog
             </CardTitle>
-            <CardDescription className="font-bold text-xs uppercase tracking-widest">Organize and edit your bistro offerings ({filteredItems.length} items)</CardDescription>
+            <CardDescription className="font-bold text-sm uppercase tracking-normal">Organize and edit your bistro offerings ({filteredItems.length} items)</CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                     placeholder="Filter by name/category..." 
-                    className="pl-10 h-10 font-bold text-xs uppercase bg-muted/20 border-none"
+                    className="pl-10 h-10 font-bold text-sm uppercase bg-muted/20 border-none"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Button onClick={handleAdd} className="font-black uppercase tracking-tight h-10 shadow-lg">
+            <Button onClick={handleAdd} className="font-bold uppercase tracking-tight h-10 shadow-lg">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Item
             </Button>
@@ -114,29 +114,29 @@ export function FoodMenuManager() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-20 text-center font-headline text-xs animate-pulse opacity-50">Loading Menu...</div>
+            <div className="py-20 text-center font-headline text-sm animate-pulse opacity-50">Loading Menu...</div>
           ) : (
             <ScrollArea className="h-[600px] rounded-xl border-2 border-dashed">
                 <Table>
                     <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm">
                     <TableRow>
-                        <TableHead className="font-black uppercase text-[10px] bg-muted/30">Item Name</TableHead>
-                        <TableHead className="font-black uppercase text-[10px] bg-muted/30">Category</TableHead>
-                        <TableHead className="text-center font-black uppercase text-[10px] bg-muted/30">Price</TableHead>
-                        <TableHead className="text-right font-black uppercase text-[10px] bg-muted/30">Actions</TableHead>
+                        <TableHead className="font-bold uppercase text-sm bg-muted/30">Item Name</TableHead>
+                        <TableHead className="font-bold uppercase text-sm bg-muted/30">Category</TableHead>
+                        <TableHead className="text-center font-bold uppercase text-sm bg-muted/30">Price</TableHead>
+                        <TableHead className="text-right font-bold uppercase text-sm bg-muted/30">Actions</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
                     {filteredItems.map((item) => (
                         <TableRow key={item.id} className="hover:bg-muted/20">
-                        <TableCell className="font-black uppercase text-xs sm:text-sm">{item.name}</TableCell>
+                        <TableCell className="font-bold uppercase text-sm sm:text-sm">{item.name}</TableCell>
                         <TableCell>
-                            <Badge variant="outline" className="font-black uppercase text-[9px] bg-primary/5 text-primary border-primary/20">
+                            <Badge variant="outline" className="font-bold uppercase text-sm bg-primary/5 text-primary border-primary/20">
                                 {item.category}
                             </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1 font-mono font-black text-sm">
+                            <div className="flex items-center justify-center gap-1 font-mono font-bold text-sm">
                                 <span>₹{item.price.toLocaleString()}</span>
                             </div>
                         </TableCell>
@@ -147,7 +147,7 @@ export function FoodMenuManager() {
                                 <Button size="icon" variant="ghost" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Catalog Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-sm uppercase font-bold opacity-50">Catalog Actions</DropdownMenuLabel>
                                 <DropdownMenuItem onSelect={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
                                 <AlertDialogTrigger asChild>
                                     <DropdownMenuItem className="text-destructive font-bold"><Trash className="mr-2 h-4 w-4" /> Remove Item</DropdownMenuItem>
@@ -173,7 +173,7 @@ export function FoodMenuManager() {
                             <TableCell colSpan={4} className="h-48 text-center bg-muted/5">
                                 <div className="flex flex-col items-center justify-center opacity-30">
                                     <Utensils className="h-10 w-10 mb-2" />
-                                    <p className="font-headline text-xs tracking-widest">No items found</p>
+                                    <p className="font-headline text-sm tracking-normal">No items found</p>
                                 </div>
                             </TableCell>
                         </TableRow>

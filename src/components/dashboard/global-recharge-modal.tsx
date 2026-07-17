@@ -75,7 +75,7 @@ export function GlobalRechargeModal({ isOpen, onOpenChange, members }: GlobalRec
               <Zap className="h-6 w-6 fill-current" />
               Member Recharge
             </DialogTitle>
-            <DialogDescription className="text-black/70 font-bold text-[10px] uppercase tracking-widest mt-1">
+            <DialogDescription className="text-black/70 font-bold text-sm uppercase tracking-normal mt-1">
               Select a member to add prepaid time.
             </DialogDescription>
           </DialogHeader>
@@ -87,7 +87,7 @@ export function GlobalRechargeModal({ isOpen, onOpenChange, members }: GlobalRec
                 placeholder="SEARCH MEMBERS..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 h-12 bg-background border-2 font-black uppercase text-[10px] tracking-tight"
+                className="pl-10 h-12 bg-background border-2 font-bold uppercase text-sm tracking-tight"
                 autoFocus
               />
             </div>
@@ -111,10 +111,10 @@ export function GlobalRechargeModal({ isOpen, onOpenChange, members }: GlobalRec
                         <AvatarFallback>{member.name[0]}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="font-black uppercase text-sm truncate leading-tight">{member.name}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">@{member.username}</p>
+                        <p className="font-bold uppercase text-sm truncate leading-tight">{member.name}</p>
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal truncate">@{member.username}</p>
                         {totalBalanceSeconds > 0 && (
-                          <div className="flex items-center gap-1 text-[10px] font-black text-yellow-600 mt-1 uppercase">
+                          <div className="flex items-center gap-1 text-sm font-bold text-yellow-600 mt-1 uppercase">
                             <Zap className="h-2.5 w-2.5 fill-current" />
                             <span>{formatDuration(totalBalanceSeconds)} Balance</span>
                           </div>
@@ -126,7 +126,7 @@ export function GlobalRechargeModal({ isOpen, onOpenChange, members }: GlobalRec
                 );
               })}
               {filteredMembers.length === 0 && (
-                <div className="py-20 text-center opacity-30 italic font-bold uppercase text-[10px] tracking-widest">
+                <div className="py-20 text-center opacity-30 italic font-bold uppercase text-sm tracking-normal">
                   No members match your search
                 </div>
               )}

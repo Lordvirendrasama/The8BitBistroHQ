@@ -71,13 +71,13 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
           <DialogTitle className="font-headline tracking-wide text-2xl">
             {task ? 'Edit Task' : 'Add New Task'}
           </DialogTitle>
-          <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">
+          <DialogDescription className="text-sm font-bold uppercase tracking-normal text-muted-foreground mt-1">
             {task ? `Editing details for ${task.name}.` : 'Enter the details for the new daily task.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-tight text-muted-foreground">Task Name</Label>
+            <Label htmlFor="name" className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Task Name</Label>
             <Input
               id="name"
               placeholder="e.g., Wipe down all gaming stations"
@@ -87,9 +87,9 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="shift-type-select" className="text-[10px] font-black uppercase tracking-tight text-muted-foreground">Shift Assignment</Label>
+            <Label htmlFor="shift-type-select" className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Shift Assignment</Label>
             <Select value={shiftType} onValueChange={(value: any) => setShiftType(value)}>
-              <SelectTrigger id="shift-type-select" className="font-bold uppercase text-[10px] w-full">
+              <SelectTrigger id="shift-type-select" className="font-bold uppercase text-sm w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -100,7 +100,7 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
             </Select>
           </div>
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-tight text-muted-foreground">Assign to Employees</Label>
+            <Label className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Assign to Employees</Label>
             <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-background">
               <div className="flex items-center space-x-2 pb-1 border-b">
                 <Checkbox 
@@ -113,7 +113,7 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
                   }}
                   className="h-4 w-4 border-2"
                 />
-                <Label htmlFor="assign-all" className="text-xs font-bold uppercase cursor-pointer text-muted-foreground">
+                <Label htmlFor="assign-all" className="text-sm font-bold uppercase cursor-pointer text-muted-foreground">
                   All Employees (No Restrictions)
                 </Label>
               </div>
@@ -133,20 +133,20 @@ export function TaskFormModal({ isOpen, onOpenChange, onSave, task, employees }:
                       }}
                       className="h-4 w-4 border-2"
                     />
-                    <Label htmlFor={`emp-${emp.id}`} className="text-xs font-bold cursor-pointer">
+                    <Label htmlFor={`emp-${emp.id}`} className="text-sm font-bold cursor-pointer">
                       {emp.displayName} ({emp.username})
                     </Label>
                   </div>
                 );
               })}
             </div>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">
+            <p className="text-sm text-muted-foreground uppercase font-bold tracking-tight">
               If no employees are selected, the task is visible to everyone.
             </p>
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleSave} className="w-full font-black uppercase tracking-widest h-12 shadow-lg">
+          <Button onClick={handleSave} className="w-full font-bold uppercase tracking-normal h-12 shadow-lg">
             <Save className="mr-2 h-4 w-4" />
             Save Task
           </Button>

@@ -73,10 +73,10 @@ export function RechargeModal({ isOpen, onOpenChange, member }: RechargeModalPro
 
         <div className="flex-1 overflow-hidden flex flex-col px-6 py-4 space-y-6">
           <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Available Packs</Label>
+            <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Available Packs</Label>
             <ScrollArea className="h-64 border rounded-xl bg-muted/5 p-2">
               {loading ? (
-                <div className="h-full flex items-center justify-center font-bold uppercase text-[10px] animate-pulse">Loading Inventory...</div>
+                <div className="h-full flex items-center justify-center font-bold uppercase text-sm animate-pulse">Loading Inventory...</div>
               ) : (
                 <RadioGroup value={selectedPkgId || ''} onValueChange={setSelectedPkgId} className="space-y-2">
                   {packages?.map(pkg => (
@@ -90,21 +90,21 @@ export function RechargeModal({ isOpen, onOpenChange, member }: RechargeModalPro
                       <div className="flex items-center gap-3">
                         <RadioGroupItem value={pkg.id} id={pkg.id} />
                         <div className="space-y-0.5">
-                          <p className="font-black text-sm uppercase leading-none">{pkg.name}</p>
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase">
+                          <p className="font-bold text-sm uppercase leading-none">{pkg.name}</p>
+                          <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase">
                             <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDuration(pkg.duration)}</span>
                             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {pkg.validity} Days</span>
                           </div>
                         </div>
                       </div>
-                      <span className="font-black text-lg text-primary">₹{pkg.price}</span>
+                      <span className="font-bold text-lg text-primary">₹{pkg.price}</span>
                     </Label>
                   ))}
                   {(!packages || packages.length === 0) && (
                     <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-30">
                         <Zap className="h-8 w-8 mb-2" />
-                        <p className="text-[10px] font-black uppercase">No Recharge Packs Configured</p>
-                        <p className="text-[8px] font-bold">Add them in Settings &gt; Recharge Packs</p>
+                        <p className="text-sm font-bold uppercase">No Recharge Packs Configured</p>
+                        <p className="text-sm font-bold">Add them in Settings &gt; Recharge Packs</p>
                     </div>
                   )}
                 </RadioGroup>
@@ -113,18 +113,18 @@ export function RechargeModal({ isOpen, onOpenChange, member }: RechargeModalPro
           </div>
 
           <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Payment Method</Label>
+            <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Payment Method</Label>
             <div className="grid grid-cols-2 gap-2">
               <Button 
                 variant={paymentMethod === 'cash' ? 'default' : 'outline'} 
-                className="h-12 font-black uppercase tracking-tight"
+                className="h-12 font-bold uppercase tracking-tight"
                 onClick={() => setPaymentMethod('cash')}
               >
                 <Banknote className="mr-2 h-4 w-4" /> Cash
               </Button>
               <Button 
                 variant={paymentMethod === 'upi' ? 'default' : 'outline'} 
-                className="h-12 font-black uppercase tracking-tight"
+                className="h-12 font-bold uppercase tracking-tight"
                 onClick={() => setPaymentMethod('upi')}
               >
                 <Smartphone className="mr-2 h-4 w-4" /> UPI
@@ -137,7 +137,7 @@ export function RechargeModal({ isOpen, onOpenChange, member }: RechargeModalPro
           <Button 
             disabled={!selectedPkgId || isSubmitting} 
             onClick={handleRecharge}
-            className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl"
+            className="w-full h-14 font-bold uppercase tracking-normal text-lg shadow-xl"
           >
             {isSubmitting ? "Processing..." : "Confirm & Recharge"}
           </Button>

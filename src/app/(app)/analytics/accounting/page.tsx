@@ -219,7 +219,7 @@ export default function AccountingPage() {
   };
 
   if (billsLoading || expensesLoading || !stats) {
-    return <div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse">Syncing Financial Core...</div>;
+    return <div className="flex h-screen items-center justify-center font-headline text-sm animate-pulse">Syncing Financial Core...</div>;
   }
 
   const progress = Math.min(100, (stats.revenue / (stats.survivalGoal || 1)) * 100);
@@ -230,26 +230,26 @@ export default function AccountingPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-4xl tracking-wider text-foreground">Financial Audit</h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Surgical Revenue Reconciliation & Performance Tracking.</p>
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal">Surgical Revenue Reconciliation & Performance Tracking.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <Select value={selectedPhase} onValueChange={setSelectedPhase}>
-                <SelectTrigger className="h-12 w-[200px] border-2 font-black uppercase text-[10px] tracking-tight bg-background">
+                <SelectTrigger className="h-12 w-[200px] border-2 font-bold uppercase text-sm tracking-tight bg-background">
                     <Filter className="mr-2 h-3.5 w-3.5 text-primary" />
                     <SelectValue placeholder="All Cycles" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all_cycles" className="font-bold uppercase text-[10px]">
+                    <SelectItem value="all_cycles" className="font-bold uppercase text-sm">
                         <span className="flex items-center gap-2"><Globe className="h-3 w-3" /> All Eras</span>
                     </SelectItem>
                     {availableCycles.map(c => (
-                        <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-[10px]">
+                        <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-sm">
                             {c.name}
                         </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
-            <Button onClick={handleExport} disabled={isExporting} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
+            <Button onClick={handleExport} disabled={isExporting} className="h-12 px-6 font-bold uppercase tracking-tight shadow-xl bg-primary hover:bg-primary/90">
                 <Download className="mr-2 h-5 w-5" /> Export Audit
             </Button>
         </div>
@@ -258,13 +258,13 @@ export default function AccountingPage() {
       <Card className="border-2 shadow-none bg-muted/5">
         <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-2">Quick Periods:</p>
+                <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground mr-2">Quick Periods:</p>
                 {recentMonths.map((m, idx) => (
                     <Button 
                         key={idx} 
                         variant={dateRange.from && isSameMonth(m, dateRange.from) ? 'default' : 'outline'}
                         onClick={() => setMonth(m)}
-                        className="h-10 px-4 font-black uppercase text-[10px] tracking-tight border-2"
+                        className="h-10 px-4 font-bold uppercase text-sm tracking-tight border-2"
                     >
                         {format(m, 'MMMM')}
                     </Button>
@@ -277,7 +277,7 @@ export default function AccountingPage() {
                         <Button
                             variant={"outline"}
                             className={cn(
-                                "w-[240px] h-10 justify-start text-left font-black uppercase text-[10px] border-2 bg-background",
+                                "w-[240px] h-10 justify-start text-left font-bold uppercase text-sm border-2 bg-background",
                                 !dateRange.from && "text-muted-foreground"
                             )}
                         >
@@ -309,41 +309,41 @@ export default function AccountingPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-2 shadow-xl bg-emerald-500/5 border-emerald-500/20">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-600 flex items-center gap-2">
                     <IndianRupee className="h-4 w-4" /> Total Revenue
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-4xl font-black text-emerald-600">₹{stats.revenue.toLocaleString()}</div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Earnings for selected window</p>
+                <div className="text-4xl font-bold text-emerald-600">₹{stats.revenue.toLocaleString()}</div>
+                <p className="text-sm font-bold text-muted-foreground uppercase mt-1">Earnings for selected window</p>
             </CardContent>
         </Card>
 
         <Card className="border-2 shadow-xl bg-destructive/5 border-destructive/20">
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-destructive flex items-center gap-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] text-destructive flex items-center gap-2">
                     <ShoppingCart className="h-4 w-4" /> Operational Spend
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-4xl font-black text-destructive">₹{stats.opSpend.toLocaleString()}</div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Ad-hoc repairs and supplies</p>
+                <div className="text-4xl font-bold text-destructive">₹{stats.opSpend.toLocaleString()}</div>
+                <p className="text-sm font-bold text-muted-foreground uppercase mt-1">Ad-hoc repairs and supplies</p>
             </CardContent>
         </Card>
 
         <Card className={cn("border-4 shadow-2xl relative overflow-hidden transition-all duration-500", isTargetMet ? "bg-emerald-500/5 border-emerald-500/30" : "bg-primary/5 border-primary/20")}>
             <CardHeader className="pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
                     <Target className={cn("h-4 w-4", isTargetMet ? "text-emerald-600" : "text-primary")} /> 
                     Survival Status
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-4xl font-black font-mono tracking-tighter">
+                <div className="text-4xl font-bold font-mono tracking-tight">
                     {progress.toFixed(1)}%
                 </div>
                 <div className="mt-3 space-y-1.5">
-                    <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                    <div className="flex justify-between text-sm font-bold uppercase tracking-normal text-muted-foreground">
                         <span>Period Target</span>
                         <span>₹{Math.round(stats.survivalGoal).toLocaleString()}</span>
                     </div>
@@ -365,26 +365,26 @@ export default function AccountingPage() {
                     <BarChart3 className="h-5 w-5 text-primary" />
                     Month-on-Month Trends
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Historical performance vs variable expenses.</CardDescription>
+                <CardDescription className="text-sm font-bold uppercase tracking-normal">Historical performance vs variable expenses.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-muted/5">
-                            <TableHead className="font-black uppercase text-[10px]">Month Period</TableHead>
-                            <TableHead className="text-center font-black uppercase text-[10px]">Revenue</TableHead>
-                            <TableHead className="text-center font-black uppercase text-[10px]">Op. Expenses</TableHead>
-                            <TableHead className="text-right font-black uppercase text-[10px] pr-6">Op. Surplus</TableHead>
+                            <TableHead className="font-bold uppercase text-sm">Month Period</TableHead>
+                            <TableHead className="text-center font-bold uppercase text-sm">Revenue</TableHead>
+                            <TableHead className="text-center font-bold uppercase text-sm">Op. Expenses</TableHead>
+                            <TableHead className="text-right font-bold uppercase text-sm pr-6">Op. Surplus</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {monthlyBreakdown.map((row) => (
                             <TableRow key={row.monthKey} className="hover:bg-muted/5 transition-colors group cursor-pointer" onClick={() => setMonth(new Date(row.monthKey + "-01"))}>
-                                <TableCell className="font-black uppercase text-xs py-4">{row.monthName}</TableCell>
+                                <TableCell className="font-bold uppercase text-sm py-4">{row.monthName}</TableCell>
                                 <TableCell className="text-center font-mono font-bold text-emerald-600">₹{row.revenue.toLocaleString()}</TableCell>
                                 <TableCell className="text-center font-mono font-bold text-destructive">₹{row.expense.toLocaleString()}</TableCell>
                                 <TableCell className="text-right pr-6">
-                                    <span className={cn("font-mono font-black text-sm", (row.revenue - row.expense) >= 0 ? "text-emerald-600" : "text-destructive")}>
+                                    <span className={cn("font-mono font-bold text-sm", (row.revenue - row.expense) >= 0 ? "text-emerald-600" : "text-destructive")}>
                                         ₹{(row.revenue - row.expense).toLocaleString()}
                                     </span>
                                 </TableCell>
@@ -392,7 +392,7 @@ export default function AccountingPage() {
                         ))}
                         {monthlyBreakdown.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-32 text-center opacity-30 italic font-headline text-[10px] tracking-widest uppercase">No monthly data captured.</TableCell>
+                                <TableCell colSpan={4} className="h-32 text-center opacity-30 italic font-headline text-sm tracking-normal uppercase">No monthly data captured.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -403,21 +403,21 @@ export default function AccountingPage() {
         <div className="space-y-6">
             <Card className="border-2 bg-muted/10">
                 <CardHeader>
-                    <CardTitle className="text-sm font-black uppercase tracking-tight">Period Analysis</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Comprehensive burden breakdown.</CardDescription>
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight">Period Analysis</CardTitle>
+                    <CardDescription className="text-sm font-bold uppercase tracking-normal">Comprehensive burden breakdown.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-3">
-                        <div className="flex justify-between items-center text-xs font-bold uppercase">
+                        <div className="flex justify-between items-center text-sm font-bold uppercase">
                             <span className="text-muted-foreground">Operational Flow</span>
                             <span className="text-destructive font-mono">- ₹{stats.opSpend.toLocaleString()}</span>
                         </div>
                         
                         <div className="pt-2 pb-1 border-t border-dashed">
-                            <p className="text-[8px] font-black uppercase text-muted-foreground/60 tracking-widest mb-2">Enabled Strategic Burdens</p>
+                            <p className="text-sm font-bold uppercase text-muted-foreground/60 tracking-normal mb-2">Enabled Strategic Burdens</p>
                             <div className="space-y-2">
                                 {stats.activeBurdens.map((burden) => (
-                                    <div key={burden.id} className="flex justify-between items-center text-[10px] font-bold uppercase">
+                                    <div key={burden.id} className="flex justify-between items-center text-sm font-bold uppercase">
                                         <div className="flex items-center gap-2">
                                             <burden.icon className="h-3 w-3 opacity-40" />
                                             <span className="text-muted-foreground">{burden.label}</span>
@@ -426,21 +426,21 @@ export default function AccountingPage() {
                                     </div>
                                 ))}
                                 {stats.activeBurdens.length === 0 && (
-                                    <p className="text-[9px] font-bold text-muted-foreground/40 italic">No burdens active in selector.</p>
+                                    <p className="text-sm font-bold text-muted-foreground/40 italic">No burdens active in selector.</p>
                                 )}
                             </div>
                         </div>
 
                         <Separator className="border-dashed" />
-                        <div className="flex justify-between items-center font-black uppercase">
+                        <div className="flex justify-between items-center font-bold uppercase">
                             <span className="text-sm">Total Burden</span>
                             <span className="text-lg font-mono text-destructive">₹{Math.round(stats.totalOutflow).toLocaleString()}</span>
                         </div>
                     </div>
 
                     <div className={cn("p-4 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center gap-1", stats.netProfit >= 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-destructive/10 border-destructive/20")}>
-                        <p className="text-[10px] font-black uppercase opacity-60">Net Economic Position</p>
-                        <p className={cn("text-3xl font-black font-mono", stats.netProfit >= 0 ? "text-emerald-600" : "text-destructive")}>
+                        <p className="text-sm font-bold uppercase opacity-60">Net Economic Position</p>
+                        <p className={cn("text-3xl font-bold font-mono", stats.netProfit >= 0 ? "text-emerald-600" : "text-destructive")}>
                             {stats.netProfit < 0 ? '-' : '+'} ₹{Math.abs(Math.round(stats.netProfit)).toLocaleString()}
                         </p>
                     </div>
@@ -449,39 +449,39 @@ export default function AccountingPage() {
 
             <Card className="border-2 border-primary/20 bg-primary/5">
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                    <CardTitle className="text-sm font-bold uppercase tracking-normal text-primary flex items-center gap-2">
                         <ArrowUpRight className="h-4 w-4" /> Strategic Blueprint
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <p className="text-[8px] font-black uppercase text-muted-foreground">Actual Velocity</p>
-                            <p className="text-sm font-black font-mono">₹{Math.round(stats.currentDailyAvg).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                            <p className="text-sm font-bold uppercase text-muted-foreground">Actual Velocity</p>
+                            <p className="text-sm font-bold font-mono">₹{Math.round(stats.currentDailyAvg).toLocaleString()}<span className="text-sm opacity-50 ml-1">/DAY</span></p>
                         </div>
                         <div className="space-y-1 text-right">
-                            <p className="text-[8px] font-black uppercase text-primary">Required Velocity</p>
-                            <p className="text-sm font-black font-mono text-primary">₹{Math.round(stats.requiredDaily).toLocaleString()}<span className="text-[8px] opacity-50 ml-1">/DAY</span></p>
+                            <p className="text-sm font-bold uppercase text-primary">Required Velocity</p>
+                            <p className="text-sm font-bold font-mono text-primary">₹{Math.round(stats.requiredDaily).toLocaleString()}<span className="text-sm opacity-50 ml-1">/DAY</span></p>
                         </div>
                     </div>
                     
                     <div className="pt-3 border-t border-dashed border-primary/20">
                         <div className="flex justify-between items-center mb-1">
-                            <span className="text-[9px] font-black uppercase text-muted-foreground">Month Success Target</span>
-                            <span className="font-mono text-xs font-bold">₹{Math.round(stats.targetToMakeIt).toLocaleString()}</span>
+                            <span className="text-sm font-bold uppercase text-muted-foreground">Month Success Target</span>
+                            <span className="font-mono text-sm font-bold">₹{Math.round(stats.targetToMakeIt).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-[9px] font-black uppercase text-muted-foreground">Remaining To Make It</span>
-                            <span className="font-mono text-xs font-bold text-primary">₹{Math.round(stats.remainingToMakeIt).toLocaleString()}</span>
+                            <span className="text-sm font-bold uppercase text-muted-foreground">Remaining To Make It</span>
+                            <span className="font-mono text-sm font-bold text-primary">₹{Math.round(stats.remainingToMakeIt).toLocaleString()}</span>
                         </div>
                     </div>
 
                     <div className="bg-background/50 p-3 rounded-lg border flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Timer className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-[9px] font-black uppercase text-muted-foreground">Cycle Remaining</span>
+                            <span className="text-sm font-bold uppercase text-muted-foreground">Cycle Remaining</span>
                         </div>
-                        <span className="text-[10px] font-black uppercase">{stats.daysRemaining} Business Days</span>
+                        <span className="text-sm font-bold uppercase">{stats.daysRemaining} Business Days</span>
                     </div>
                 </CardContent>
             </Card>
@@ -493,19 +493,19 @@ export default function AccountingPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <CardTitle className="font-headline text-lg tracking-tight">Consolidated Ledger</CardTitle>
-                    <CardDescription className="text-xs font-bold uppercase tracking-widest">Audit trail of all registered cash movements.</CardDescription>
+                    <CardDescription className="text-sm font-bold uppercase tracking-normal">Audit trail of all registered cash movements.</CardDescription>
                 </div>
-                <Badge variant="outline" className="font-mono text-[10px]">{stats.ledger.length} Entries</Badge>
+                <Badge variant="outline" className="font-mono text-sm">{stats.ledger.length} Entries</Badge>
             </div>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
                 <TableHeader>
                     <TableRow className="bg-muted/10">
-                        <TableHead className="font-black uppercase text-[10px]">Timestamp</TableHead>
-                        <TableHead className="font-black uppercase text-[10px]">Description</TableHead>
-                        <TableHead className="font-black uppercase text-[10px]">Method</TableHead>
-                        <TableHead className="text-right font-black uppercase text-[10px] pr-6">Amount</TableHead>
+                        <TableHead className="font-bold uppercase text-sm">Timestamp</TableHead>
+                        <TableHead className="font-bold uppercase text-sm">Description</TableHead>
+                        <TableHead className="font-bold uppercase text-sm">Method</TableHead>
+                        <TableHead className="text-right font-bold uppercase text-sm pr-6">Amount</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -513,8 +513,8 @@ export default function AccountingPage() {
                         <TableRow key={idx} className="hover:bg-muted/5 transition-colors">
                             <TableCell className="py-4">
                                 <div className="flex flex-col">
-                                    <span className="font-black text-[10px] uppercase">{format(new Date(item.date), 'MMM d, yyyy')}</span>
-                                    <span className="text-[9px] text-muted-foreground font-mono">{format(new Date(item.date), 'p')}</span>
+                                    <span className="font-bold text-sm uppercase">{format(new Date(item.date), 'MMM d, yyyy')}</span>
+                                    <span className="text-sm text-muted-foreground font-mono">{format(new Date(item.date), 'p')}</span>
                                 </div>
                             </TableCell>
                             <TableCell>
@@ -523,18 +523,18 @@ export default function AccountingPage() {
                                         {item.type === 'income' ? <Wallet className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-xs uppercase leading-tight">{item.desc}</span>
-                                        <Badge variant="outline" className={cn("w-fit h-4 text-[8px] uppercase mt-1", item.type === 'income' ? "text-emerald-600 border-emerald-600/20" : "text-destructive border-destructive/20")}>
+                                        <span className="font-bold text-sm uppercase leading-tight">{item.desc}</span>
+                                        <Badge variant="outline" className={cn("w-fit h-4 text-sm uppercase mt-1", item.type === 'income' ? "text-emerald-600 border-emerald-600/20" : "text-destructive border-destructive/20")}>
                                             {item.type}
                                         </Badge>
                                     </div>
                                 </div>
                             </TableCell>
                             <TableCell>
-                                <Badge variant="secondary" className="font-black uppercase text-[9px] tracking-widest">{item.method}</Badge>
+                                <Badge variant="secondary" className="font-bold uppercase text-sm tracking-normal">{item.method}</Badge>
                             </TableCell>
                             <TableCell className="text-right pr-6">
-                                <span className={cn("font-mono font-black text-sm", item.type === 'income' ? "text-emerald-600" : "text-destructive")}>
+                                <span className={cn("font-mono font-bold text-sm", item.type === 'income' ? "text-emerald-600" : "text-destructive")}>
                                     {item.type === 'income' ? '+' : '-'} ₹{item.amount.toLocaleString()}
                                 </span>
                             </TableCell>
@@ -542,7 +542,7 @@ export default function AccountingPage() {
                     ))}
                     {stats.ledger.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={4} className="h-64 text-center opacity-30 italic font-headline text-[10px] tracking-widest uppercase">No entries detected for this timeframe.</TableCell>
+                            <TableCell colSpan={4} className="h-64 text-center opacity-30 italic font-headline text-sm tracking-normal uppercase">No entries detected for this timeframe.</TableCell>
                         </TableRow>
                     )}
                 </TableBody>

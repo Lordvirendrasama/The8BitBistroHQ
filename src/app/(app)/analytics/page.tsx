@@ -71,7 +71,7 @@ export default function AnalyticsPage() {
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period & Date</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Period & Date</Label>
               <div className="flex gap-2">
                 <Select value={period} onValueChange={(value) => setPeriod(value as Period)}>
                   <SelectTrigger className="w-[140px]">
@@ -118,14 +118,14 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Filter by Day</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Filter by Day</Label>
               <div className="flex bg-background border rounded-md p-1 h-10">
                 {DAYS.map(day => (
                   <button
                     key={day}
                     onClick={() => handleDayToggle(day)}
                     className={cn(
-                      "px-2 text-[10px] font-bold rounded transition-colors uppercase",
+                      "px-2 text-sm font-bold rounded transition-colors uppercase",
                       selectedDays.includes(day) 
                         ? "bg-primary text-primary-foreground" 
                         : "hover:bg-muted text-muted-foreground"
@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Filter by Hour</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Filter by Hour</Label>
               <div className="flex items-center gap-2 h-10 px-3 bg-background border rounded-md">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <Select value={String(timeRange.start)} onValueChange={(v) => setTimeRange(p => ({ ...p, start: Number(v) }))}>
@@ -149,7 +149,7 @@ export default function AnalyticsPage() {
                     {Array.from({ length: 24 }).map((_, i) => <SelectItem key={i} value={String(i)}>{i}:00</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <span className="text-xs font-bold">to</span>
+                <span className="text-sm font-bold">to</span>
                 <Select value={String(timeRange.end)} onValueChange={(v) => setTimeRange(p => ({ ...p, end: Number(v) }))}>
                   <SelectTrigger className="w-[70px] h-7 border-none shadow-none focus:ring-0">
                     <SelectValue />

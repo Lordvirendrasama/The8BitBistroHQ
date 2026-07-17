@@ -114,11 +114,11 @@ export function SessionRequestHandler({ ps5Stations, onApprove }: { ps5Stations:
                 <div className="bg-primary px-6 py-5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
                     <AlertDialogHeader className="relative z-10 m-0 space-y-1">
-                        <AlertDialogTitle className="text-black font-headline text-3xl tracking-tighter flex items-center gap-3">
+                        <AlertDialogTitle className="text-black font-headline text-3xl tracking-tight flex items-center gap-3">
                             <Gamepad2 className="h-7 w-7" />
                             SESSION REQUEST
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-black/60 font-black text-[10px] uppercase tracking-widest m-0">
+                        <AlertDialogDescription className="text-black/60 font-bold text-sm uppercase tracking-normal m-0">
                             {partyCount > 1 ? `Party of ${partyCount} wants to play` : 'Player wants to start a session'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -138,12 +138,12 @@ export function SessionRequestHandler({ ps5Stations, onApprove }: { ps5Stations:
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-headline text-lg tracking-tight leading-none truncate">{p.name}</p>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mt-1">
+                                    <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground mt-1">
                                         {i === 0 ? 'Host' : 'Party Member'}
                                     </p>
                                 </div>
                                 {i === 0 && (
-                                    <div className="shrink-0 px-3 py-1.5 bg-primary text-black text-[8px] font-black uppercase tracking-widest rounded-full">
+                                    <div className="shrink-0 px-3 py-1.5 bg-primary text-black text-sm font-bold uppercase tracking-normal rounded-full">
                                         Primary
                                     </div>
                                 )}
@@ -153,7 +153,7 @@ export function SessionRequestHandler({ ps5Stations, onApprove }: { ps5Stations:
 
                     {/* Station Selector */}
                     <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
                             <Gamepad2 className="w-3.5 h-3.5 text-primary" />
                             Assign PS5 Console
                         </p>
@@ -179,14 +179,14 @@ export function SessionRequestHandler({ ps5Stations, onApprove }: { ps5Stations:
                     <div className="flex gap-3">
                         <Button
                             variant="outline"
-                            className="flex-1 h-14 font-black uppercase tracking-widest text-[11px] border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white rounded-2xl transition-all"
+                            className="flex-1 h-14 font-bold uppercase tracking-normal text-sm border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white rounded-2xl transition-all"
                             onClick={handleDeny}
                             disabled={isProcessing}
                         >
                             {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><X className="w-4 h-4 mr-2" />Deny</>}
                         </Button>
                         <Button
-                            className="flex-1 h-14 font-black uppercase tracking-widest text-[11px] bg-primary text-black hover:bg-primary/90 rounded-2xl transition-all shadow-lg shadow-primary/20"
+                            className="flex-1 h-14 font-bold uppercase tracking-normal text-sm bg-primary text-black hover:bg-primary/90 rounded-2xl transition-all shadow-lg shadow-primary/20"
                             onClick={handleApprove}
                             disabled={isProcessing || !selectedStationId}
                         >
@@ -196,7 +196,7 @@ export function SessionRequestHandler({ ps5Stations, onApprove }: { ps5Stations:
 
                     {/* Pending queue count */}
                     {pendingRequests.length > 1 && (
-                        <p className="text-center text-[9px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">
+                        <p className="text-center text-sm font-bold uppercase tracking-normal text-muted-foreground animate-pulse">
                             +{pendingRequests.length - 1} more request{pendingRequests.length > 2 ? 's' : ''} waiting
                         </p>
                     )}

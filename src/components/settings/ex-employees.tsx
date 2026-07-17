@@ -179,7 +179,7 @@ export function ArchivedOperators() {
             <ShieldAlert className="h-12 w-12" />
           </div>
           <CardTitle className="font-headline text-3xl tracking-wider text-destructive">ACCESS DENIED</CardTitle>
-          <CardDescription className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          <CardDescription className="text-sm font-bold uppercase tracking-normal text-muted-foreground">
             Only Viren holds authorization to view operator archival intelligence.
           </CardDescription>
         </CardHeader>
@@ -189,7 +189,7 @@ export function ArchivedOperators() {
 
   if (employeesLoading || ordersLoading) {
     return (
-      <div className="p-12 text-center flex flex-col items-center justify-center gap-4 font-bold uppercase tracking-widest opacity-60">
+      <div className="p-12 text-center flex flex-col items-center justify-center gap-4 font-bold uppercase tracking-normal opacity-60">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         Decrypting workforce registry archives...
       </div>
@@ -204,7 +204,7 @@ export function ArchivedOperators() {
         </div>
         <div>
           <h2 className="font-headline text-2xl tracking-wide uppercase">Archived Operators</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground">
             Historical logs and staff meal spending audits for former employees.
           </p>
         </div>
@@ -213,8 +213,8 @@ export function ArchivedOperators() {
       {exEmployees.length === 0 ? (
         <Card className="border-2 border-dashed p-12 text-center opacity-40">
           <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="font-headline text-sm tracking-widest uppercase">No Archives Available</p>
-          <p className="text-xs font-bold uppercase text-muted-foreground mt-1">
+          <p className="font-headline text-sm tracking-normal uppercase">No Archives Available</p>
+          <p className="text-sm font-bold uppercase text-muted-foreground mt-1">
             No deactivated or retired operator profiles detected in registry.
           </p>
         </Card>
@@ -238,21 +238,21 @@ export function ArchivedOperators() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-black text-lg uppercase leading-none">{emp.displayName}</h3>
+                        <h3 className="font-bold text-lg uppercase leading-none">{emp.displayName}</h3>
                         {emp.isVirtual ? (
-                          <Badge variant="destructive" className="h-4 text-[8px] font-black uppercase tracking-wider bg-red-950/40 text-red-400 border-red-500/20">Deleted Profile</Badge>
+                          <Badge variant="destructive" className="h-4 text-sm font-bold uppercase tracking-wider bg-red-950/40 text-red-400 border-red-500/20">Deleted Profile</Badge>
                         ) : (
-                          <Badge variant="secondary" className="h-4 text-[8px] font-black uppercase tracking-wider bg-orange-950/40 text-orange-400 border-orange-500/20">Deactivated</Badge>
+                          <Badge variant="secondary" className="h-4 text-sm font-bold uppercase tracking-wider bg-orange-950/40 text-orange-400 border-orange-500/20">Deactivated</Badge>
                         )}
                       </div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">@{emp.username}</p>
+                      <p className="text-sm font-bold text-muted-foreground uppercase mt-1">@{emp.username}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 justify-between md:justify-end">
                     <div className="text-left md:text-right">
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest block">Total Meal Spend</span>
-                      <span className="font-mono font-black text-xl text-emerald-500 flex items-center leading-none mt-1">
+                      <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal block">Total Meal Spend</span>
+                      <span className="font-mono font-bold text-xl text-emerald-500 flex items-center leading-none mt-1">
                         <IndianRupee className="h-4 w-4 shrink-0 text-emerald-600" />
                         {totalSpent.toLocaleString()}
                       </span>
@@ -260,7 +260,7 @@ export function ArchivedOperators() {
                     <Button 
                       onClick={() => handleRestore(emp)} 
                       disabled={isRestoring[emp.username]}
-                      className="font-black uppercase tracking-tight text-[10px] h-9 border-2 flex items-center gap-1.5 bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 hover:text-primary-foreground transition-colors shrink-0"
+                      className="font-bold uppercase tracking-tight text-sm h-9 border-2 flex items-center gap-1.5 bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 hover:text-primary-foreground transition-colors shrink-0"
                       variant="outline"
                     >
                       {isRestoring[emp.username] ? (
@@ -277,31 +277,31 @@ export function ArchivedOperators() {
                   {/* Personnel Data Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="p-3.5 bg-muted/20 border rounded-xl flex flex-col justify-center">
-                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Operator Role</span>
-                      <span className="font-bold text-xs uppercase text-foreground/80 mt-1">{emp.role || 'staff'}</span>
+                      <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Operator Role</span>
+                      <span className="font-bold text-sm uppercase text-foreground/80 mt-1">{emp.role || 'staff'}</span>
                     </div>
 
                     <div className="p-3.5 bg-muted/20 border rounded-xl flex flex-col justify-center">
-                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                      <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal flex items-center gap-1">
                         <Banknote className="h-3 w-3 text-emerald-600" /> Compensation
                       </span>
-                      <span className="font-bold font-mono text-xs text-foreground/80 mt-1">
+                      <span className="font-bold font-mono text-sm text-foreground/80 mt-1">
                         {emp.isVirtual || !emp.salary ? 'N/A' : `₹${emp.salary.toLocaleString()} / ${emp.salaryType}`}
                       </span>
                     </div>
 
                     <div className="p-3.5 bg-muted/20 border rounded-xl flex flex-col justify-center">
-                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                      <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal flex items-center gap-1">
                         <Calendar className="h-3 w-3 text-indigo-500" /> Enlistment Date
                       </span>
-                      <span className="font-bold text-xs text-foreground/80 mt-1">
+                      <span className="font-bold text-sm text-foreground/80 mt-1">
                         {emp.joinDate ? format(new Date(emp.joinDate), 'yyyy-MM-dd') : 'N/A'}
                       </span>
                     </div>
 
                     <div className="p-3.5 bg-muted/20 border rounded-xl flex flex-col justify-center">
-                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Final Meal Quota</span>
-                      <span className="font-bold font-mono text-xs text-foreground/80 mt-1">
+                      <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Final Meal Quota</span>
+                      <span className="font-bold font-mono text-sm text-foreground/80 mt-1">
                         ₹{(emp.foodAllowanceBalance ?? 0).toLocaleString()}
                       </span>
                     </div>
@@ -312,7 +312,7 @@ export function ArchivedOperators() {
                     <Button 
                       variant="outline" 
                       onClick={() => toggleExpand(emp.username)}
-                      className="w-full h-11 border-2 font-black uppercase text-[10px] tracking-widest flex items-center justify-between"
+                      className="w-full h-11 border-2 font-bold uppercase text-sm tracking-normal flex items-center justify-between"
                     >
                       <span className="flex items-center gap-2">
                         <ShoppingBag className="h-3.5 w-3.5 text-primary" />
@@ -324,7 +324,7 @@ export function ArchivedOperators() {
                     {isExpanded && (
                       <div className="space-y-4 pt-2 border-t animate-in fade-in slide-in-from-top-1 duration-200">
                         {orders.length === 0 ? (
-                          <div className="py-6 text-center text-xs font-bold uppercase tracking-widest text-muted-foreground opacity-50">
+                          <div className="py-6 text-center text-sm font-bold uppercase tracking-normal text-muted-foreground opacity-50">
                             No meal order transactions recorded.
                           </div>
                         ) : (
@@ -333,14 +333,14 @@ export function ArchivedOperators() {
                               <div key={order.id} className="p-4 bg-muted/15 border border-foreground/5 rounded-xl space-y-3">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-2">
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                    <span className="text-[10px] font-black uppercase text-foreground/70">
+                                    <span className="text-sm font-bold uppercase text-foreground/70">
                                       {format(new Date(order.timestamp), 'MMM dd, yyyy - hh:mm a')}
                                     </span>
-                                    <Badge variant="outline" className="w-fit text-[8px] font-black uppercase bg-primary/5 text-primary border-primary/20">
+                                    <Badge variant="outline" className="w-fit text-sm font-bold uppercase bg-primary/5 text-primary border-primary/20">
                                       {order.cycle}
                                     </Badge>
                                   </div>
-                                  <span className="font-mono font-black text-sm text-emerald-500 flex items-center">
+                                  <span className="font-mono font-bold text-sm text-emerald-500 flex items-center">
                                     Total: ₹{order.totalAmount}
                                   </span>
                                 </div>
@@ -348,22 +348,22 @@ export function ArchivedOperators() {
                                 <Table>
                                   <TableHeader>
                                     <TableRow className="hover:bg-transparent">
-                                      <TableHead className="h-8 font-black uppercase text-[8px] tracking-wider">Item Taken</TableHead>
-                                      <TableHead className="h-8 font-black uppercase text-[8px] tracking-wider text-right">Quantity</TableHead>
-                                      <TableHead className="h-8 font-black uppercase text-[8px] tracking-wider text-right">Unit Price</TableHead>
-                                      <TableHead className="h-8 font-black uppercase text-[8px] tracking-wider text-right">Subtotal</TableHead>
+                                      <TableHead className="h-8 font-bold uppercase text-sm tracking-wider">Item Taken</TableHead>
+                                      <TableHead className="h-8 font-bold uppercase text-sm tracking-wider text-right">Quantity</TableHead>
+                                      <TableHead className="h-8 font-bold uppercase text-sm tracking-wider text-right">Unit Price</TableHead>
+                                      <TableHead className="h-8 font-bold uppercase text-sm tracking-wider text-right">Subtotal</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {order.items.map((item, idx) => (
                                       <TableRow key={idx} className="hover:bg-transparent border-b/5 border-b">
-                                        <TableCell className="py-2.5 font-bold text-xs uppercase flex items-center gap-1.5 text-foreground/80">
+                                        <TableCell className="py-2.5 font-bold text-sm uppercase flex items-center gap-1.5 text-foreground/80">
                                           <Utensils className="h-3 w-3 text-muted-foreground" />
                                           {item.name}
                                         </TableCell>
-                                        <TableCell className="py-2.5 text-right font-mono text-xs text-foreground/85">{item.quantity}</TableCell>
-                                        <TableCell className="py-2.5 text-right font-mono text-xs text-foreground/85">₹{item.price}</TableCell>
-                                        <TableCell className="py-2.5 text-right font-mono font-bold text-xs text-foreground">₹{item.price * item.quantity}</TableCell>
+                                        <TableCell className="py-2.5 text-right font-mono text-sm text-foreground/85">{item.quantity}</TableCell>
+                                        <TableCell className="py-2.5 text-right font-mono text-sm text-foreground/85">₹{item.price}</TableCell>
+                                        <TableCell className="py-2.5 text-right font-mono font-bold text-sm text-foreground">₹{item.price * item.quantity}</TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>

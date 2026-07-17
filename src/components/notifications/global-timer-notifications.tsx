@@ -647,10 +647,10 @@ export function GlobalTimerNotifications() {
       <AlertDialog open={!!activeEndAlert} onOpenChange={(open) => !open && setActiveEndAlert(null)}>
         <AlertDialogContent className="border-4 border-destructive z-[10000] w-[95vw] max-w-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-4xl text-destructive font-headline text-center animate-pulse uppercase tracking-tighter">Time is Up!</AlertDialogTitle>
+            <AlertDialogTitle className="text-4xl text-destructive font-headline text-center animate-pulse uppercase tracking-tight">Time is Up!</AlertDialogTitle>
             <Separator className="bg-destructive/20 my-4" />
             <AlertDialogDescription className="text-xl text-center pt-2 text-foreground font-medium">
-              The gaming session for <span className="font-black text-2xl block mt-2 text-primary">{activeEndAlert?.memberName}</span> has ended.
+              The gaming session for <span className="font-bold text-2xl block mt-2 text-primary">{activeEndAlert?.memberName}</span> has ended.
               <br />
               <span className="font-semibold text-muted-foreground mt-4 block italic text-sm border bg-muted/50 p-2 rounded">Station: {activeEndAlert?.station.name}</span>
             </AlertDialogDescription>
@@ -686,10 +686,10 @@ export function GlobalTimerNotifications() {
       <AlertDialog open={!!activeWarningAlert} onOpenChange={(open) => !open && setActiveWarningAlert(null)}>
         <AlertDialogContent className="border-4 border-amber-500 z-[10000] w-[95vw] max-w-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-4xl text-amber-500 font-headline text-center animate-pulse uppercase tracking-tighter">5 Minutes Left!</AlertDialogTitle>
+            <AlertDialogTitle className="text-4xl text-amber-500 font-headline text-center animate-pulse uppercase tracking-tight">5 Minutes Left!</AlertDialogTitle>
             <Separator className="bg-amber-500/20 my-4" />
             <AlertDialogDescription className="text-xl text-center pt-2 text-foreground font-medium">
-              <span className="font-black text-2xl block mt-2 text-primary">{activeWarningAlert?.memberName}</span>
+              <span className="font-bold text-2xl block mt-2 text-primary">{activeWarningAlert?.memberName}</span>
               <br />
               <span className="text-base block mt-1 text-muted-foreground">has <strong className="text-amber-600">5 minutes</strong> remaining at</span>
               <span className="font-semibold text-muted-foreground mt-3 block italic text-sm border bg-muted/50 p-2 rounded">Station: {activeWarningAlert?.station.name}</span>
@@ -720,7 +720,7 @@ export function GlobalTimerNotifications() {
       <AlertDialog open={showBreakOverAlert} onOpenChange={setShowBreakOverAlert}>
         <AlertDialogContent className="border-4 border-amber-500 z-[10000] w-[95vw] max-w-2xl font-body">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-4xl text-amber-500 font-headline text-center animate-pulse uppercase tracking-tighter">
+            <AlertDialogTitle className="text-4xl text-amber-500 font-headline text-center animate-pulse uppercase tracking-tight">
               Break Time Over!
             </AlertDialogTitle>
             <Separator className="bg-amber-500/20 my-4" />
@@ -735,7 +735,7 @@ export function GlobalTimerNotifications() {
           
           <div className="flex justify-center mt-6">
             <Button 
-              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 px-8 font-black uppercase tracking-widest shadow-lg" 
+              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 px-8 font-bold uppercase tracking-normal shadow-lg" 
               onClick={handleAcknowledgeBreakOver}
             >
               Acknowledge & Reset

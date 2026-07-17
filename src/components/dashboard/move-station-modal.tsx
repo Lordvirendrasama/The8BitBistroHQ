@@ -69,18 +69,18 @@ export function MoveStationModal({ isOpen, onOpenChange, sourceStation, availabl
         <div className="py-4 space-y-4">
           <div className="bg-muted/30 p-3 rounded-lg border-2 border-dashed flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="font-mono text-[10px]">FROM</Badge>
-              <span className="font-black uppercase">{sourceStation.name}</span>
+              <Badge variant="secondary" className="font-mono text-sm">FROM</Badge>
+              <span className="font-bold uppercase">{sourceStation.name}</span>
             </div>
             <ArrowRightLeft className="h-4 w-4 opacity-30" />
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="font-mono text-[10px] border-primary/50 text-primary">TO</Badge>
-              <span className="font-black uppercase">{validTargets.find(s => s.id === targetId)?.name || '...'}</span>
+              <Badge variant="outline" className="font-mono text-sm border-primary/50 text-primary">TO</Badge>
+              <span className="font-bold uppercase">{validTargets.find(s => s.id === targetId)?.name || '...'}</span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Available {sourceStation.type === 'ps5' ? 'Consoles' : 'Tables'}</Label>
+            <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Available {sourceStation.type === 'ps5' ? 'Consoles' : 'Tables'}</Label>
             <RadioGroup value={targetId || ''} onValueChange={setTargetId} className="grid grid-cols-2 gap-2">
               {validTargets.map((station) => (
                 <Label
@@ -96,7 +96,7 @@ export function MoveStationModal({ isOpen, onOpenChange, sourceStation, availabl
                   <RadioGroupItem value={station.id} id={`target-${station.id}`} className="sr-only" />
                   <div className="flex flex-col items-center gap-1.5">
                     {station.type === 'ps5' ? <Gamepad2 className="h-5 w-5" /> : <Users className="h-5 w-5" />}
-                    <span className="font-black text-sm uppercase">{station.name}</span>
+                    <span className="font-bold text-sm uppercase">{station.name}</span>
                   </div>
                   {targetId === station.id && (
                     <div className="absolute top-1 right-1">
@@ -106,7 +106,7 @@ export function MoveStationModal({ isOpen, onOpenChange, sourceStation, availabl
                 </Label>
               ))}
               {validTargets.length === 0 && (
-                <div className="col-span-2 py-8 text-center text-xs text-muted-foreground border-2 border-dashed rounded-xl italic">
+                <div className="col-span-2 py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-xl italic">
                   No other {sourceStation.type === 'ps5' ? 'PS5s' : 'tables'} are currently available.
                 </div>
               )}
@@ -119,7 +119,7 @@ export function MoveStationModal({ isOpen, onOpenChange, sourceStation, availabl
           <Button 
             disabled={!targetId || isSubmitting} 
             onClick={handleMove}
-            className="flex-[2] font-black uppercase tracking-tight h-12 shadow-lg"
+            className="flex-[2] font-bold uppercase tracking-tight h-12 shadow-lg"
           >
             {isSubmitting ? 'Moving...' : 'Confirm Move'}
           </Button>

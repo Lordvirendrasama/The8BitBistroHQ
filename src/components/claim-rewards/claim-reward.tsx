@@ -130,7 +130,7 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
                         <SelectItem key={member.id} value={member.id}>
                         <div className="flex items-center justify-between w-full">
                             <span>{member.name}</span>
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Coins className="h-3 w-3 text-yellow-500" />
                                 {member.points.toLocaleString()}
                             </span>

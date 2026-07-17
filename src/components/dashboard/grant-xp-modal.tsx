@@ -115,7 +115,7 @@ export function GrantXpModal({ member, onGrantXp }: GrantXpModalProps) {
             <p className="text-3xl font-bold text-primary">
               {finalXpToGrant} XP
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               ({baseXp} base XP x {multiplier} multiplier)
             </p>
           </div>

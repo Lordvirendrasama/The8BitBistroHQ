@@ -146,7 +146,7 @@ export default function SettingsLogsPage() {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     {getLogIcon(log.type)}
-                    <Badge variant="outline" className={cn("font-bold text-[10px]", getLogBadgeVariant(log.type))}>
+                    <Badge variant="outline" className={cn("font-bold text-sm", getLogBadgeVariant(log.type))}>
                       {log.type.replace(/_/g, ' ')}
                     </Badge>
                   </div>
@@ -157,7 +157,7 @@ export default function SettingsLogsPage() {
                 <TableCell className="text-muted-foreground text-sm">
                     {log.user?.displayName || 'System'}
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground text-xs">
+                <TableCell className="text-right text-muted-foreground text-sm">
                   {format(new Date(log.timestamp), 'PPpp')}
                 </TableCell>
               </TableRow>

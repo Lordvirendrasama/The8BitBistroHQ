@@ -38,7 +38,7 @@ export function Leaderboard() {
     <Card>
       <CardHeader className="p-4">
         <CardTitle className="font-headline tracking-wide text-xl">Leaderboard</CardTitle>
-        <CardDescription className="text-xs">Top members by total XP.</CardDescription>
+        <CardDescription className="text-sm">Top members by total XP.</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         <Table>

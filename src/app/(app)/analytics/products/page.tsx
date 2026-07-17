@@ -162,7 +162,7 @@ export default function ProductAnalyticsPage() {
   }, [bills, dateRange, selectedDays, timeRange, gamingPackages]);
 
   if (billsLoading) {
-    return <div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse">Syncing Sales Metrics...</div>;
+    return <div className="flex h-screen items-center justify-center font-headline text-sm animate-pulse">Syncing Sales Metrics...</div>;
   }
 
   return (
@@ -172,11 +172,11 @@ export default function ProductAnalyticsPage() {
           <h1 className="font-headline text-4xl tracking-wider text-foreground">
             SALES & REWARDS
           </h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-[10px] tracking-widest">
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal">
             Unified performance audit for bistro menu and gaming packages.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={resetFilters} className="font-black uppercase text-[10px] border-2">
+        <Button variant="outline" size="sm" onClick={resetFilters} className="font-bold uppercase text-sm border-2">
           <FilterX className="mr-2 h-4 w-4" /> Reset Filters
         </Button>
       </div>
@@ -185,13 +185,13 @@ export default function ProductAnalyticsPage() {
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Custom Date Range</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Custom Date Range</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-[260px] h-10 justify-start text-left font-black uppercase text-[10px] border-2 bg-background",
+                      "w-[260px] h-10 justify-start text-left font-bold uppercase text-sm border-2 bg-background",
                       !dateRange && "text-muted-foreground"
                     )}
                   >
@@ -216,14 +216,14 @@ export default function ProductAnalyticsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Day of Week</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Day of Week</Label>
               <div className="flex bg-background border-2 rounded-md p-1 h-10">
                 {DAYS.map(day => (
                   <button
                     key={day}
                     onClick={() => handleDayToggle(day)}
                     className={cn(
-                      "px-2 text-[10px] font-black rounded transition-colors uppercase",
+                      "px-2 text-sm font-bold rounded transition-colors uppercase",
                       selectedDays.includes(day) 
                         ? "bg-primary text-white shadow-sm" 
                         : "hover:bg-muted text-muted-foreground"
@@ -236,31 +236,31 @@ export default function ProductAnalyticsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Time Range</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Time Range</Label>
               <div className="flex items-center gap-2 h-10 px-3 bg-background border-2 rounded-md">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <Select value={String(timeRange.start)} onValueChange={(v) => setTimeRange(p => ({ ...p, start: Number(v) }))}>
-                  <SelectTrigger className="w-[70px] h-7 border-none shadow-none focus:ring-0 font-bold text-[10px]">
+                  <SelectTrigger className="w-[70px] h-7 border-none shadow-none focus:ring-0 font-bold text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 24 }).map((_, i) => <SelectItem key={i} value={String(i)} className="text-xs font-bold">{i}:00</SelectItem>)}
+                    {Array.from({ length: 24 }).map((_, i) => <SelectItem key={i} value={String(i)} className="text-sm font-bold">{i}:00</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <span className="text-[10px] font-black uppercase opacity-40">to</span>
+                <span className="text-sm font-bold uppercase opacity-40">to</span>
                 <Select value={String(timeRange.end)} onValueChange={(v) => setTimeRange(p => ({ ...p, end: Number(v) }))}>
-                  <SelectTrigger className="w-[70px] h-7 border-none shadow-none focus:ring-0 font-bold text-[10px]">
+                  <SelectTrigger className="w-[70px] h-7 border-none shadow-none focus:ring-0 font-bold text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 24 }).map((_, i) => <SelectItem key={i} value={String(i)} className="text-xs font-bold">{i}:00</SelectItem>)}
+                    {Array.from({ length: 24 }).map((_, i) => <SelectItem key={i} value={String(i)} className="text-sm font-bold">{i}:00</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             
             <div className="flex items-center h-10">
-                <Badge variant="secondary" className="font-mono text-[10px] h-6 px-3 border uppercase font-black">
+                <Badge variant="secondary" className="font-mono text-sm h-6 px-3 border uppercase font-bold">
                     {stats.filteredBillsCount} Transactions
                 </Badge>
             </div>
@@ -270,10 +270,10 @@ export default function ProductAnalyticsPage() {
 
       <Tabs defaultValue="unified" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-8 h-12 bg-muted/20 p-1 border-2 border-dashed rounded-xl">
-          <TabsTrigger value="unified" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsTrigger value="unified" className="flex items-center gap-2 font-bold uppercase text-sm tracking-normal data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <LayoutGrid className="h-3.5 w-3.5" /> Unified Sales Audit
           </TabsTrigger>
-          <TabsTrigger value="rewards" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsTrigger value="rewards" className="flex items-center gap-2 font-bold uppercase text-sm tracking-normal data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Gift className="h-3.5 w-3.5" /> Loyalty Rewards
           </TabsTrigger>
         </TabsList>
@@ -284,37 +284,37 @@ export default function ProductAnalyticsPage() {
                 <ProductSalesChart bills={stats.filteredBills} gamingPackages={gamingPackages || []} />
                 <Card className="border-2 shadow-xl">
                     <CardHeader className="bg-muted/10 border-b">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                        <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
                             <TrendingUp className="text-primary h-5 w-5" />
                             Top Selling Menu Items
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Bistro Food & Beverage performance.</CardDescription>
+                        <CardDescription className="text-sm font-bold uppercase tracking-normal">Bistro Food & Beverage performance.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/20">
-                                    <TableHead className="font-black uppercase text-[10px] pl-6">Item</TableHead>
-                                    <TableHead className="text-center font-black uppercase text-[10px]">Sold</TableHead>
-                                    <TableHead className="text-right font-black uppercase text-[10px] pr-6">Revenue</TableHead>
+                                    <TableHead className="font-bold uppercase text-sm pl-6">Item</TableHead>
+                                    <TableHead className="text-center font-bold uppercase text-sm">Sold</TableHead>
+                                    <TableHead className="text-right font-bold uppercase text-sm pr-6">Revenue</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {stats.menu.slice(0, 10).map((item, idx) => (
                                     <TableRow key={idx} className="hover:bg-muted/5 transition-colors">
-                                        <TableCell className="font-bold text-xs uppercase pl-6 py-4 flex items-center gap-3">
+                                        <TableCell className="font-bold text-sm uppercase pl-6 py-4 flex items-center gap-3">
                                             {item.type === 'drink' ? <Coffee className="h-4 w-4 text-blue-500" /> : <Pizza className="h-4 w-4 text-orange-500" />}
                                             {item.name}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className="font-mono text-xs h-6">{item.quantity}</Badge>
+                                            <Badge variant="outline" className="font-mono text-sm h-6">{item.quantity}</Badge>
                                         </TableCell>
-                                        <TableCell className="text-right font-mono font-black text-sm pr-6 text-primary">₹{item.revenue.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right font-mono font-bold text-sm pr-6 text-primary">₹{item.revenue.toLocaleString()}</TableCell>
                                     </TableRow>
                                 ))}
                                 {stats.menu.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="h-64 text-center py-8 text-muted-foreground italic uppercase font-bold text-[10px] opacity-30 tracking-widest">No bistro sales found.</TableCell>
+                                        <TableCell colSpan={3} className="h-64 text-center py-8 text-muted-foreground italic uppercase font-bold text-sm opacity-30 tracking-normal">No bistro sales found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -326,20 +326,20 @@ export default function ProductAnalyticsPage() {
             {/* BOTTOM ROW: GAMING PACKAGE PERFORMANCE */}
             <Card className="border-2 shadow-xl">
                 <CardHeader className="bg-muted/10 border-b">
-                    <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                    <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
                         <Gamepad2 className="text-primary h-5 w-5" />
                         Gaming Package Performance
                     </CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Volume audit for console sessions and table passes.</CardDescription>
+                    <CardDescription className="text-sm font-bold uppercase tracking-normal">Volume audit for console sessions and table passes.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         {stats.packages.slice(0, 4).map(pkg => (
                             <div key={pkg.name} className="p-5 rounded-2xl border-2 bg-card shadow-sm group hover:border-primary/30 transition-all">
-                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{pkg.name}</p>
+                                <p className="text-sm text-muted-foreground uppercase font-bold tracking-normal">{pkg.name}</p>
                                 <div className="flex justify-between items-end mt-3">
-                                    <span className="text-3xl font-black font-mono tracking-tighter">₹{pkg.revenue.toLocaleString()}</span>
-                                    <Badge className="bg-primary/10 text-primary border-primary/20 font-black text-[9px] h-5">{pkg.quantity} SOLD</Badge>
+                                    <span className="text-3xl font-bold font-mono tracking-tight">₹{pkg.revenue.toLocaleString()}</span>
+                                    <Badge className="bg-primary/10 text-primary border-primary/20 font-bold text-sm h-5">{pkg.quantity} SOLD</Badge>
                                 </div>
                             </div>
                         ))}
@@ -347,22 +347,22 @@ export default function ProductAnalyticsPage() {
                     <Table className="border rounded-xl overflow-hidden">
                         <TableHeader>
                             <TableRow className="bg-muted/20">
-                                <TableHead className="font-black uppercase text-[10px] pl-6 py-4">Package Name</TableHead>
-                                <TableHead className="text-center font-black uppercase text-[10px]">Units Sold</TableHead>
-                                <TableHead className="text-right font-black uppercase text-[10px] pr-6">Total Revenue</TableHead>
+                                <TableHead className="font-bold uppercase text-sm pl-6 py-4">Package Name</TableHead>
+                                <TableHead className="text-center font-bold uppercase text-sm">Units Sold</TableHead>
+                                <TableHead className="text-right font-bold uppercase text-sm pr-6">Total Revenue</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {stats.packages.map((pkg, idx) => (
                                 <TableRow key={idx} className="hover:bg-muted/5 transition-colors">
-                                    <TableCell className="font-black uppercase text-xs pl-6 py-4">{pkg.name}</TableCell>
-                                    <TableCell className="text-center font-mono font-bold text-xs">{pkg.quantity}</TableCell>
-                                    <TableCell className="text-right font-mono text-lg font-black text-primary pr-6">₹{pkg.revenue.toLocaleString()}</TableCell>
+                                    <TableCell className="font-bold uppercase text-sm pl-6 py-4">{pkg.name}</TableCell>
+                                    <TableCell className="text-center font-mono font-bold text-sm">{pkg.quantity}</TableCell>
+                                    <TableCell className="text-right font-mono text-lg font-bold text-primary pr-6">₹{pkg.revenue.toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
                             {stats.packages.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="h-64 text-center py-8 text-muted-foreground italic uppercase font-bold text-[10px] opacity-30">No package data found.</TableCell>
+                                    <TableCell colSpan={3} className="h-64 text-center py-8 text-muted-foreground italic uppercase font-bold text-sm opacity-30">No package data found.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -378,20 +378,20 @@ export default function ProductAnalyticsPage() {
                 </div>
                 <Card className="border-2 shadow-xl h-fit">
                     <CardHeader className="bg-muted/10 border-b">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                        <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
                             <Gift className="text-yellow-500 h-5 w-5" />
                             Catalog Status
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Available rewards for members.</CardDescription>
+                        <CardDescription className="text-sm font-bold uppercase tracking-normal">Available rewards for members.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 space-y-3">
                         {rewards?.map(reward => (
                             <div key={reward.id} className="flex items-center justify-between p-3 border-2 border-dashed rounded-xl bg-card hover:bg-muted/5 transition-colors">
                                 <div>
-                                    <p className="font-black text-xs uppercase tracking-tight">{reward.name}</p>
-                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Min. Level {reward.levelRequired}</p>
+                                    <p className="font-bold text-sm uppercase tracking-tight">{reward.name}</p>
+                                    <p className="text-sm font-bold text-muted-foreground uppercase">Min. Level {reward.levelRequired}</p>
                                 </div>
-                                <Badge variant="outline" className="text-yellow-600 border-yellow-600/30 bg-yellow-500/5 font-mono font-black text-[10px]">
+                                <Badge variant="outline" className="text-yellow-600 border-yellow-600/30 bg-yellow-500/5 font-mono font-bold text-sm">
                                     {reward.pointsCost} PTS
                                 </Badge>
                             </div>

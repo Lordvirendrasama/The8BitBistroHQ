@@ -83,7 +83,7 @@ const HeaderTimer = ({ station }: { station: Station }) => {
       variant="outline" 
       size="sm" 
       className={cn(
-        "h-8 px-2 sm:px-3 gap-1.5 sm:gap-2 font-mono text-[10px] sm:text-[11px] transition-all shrink-0 font-bold rounded-md border-2",
+        "h-8 px-2 sm:px-3 gap-1.5 sm:gap-2 font-mono text-sm sm:text-sm transition-all shrink-0 font-bold rounded-md border-2",
         isUp ? "border-destructive text-destructive animate-pulse bg-destructive/5" : 
         isLow ? "border-amber-500 text-amber-600 bg-amber-500/5" : 
         "border-emerald-500 text-emerald-500 bg-emerald-500/5"
@@ -178,18 +178,18 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
     return (
       <div className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border bg-card border-primary/20 overflow-hidden relative shadow-sm">
         <div className="flex justify-between items-center w-full mb-1">
-          <span className={cn("text-[11px] sm:text-xs font-black font-mono tracking-tighter", isMet ? "text-emerald-600" : "text-foreground")}>
+          <span className={cn("text-sm sm:text-sm font-bold font-mono tracking-tight", isMet ? "text-emerald-600" : "text-foreground")}>
             ₹{Math.round(projectedRevenue).toLocaleString()}
           </span>
           
           <span className={cn(
-            "text-[9px] font-black font-mono",
+            "text-sm font-bold font-mono",
             isMet ? "text-emerald-600" : "text-primary"
           )}>
             {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
           </span>
 
-          <span className="text-[10px] font-black font-mono opacity-30">
+          <span className="text-sm font-bold font-mono opacity-30">
             ₹{Math.round(target).toLocaleString()}
           </span>
         </div>
@@ -212,18 +212,18 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
       <PopoverTrigger asChild>
         <button className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border transition-all bg-card hover:bg-muted/5 group border-primary/20 data-[state=open]:border-primary overflow-hidden relative shadow-sm">
           <div className="flex justify-between items-center w-full mb-1">
-            <span className={cn("text-[11px] sm:text-xs font-black font-mono tracking-tighter", isMet ? "text-emerald-600" : "text-foreground")}>
+            <span className={cn("text-sm sm:text-sm font-bold font-mono tracking-tight", isMet ? "text-emerald-600" : "text-foreground")}>
               ₹{Math.round(projectedRevenue).toLocaleString()}
             </span>
             
             <span className={cn(
-              "text-[9px] font-black font-mono",
+              "text-sm font-bold font-mono",
               isMet ? "text-emerald-600" : "text-primary"
             )}>
               {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
             </span>
 
-            <span className="text-[10px] font-black font-mono opacity-30">
+            <span className="text-sm font-bold font-mono opacity-30">
               ₹{Math.round(target).toLocaleString()}
             </span>
           </div>
@@ -241,7 +241,7 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0 overflow-hidden font-body border-2 shadow-2xl" align="center">
         <div className="p-4 bg-muted/20 border-b flex justify-between items-center">
-          <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+          <h4 className="font-bold text-sm uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
             <Settings2 className="h-3.5 w-3.5" />
             Strategy Engine
           </h4>
@@ -249,20 +249,20 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
             <Button 
               variant="outline" 
               size="sm" 
-              className="h-6 px-2 text-[8px] font-black uppercase tracking-tighter border-primary/20 hover:bg-primary hover:text-white"
+              className="h-6 px-2 text-sm font-bold uppercase tracking-tight border-primary/20 hover:bg-primary hover:text-white"
               onClick={() => { router.push('/billing-history'); }}
             >
               <History className="h-2.5 w-2.5 mr-1" />
               History
             </Button>
-            <Badge variant="outline" className="text-[8px] font-black border-primary/30 text-primary uppercase">Financial Pillars</Badge>
+            <Badge variant="outline" className="text-sm font-bold border-primary/30 text-primary uppercase">Financial Pillars</Badge>
           </div>
         </div>
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight">Fixed Overheads</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.overheads).toLocaleString()}</p>
+              <Label className="text-sm font-bold uppercase tracking-tight">Fixed Overheads</Label>
+              <p className="text-sm font-mono text-muted-foreground">₹{Math.round(breakdown.overheads).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeFixed || false} 
@@ -272,8 +272,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-primary">Loan Interest</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.loanInterest).toLocaleString()}</p>
+              <Label className="text-sm font-bold uppercase tracking-tight text-primary">Loan Interest</Label>
+              <p className="text-sm font-mono text-muted-foreground">₹{Math.round(breakdown.loanInterest).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeLoanInterest || false} 
@@ -283,8 +283,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-primary">Loan Principal</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.loanPrincipal).toLocaleString()}</p>
+              <Label className="text-sm font-bold uppercase tracking-tight text-primary">Loan Principal</Label>
+              <p className="text-sm font-mono text-muted-foreground">₹{Math.round(breakdown.loanPrincipal).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeLoanPrincipal || false} 
@@ -294,8 +294,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-emerald-600">Lease (Rent)</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.rent).toLocaleString()}</p>
+              <Label className="text-sm font-bold uppercase tracking-tight text-emerald-600">Lease (Rent)</Label>
+              <p className="text-sm font-mono text-muted-foreground">₹{Math.round(breakdown.rent).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeRent || false} 
@@ -305,8 +305,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
           </div>
           <div className="flex items-center justify-between group">
             <div className="space-y-0.5">
-              <Label className="text-[10px] font-black uppercase tracking-tight text-amber-600">Backlog Recovery</Label>
-              <p className="text-[9px] font-mono text-muted-foreground">₹{Math.round(breakdown.backlog).toLocaleString()}</p>
+              <Label className="text-sm font-bold uppercase tracking-tight text-amber-600">Backlog Recovery</Label>
+              <p className="text-sm font-mono text-muted-foreground">₹{Math.round(breakdown.backlog).toLocaleString()}</p>
             </div>
             <Switch 
               checked={globalSettings?.includeBacklog || false} 
@@ -317,8 +317,8 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
         </div>
         <div className={cn("p-4 border-t border-dashed", isMet ? "bg-emerald-500/10" : "bg-primary/5")}>
           <div className="flex justify-between items-center">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Survival Threshold</span>
-            <span className={cn("text-lg font-black font-mono", isMet ? "text-emerald-600" : "text-primary")}>₹{Math.round(target).toLocaleString()}</span>
+            <span className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Survival Threshold</span>
+            <span className={cn("text-lg font-bold font-mono", isMet ? "text-emerald-600" : "text-primary")}>₹{Math.round(target).toLocaleString()}</span>
           </div>
         </div>
       </PopoverContent>
@@ -378,11 +378,11 @@ const OwnerConsumptionHeader = () => {
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-10 sm:h-11 px-2 sm:px-4 gap-1 sm:gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-600 border border-indigo-500/30 rounded-lg font-black transition-all shrink-0 font-body"
+            className="h-10 sm:h-11 px-2 sm:px-4 gap-1 sm:gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-600 border border-indigo-500/30 rounded-lg font-bold transition-all shrink-0 font-body"
           >
             <Crown className="h-3 sm:h-4 w-3 sm:w-4 fill-current" />
             <div className="flex flex-col items-start leading-tight">
-              <span className="font-mono text-[10px] sm:text-sm">₹{dayTotal.toLocaleString()}</span>
+              <span className="font-mono text-sm sm:text-sm">₹{dayTotal.toLocaleString()}</span>
             </div>
           </Button>
         </PopoverTrigger>
@@ -390,20 +390,20 @@ const OwnerConsumptionHeader = () => {
           <div className="p-4 bg-indigo-600 text-white flex justify-between items-center">
             <div className="flex items-center gap-2">
               <Crown className="h-4 w-4 fill-current" />
-              <h4 className="font-black text-[10px] uppercase tracking-widest">Internal Ledger</h4>
+              <h4 className="font-bold text-sm uppercase tracking-normal">Internal Ledger</h4>
             </div>
             <div className="flex bg-white/10 p-0.5 rounded-lg border border-white/20">
                 <button 
                     onClick={() => setViewMode('day')}
                     className={cn(
-                        "px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all",
+                        "px-2 py-1 text-sm font-bold uppercase rounded-md transition-all",
                         viewMode === 'day' ? "bg-white text-indigo-600 shadow-sm" : "text-white/60 hover:text-white"
                     )}
                 >DAY</button>
                 <button 
                     onClick={() => setViewMode('month')}
                     className={cn(
-                        "px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all",
+                        "px-2 py-1 text-sm font-bold uppercase rounded-md transition-all",
                         viewMode === 'month' ? "bg-white text-indigo-600 shadow-sm" : "text-white/60 hover:text-white"
                     )}
                 >MONTH</button>
@@ -411,8 +411,8 @@ const OwnerConsumptionHeader = () => {
           </div>
           
           <div className="px-4 py-2 bg-indigo-50 border-b flex justify-between items-center">
-            <span className="text-[9px] font-black uppercase text-indigo-700/60">{viewMode === 'day' ? "Today's Total" : "Monthly Total"}</span>
-            <span className="font-mono font-black text-indigo-600 text-sm">₹{(viewMode === 'day' ? dayTotal : monthTotal).toLocaleString()}</span>
+            <span className="text-sm font-bold uppercase text-indigo-700/60">{viewMode === 'day' ? "Today's Total" : "Monthly Total"}</span>
+            <span className="font-mono font-bold text-indigo-600 text-sm">₹{(viewMode === 'day' ? dayTotal : monthTotal).toLocaleString()}</span>
           </div>
 
           <ScrollArea className="max-h-[300px]">
@@ -421,14 +421,14 @@ const OwnerConsumptionHeader = () => {
                 <div key={c.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group relative">
                   <div className="flex justify-between items-start pr-8">
                     <div className="space-y-0.5">
-                      <p className="text-[10px] font-black uppercase text-foreground leading-tight">
+                      <p className="text-sm font-bold uppercase text-foreground leading-tight">
                         {c.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
                       </p>
-                      <p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                      <p className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-1">
                         <Clock className="h-2.5 w-2.5" /> {format(new Date(c.timestamp), 'MMM d, p')} • By {c.addedBy.displayName}
                       </p>
                     </div>
-                    <span className="font-mono font-black text-xs text-indigo-600">₹{c.totalValue}</span>
+                    <span className="font-mono font-bold text-sm text-indigo-600">₹{c.totalValue}</span>
                   </div>
                   <Button 
                     variant="ghost" 
@@ -442,7 +442,7 @@ const OwnerConsumptionHeader = () => {
               )) : (
                 <div className="py-12 text-center space-y-2 opacity-30">
                   <Utensils className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">No Shadow Orders</p>
+                  <p className="text-sm font-bold uppercase tracking-normal">No Shadow Orders</p>
                 </div>
               )}
             </div>
@@ -450,7 +450,7 @@ const OwnerConsumptionHeader = () => {
           
           <div className="p-3 bg-muted/10 border-t border-dashed">
             <Button 
-              className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-[10px] tracking-widest shadow-lg"
+              className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase text-sm tracking-normal shadow-lg"
               onClick={handleAddNew}
             >
               <History className="mr-2 h-3.5 w-3.5" />
@@ -516,13 +516,13 @@ const TodayExpenses = () => {
       <Button 
         variant="outline" 
         size="sm" 
-        className="h-10 sm:h-11 px-2 sm:px-4 gap-1 sm:gap-2 bg-destructive/5 hover:bg-destructive/10 text-destructive border border-destructive/30 rounded-lg font-black transition-all shrink-0 font-body"
+        className="h-10 sm:h-11 px-2 sm:px-4 gap-1 sm:gap-2 bg-destructive/5 hover:bg-destructive/10 text-destructive border border-destructive/30 rounded-lg font-bold transition-all shrink-0 font-body"
         onClick={() => setIsOpen(true)}
       >
         <ShoppingCart className="h-3 sm:h-4 w-3 sm:w-4" />
         <div className="flex flex-col items-start leading-tight">
-          <span className="text-[8px] uppercase opacity-50 hidden sm:block">Operational Expense</span>
-          <span className="font-mono text-[10px] sm:text-sm">₹{total.toLocaleString()}</span>
+          <span className="text-sm uppercase opacity-50 hidden sm:block">Operational Expense</span>
+          <span className="font-mono text-sm sm:text-sm">₹{total.toLocaleString()}</span>
         </div>
       </Button>
 
@@ -533,7 +533,7 @@ const TodayExpenses = () => {
               <ShoppingCart className="text-destructive h-6 w-6" />
               Operational Expense
             </DialogTitle>
-            <DialogDescription className="font-bold text-xs uppercase text-muted-foreground mt-1">
+            <DialogDescription className="font-bold text-sm uppercase text-muted-foreground mt-1">
               Operational Expense for current business cycle: <span className="text-destructive">₹{total.toLocaleString()}</span>
             </DialogDescription>
           </DialogHeader>
@@ -542,24 +542,24 @@ const TodayExpenses = () => {
               {filteredToday.length > 0 ? (
                 <div className="space-y-2">
                   {filteredToday.map(e => (
-                    <div key={e.id} className="flex justify-between items-center text-xs p-2 border rounded bg-background">
+                    <div key={e.id} className="flex justify-between items-center text-sm p-2 border rounded bg-background">
                       <div className="min-w-0 pr-2">
                         <p className="font-bold truncate uppercase">{e.description}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-medium">{format(new Date(e.timestamp), 'p')}</p>
+                        <p className="text-sm text-muted-foreground uppercase font-medium">{format(new Date(e.timestamp), 'p')}</p>
                       </div>
                       <span className="font-mono font-bold text-destructive shrink-0">₹{e.amount}</span>
                     </div>
                   ))}
                 </div>
-              ) : <p className="text-center py-8 text-xs italic opacity-50 uppercase font-bold">No expenses for this business day.</p>}
+              ) : <p className="text-center py-8 text-sm italic opacity-50 uppercase font-bold">No expenses for this business day.</p>}
             </ScrollArea>
             {canEdit && (
               <div className="space-y-3 pt-2 border-t">
                 <div className="grid grid-cols-3 gap-2">
-                  <Input type="number" placeholder="Amt" value={amount} onChange={e => setAmount(e.target.value)} className="col-span-1 h-10 text-xs font-mono font-bold" />
-                  <Input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} className="col-span-2 h-10 text-xs uppercase font-bold" />
+                  <Input type="number" placeholder="Amt" value={amount} onChange={e => setAmount(e.target.value)} className="col-span-1 h-10 text-sm font-mono font-bold" />
+                  <Input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} className="col-span-2 h-10 text-sm uppercase font-bold" />
                 </div>
-                <Button onClick={handleAddExpense} disabled={isSubmitting} className="w-full font-bold h-11 bg-destructive hover:bg-destructive/90 text-white shadow-md uppercase text-xs tracking-wider">Record Expense</Button>
+                <Button onClick={handleAddExpense} disabled={isSubmitting} className="w-full font-bold h-11 bg-destructive hover:bg-destructive/90 text-white shadow-md uppercase text-sm tracking-wider">Record Expense</Button>
               </div>
             )}
           </div>
@@ -675,11 +675,11 @@ const OwnerStaffFoodHeader = ({
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-black transition-all shrink-0 font-body shadow-sm"
+            className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-bold transition-all shrink-0 font-body shadow-sm"
           >
             <Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <div className="flex flex-col items-start leading-tight">
-              <span className="font-mono text-[10px] sm:text-sm">₹{monthTotal.toLocaleString()}</span>
+              <span className="font-mono text-sm sm:text-sm">₹{monthTotal.toLocaleString()}</span>
             </div>
           </Button>
         </PopoverTrigger>
@@ -687,16 +687,16 @@ const OwnerStaffFoodHeader = ({
           <div className="p-4 bg-amber-600 text-white flex justify-between items-center">
             <div className="flex items-center gap-2">
               <Utensils className="h-4 w-4" />
-              <h4 className="font-black text-[10px] uppercase tracking-widest">Monthly Staff Food</h4>
+              <h4 className="font-bold text-sm uppercase tracking-normal">Monthly Staff Food</h4>
             </div>
           </div>
           
           <div className="px-3 py-2 bg-muted/20 border-b flex items-center justify-between gap-2">
-            <span className="text-[9px] font-black uppercase text-muted-foreground shrink-0">Filter Employee:</span>
+            <span className="text-sm font-bold uppercase text-muted-foreground shrink-0">Filter Employee:</span>
             <select 
               value={selectedEmployeeUsername} 
               onChange={(e) => setSelectedEmployeeUsername(e.target.value)}
-              className="bg-background border-2 border-primary/20 rounded px-1.5 py-0.5 text-[9px] font-black uppercase outline-none focus:border-primary/50 text-foreground cursor-pointer"
+              className="bg-background border-2 border-primary/20 rounded px-1.5 py-0.5 text-sm font-bold uppercase outline-none focus:border-primary/50 text-foreground cursor-pointer"
             >
               <option value="all">ALL EMPLOYEES</option>
               {allEmployees?.map(emp => (
@@ -709,28 +709,28 @@ const OwnerStaffFoodHeader = ({
 
           <div className="p-3 bg-amber-50/50 border-b grid grid-cols-3 gap-2 text-center">
             <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
-              <span className="text-[7px] font-black uppercase text-muted-foreground leading-none">Spent</span>
-              <span className="font-mono font-black text-amber-600 text-[11px] mt-1">₹{stats.totalSpent.toLocaleString()}</span>
+              <span className="text-sm font-bold uppercase text-muted-foreground leading-none">Spent</span>
+              <span className="font-mono font-bold text-amber-600 text-sm mt-1">₹{stats.totalSpent.toLocaleString()}</span>
             </div>
             <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
-              <span className="text-[7px] font-black uppercase text-muted-foreground leading-none">Orders</span>
-              <span className="font-mono font-black text-foreground text-[11px] mt-1">{stats.totalOrders}</span>
+              <span className="text-sm font-bold uppercase text-muted-foreground leading-none">Orders</span>
+              <span className="font-mono font-bold text-foreground text-sm mt-1">{stats.totalOrders}</span>
             </div>
             <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
               {selectedEmployeeUsername === 'all' ? (
                 <>
-                  <span className="text-[7px] font-black uppercase text-amber-600 leading-none">Pending Approval</span>
-                  <span className="font-mono font-black text-amber-600 text-[11px] mt-1">{overallPendingCount}</span>
+                  <span className="text-sm font-bold uppercase text-amber-600 leading-none">Pending Approval</span>
+                  <span className="font-mono font-bold text-amber-600 text-sm mt-1">{overallPendingCount}</span>
                 </>
               ) : stats.allowance !== null ? (
                 <>
-                  <span className="text-[7px] font-black uppercase text-emerald-600 leading-none">Allowance Bal</span>
-                  <span className="font-mono font-black text-emerald-600 text-[11px] mt-1">₹{stats.allowance.toLocaleString()}</span>
+                  <span className="text-sm font-bold uppercase text-emerald-600 leading-none">Allowance Bal</span>
+                  <span className="font-mono font-bold text-emerald-600 text-sm mt-1">₹{stats.allowance.toLocaleString()}</span>
                 </>
               ) : (
                 <>
-                  <span className="text-[7px] font-black uppercase text-muted-foreground leading-none">Avg Spent</span>
-                  <span className="font-mono font-black text-foreground text-[11px] mt-1">₹{stats.avgSpent.toLocaleString()}</span>
+                  <span className="text-sm font-bold uppercase text-muted-foreground leading-none">Avg Spent</span>
+                  <span className="font-mono font-bold text-foreground text-sm mt-1">₹{stats.avgSpent.toLocaleString()}</span>
                 </>
               )}
             </div>
@@ -746,22 +746,22 @@ const OwnerStaffFoodHeader = ({
                     className="p-3 bg-card hover:bg-muted/5 transition-colors cursor-pointer flex justify-between items-center group"
                   >
                     <div className="space-y-0.5">
-                      <p className="text-[10px] font-black uppercase text-foreground group-hover:text-primary transition-colors">
+                      <p className="text-sm font-bold uppercase text-foreground group-hover:text-primary transition-colors">
                         {emp.displayName}
                       </p>
-                      <p className="text-[8px] font-bold text-muted-foreground uppercase">
+                      <p className="text-sm font-bold text-muted-foreground uppercase">
                         Quota: ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()} • {count} orders
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       {pendingCount > 0 && (
-                        <span className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[7px] font-black uppercase px-1.5 py-0.5 rounded">
+                        <span className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-sm font-bold uppercase px-1.5 py-0.5 rounded">
                           {pendingCount} Pending
                         </span>
                       )}
                       <div className="text-right">
-                        <p className="font-mono font-black text-xs text-amber-600">₹{spent.toLocaleString()}</p>
-                        <p className="text-[7px] text-muted-foreground font-bold uppercase">This Month</p>
+                        <p className="font-mono font-bold text-sm text-amber-600">₹{spent.toLocaleString()}</p>
+                        <p className="text-sm text-muted-foreground font-bold uppercase">This Month</p>
                       </div>
                     </div>
                   </div>
@@ -774,24 +774,24 @@ const OwnerStaffFoodHeader = ({
                 {filteredOrders.length > 0 ? filteredOrders.map((o) => (
                   <div key={o.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group relative flex justify-between items-center">
                     <div className="space-y-0.5 min-w-0 pr-2">
-                      <p className="text-[10px] font-black uppercase text-foreground leading-tight truncate">
+                      <p className="text-sm font-bold uppercase text-foreground leading-tight truncate">
                         {o.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
                       </p>
-                      <p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                      <p className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-1">
                         <Clock className="h-2.5 w-2.5" /> {format(new Date(o.timestamp), 'MMM d, p')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-mono font-black text-xs text-amber-600">₹{o.totalAmount}</span>
+                      <span className="font-mono font-bold text-sm text-amber-600">₹{o.totalAmount}</span>
                       {o.approved ? (
-                        <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[8px] font-black uppercase px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                        <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-sm font-bold uppercase px-1.5 py-0.5 rounded flex items-center gap-0.5">
                           <CheckCircle2 className="h-2.5 w-2.5 fill-current" /> Approved
                         </span>
                       ) : (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-6 px-2 text-[8px] font-black uppercase border-amber-500/30 text-amber-600 bg-amber-500/5 hover:bg-amber-500 hover:text-white animate-pulse"
+                          className="h-6 px-2 text-sm font-bold uppercase border-amber-500/30 text-amber-600 bg-amber-500/5 hover:bg-amber-500 hover:text-white animate-pulse"
                           onClick={() => handleApproveOrder(o.id!)}
                         >
                           Approve
@@ -802,7 +802,7 @@ const OwnerStaffFoodHeader = ({
                 )) : (
                   <div className="py-12 text-center space-y-2 opacity-30">
                     <Utensils className="h-8 w-8 mx-auto text-muted-foreground" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">No Staff Food Recorded</p>
+                    <p className="text-sm font-bold uppercase tracking-normal">No Staff Food Recorded</p>
                   </div>
                 )}
               </div>
@@ -812,7 +812,7 @@ const OwnerStaffFoodHeader = ({
           {showAllowance && (
             <div className="p-3 bg-muted/10 border-t border-dashed">
               <Button 
-                className="w-full h-10 bg-amber-600 hover:bg-amber-700 text-white font-black uppercase text-[10px] tracking-widest shadow-lg"
+                className="w-full h-10 bg-amber-600 hover:bg-amber-700 text-white font-bold uppercase text-sm tracking-normal shadow-lg"
                 onClick={() => setIsModalOpen(true)}
               >
                 <Utensils className="mr-2 h-3.5 w-3.5" />
@@ -854,11 +854,11 @@ const StaffFoodHeaderButton = ({
       <Button 
         variant="outline" 
         size="sm" 
-        className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-black transition-all shrink-0 font-body shadow-sm"
+        className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-bold transition-all shrink-0 font-body shadow-sm"
         onClick={() => setIsModalOpen(true)}
       >
         <Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-        <span className="text-[10px] sm:text-xs uppercase font-black">Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})</span>
+        <span className="text-sm sm:text-sm uppercase font-bold">Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})</span>
       </Button>
 
       <StaffFoodModal
@@ -908,7 +908,7 @@ const OwnerTaskDropdown = () => {
         <Button variant="outline" size="icon" className="relative h-8 w-8 rounded-lg border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all">
           <ListTodo className="h-4 w-4 text-primary" />
           {pendingTasks.length > 0 && (
-            <Badge variant="destructive" className="absolute -right-2 -top-2 h-4 min-w-[16px] p-0 flex items-center justify-center text-[8px] rounded-full ring-2 ring-background font-black">
+            <Badge variant="destructive" className="absolute -right-2 -top-2 h-4 min-w-[16px] p-0 flex items-center justify-center text-sm rounded-full ring-2 ring-background font-bold">
               {pendingTasks.length}
             </Badge>
           )}
@@ -918,9 +918,9 @@ const OwnerTaskDropdown = () => {
         <div className="p-4 bg-muted/20 border-b flex justify-between items-center">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Owner Checklist</h4>
+            <h4 className="font-bold text-sm uppercase tracking-normal text-muted-foreground">Owner Checklist</h4>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/owner-tasks')} className="h-6 text-[8px] font-black uppercase tracking-tighter">View All</Button>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/owner-tasks')} className="h-6 text-sm font-bold uppercase tracking-tight">View All</Button>
         </div>
         
         <ScrollArea className="h-[350px]">
@@ -937,7 +937,7 @@ const OwnerTaskDropdown = () => {
                   <div className="flex-1 min-w-0">
                     <Label 
                       htmlFor={`header-task-${task.id}`}
-                      className="text-xs font-black uppercase tracking-tight leading-tight cursor-pointer group-hover:text-primary transition-colors block truncate"
+                      className="text-sm font-bold uppercase tracking-tight leading-tight cursor-pointer group-hover:text-primary transition-colors block truncate"
                     >
                       {task.title}
                     </Label>
@@ -946,7 +946,7 @@ const OwnerTaskDropdown = () => {
                         "h-1.5 w-1.5 rounded-full shrink-0",
                         task.priority === 'high' ? "bg-destructive" : task.priority === 'medium' ? "bg-amber-500" : "bg-blue-500"
                       )} />
-                      <span className="text-[8px] font-bold text-muted-foreground uppercase">{task.category || 'Strategic'}</span>
+                      <span className="text-sm font-bold text-muted-foreground uppercase">{task.category || 'Strategic'}</span>
                     </div>
                   </div>
                 </div>
@@ -954,7 +954,7 @@ const OwnerTaskDropdown = () => {
             )) : (
               <div className="p-8 text-center space-y-2 opacity-30">
                 <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Horizon Clear</p>
+                <p className="text-sm font-bold uppercase tracking-normal">Horizon Clear</p>
               </div>
             )}
           </div>
@@ -964,7 +964,7 @@ const OwnerTaskDropdown = () => {
           <Button 
             variant="outline" 
             size="sm" 
-            className="w-full h-9 text-[10px] font-black uppercase tracking-[0.2em] gap-2 border-2"
+            className="w-full h-9 text-sm font-bold uppercase tracking-[0.2em] gap-2 border-2"
             onClick={() => router.push('/owner-tasks')}
           >
             Mission Control Center
@@ -1196,13 +1196,13 @@ export function AppHeader({
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex flex-col items-end gap-0.5 mr-1 shrink-0 hover:bg-muted/10 p-1 rounded transition-colors text-right">
-                                    <p className="text-[7px] sm:text-[8px] font-black uppercase text-muted-foreground tracking-widest leading-none">Live Total</p>
-                                    <p className="text-[10px] sm:text-xs font-black font-mono text-emerald-600 leading-none">₹{Math.round(liveMonthRevenue).toLocaleString()}</p>
+                                    <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground tracking-normal leading-none">Live Total</p>
+                                    <p className="text-sm sm:text-sm font-bold font-mono text-emerald-600 leading-none">₹{Math.round(liveMonthRevenue).toLocaleString()}</p>
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-56 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
                                 <div className="p-3 bg-muted/20 border-b">
-                                    <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <h4 className="font-bold text-sm uppercase tracking-normal text-muted-foreground flex items-center gap-2">
                                         <Activity className="h-3.5 w-3.5 text-emerald-600" />
                                         {monthName} Performance
                                     </h4>
@@ -1210,10 +1210,10 @@ export function AppHeader({
                                 <div className="p-4 space-y-3">
                                     <div className="flex justify-between items-center pb-2 border-b border-dashed">
                                         <div className="space-y-0.5">
-                                            <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Today's Forecast</span>
-                                            <p className="text-[8px] text-primary/70 uppercase font-black">Live Projection</p>
+                                            <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Today's Forecast</span>
+                                            <p className="text-sm text-primary/70 uppercase font-bold">Live Projection</p>
                                         </div>
-                                        <span className="text-sm font-black font-mono text-primary tabular-nums">
+                                        <span className="text-sm font-bold font-mono text-primary tabular-nums">
                                             ₹{Math.round(projectedRevenue).toLocaleString()}
                                         </span>
                                     </div>
@@ -1221,36 +1221,36 @@ export function AppHeader({
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center opacity-60">
                                             <div className="space-y-0.5">
-                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Settled Average</span>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Past Performance</p>
+                                                <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Settled Average</span>
+                                                <p className="text-sm text-muted-foreground uppercase font-bold">Past Performance</p>
                                             </div>
-                                            <span className="text-xs font-black font-mono tabular-nums">
+                                            <span className="text-sm font-bold font-mono tabular-nums">
                                                 ₹{Math.round(settledPastAverage).toLocaleString()}
                                             </span>
                                         </div>
                                         
                                         <div className="flex justify-between items-center">
                                             <div className="space-y-0.5">
-                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Projected Average</span>
-                                                <p className="text-[8px] text-emerald-600/70 uppercase font-black">Forecast Based</p>
+                                                <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Projected Average</span>
+                                                <p className="text-sm text-emerald-600/70 uppercase font-bold">Forecast Based</p>
                                             </div>
-                                            <span className="text-sm font-black font-mono text-emerald-600 tabular-nums">
+                                            <span className="text-sm font-bold font-mono text-emerald-600 tabular-nums">
                                                 ₹{Math.round(forecastedMonthlyAverage).toLocaleString()}
                                             </span>
                                         </div>
 
                                         <div className="flex justify-between items-center pt-2 border-t border-dashed">
                                             <div className="space-y-0.5">
-                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
-                                                <p className="text-[8px] text-primary/70 uppercase font-black">Month Forecast</p>
+                                                <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
+                                                <p className="text-sm text-primary/70 uppercase font-bold">Month Forecast</p>
                                             </div>
-                                            <span className="text-sm font-black font-mono text-primary tabular-nums">
+                                            <span className="text-sm font-bold font-mono text-primary tabular-nums">
                                                 ₹{Math.round(forecastedMonthEnd).toLocaleString()}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="pt-2 border-t border-dashed">
-                                        <p className="text-[8px] text-muted-foreground uppercase font-black tracking-widest leading-relaxed">
+                                        <p className="text-sm text-muted-foreground uppercase font-bold tracking-normal leading-relaxed">
                                             Calculated across {totalDaysInMonth} days using month-to-date average as baseline.
                                         </p>
                                     </div>
@@ -1285,7 +1285,7 @@ export function AppHeader({
                             <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-primary rounded-lg" onClick={() => setTasksVisible(true)}>
                               <Bell className="h-4 w-4" />
                               {uncompletedTaskCount > 0 && (
-                                <Badge variant="destructive" className="absolute -right-1 -top-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] rounded-full">{uncompletedTaskCount}</Badge>
+                                <Badge variant="destructive" className="absolute -right-1.5 -top-1.5 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold">{uncompletedTaskCount}</Badge>
                               )}
                             </Button>
                             <AdminNotifications />
@@ -1307,17 +1307,17 @@ export function AppHeader({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 p-1.5 font-body">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-bold opacity-50 px-2 pb-1.5">Current Operator</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-sm uppercase font-bold opacity-50 px-2 pb-1.5">Current Operator</DropdownMenuLabel>
                             <div className="flex items-center gap-2 px-2 py-2 mb-1.5 bg-muted/30 rounded-md">
                                 <p className="text-sm font-bold truncate">{user?.displayName}</p>
-                                <Badge variant="outline" className="text-[8px] uppercase h-4 font-bold">{user?.role}</Badge>
+                                <Badge variant="outline" className="text-sm uppercase h-4 font-bold">{user?.role}</Badge>
                             </div>
                             {currentEmployee && (
                               <div className="flex items-center justify-between px-2 py-1.5 mb-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-                                <span className="text-[9px] font-black uppercase text-emerald-600 tracking-wider flex items-center gap-1.5">
+                                <span className="text-sm font-bold uppercase text-emerald-600 tracking-wider flex items-center gap-1.5">
                                   <Utensils className="h-3 w-3" /> Meal Quota
                                 </span>
-                                <span className="text-xs font-mono font-black text-emerald-600">
+                                <span className="text-sm font-mono font-bold text-emerald-600">
                                   ₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()}
                                 </span>
                               </div>
@@ -1326,13 +1326,13 @@ export function AppHeader({
                             <DropdownMenuItem onClick={() => { 
                                 announceGlobally("This is a test");
                                 toast({ title: "Audio Test Triggered", description: "You should hear 'This is a test'." });
-                            }} className="font-bold text-xs uppercase h-10 cursor-pointer">
+                            }} className="font-bold text-sm uppercase h-10 cursor-pointer">
                                 <Volume2 className="mr-2 h-4 w-4 text-primary" /> Test Audio Output
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleSwitchUser} className="font-bold text-xs uppercase h-10 cursor-pointer">
+                            <DropdownMenuItem onClick={handleSwitchUser} className="font-bold text-sm uppercase h-10 cursor-pointer">
                                 <ShieldCheck className="mr-2 h-4 w-4" /> Switch Profile
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive font-bold text-xs uppercase h-10 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                            <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive font-bold text-sm uppercase h-10 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
                                 <LogOut className="mr-2 h-4 w-4" /> 
                                 End Shift & Exit
                             </DropdownMenuItem>

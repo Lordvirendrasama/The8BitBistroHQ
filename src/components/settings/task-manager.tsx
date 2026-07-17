@@ -271,7 +271,7 @@ export function TaskManager() {
             variant: 'destructive',
             title: 'Import Validation Failed',
             description: (
-              <div className="whitespace-pre-line text-xs font-mono mt-1 text-left">
+              <div className="whitespace-pre-line text-sm font-mono mt-1 text-left">
                 {displayedErrors}
                 {remainingCount > 0 && `\n...and ${remainingCount} more error(s)`}
               </div>
@@ -397,7 +397,7 @@ export function TaskManager() {
             <div className="flex items-center gap-2">
               <CardTitle className="font-headline tracking-wide text-2xl">Manage Shift Tasks</CardTitle>
               {tasks && (
-                <Badge variant="secondary" className="font-mono text-xs font-bold px-2 py-0.5 rounded-full">
+                <Badge variant="secondary" className="font-mono text-sm font-bold px-2 py-0.5 rounded-full">
                   {tasks.length}
                 </Badge>
               )}
@@ -427,16 +427,16 @@ export function TaskManager() {
         {selectedTaskIds.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 mb-4 bg-muted/20 border-2 border-dashed rounded-xl animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="font-mono text-xs font-bold px-2 py-0.5 rounded-full bg-muted/50">
+              <Badge variant="secondary" className="font-mono text-sm font-bold px-2 py-0.5 rounded-full bg-muted/50">
                 {selectedTaskIds.length}
               </Badge>
-              <span className="text-xs font-black uppercase text-muted-foreground tracking-wider">Tasks Selected</span>
+              <span className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Tasks Selected</span>
             </div>
             
             <div className="flex items-center gap-3">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="text-xs font-bold uppercase tracking-tight gap-1.5 border-2">
+                  <Button size="sm" variant="outline" className="text-sm font-bold uppercase tracking-tight gap-1.5 border-2">
                     <User className="h-3.5 w-3.5" /> Assign to...
                   </Button>
                 </PopoverTrigger>
@@ -445,7 +445,7 @@ export function TaskManager() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="w-full justify-start font-bold uppercase text-[10px] text-muted-foreground"
+                      className="w-full justify-start font-bold uppercase text-sm text-muted-foreground"
                       onClick={() => handleBulkAssign([])}
                     >
                       All Employees (Unassigned)
@@ -455,7 +455,7 @@ export function TaskManager() {
                         key={emp.id}
                         variant="ghost" 
                         size="sm" 
-                        className="w-full justify-start font-bold text-xs"
+                        className="w-full justify-start font-bold text-sm"
                         onClick={() => handleBulkAssign([emp.username])}
                       >
                         {emp.displayName} ({emp.username})
@@ -467,7 +467,7 @@ export function TaskManager() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="text-xs font-bold uppercase tracking-tight gap-1.5 border-2">
+                  <Button size="sm" variant="outline" className="text-sm font-bold uppercase tracking-tight gap-1.5 border-2">
                     <Clock className="h-3.5 w-3.5" /> Change Shift...
                   </Button>
                 </PopoverTrigger>
@@ -476,7 +476,7 @@ export function TaskManager() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="w-full justify-start font-bold text-xs"
+                      className="w-full justify-start font-bold text-sm"
                       onClick={() => handleBulkChangeType('opening')}
                     >
                       <Sun className="h-3.5 w-3.5 mr-1.5 text-blue-500" /> Opening Shift
@@ -484,7 +484,7 @@ export function TaskManager() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="w-full justify-start font-bold text-xs"
+                      className="w-full justify-start font-bold text-sm"
                       onClick={() => handleBulkChangeType('closing')}
                     >
                       <Moon className="h-3.5 w-3.5 mr-1.5 text-zinc-400" /> Closing Shift
@@ -492,7 +492,7 @@ export function TaskManager() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="w-full justify-start font-bold text-xs"
+                      className="w-full justify-start font-bold text-sm"
                       onClick={() => handleBulkChangeType('both')}
                     >
                       <PlusCircle className="h-3.5 w-3.5 mr-1.5 text-primary" /> Both Shifts
@@ -503,7 +503,7 @@ export function TaskManager() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="text-xs font-bold uppercase tracking-tight gap-1.5">
+                  <Button size="sm" variant="destructive" className="text-sm font-bold uppercase tracking-tight gap-1.5">
                     <Trash className="h-3.5 w-3.5" /> Delete
                   </Button>
                 </AlertDialogTrigger>
@@ -598,14 +598,14 @@ export function TaskManager() {
                             {task.assignedTo.map(username => {
                               const emp = employees?.find(e => e.username === username);
                               return (
-                                <Badge key={username} variant="outline" className="text-[8px] h-4 bg-muted/40 font-bold uppercase tracking-wider">
+                                <Badge key={username} variant="outline" className="text-sm h-4 bg-muted/40 font-bold uppercase tracking-wider">
                                   {emp ? emp.displayName : username}
                                 </Badge>
                               );
                             })}
                           </div>
                         ) : (
-                          <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter mt-1">All Employees</p>
+                          <p className="text-sm text-muted-foreground uppercase font-bold tracking-tight mt-1">All Employees</p>
                         )}
                       </div>
                     </TableCell>
@@ -614,7 +614,7 @@ export function TaskManager() {
                           variant={(task.shiftType || task.type) === 'opening' || (task.shiftType || task.type) === 'start-of-day' ? 'default' : 'secondary'} 
                           className={cn(((task.shiftType || task.type) === 'opening' || (task.shiftType || task.type) === 'start-of-day') && 'bg-blue-500 hover:bg-blue-600')}
                         >
-                        <div className="flex items-center gap-2 font-bold uppercase text-[9px]">
+                        <div className="flex items-center gap-2 font-bold uppercase text-sm">
                             {((task.shiftType || task.type) === 'opening' || (task.shiftType || task.type) === 'start-of-day') ? (
                               <Sun className="h-3.5 w-3.5" />
                             ) : ((task.shiftType || task.type) === 'closing' || (task.shiftType || task.type) === 'end-of-day') ? (

@@ -116,7 +116,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
             <Utensils className="h-6 w-6" />
             Place Staff Food Order
           </DialogTitle>
-          <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <DialogDescription className="text-sm font-bold uppercase tracking-normal text-muted-foreground">
             Order meals against your monthly allowance. Placed orders automatically deduct from your quota.
           </DialogDescription>
         </DialogHeader>
@@ -130,7 +130,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                 variant={activeTab === 'menu' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveTab('menu')}
-                className="flex-1 font-black uppercase text-[10px] tracking-tight h-8 rounded-lg"
+                className="flex-1 font-bold uppercase text-sm tracking-tight h-8 rounded-lg"
               >
                 <Utensils className="mr-1.5 h-3.5 w-3.5" />
                 Order Menu
@@ -139,12 +139,12 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                 variant={activeTab === 'history' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveTab('history')}
-                className="flex-1 font-black uppercase text-[10px] tracking-tight h-8 rounded-lg relative"
+                className="flex-1 font-bold uppercase text-sm tracking-tight h-8 rounded-lg relative"
               >
                 <History className="mr-1.5 h-3.5 w-3.5" />
                 Order History
                 {sortedOrders.length > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[8px] font-black">{sortedOrders.length}</Badge>
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-sm font-bold">{sortedOrders.length}</Badge>
                 )}
               </Button>
             </div>
@@ -156,7 +156,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
                       placeholder="SEARCH MENU ITEMS..."
-                      className="pl-8 h-9 bg-background border-2 font-black uppercase text-[10px] tracking-tight"
+                      className="pl-8 h-9 bg-background border-2 font-bold uppercase text-sm tracking-tight"
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
@@ -165,12 +165,12 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
 
                 <ScrollArea className="flex-1 p-4">
                   {loadingItems ? (
-                    <div className="py-20 text-center font-headline text-xs animate-pulse opacity-50">Syncing Menu...</div>
+                    <div className="py-20 text-center font-headline text-sm animate-pulse opacity-50">Syncing Menu...</div>
                   ) : Object.keys(menuByCategory).length > 0 ? (
                     <div className="space-y-6">
                       {Object.entries(menuByCategory).map(([category, items]) => (
                         <div key={category} className="space-y-2">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary/70 px-1">{category}</h4>
+                          <h4 className="text-sm font-bold uppercase tracking-normal text-primary/70 px-1">{category}</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {items.map(item => (
                               <div
@@ -178,8 +178,8 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                                 onClick={() => handleAddItem(item.id, item.name, item.price)}
                                 className="flex items-center justify-between p-3 rounded-lg border-2 bg-background hover:bg-primary/5 hover:border-primary/40 cursor-pointer transition-all active:scale-[0.98] select-none group"
                               >
-                                <span className="font-bold text-xs uppercase tracking-tight text-foreground group-hover:text-primary transition-colors">{item.name}</span>
-                                <span className="font-mono font-black text-xs text-muted-foreground">₹{item.price}</span>
+                                <span className="font-bold text-sm uppercase tracking-tight text-foreground group-hover:text-primary transition-colors">{item.name}</span>
+                                <span className="font-mono font-bold text-sm text-muted-foreground">₹{item.price}</span>
                               </div>
                             ))}
                           </div>
@@ -187,20 +187,20 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                       ))}
                     </div>
                   ) : (
-                    <div className="py-20 text-center text-xs uppercase font-black tracking-widest opacity-20 italic">No matching food items found</div>
+                    <div className="py-20 text-center text-sm uppercase font-bold tracking-normal opacity-20 italic">No matching food items found</div>
                   )}
                 </ScrollArea>
               </>
             ) : (
               <ScrollArea className="flex-1 p-4 bg-muted/5">
                 {loadingOrders ? (
-                  <div className="py-20 text-center font-headline text-xs animate-pulse opacity-50">Syncing History...</div>
+                  <div className="py-20 text-center font-headline text-sm animate-pulse opacity-50">Syncing History...</div>
                 ) : sortedOrders.length > 0 ? (
                   <div className="space-y-3">
                     {sortedOrders.map((order, idx) => (
                       <div key={order.id || idx} className="p-3.5 bg-background border-2 border-foreground/5 rounded-xl space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-mono text-muted-foreground">
+                          <span className="text-sm font-mono text-muted-foreground">
                             {new Date(order.timestamp).toLocaleString(undefined, {
                               month: 'short',
                               day: 'numeric',
@@ -209,14 +209,14 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                               hour12: true
                             })}
                           </span>
-                          <span className="font-mono font-black text-xs text-emerald-500">₹{order.totalAmount}</span>
+                          <span className="font-mono font-bold text-sm text-emerald-500">₹{order.totalAmount}</span>
                         </div>
                         <Separator className="opacity-50" />
                         <div className="space-y-1">
                           {order.items?.map((item, itemIdx) => (
-                            <div key={itemIdx} className="flex justify-between text-[11px] font-bold">
+                            <div key={itemIdx} className="flex justify-between text-sm font-bold">
                               <span className="text-foreground/80 uppercase">
-                                {item.name} <span className="text-[9px] text-muted-foreground">x{item.quantity}</span>
+                                {item.name} <span className="text-sm text-muted-foreground">x{item.quantity}</span>
                               </span>
                               <span className="font-mono text-muted-foreground">₹{item.price * item.quantity}</span>
                             </div>
@@ -226,7 +226,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                     ))}
                   </div>
                 ) : (
-                  <div className="py-20 text-center text-xs uppercase font-black tracking-widest opacity-20 italic">No past orders recorded</div>
+                  <div className="py-20 text-center text-sm uppercase font-bold tracking-normal opacity-20 italic">No past orders recorded</div>
                 )}
               </ScrollArea>
             )}
@@ -237,12 +237,12 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
             {/* Employee Allowance Summary */}
             <div className="p-4 bg-muted/20 border-b space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase text-muted-foreground">Ordering For</span>
-                <span className="font-black text-xs uppercase text-foreground">{employee.displayName}</span>
+                <span className="text-sm font-bold uppercase text-muted-foreground">Ordering For</span>
+                <span className="font-bold text-sm uppercase text-foreground">{employee.displayName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase text-muted-foreground">Current Allowance</span>
-                <span className="font-mono font-black text-sm text-emerald-600">₹{quota.toLocaleString()}</span>
+                <span className="text-sm font-bold uppercase text-muted-foreground">Current Allowance</span>
+                <span className="font-mono font-bold text-sm text-emerald-600">₹{quota.toLocaleString()}</span>
               </div>
             </div>
 
@@ -250,7 +250,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
             <div className="flex-1 overflow-hidden flex flex-col">
               <div className="p-3 bg-muted/10 border-b flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4 text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Order items ({orderItems.reduce((s, i) => s + i.quantity, 0)})</span>
+                <span className="text-sm font-bold uppercase tracking-normal">Order items ({orderItems.reduce((s, i) => s + i.quantity, 0)})</span>
               </div>
               <ScrollArea className="flex-1">
                 {orderItems.length > 0 ? (
@@ -260,8 +260,8 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                         <TableRow key={item.itemId} className="hover:bg-transparent border-b">
                           <TableCell className="py-3 pl-3 pr-1">
                             <div className="flex flex-col gap-0.5">
-                              <span className="font-bold text-xs uppercase tracking-tight leading-tight">{item.name}</span>
-                              <span className="font-mono text-[10px] text-muted-foreground">₹{item.price} × {item.quantity}</span>
+                              <span className="font-bold text-sm uppercase tracking-tight leading-tight">{item.name}</span>
+                              <span className="font-mono text-sm text-muted-foreground">₹{item.price} × {item.quantity}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-3 px-1 text-center w-24">
@@ -274,7 +274,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                               >
                                 <MinusCircle className="h-4 w-4" />
                               </Button>
-                              <span className="font-mono font-bold text-xs">{item.quantity}</span>
+                              <span className="font-mono font-bold text-sm">{item.quantity}</span>
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -285,7 +285,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                               </Button>
                             </div>
                           </TableCell>
-                          <TableCell className="py-3 pl-1 pr-3 text-right font-mono font-black text-xs w-20">
+                          <TableCell className="py-3 pl-1 pr-3 text-right font-mono font-bold text-sm w-20">
                             ₹{item.price * item.quantity}
                           </TableCell>
                         </TableRow>
@@ -293,40 +293,40 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                     </TableBody>
                   </Table>
                 ) : (
-                  <div className="py-20 text-center text-[10px] font-black uppercase tracking-widest opacity-20 italic">Order cart is empty</div>
+                  <div className="py-20 text-center text-sm font-bold uppercase tracking-normal opacity-20 italic">Order cart is empty</div>
                 )}
               </ScrollArea>
             </div>
 
             {/* Calculations & Order Button */}
             <div className="p-4 bg-muted/20 border-t space-y-4">
-              <div className="space-y-1.5 font-bold text-xs uppercase">
+              <div className="space-y-1.5 font-bold text-sm uppercase">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground font-black text-[10px]">Subtotal</span>
+                  <span className="text-muted-foreground font-bold text-sm">Subtotal</span>
                   <span className="font-mono font-bold">₹{totalAmount.toLocaleString()}</span>
                 </div>
                 <Separator className="my-1.5" />
                 <div className="flex justify-between items-center">
-                  <span className="text-foreground font-black text-[11px]">Total Deducted</span>
-                  <span className="font-mono font-black text-sm">₹{totalAmount.toLocaleString()}</span>
+                  <span className="text-foreground font-bold text-sm">Total Deducted</span>
+                  <span className="font-mono font-bold text-sm">₹{totalAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground font-black text-[10px]">Remaining Balance</span>
-                  <span className={cn("font-mono font-black text-sm", isOverQuota ? "text-destructive" : "text-emerald-600")}>
+                  <span className="text-muted-foreground font-bold text-sm">Remaining Balance</span>
+                  <span className={cn("font-mono font-bold text-sm", isOverQuota ? "text-destructive" : "text-emerald-600")}>
                     ₹{newBalance.toLocaleString()}
                   </span>
                 </div>
               </div>
 
               {isOverQuota && (
-                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-[10px] font-black uppercase tracking-tight animate-shake">
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm font-bold uppercase tracking-tight animate-shake">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>Deduction exceeds available quota by ₹{Math.abs(newBalance).toLocaleString()}!</span>
                 </div>
               )}
 
               {!isOverQuota && orderItems.length > 0 && (
-                <div className="flex items-center gap-2 p-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-emerald-600 text-[9px] font-bold uppercase tracking-tight">
+                <div className="flex items-center gap-2 p-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-emerald-600 text-sm font-bold uppercase tracking-tight">
                   <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                   <span>Valid Staff Order</span>
                 </div>
@@ -335,7 +335,7 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
               <Button
                 disabled={orderItems.length === 0 || isOverQuota || isSaving}
                 onClick={handlePlaceOrder}
-                className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg"
+                className="w-full h-12 font-bold uppercase tracking-normal text-sm shadow-lg"
               >
                 {isSaving ? "Placing Order..." : "Confirm Staff Order"}
               </Button>

@@ -116,7 +116,7 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
             <Crown className="h-7 w-7 fill-current" />
             {isEditMode ? 'Edit Internal Order' : 'Owner Internal Order'}
           </DialogTitle>
-          <DialogDescription className="text-white/70 font-bold text-[10px] uppercase tracking-widest mt-1">
+          <DialogDescription className="text-white/70 font-bold text-sm uppercase tracking-normal mt-1">
             Logging items for Viren. Tracked as opportunity cost (NOT added to revenue).
           </DialogDescription>
         </DialogHeader>
@@ -131,7 +131,7 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
                   placeholder="SEARCH MENU CATALOG..." 
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 h-11 bg-background border-2 font-black uppercase text-[10px] tracking-tight"
+                  className="pl-10 h-11 bg-background border-2 font-bold uppercase text-sm tracking-tight"
                 />
               </div>
             </div>
@@ -144,11 +144,11 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
                     className="p-3 rounded-xl border-2 bg-card hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left flex justify-between items-center group active:scale-95 shadow-sm"
                   >
                     <div className="min-w-0 pr-2">
-                      <p className="font-bold text-[11px] uppercase truncate group-hover:text-indigo-600">{food.name}</p>
-                      <p className="text-[8px] font-black text-muted-foreground uppercase opacity-50">{food.category}</p>
+                      <p className="font-bold text-sm uppercase truncate group-hover:text-indigo-600">{food.name}</p>
+                      <p className="text-sm font-bold text-muted-foreground uppercase opacity-50">{food.category}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs">₹{food.price}</span>
+                      <span className="font-mono font-bold text-sm">₹{food.price}</span>
                       <PlusCircle className="h-4 w-4 text-indigo-500 opacity-20 group-hover:opacity-100" />
                     </div>
                   </button>
@@ -162,9 +162,9 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
             <div className="p-4 bg-indigo-50 border-b flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4 text-indigo-600" />
-                <h3 className="font-black text-[10px] uppercase tracking-widest text-indigo-700">Internal Tray</h3>
+                <h3 className="font-bold text-sm uppercase tracking-normal text-indigo-700">Internal Tray</h3>
               </div>
-              <Badge className="bg-indigo-600 font-mono text-[10px]">{items.length}</Badge>
+              <Badge className="bg-indigo-600 font-mono text-sm">{items.length}</Badge>
             </div>
 
             <ScrollArea className="flex-1 px-4">
@@ -173,20 +173,20 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
                   {items.length > 0 ? items.map((item, idx) => (
                     <TableRow key={idx} className="border-b hover:bg-transparent">
                       <TableCell className="py-3 px-0">
-                        <p className="font-bold text-[10px] uppercase leading-tight">{item.name}</p>
-                        <p className="text-[8px] font-bold text-muted-foreground mt-0.5">Value: ₹{item.price}</p>
+                        <p className="font-bold text-sm uppercase leading-tight">{item.name}</p>
+                        <p className="text-sm font-bold text-muted-foreground mt-0.5">Value: ₹{item.price}</p>
                       </TableCell>
                       <TableCell className="py-3 px-2">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => handleUpdateQuantity(idx, -1)} className="text-muted-foreground hover:text-destructive"><MinusCircle className="h-4 w-4" /></button>
-                          <span className="min-w-3 text-center font-black text-xs font-mono">{item.quantity}</span>
+                          <span className="min-w-3 text-center font-bold text-sm font-mono">{item.quantity}</span>
                           <button onClick={() => handleUpdateQuantity(idx, 1)} className="text-muted-foreground hover:text-indigo-600"><PlusCircle className="h-4 w-4" /></button>
                         </div>
                       </TableCell>
                     </TableRow>
                   )) : (
                     <TableRow>
-                      <TableCell colSpan={2} className="h-48 text-center opacity-30 italic font-bold uppercase text-[10px] tracking-widest">Tray Empty</TableCell>
+                      <TableCell colSpan={2} className="h-48 text-center opacity-30 italic font-bold uppercase text-sm tracking-normal">Tray Empty</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -195,21 +195,21 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
 
             <div className="p-6 bg-indigo-50/50 border-t space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-700/60">Log Timestamp (Adjustable)</Label>
+                <Label className="text-sm font-bold uppercase tracking-normal text-indigo-700/60">Log Timestamp (Adjustable)</Label>
                 <div className="flex items-center gap-2 bg-white border-2 rounded-lg p-2">
                     <Calendar className="h-4 w-4 text-indigo-600" />
                     <input 
                         type="datetime-local" 
                         value={timestamp}
                         onChange={e => setTimestamp(e.target.value)}
-                        className="flex-1 bg-transparent border-none outline-none font-mono text-xs font-bold text-indigo-700"
+                        className="flex-1 bg-transparent border-none outline-none font-mono text-sm font-bold text-indigo-700"
                     />
                 </div>
               </div>
 
               <div className="flex justify-between items-center pt-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-700/60">Shadow Total</span>
-                <span className="text-2xl font-black font-mono text-indigo-600 tracking-tighter">₹{totalValue.toLocaleString()}</span>
+                <span className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-700/60">Shadow Total</span>
+                <span className="text-2xl font-bold font-mono text-indigo-600 tracking-tight">₹{totalValue.toLocaleString()}</span>
               </div>
 
               <div className="flex gap-2">
@@ -227,7 +227,7 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 font-black uppercase shadow-lg">Destroy Record</AlertDialogAction>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 font-bold uppercase shadow-lg">Destroy Record</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
@@ -235,7 +235,7 @@ export function OwnerConsumptionModal({ isOpen, onOpenChange, foodItems, consump
                 <Button 
                     disabled={isSubmitting || items.length === 0} 
                     onClick={handleSave} 
-                    className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-lg shadow-xl"
+                    className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-normal text-lg shadow-xl"
                 >
                     {isSubmitting ? "SYNCING..." : isEditMode ? "UPDATE LOG" : "COMMIT LOG"}
                 </Button>

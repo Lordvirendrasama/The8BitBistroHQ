@@ -73,7 +73,7 @@ export function AdminNotifications() {
                 <ShieldAlert className="h-4 w-4 text-primary" />
                 <span className="sr-only">Security Alerts</span>
                 {notifications.length > 0 && (
-                    <Badge variant="destructive" className="absolute -right-2 -top-2 h-4 w-4 p-0 flex items-center justify-center text-[8px] rounded-full">
+                    <Badge variant="destructive" className="absolute -right-2 -top-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold">
                         {notifications.length}
                     </Badge>
                 )}
@@ -89,17 +89,17 @@ export function AdminNotifications() {
                     return (
                         <Card key={notification.id} className="shadow-none rounded-none border-x-0 border-t-0 border-b">
                             <CardHeader className="p-4 space-y-1">
-                                <CardTitle className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", styles.color)}>
+                                <CardTitle className={cn("text-sm font-bold uppercase tracking-normal flex items-center gap-2", styles.color)}>
                                     {styles.icon}
                                     {styles.title}
                                 </CardTitle>
                                 <CardDescription className="text-sm font-medium text-foreground leading-relaxed pt-1" dangerouslySetInnerHTML={{ __html: notification.message }} />
-                                <p className="text-[10px] text-muted-foreground font-bold uppercase pt-1">
+                                <p className="text-sm text-muted-foreground font-bold uppercase pt-1">
                                     {new Date(notification.timestamp).toLocaleString()}
                                 </p>
                             </CardHeader>
                             <CardFooter className="p-2 pt-0">
-                                <Button variant="ghost" size="sm" className="w-full text-[10px] font-black uppercase tracking-widest h-8" onClick={() => handleDismiss(notification.id)}>
+                                <Button variant="ghost" size="sm" className="w-full text-sm font-bold uppercase tracking-normal h-8" onClick={() => handleDismiss(notification.id)}>
                                     <X className="mr-2 h-3.5 w-3.5" />
                                     Acknowledge
                                 </Button>
@@ -107,7 +107,7 @@ export function AdminNotifications() {
                         </Card>
                     );
                 }) : (
-                    <div className="py-12 text-center text-xs text-muted-foreground font-bold uppercase tracking-widest opacity-30">
+                    <div className="py-12 text-center text-sm text-muted-foreground font-bold uppercase tracking-normal opacity-30">
                         No active alerts
                     </div>
                 )}

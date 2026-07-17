@@ -88,19 +88,19 @@ export function CategoryManager() {
                 <Tag className="h-6 w-6 text-primary" />
                 Manage Categories
             </CardTitle>
-            <CardDescription className="font-bold text-xs uppercase tracking-widest">Create and organize your menu categories ({filteredCategories.length} total)</CardDescription>
+            <CardDescription className="font-bold text-sm uppercase tracking-normal">Create and organize your menu categories ({filteredCategories.length} total)</CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                     placeholder="Search categories..." 
-                    className="pl-10 h-10 font-bold text-xs uppercase bg-muted/20 border-none"
+                    className="pl-10 h-10 font-bold text-sm uppercase bg-muted/20 border-none"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Button onClick={handleAdd} className="font-black uppercase tracking-tight h-10 shadow-lg">
+            <Button onClick={handleAdd} className="font-bold uppercase tracking-tight h-10 shadow-lg">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Category
             </Button>
@@ -108,20 +108,20 @@ export function CategoryManager() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-20 text-center font-headline text-xs animate-pulse opacity-50">Loading Categories...</div>
+            <div className="py-20 text-center font-headline text-sm animate-pulse opacity-50">Loading Categories...</div>
           ) : (
             <ScrollArea className="h-[600px] rounded-xl border-2 border-dashed">
                 <Table>
                     <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm">
                     <TableRow>
-                        <TableHead className="font-black uppercase text-[10px] bg-muted/30">Category Name</TableHead>
-                        <TableHead className="text-right font-black uppercase text-[10px] bg-muted/30">Actions</TableHead>
+                        <TableHead className="font-bold uppercase text-sm bg-muted/30">Category Name</TableHead>
+                        <TableHead className="text-right font-bold uppercase text-sm bg-muted/30">Actions</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
                     {filteredCategories.map((category) => (
                         <TableRow key={category.id} className="hover:bg-muted/20">
-                        <TableCell className="font-black uppercase text-xs sm:text-sm">{category.name}</TableCell>
+                        <TableCell className="font-bold uppercase text-sm sm:text-sm">{category.name}</TableCell>
                         <TableCell className="text-right">
                             <AlertDialog>
                             <DropdownMenu>
@@ -129,7 +129,7 @@ export function CategoryManager() {
                                 <Button size="icon" variant="ghost" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-sm uppercase font-bold opacity-50">Actions</DropdownMenuLabel>
                                 <DropdownMenuItem onSelect={() => handleEdit(category)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                                 <AlertDialogTrigger asChild>
                                     <DropdownMenuItem className="text-destructive font-bold"><Trash className="mr-2 h-4 w-4" /> Remove</DropdownMenuItem>
@@ -157,7 +157,7 @@ export function CategoryManager() {
                             <TableCell colSpan={2} className="h-48 text-center bg-muted/5">
                                 <div className="flex flex-col items-center justify-center opacity-30">
                                     <Tag className="h-10 w-10 mb-2" />
-                                    <p className="font-headline text-xs tracking-widest">No categories found</p>
+                                    <p className="font-headline text-sm tracking-normal">No categories found</p>
                                 </div>
                             </TableCell>
                         </TableRow>

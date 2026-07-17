@@ -150,7 +150,7 @@ export function StatsCards({ period, customRange, selectedDays = [], timeRange =
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stat.value}</div>
-            <p className="text-xs text-muted-foreground">{stat.description}</p>
+            <p className="text-sm text-muted-foreground">{stat.description}</p>
           </CardContent>
         </Card>
       ))}

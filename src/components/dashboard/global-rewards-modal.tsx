@@ -65,7 +65,7 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
             <Gift className="h-6 w-6" />
             Member Rewards
           </DialogTitle>
-          <DialogDescription className="text-white/70 font-bold text-[10px] uppercase tracking-widest mt-1">
+          <DialogDescription className="text-white/70 font-bold text-sm uppercase tracking-normal mt-1">
             Redeem points for perks. Pick a member to view eligibility.
           </DialogDescription>
         </DialogHeader>
@@ -79,7 +79,7 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
                   placeholder="SEARCH MEMBERS..." 
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 h-12 bg-background border-2 font-black uppercase text-[10px] tracking-tight"
+                  className="pl-10 h-12 bg-background border-2 font-bold uppercase text-sm tracking-tight"
                   autoFocus
                 />
               </div>
@@ -99,9 +99,9 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
                         <AvatarFallback>{member.name[0]}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="font-black uppercase text-sm truncate leading-tight">{member.name}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">@{member.username}</p>
-                        <div className="flex items-center gap-3 mt-1 uppercase text-[10px] font-bold">
+                        <p className="font-bold uppercase text-sm truncate leading-tight">{member.name}</p>
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal truncate">@{member.username}</p>
+                        <div className="flex items-center gap-3 mt-1 uppercase text-sm font-bold">
                           <span className="flex items-center gap-1 text-yellow-600">
                             <Coins className="h-3 w-3" /> {member.points.toLocaleString()} PTS
                           </span>
@@ -115,7 +115,7 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
                   </div>
                 ))}
                 {filteredMembers.length === 0 && (
-                  <div className="py-20 text-center opacity-30 italic font-bold uppercase text-[10px] tracking-widest">
+                  <div className="py-20 text-center opacity-30 italic font-bold uppercase text-sm tracking-normal">
                     No members match your search
                   </div>
                 )}
@@ -125,7 +125,7 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
         ) : (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
             <div className="absolute top-4 left-4 z-50">
-                <Button variant="ghost" size="sm" onClick={() => setSelectedMemberId(null)} className="h-8 font-black uppercase text-[10px] tracking-tight bg-background/80 backdrop-blur-sm border shadow-sm">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedMemberId(null)} className="h-8 font-bold uppercase text-sm tracking-tight bg-background/80 backdrop-blur-sm border shadow-sm">
                     Back to search
                 </Button>
             </div>

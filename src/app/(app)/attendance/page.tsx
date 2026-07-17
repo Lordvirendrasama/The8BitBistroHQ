@@ -93,21 +93,21 @@ const formatShiftHours = (start?: string, end?: string) => {
 
 const getStatusBadge = (status: string, forgotToLogout?: boolean) => {
   if (forgotToLogout) {
-    return <Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Forgot Logout</Badge>;
+    return <Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase font-bold text-sm tracking-normal px-2 py-0.5 rounded">Forgot Logout</Badge>;
   }
   switch (status) {
     case 'Present':
-      return <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Present</Badge>;
+      return <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white uppercase font-bold text-sm tracking-normal px-2 py-0.5 rounded">Present</Badge>;
     case 'Late':
-      return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Late</Badge>;
+      return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white uppercase font-bold text-sm tracking-normal px-2 py-0.5 rounded">Late</Badge>;
     case 'Half Day':
-      return <Badge className="bg-amber-500 hover:bg-amber-600 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Half Day</Badge>;
+      return <Badge className="bg-amber-500 hover:bg-amber-600 text-white uppercase font-bold text-sm tracking-normal px-2 py-0.5 rounded">Half Day</Badge>;
     case 'Absent':
-      return <Badge className="bg-destructive hover:bg-destructive/90 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Absent</Badge>;
+      return <Badge className="bg-destructive hover:bg-destructive/90 text-white uppercase font-bold text-sm tracking-normal px-2 py-0.5 rounded">Absent</Badge>;
     case 'Weekly Off':
-      return <Badge className="bg-slate-400 hover:bg-slate-500 text-white uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">Weekly Off</Badge>;
+      return <Badge className="bg-slate-400 hover:bg-slate-500 text-white uppercase font-bold text-sm tracking-normal px-2 py-0.5 rounded">Weekly Off</Badge>;
     default:
-      return <Badge className="bg-muted text-muted-foreground uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded">{status}</Badge>;
+      return <Badge className="bg-muted text-muted-foreground uppercase font-bold text-sm tracking-normal px-2 py-0.5 rounded">{status}</Badge>;
   }
 };
 
@@ -198,12 +198,12 @@ function AttendanceCalendar({ shifts, leaves, filterStaff, user, onAddClick, onE
           <h2 className="font-headline text-lg uppercase">{format(currentMonth, 'MMMM yyyy')}</h2>
           <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight /></Button>
         </div>
-        <p className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Visual Presence Audit</p>
+        <p className="text-sm font-bold uppercase text-muted-foreground opacity-60">Visual Presence Audit</p>
       </div>
 
       <div className="grid grid-cols-7 gap-px bg-muted border-2 rounded-xl overflow-hidden shadow-inner overflow-x-auto min-w-[800px]">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-          <div key={d} className="bg-muted/50 py-3 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b">{d}</div>
+          <div key={d} className="bg-muted/50 py-3 text-center text-sm font-bold uppercase tracking-normal text-muted-foreground border-b">{d}</div>
         ))}
         {days.map((day, i) => {
           const isCurrent = isSameMonth(day, currentMonth);
@@ -211,31 +211,31 @@ function AttendanceCalendar({ shifts, leaves, filterStaff, user, onAddClick, onE
           return (
             <div key={i} className={cn("min-h-[160px] p-2 bg-background flex flex-col gap-1 transition-all group", !isCurrent && "opacity-20 pointer-events-none", isToday(day) && "ring-2 ring-inset ring-primary/20 bg-primary/[0.02]")}>
               <div className="flex justify-between items-start mb-1">
-                <span className={cn("text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full", isToday(day) ? "bg-primary text-white" : "text-muted-foreground")}>{format(day, 'd')}</span>
+                <span className={cn("text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full", isToday(day) ? "bg-primary text-white" : "text-muted-foreground")}>{format(day, 'd')}</span>
                 {isOwner && onAddClick && <Button variant="ghost" size="icon" onClick={() => onAddClick(day)} className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"><Plus className="h-3 w-3" /></Button>}
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 {status?.map((s: any, idx) => {
                   if (s.isLeave) {
                       return (
-                          <div key={idx} className={cn("w-full p-2 rounded-lg border-2 border-dashed text-[9px] font-black uppercase text-left transition-all", s.type === 'paid' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.type === 'sick' ? "bg-amber-500/10 border-amber-500/20 text-amber-700" : "bg-red-500/10 border-red-500/20 text-red-700")}>
+                          <div key={idx} className={cn("w-full p-2 rounded-lg border-2 border-dashed text-sm font-bold uppercase text-left transition-all", s.type === 'paid' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.type === 'sick' ? "bg-amber-500/10 border-amber-500/20 text-amber-700" : "bg-red-500/10 border-red-500/20 text-red-700")}>
                               <div className="flex items-center justify-between gap-1 mb-1">
                                   <span className="truncate">{s.displayName}</span>
                                   <Plane className="h-3 w-3 opacity-60" />
                               </div>
-                              <p className="text-[7px] font-mono opacity-80">{s.type} LEAVE ({s.status})</p>
-                              {s.reason && <p className="text-[7px] font-mono opacity-50 mt-0.5 truncate">{s.reason}</p>}
+                              <p className="text-sm font-mono opacity-80">{s.type} LEAVE ({s.status})</p>
+                              {s.reason && <p className="text-sm font-mono opacity-50 mt-0.5 truncate">{s.reason}</p>}
                           </div>
                       );
                   }
 
                   return (
-                      <button key={idx} onClick={() => isOwner && onEditClick?.(s)} className={cn("w-full p-2 rounded-lg border-2 text-[9px] font-black uppercase text-left transition-all", s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-muted text-muted-foreground")}>
+                      <button key={idx} onClick={() => isOwner && onEditClick?.(s)} className={cn("w-full p-2 rounded-lg border-2 text-sm font-bold uppercase text-left transition-all", s.result === 'yes' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" : s.result === 'no' ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-muted text-muted-foreground")}>
                         <div className="flex items-center justify-between gap-1 mb-1">
                             <span className="truncate">{s.displayName}</span>
                             {s.result === 'yes' ? <UserCheck className="h-3 w-3" /> : s.result === 'no' ? <UserX className="h-3 w-3" /> : <Clock className="h-3 w-3 opacity-40" />}
                         </div>
-                        <p className="text-[7px] font-mono opacity-60">IN: {s.loginTime}</p>
+                        <p className="text-sm font-mono opacity-60">IN: {s.loginTime}</p>
                         {isOwner && (
                             <div className="flex gap-1 pt-1 border-t border-dashed border-current mt-1">
                                 {!s.verified ? (
@@ -671,7 +671,7 @@ export default function AttendanceRegistryPage() {
     return Array.from(months).sort().reverse();
   }, [allShifts]);
 
-  if (loading) return <div className="flex h-screen items-center justify-center animate-pulse uppercase font-black text-xs">Syncing Registry...</div>;
+  if (loading) return <div className="flex h-screen items-center justify-center animate-pulse uppercase font-bold text-sm">Syncing Registry...</div>;
 
   const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
 
@@ -683,15 +683,15 @@ export default function AttendanceRegistryPage() {
             <h1 className="font-headline text-4xl uppercase tracking-wider">Attendance Hub</h1>
             {isOwner && (
                 <div className="flex gap-2">
-                    <Button onClick={() => setIsAddAttendanceModalOpen(true)} size="sm" className="h-8 px-4 font-black uppercase text-[10px] gap-2 shadow-lg">
+                    <Button onClick={() => setIsAddAttendanceModalOpen(true)} size="sm" className="h-8 px-4 font-bold uppercase text-sm gap-2 shadow-lg">
                         <Plus className="h-3.5 w-3.5" /> ADD LOG
                     </Button>
-                    <Button onClick={() => setIsSalaryCalculatorOpen(true)} size="sm" className="h-8 px-4 font-black uppercase text-[10px] gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700">
+                    <Button onClick={() => setIsSalaryCalculatorOpen(true)} size="sm" className="h-8 px-4 font-bold uppercase text-sm gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700">
                         <DollarSign className="h-3.5 w-3.5" /> PAYROLL
                     </Button>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all font-black uppercase text-[10px] gap-2">
+                            <Button variant="outline" size="sm" className="h-8 border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all font-bold uppercase text-sm gap-2">
                                 <Trash2 className="h-3.5 w-3.5" /> Wipe History
                             </Button>
                         </AlertDialogTrigger>
@@ -704,7 +704,7 @@ export default function AttendanceRegistryPage() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleWipeAll} className="bg-destructive hover:bg-destructive/90 font-black uppercase">Destroy Records</AlertDialogAction>
+                                <AlertDialogAction onClick={handleWipeAll} className="bg-destructive hover:bg-destructive/90 font-bold uppercase">Destroy Records</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
@@ -713,7 +713,7 @@ export default function AttendanceRegistryPage() {
           </div>
           <div className="flex items-center gap-3">
               <Select value={staffFilter} onValueChange={setStaffFilter}>
-                  <SelectTrigger className="w-[160px] h-10 border-2 font-bold uppercase text-[10px] bg-background">
+                  <SelectTrigger className="w-[160px] h-10 border-2 font-bold uppercase text-sm bg-background">
                       <SelectValue placeholder="Filter Staff" />
                   </SelectTrigger>
                   <SelectContent>
@@ -722,8 +722,8 @@ export default function AttendanceRegistryPage() {
                   </SelectContent>
               </Select>
               <TabsList className="bg-muted/20 border-2 border-dashed h-10 p-1 rounded-xl">
-                  <TabsTrigger value="registry" className="font-black uppercase text-[9px] tracking-widest px-4 h-full data-[state=active]:bg-background">Registry</TabsTrigger>
-                  <TabsTrigger value="calendar" className="font-black uppercase text-[9px] tracking-widest px-4 h-full data-[state=active]:bg-background">Visual Audit</TabsTrigger>
+                  <TabsTrigger value="registry" className="font-bold uppercase text-sm tracking-normal px-4 h-full data-[state=active]:bg-background">Registry</TabsTrigger>
+                  <TabsTrigger value="calendar" className="font-bold uppercase text-sm tracking-normal px-4 h-full data-[state=active]:bg-background">Visual Audit</TabsTrigger>
               </TabsList>
           </div>
         </div>
@@ -732,28 +732,28 @@ export default function AttendanceRegistryPage() {
           {/* Attendance Dashboard Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Present Today</span>
-              <span className="text-3xl font-black text-emerald-600 mt-2">{dashboardStats.present}</span>
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Present Today</span>
+              <span className="text-3xl font-bold text-emerald-600 mt-2">{dashboardStats.present}</span>
             </Card>
             <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Late Today</span>
-              <span className="text-3xl font-black text-yellow-500 mt-2">{dashboardStats.late}</span>
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Late Today</span>
+              <span className="text-3xl font-bold text-yellow-500 mt-2">{dashboardStats.late}</span>
             </Card>
             <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Absent Today</span>
-              <span className="text-3xl font-black text-destructive mt-2">{dashboardStats.absent}</span>
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Absent Today</span>
+              <span className="text-3xl font-bold text-destructive mt-2">{dashboardStats.absent}</span>
             </Card>
             <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> On Shift</span>
-              <span className="text-3xl font-black text-primary mt-2">{dashboardStats.onShift}</span>
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> On Shift</span>
+              <span className="text-3xl font-bold text-primary mt-2">{dashboardStats.onShift}</span>
             </Card>
             <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Logged Out</span>
-              <span className="text-3xl font-black text-indigo-600 mt-2">{dashboardStats.loggedOut}</span>
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Logged Out</span>
+              <span className="text-3xl font-bold text-indigo-600 mt-2">{dashboardStats.loggedOut}</span>
             </Card>
             <Card className="border-2 shadow-none p-4 flex flex-col justify-between bg-muted/5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Forgot Logout</span>
-              <span className="text-3xl font-black text-orange-500 mt-2">{dashboardStats.forgotLogout}</span>
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Forgot Logout</span>
+              <span className="text-3xl font-bold text-orange-500 mt-2">{dashboardStats.forgotLogout}</span>
             </Card>
           </div>
 
@@ -762,13 +762,13 @@ export default function AttendanceRegistryPage() {
             <div className="lg:col-span-2 space-y-6">
               <Card className="border-2 shadow-none">
                 <CardHeader className="bg-muted/10 pb-3">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-foreground flex items-center gap-2">
+                  <CardTitle className="text-sm font-bold uppercase tracking-normal text-foreground flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary animate-pulse" /> Active Shift Monitoring
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
                   {activeShiftsList.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-muted-foreground font-bold uppercase tracking-wider">No active shifts currently</div>
+                    <div className="text-center py-6 text-sm text-muted-foreground font-bold uppercase tracking-wider">No active shifts currently</div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {activeShiftsList.map(s => {
@@ -795,19 +795,19 @@ export default function AttendanceRegistryPage() {
                           <Card key={s.id} className="border-2 p-3 flex flex-col justify-between bg-muted/5 relative overflow-hidden">
                             <div className="absolute right-2 top-2">
                               {isLate ? (
-                                <Badge className="bg-yellow-500 text-white uppercase text-[8px] font-black">Late</Badge>
+                                <Badge className="bg-yellow-500 text-white uppercase text-sm font-bold">Late</Badge>
                               ) : (
-                                <Badge className="bg-emerald-600 text-white uppercase text-[8px] font-black">On Shift</Badge>
+                                <Badge className="bg-emerald-600 text-white uppercase text-sm font-bold">On Shift</Badge>
                               )}
                             </div>
                             <div>
-                              <div className="font-black uppercase text-sm">{empName}</div>
-                              <div className="text-[10px] text-muted-foreground font-black uppercase mt-1">Shift: {hoursStr}</div>
-                              <div className="text-[10px] text-emerald-600 font-bold uppercase mt-0.5">Logged In: {loginTimeStr}</div>
+                              <div className="font-bold uppercase text-sm">{empName}</div>
+                              <div className="text-sm text-muted-foreground font-bold uppercase mt-1">Shift: {hoursStr}</div>
+                              <div className="text-sm text-emerald-600 font-bold uppercase mt-0.5">Logged In: {loginTimeStr}</div>
                             </div>
                             <div className="border-t border-dashed mt-3 pt-2 flex items-center justify-between">
-                              <span className="text-[9px] font-black text-muted-foreground uppercase">Duration</span>
-                              <span className="font-mono text-xs font-black text-primary">{durationStr}</span>
+                              <span className="text-sm font-bold text-muted-foreground uppercase">Duration</span>
+                              <span className="font-mono text-sm font-bold text-primary">{durationStr}</span>
                             </div>
                           </Card>
                         );
@@ -822,16 +822,16 @@ export default function AttendanceRegistryPage() {
             <div className="space-y-6">
               <Card className="border-2 border-dashed shadow-none h-full bg-muted/5">
                 <CardHeader className="bg-muted/10 pb-3">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-foreground flex items-center gap-2">
+                  <CardTitle className="text-sm font-bold uppercase tracking-normal text-foreground flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" /> Attendance Alerts
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-2">
                   {attendanceAlerts.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-muted-foreground font-bold uppercase tracking-wider">No compliance alerts</div>
+                    <div className="text-center py-6 text-sm text-muted-foreground font-bold uppercase tracking-wider">No compliance alerts</div>
                   ) : (
                     attendanceAlerts.map((alert, idx) => (
-                      <div key={idx} className="p-2.5 bg-background border-2 border-dashed border-amber-500/20 rounded-lg text-[10px] font-black uppercase text-foreground/80 leading-tight">
+                      <div key={idx} className="p-2.5 bg-background border-2 border-dashed border-amber-500/20 rounded-lg text-sm font-bold uppercase text-foreground/80 leading-tight">
                         {alert}
                       </div>
                     ))
@@ -845,14 +845,14 @@ export default function AttendanceRegistryPage() {
               <Table>
                   <TableHeader className="bg-muted/20">
                   <TableRow>
-                      <TableHead className="font-black uppercase text-[10px]">Date</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Employee</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Shift</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Login</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Logout</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Hours Worked</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Status</TableHead>
-                      {isAdmin && <TableHead className="w-[120px] text-right font-black uppercase text-[10px] pr-6">Actions</TableHead>}
+                      <TableHead className="font-bold uppercase text-sm">Date</TableHead>
+                      <TableHead className="font-bold uppercase text-sm">Employee</TableHead>
+                      <TableHead className="font-bold uppercase text-sm">Shift</TableHead>
+                      <TableHead className="font-bold uppercase text-sm">Login</TableHead>
+                      <TableHead className="font-bold uppercase text-sm">Logout</TableHead>
+                      <TableHead className="font-bold uppercase text-sm">Hours Worked</TableHead>
+                      <TableHead className="font-bold uppercase text-sm">Status</TableHead>
+                      {isAdmin && <TableHead className="w-[120px] text-right font-bold uppercase text-sm pr-6">Actions</TableHead>}
                   </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -888,17 +888,17 @@ export default function AttendanceRegistryPage() {
 
                       return (
                           <TableRow key={shift.id} className="hover:bg-muted/5 transition-colors group">
-                              <TableCell className="font-black uppercase text-[10px]">{formattedDate}</TableCell>
-                              <TableCell className="font-black uppercase text-xs">{empName}</TableCell>
-                              <TableCell className="font-mono text-[10px] font-bold">{shiftHours}</TableCell>
-                              <TableCell className="font-mono text-[10px] text-emerald-600 font-bold">{actualLoginStr}</TableCell>
-                              <TableCell className={cn("font-mono text-[10px] font-bold", shift.status === 'active' ? "text-amber-500 animate-pulse" : "text-muted-foreground")}>{actualLogoutStr}</TableCell>
-                              <TableCell className="font-mono text-[10px] font-bold">{hoursWorkedStr}</TableCell>
+                              <TableCell className="font-bold uppercase text-sm">{formattedDate}</TableCell>
+                              <TableCell className="font-bold uppercase text-sm">{empName}</TableCell>
+                              <TableCell className="font-mono text-sm font-bold">{shiftHours}</TableCell>
+                              <TableCell className="font-mono text-sm text-emerald-600 font-bold">{actualLoginStr}</TableCell>
+                              <TableCell className={cn("font-mono text-sm font-bold", shift.status === 'active' ? "text-amber-500 animate-pulse" : "text-muted-foreground")}>{actualLogoutStr}</TableCell>
+                              <TableCell className="font-mono text-sm font-bold">{hoursWorkedStr}</TableCell>
                               <TableCell>
                                   <div className="flex gap-1 items-center">
                                       {getStatusBadge(attendanceStatusVal, shift.forgotToLogout)}
                                       {shift.logoutMethod && shift.logoutMethod !== 'manual' && (
-                                          <Badge variant="outline" className="text-[7px] font-black uppercase text-amber-600 border-amber-500/20 bg-amber-500/5">
+                                          <Badge variant="outline" className="text-sm font-bold uppercase text-amber-600 border-amber-500/20 bg-amber-500/5">
                                               {shift.logoutMethod === 'auto-midnight' ? 'MIDNIGHT AUTO' : 'FORCE ADMIN'}
                                           </Badge>
                                       )}
@@ -912,7 +912,7 @@ export default function AttendanceRegistryPage() {
                                                   variant="destructive" 
                                                   size="sm" 
                                                   onClick={() => handleForceLogout(shift)} 
-                                                  className="h-8 px-2.5 font-black uppercase text-[9px] shadow-sm shrink-0"
+                                                  className="h-8 px-2.5 font-bold uppercase text-sm shadow-sm shrink-0"
                                               >
                                                   Force Out
                                               </Button>
@@ -928,7 +928,7 @@ export default function AttendanceRegistryPage() {
                   })}
                   {filteredShifts.length === 0 && (
                       <TableRow>
-                          <TableCell colSpan={8} className="h-64 text-center opacity-30 italic font-black uppercase text-[10px] tracking-widest">No matching records found.</TableCell>
+                          <TableCell colSpan={8} className="h-64 text-center opacity-30 italic font-bold uppercase text-sm tracking-normal">No matching records found.</TableCell>
                       </TableRow>
                   )}
                   </TableBody>
@@ -957,44 +957,44 @@ export default function AttendanceRegistryPage() {
             <div className="space-y-4 py-4">
 
                 <div className="space-y-1.5 border-b pb-4">
-                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Presence Verification</Label>
+                    <Label className="text-sm font-bold uppercase opacity-50 pl-1">Presence Verification</Label>
                     <div className="grid grid-cols-3 gap-2">
-                        <Button variant={editStatus === 'yes' ? 'default' : 'outline'} onClick={() => setEditStatus('yes')} className="h-10 font-black uppercase text-[10px] border-2">PRESENT</Button>
-                        <Button variant={editStatus === 'no' ? 'destructive' : 'outline'} onClick={() => setEditStatus('no')} className="h-10 font-black uppercase text-[10px] border-2">ABSENT</Button>
-                        <Button variant={editStatus === 'leave' ? 'secondary' : 'outline'} onClick={() => setEditStatus('leave')} className="h-10 font-black uppercase text-[10px] border-2 bg-muted/60">LEAVE (OFF)</Button>
+                        <Button variant={editStatus === 'yes' ? 'default' : 'outline'} onClick={() => setEditStatus('yes')} className="h-10 font-bold uppercase text-sm border-2">PRESENT</Button>
+                        <Button variant={editStatus === 'no' ? 'destructive' : 'outline'} onClick={() => setEditStatus('no')} className="h-10 font-bold uppercase text-sm border-2">ABSENT</Button>
+                        <Button variant={editStatus === 'leave' ? 'secondary' : 'outline'} onClick={() => setEditStatus('leave')} className="h-10 font-bold uppercase text-sm border-2 bg-muted/60">LEAVE (OFF)</Button>
                     </div>
                 </div>
 
                 {editStatus === 'leave' ? (
                   <div className="space-y-4">
-                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Leave Category</Label><Select value={editLeaveType} onValueChange={(v: any) => setEditLeaveType(v)}><SelectTrigger className="h-12 border-2 uppercase font-bold text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="paid" className="font-bold text-xs uppercase">Paid Leave</SelectItem><SelectItem value="unpaid" className="font-bold text-xs uppercase">Unpaid (LWP)</SelectItem><SelectItem value="sick" className="font-bold text-xs uppercase">Sick Leave</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Reason / Memo</Label><Input value={editLeaveReason} onChange={e => setEditLeaveReason(e.target.value)} placeholder="e.g. SICK LEAVE" className="h-12 font-bold uppercase text-xs border-2" /></div>
+                    <div className="space-y-1.5"><Label className="text-sm font-bold uppercase opacity-50 pl-1">Leave Category</Label><Select value={editLeaveType} onValueChange={(v: any) => setEditLeaveType(v)}><SelectTrigger className="h-12 border-2 uppercase font-bold text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="paid" className="font-bold text-sm uppercase">Paid Leave</SelectItem><SelectItem value="unpaid" className="font-bold text-sm uppercase">Unpaid (LWP)</SelectItem><SelectItem value="sick" className="font-bold text-sm uppercase">Sick Leave</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-1.5"><Label className="text-sm font-bold uppercase opacity-50 pl-1">Reason / Memo</Label><Input value={editLeaveReason} onChange={e => setEditLeaveReason(e.target.value)} placeholder="e.g. SICK LEAVE" className="h-12 font-bold uppercase text-sm border-2" /></div>
                   </div>
                 ) : (
                   <>
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Start Date</Label>
+                                <Label className="text-sm font-bold uppercase opacity-50 pl-1">Start Date</Label>
                                 <Input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className="h-12 font-mono border-2" />
                             </div>
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between pr-1">
-                                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Start Time</Label>
-                                    {auditFlags.isLate && <span className="text-[8px] font-black text-destructive uppercase animate-pulse flex items-center gap-1"><AlertTriangle className="h-2 w-2" /> LATE LOGIN</span>}
+                                    <Label className="text-sm font-bold uppercase opacity-50 pl-1">Start Time</Label>
+                                    {auditFlags.isLate && <span className="text-sm font-bold text-destructive uppercase animate-pulse flex items-center gap-1"><AlertTriangle className="h-2 w-2" /> LATE LOGIN</span>}
                                 </div>
                                 <Input type="time" value={editStartTime} onChange={e => setEditStartTime(e.target.value)} className={cn("h-12 font-mono border-2", auditFlags.isLate && "border-destructive/50 bg-destructive/5")} />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase opacity-50 pl-1">End Date</Label>
+                                <Label className="text-sm font-bold uppercase opacity-50 pl-1">End Date</Label>
                                 <Input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} className="h-12 font-mono border-2" />
                             </div>
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between pr-1">
-                                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">End Time</Label>
-                                    {auditFlags.isShortShift && <span className="text-[8px] font-black text-amber-600 uppercase flex items-center gap-1"><Zap className="h-2 w-2" /> {auditFlags.shiftDurationHours} HRS</span>}
+                                    <Label className="text-sm font-bold uppercase opacity-50 pl-1">End Time</Label>
+                                    {auditFlags.isShortShift && <span className="text-sm font-bold text-amber-600 uppercase flex items-center gap-1"><Zap className="h-2 w-2" /> {auditFlags.shiftDurationHours} HRS</span>}
                                 </div>
                                 <Input type="time" value={editEndTime} onChange={e => setEditEndTime(e.target.value)} className={cn("h-12 font-mono border-2", auditFlags.isShortShift && "border-amber-500/50 bg-amber-500/5")} />
                             </div>
@@ -1003,17 +1003,17 @@ export default function AttendanceRegistryPage() {
                     {auditFlags.isShortShift && (
                         <div className="px-3 py-2 bg-amber-50 border-2 border-amber-200/50 rounded-lg flex items-center gap-3">
                             <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                            <p className="text-[10px] font-bold text-amber-700 uppercase leading-tight">Wait! Shift is only {auditFlags.shiftDurationHours} hours. Verify if employee completed the full 12-hour session.</p>
+                            <p className="text-sm font-bold text-amber-700 uppercase leading-tight">Wait! Shift is only {auditFlags.shiftDurationHours} hours. Verify if employee completed the full 12-hour session.</p>
                         </div>
                     )}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">Cash Total</Label><Input type="number" value={editCash} onChange={e => setEditCash(e.target.value)} className="h-12 font-mono font-bold border-2" /></div>
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase opacity-50 pl-1">UPI Total</Label><Input type="number" value={editUpi} onChange={e => setEditUpi(e.target.value)} className="h-12 font-mono font-bold border-2" /></div>
+                        <div className="space-y-1.5"><Label className="text-sm font-bold uppercase opacity-50 pl-1">Cash Total</Label><Input type="number" value={editCash} onChange={e => setEditCash(e.target.value)} className="h-12 font-mono font-bold border-2" /></div>
+                        <div className="space-y-1.5"><Label className="text-sm font-bold uppercase opacity-50 pl-1">UPI Total</Label><Input type="number" value={editUpi} onChange={e => setEditUpi(e.target.value)} className="h-12 font-mono font-bold border-2" /></div>
                     </div>
 
                     {editTasks.length > 0 && isAdmin && (
                         <div className="space-y-3 pt-4 border-t border-dashed">
-                            <Label className="text-[10px] font-black uppercase opacity-50 pl-1">Compliance Audit</Label>
+                            <Label className="text-sm font-bold uppercase opacity-50 pl-1">Compliance Audit</Label>
                             <div className="space-y-3 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
                                 {editTasks.map((task, idx) => (
                                     <div key={idx} className="flex items-start space-x-3">
@@ -1033,8 +1033,8 @@ export default function AttendanceRegistryPage() {
                                             className="mt-0.5 h-4 w-4 border-2"
                                         />
                                         <div className="flex-1">
-                                            <Label htmlFor={`edit-task-${idx}`} className={cn("text-xs font-bold uppercase cursor-pointer transition-all", task.completed ? "text-muted-foreground line-through opacity-50" : "text-foreground")}>{task.name}</Label>
-                                            {task.completed && task.completedBy && <p className="text-[8px] font-medium text-emerald-600 uppercase mt-0.5">Verified by {task.completedBy.displayName}</p>}
+                                            <Label htmlFor={`edit-task-${idx}`} className={cn("text-sm font-bold uppercase cursor-pointer transition-all", task.completed ? "text-muted-foreground line-through opacity-50" : "text-foreground")}>{task.name}</Label>
+                                            {task.completed && task.completedBy && <p className="text-sm font-medium text-emerald-600 uppercase mt-0.5">Verified by {task.completedBy.displayName}</p>}
                                         </div>
                                     </div>
                                 ))}
@@ -1046,7 +1046,7 @@ export default function AttendanceRegistryPage() {
             </div>
             <DialogFooter className="flex w-full gap-2 sm:justify-between items-center sm:space-x-0">
                 <Button disabled={isSubmitting} variant="destructive" onClick={handleDeleteShift} className="h-12 w-12 shrink-0 p-0"><Trash2 className="h-5 w-5" /></Button>
-                <Button disabled={isSubmitting} onClick={handleSaveEdit} className="h-12 flex-1 font-black uppercase tracking-widest shadow-xl">Update Audit</Button>
+                <Button disabled={isSubmitting} onClick={handleSaveEdit} className="h-12 flex-1 font-bold uppercase tracking-normal shadow-xl">Update Audit</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1055,11 +1055,11 @@ export default function AttendanceRegistryPage() {
         <DialogContent className="max-w-md font-body">
             <DialogHeader>
                 <DialogTitle className="font-headline text-lg uppercase">Manual Entry</DialogTitle>
-                <DialogDescription className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Construct a historical attendance record.</DialogDescription>
+                <DialogDescription className="text-sm uppercase font-bold text-muted-foreground tracking-normal">Construct a historical attendance record.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Target Operator</Label>
+                    <Label className="text-sm font-bold uppercase opacity-50 pl-1">Target Operator</Label>
                     <Select value={addFormData.username} onValueChange={v => setAddFormData(p => ({...p, username: v}))}>
                         <SelectTrigger className="h-12 font-bold uppercase border-2"><SelectValue placeholder="PICK OPERATOR" /></SelectTrigger>
                         <SelectContent>{employees?.filter(e => e.isActive).map(e => <SelectItem key={e.username} value={e.username} className="font-bold">{e.displayName.toUpperCase()}</SelectItem>)}</SelectContent>
@@ -1067,52 +1067,52 @@ export default function AttendanceRegistryPage() {
                 </div>
                 
                 <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Presence Verification</Label>
+                    <Label className="text-sm font-bold uppercase opacity-50 pl-1">Presence Verification</Label>
                     <div className="grid grid-cols-3 gap-2">
-                        <Button variant={addFormData.status === 'yes' ? 'default' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'yes'}))} className="h-12 font-black uppercase text-[10px] border-2">PRESENT</Button>
-                        <Button variant={addFormData.status === 'no' ? 'destructive' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'no'}))} className="h-12 font-black uppercase text-[10px] border-2">ABSENT</Button>
-                        <Button variant={addFormData.status === 'leave' ? 'secondary' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'leave'}))} className="h-12 font-black uppercase text-[10px] border-2 bg-muted/60">LEAVE (OFF)</Button>
+                        <Button variant={addFormData.status === 'yes' ? 'default' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'yes'}))} className="h-12 font-bold uppercase text-sm border-2">PRESENT</Button>
+                        <Button variant={addFormData.status === 'no' ? 'destructive' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'no'}))} className="h-12 font-bold uppercase text-sm border-2">ABSENT</Button>
+                        <Button variant={addFormData.status === 'leave' ? 'secondary' : 'outline'} onClick={() => setAddFormData(p => ({...p, status: 'leave'}))} className="h-12 font-bold uppercase text-sm border-2 bg-muted/60">LEAVE (OFF)</Button>
                     </div>
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Business Date</Label>
+                    <Label className="text-sm font-bold uppercase opacity-50 pl-1">Business Date</Label>
                     <Input type="date" value={addFormData.date} onChange={e => setAddFormData(p => ({...p, date: e.target.value}))} className="h-12 font-bold border-2" />
                 </div>
 
                 {addFormData.status === 'leave' ? (
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Leave Category</Label>
+                        <Label className="text-sm font-bold uppercase opacity-50 pl-1">Leave Category</Label>
                         <Select value={addFormData.leaveType} onValueChange={(v: any) => setAddFormData(p => ({...p, leaveType: v}))}>
-                            <SelectTrigger className="h-12 border-2 uppercase font-bold text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-12 border-2 uppercase font-bold text-sm"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="paid" className="font-bold text-xs uppercase">Paid Leave</SelectItem>
-                                <SelectItem value="unpaid" className="font-bold text-xs uppercase">Unpaid (LWP)</SelectItem>
-                                <SelectItem value="sick" className="font-bold text-xs uppercase">Sick Leave</SelectItem>
+                                <SelectItem value="paid" className="font-bold text-sm uppercase">Paid Leave</SelectItem>
+                                <SelectItem value="unpaid" className="font-bold text-sm uppercase">Unpaid (LWP)</SelectItem>
+                                <SelectItem value="sick" className="font-bold text-sm uppercase">Sick Leave</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Reason / Memo</Label>
-                        <Input value={addFormData.leaveReason} onChange={e => setAddFormData(p => ({...p, leaveReason: e.target.value}))} placeholder="e.g. SICK LEAVE" className="h-12 font-bold uppercase text-xs border-2" />
+                        <Label className="text-sm font-bold uppercase opacity-50 pl-1">Reason / Memo</Label>
+                        <Input value={addFormData.leaveReason} onChange={e => setAddFormData(p => ({...p, leaveReason: e.target.value}))} placeholder="e.g. SICK LEAVE" className="h-12 font-bold uppercase text-sm border-2" />
                     </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                          <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Login Time</Label>
+                          <Label className="text-sm font-bold uppercase opacity-50 pl-1">Login Time</Label>
                           <Input type="time" value={addFormData.loginTime} onChange={e => setAddFormData(p => ({...p, loginTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
                       </div>
                       <div className="space-y-1.5">
-                          <Label className="text-[9px] font-black uppercase opacity-50 pl-1">Logout Time</Label>
+                          <Label className="text-sm font-bold uppercase opacity-50 pl-1">Logout Time</Label>
                           <Input type="time" value={addFormData.logoutTime} onChange={e => setAddFormData(p => ({...p, logoutTime: e.target.value}))} className="h-12 font-mono font-bold border-2" />
                       </div>
                   </div>
                 )}
             </div>
             <DialogFooter>
-                <Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-black uppercase tracking-widest text-lg shadow-xl">
+                <Button disabled={isAddingAttendance || !addFormData.username} onClick={handleManualAddAttendance} className="w-full h-14 font-bold uppercase tracking-normal text-lg shadow-xl">
                     {isAddingAttendance ? 'Saving...' : 'Commit Record'}
                 </Button>
             </DialogFooter>

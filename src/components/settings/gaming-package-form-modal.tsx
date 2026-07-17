@@ -134,14 +134,14 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
           <DialogTitle className="font-headline tracking-wide text-2xl">
             {pkg ? 'Edit Package' : 'New Package'}
           </DialogTitle>
-          <DialogDescription className="font-bold text-[10px] uppercase tracking-widest">
+          <DialogDescription className="font-bold text-sm uppercase tracking-normal">
             {pkg ? `Updating configuration for ${pkg.name}.` : 'Define a new gaming or recharge offer.'}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] px-6 py-4">
             <div className="grid gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Package Title</Label>
+                    <Label htmlFor="name" className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Package Title</Label>
                     <Input 
                         id="name" 
                         placeholder="e.g. 10 HOUR RECHARGE"
@@ -152,7 +152,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                 </div>
 
                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Player Capacity</Label>
+                    <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Player Capacity</Label>
                     <RadioGroup value={playerCapacity} onValueChange={setPlayerCapacity} className="grid grid-cols-2 gap-4">
                         <Label 
                             htmlFor="cap-1"
@@ -163,7 +163,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                         >
                             <RadioGroupItem value="1" id="cap-1" className="sr-only" />
                             <User className={cn("h-5 w-5", playerCapacity === '1' ? "text-primary" : "text-muted-foreground")} />
-                            <span className="font-black text-xs uppercase">Single Player</span>
+                            <span className="font-bold text-sm uppercase">Single Player</span>
                         </Label>
                         <Label 
                             htmlFor="cap-2"
@@ -174,17 +174,17 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                         >
                             <RadioGroupItem value="2" id="cap-2" className="sr-only" />
                             <Users className={cn("h-5 w-5", playerCapacity === '2' ? "text-primary" : "text-muted-foreground")} />
-                            <span className="font-black text-xs uppercase">Duo (2 Players)</span>
+                            <span className="font-bold text-sm uppercase">Duo (2 Players)</span>
                         </Label>
                     </RadioGroup>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2 p-4 rounded-xl bg-muted/20 border-2 border-dashed">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-2">Duration</Label>
+                        <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground block mb-2">Duration</Label>
                         <div className="flex items-center gap-2">
                             <div className="flex-1">
-                                <Label htmlFor="duration-minutes" className="text-[8px] font-bold uppercase opacity-50">MINS</Label>
+                                <Label htmlFor="duration-minutes" className="text-sm font-bold uppercase opacity-50">MINS</Label>
                                 <Input 
                                     id="duration-minutes" type="number" 
                                     value={minutes} onChange={(e) => setMinutes(e.target.value)} 
@@ -192,7 +192,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                                 />
                             </div>
                             <div className="flex-1">
-                                <Label htmlFor="duration-seconds" className="text-[8px] font-bold uppercase opacity-50">SECS</Label>
+                                <Label htmlFor="duration-seconds" className="text-sm font-bold uppercase opacity-50">SECS</Label>
                                 <Input 
                                     id="duration-seconds" type="number" 
                                     value={seconds} onChange={(e) => setSeconds(e.target.value)} 
@@ -203,10 +203,10 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                     </div>
                     
                     <div className="space-y-2 p-4 rounded-xl bg-primary/5 border-2 border-primary/20">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary block mb-2">Pricing & Validity</Label>
+                        <Label className="text-sm font-bold uppercase tracking-normal text-primary block mb-2">Pricing & Validity</Label>
                         <div className="flex items-center gap-2">
                             <div className="flex-1">
-                                <Label htmlFor="price" className="text-[8px] font-bold uppercase text-primary/60">PRICE (₹)</Label>
+                                <Label htmlFor="price" className="text-sm font-bold uppercase text-primary/60">PRICE (₹)</Label>
                                 <Input 
                                     id="price" type="number" 
                                     value={price} onChange={(e) => setPrice(e.target.value)} 
@@ -214,7 +214,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                                 />
                             </div>
                             <div className="flex-1">
-                                <Label htmlFor="validity" className="text-[8px] font-bold uppercase text-primary/60">DAYS</Label>
+                                <Label htmlFor="validity" className="text-sm font-bold uppercase text-primary/60">DAYS</Label>
                                 <Input 
                                     id="validity" type="number" 
                                     value={validity} onChange={(e) => setValidity(e.target.value)} 
@@ -226,7 +226,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                 </div>
 
                 <div className="p-4 rounded-xl border-2 space-y-4">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Special Attributes</Label>
+                    <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground block">Special Attributes</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Label htmlFor="priority-offer" className={cn(
                             "flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer",
@@ -234,8 +234,8 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                         )}>
                             <Checkbox id="priority-offer" checked={isPriorityOffer} onCheckedChange={(v) => setIsPriorityOffer(!!v)} />
                             <div>
-                                <p className="text-xs font-black uppercase tracking-tight">Priority Offer</p>
-                                <p className="text-[8px] font-bold opacity-60">Push to top of list</p>
+                                <p className="text-sm font-bold uppercase tracking-tight">Priority Offer</p>
+                                <p className="text-sm font-bold opacity-60">Push to top of list</p>
                             </div>
                         </Label>
 
@@ -245,8 +245,8 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                         )}>
                             <Checkbox id="recharge-pkg" checked={isRechargePack} onCheckedChange={(v) => setIsRechargePack(!!v)} />
                             <div>
-                                <p className="text-xs font-black uppercase tracking-tight">Recharge Pack</p>
-                                <p className="text-[8px] font-bold opacity-60">Visible in Recharge Hub</p>
+                                <p className="text-sm font-bold uppercase tracking-tight">Recharge Pack</p>
+                                <p className="text-sm font-bold opacity-60">Visible in Recharge Hub</p>
                             </div>
                         </Label>
                     </div>
@@ -257,8 +257,8 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                         )}>
                             <Checkbox id="add-time-pkg" checked={isAddTimePackage} onCheckedChange={(v) => setIsAddTimePackage(!!v)} />
                             <div>
-                                <p className="text-xs font-black uppercase tracking-tight">Add Time Only</p>
-                                <p className="text-[8px] font-bold opacity-60">Session extensions</p>
+                                <p className="text-sm font-bold uppercase tracking-tight">Add Time Only</p>
+                                <p className="text-sm font-bold opacity-60">Session extensions</p>
                             </div>
                         </Label>
                         <Label htmlFor="board-game-pass" className={cn(
@@ -267,22 +267,22 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                         )}>
                             <Checkbox id="board-game-pass" checked={isBoardGamePass} onCheckedChange={(v) => setIsBoardGamePass(!!v)} />
                             <div>
-                                <p className="text-xs font-black uppercase tracking-tight">Board Game Pass</p>
-                                <p className="text-[8px] font-bold opacity-60">Table stations only</p>
+                                <p className="text-sm font-bold uppercase tracking-tight">Board Game Pass</p>
+                                <p className="text-sm font-bold opacity-60">Table stations only</p>
                             </div>
                         </Label>
                     </div>
                 </div>
 
                 <div className="space-y-4 pt-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Availability Window</Label>
+                    <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Availability Window</Label>
                     <div className="flex items-center gap-2 mb-2">
                         <Checkbox
                             id="all-days"
                             checked={availableDays.length === 7}
                             onCheckedChange={(checked) => setAvailableDays(checked ? daysOfWeek : [])}
                         />
-                        <Label htmlFor="all-days" className="text-xs font-bold uppercase tracking-tight">Everyday Availability</Label>
+                        <Label htmlFor="all-days" className="text-sm font-bold uppercase tracking-tight">Everyday Availability</Label>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {daysOfWeek.map(day => (
@@ -293,7 +293,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                                     else setAvailableDays(prev => [...prev, day]);
                                 }}
                                 className={cn(
-                                    "px-3 py-1.5 rounded-full text-[9px] font-black uppercase transition-all border-2",
+                                    "px-3 py-1.5 rounded-full text-sm font-bold uppercase transition-all border-2",
                                     availableDays.includes(day) ? "bg-primary border-primary text-white shadow-md" : "bg-muted/50 border-transparent text-muted-foreground hover:border-muted"
                                 )}
                             >
@@ -304,11 +304,11 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                     
                     <div className="grid grid-cols-2 gap-4 pt-2">
                         <div className="space-y-1">
-                            <Label htmlFor="start-time" className="text-[8px] font-bold uppercase opacity-50 pl-1">Starts At</Label>
+                            <Label htmlFor="start-time" className="text-sm font-bold uppercase opacity-50 pl-1">Starts At</Label>
                             <Input id="start-time" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-10 font-bold" />
                         </div>
                         <div className="space-y-1">
-                            <Label htmlFor="end-time" className="text-[8px] font-bold uppercase opacity-50 pl-1">Ends At</Label>
+                            <Label htmlFor="end-time" className="text-sm font-bold uppercase opacity-50 pl-1">Ends At</Label>
                             <Input id="end-time" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-10 font-bold" />
                         </div>
                     </div>
@@ -316,7 +316,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
             </div>
         </ScrollArea>
         <DialogFooter className="p-6 border-t bg-muted/10">
-          <Button onClick={handleSave} className="w-full font-black uppercase tracking-widest h-14 text-lg shadow-xl">
+          <Button onClick={handleSave} className="w-full font-bold uppercase tracking-normal h-14 text-lg shadow-xl">
             <Save className="mr-2 h-5 w-5" />
             Save Configuration
           </Button>

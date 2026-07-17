@@ -102,7 +102,7 @@ export function PendingNotifications() {
             <Button variant="outline" size="icon" className={cn("relative h-8 w-8 rounded-lg", loading && "opacity-50")}>
                 <HandCoins className={cn("h-4 w-4", stats.totalReceivable > 0 ? "text-destructive" : stats.totalPayable > 0 ? "text-green-600" : "")} />
                 {stats.count > 0 && (
-                  <Badge variant="destructive" className="absolute -right-2 -top-2 h-4 w-4 p-0 flex items-center justify-center text-[8px] rounded-full">
+                  <Badge variant="destructive" className="absolute -right-2 -top-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold">
                       {stats.count}
                   </Badge>
                 )}
@@ -111,7 +111,7 @@ export function PendingNotifications() {
         <PopoverContent className="w-96 p-0 overflow-hidden">
             <div className="p-4 border-b bg-muted/20">
                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                    <h4 className="font-bold text-sm uppercase tracking-normal flex items-center gap-2">
                         <HandCoins className="h-4 w-4" />
                         Outstanding Balance
                     </h4>
@@ -128,12 +128,12 @@ export function PendingNotifications() {
                  {!showAddForm && (
                    <div className="flex gap-4">
                       <div className="flex-1">
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Receivable</p>
-                          <p className="text-lg font-black text-destructive">₹{stats.totalReceivable.toLocaleString()}</p>
+                          <p className="text-sm font-bold text-muted-foreground uppercase">Receivable</p>
+                          <p className="text-lg font-bold text-destructive">₹{stats.totalReceivable.toLocaleString()}</p>
                       </div>
                       <div className="flex-1">
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Payable</p>
-                          <p className="text-lg font-black text-green-600">₹{stats.totalPayable.toLocaleString()}</p>
+                          <p className="text-sm font-bold text-muted-foreground uppercase">Payable</p>
+                          <p className="text-lg font-bold text-green-600">₹{stats.totalPayable.toLocaleString()}</p>
                       </div>
                    </div>
                  )}
@@ -148,29 +148,29 @@ export function PendingNotifications() {
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="receivable" id="r1" className="text-destructive border-destructive" />
-                    <Label htmlFor="r1" className="text-xs font-bold uppercase text-destructive cursor-pointer">Owes Us</Label>
+                    <Label htmlFor="r1" className="text-sm font-bold uppercase text-destructive cursor-pointer">Owes Us</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="payable" id="r2" className="text-green-600 border-green-600" />
-                    <Label htmlFor="r2" className="text-xs font-bold uppercase text-green-600 cursor-pointer">We Owe</Label>
+                    <Label htmlFor="r2" className="text-sm font-bold uppercase text-green-600 cursor-pointer">We Owe</Label>
                   </div>
                 </RadioGroup>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Name</Label>
+                    <Label className="text-sm uppercase font-bold text-muted-foreground">Name</Label>
                     <div className="relative">
                       <User className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                       <Input 
                         placeholder="John" 
                         value={newName} 
                         onChange={e => setNewName(e.target.value)} 
-                        className="h-8 pl-7 text-xs"
+                        className="h-8 pl-7 text-sm"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Amount (₹)</Label>
+                    <Label className="text-sm uppercase font-bold text-muted-foreground">Amount (₹)</Label>
                     <div className="relative">
                       <IndianRupee className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                       <Input 
@@ -178,34 +178,34 @@ export function PendingNotifications() {
                         placeholder="0" 
                         value={newAmount} 
                         onChange={e => setNewAmount(e.target.value)} 
-                        className="h-8 pl-7 text-xs font-mono"
+                        className="h-8 pl-7 text-sm font-mono"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Phone (Optional)</Label>
+                  <Label className="text-sm uppercase font-bold text-muted-foreground">Phone (Optional)</Label>
                   <div className="relative">
                     <Smartphone className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                     <Input 
                       placeholder="9876543210" 
                       value={newPhone} 
                       onChange={e => setNewPhone(e.target.value)} 
-                      className="h-8 pl-7 text-xs"
+                      className="h-8 pl-7 text-sm"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Description</Label>
+                  <Label className="text-sm uppercase font-bold text-muted-foreground">Description</Label>
                   <div className="relative">
                     <AlignLeft className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                     <Input 
                       placeholder="Reason for debt..." 
                       value={newDescription} 
                       onChange={e => setNewDescription(e.target.value)} 
-                      className="h-8 pl-7 text-xs"
+                      className="h-8 pl-7 text-sm"
                     />
                   </div>
                 </div>
@@ -214,7 +214,7 @@ export function PendingNotifications() {
                   onClick={handleSaveDebt} 
                   disabled={isSubmitting}
                   className={cn(
-                    "w-full h-10 font-bold uppercase tracking-widest shadow-lg",
+                    "w-full h-10 font-bold uppercase tracking-normal shadow-lg",
                     newType === 'receivable' ? "bg-destructive hover:bg-destructive/90" : "bg-green-600 hover:bg-green-700"
                   )}
                 >
@@ -231,28 +231,28 @@ export function PendingNotifications() {
                                   <div className="space-y-0.5">
                                       <div className="flex items-center gap-2">
                                           <p className="font-bold text-sm">{debt.contactName}</p>
-                                          <Badge variant={debt.type === 'receivable' ? 'destructive' : 'default'} className="h-4 text-[8px] uppercase px-1.5 bg-opacity-10 text-opacity-100">
+                                          <Badge variant={debt.type === 'receivable' ? 'destructive' : 'default'} className="h-4 text-sm uppercase px-1.5 bg-opacity-10 text-opacity-100">
                                               {debt.type === 'receivable' ? 'OWES US' : 'WE OWE'}
                                           </Badge>
                                       </div>
-                                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                      <p className="text-sm text-muted-foreground flex items-center gap-1">
                                           <Phone className="h-3 w-3" /> {debt.contactPhone || 'No number'}
                                       </p>
                                   </div>
-                                  <p className={cn("font-black text-lg", debt.type === 'receivable' ? "text-destructive" : "text-green-600")}>
+                                  <p className={cn("font-bold text-lg", debt.type === 'receivable' ? "text-destructive" : "text-green-600")}>
                                       ₹{debt.amount.toLocaleString()}
                                   </p>
                               </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2 italic mb-3">"{debt.description}"</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2 italic mb-3">"{debt.description}"</p>
                               <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase font-bold">
+                                  <span className="text-sm text-muted-foreground flex items-center gap-1 uppercase font-bold">
                                       <Clock className="h-3 w-3" />
                                       {format(new Date(debt.timestamp), 'MMM d, p')}
                                   </span>
                                   <Button 
                                       size="sm" 
                                       variant="outline" 
-                                      className="h-7 text-[10px] font-bold uppercase tracking-wider hover:bg-green-600 hover:text-white transition-colors"
+                                      className="h-7 text-sm font-bold uppercase tracking-wider hover:bg-green-600 hover:text-white transition-colors"
                                       onClick={() => handleClear(debt.id)}
                                   >
                                       <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -261,7 +261,7 @@ export function PendingNotifications() {
                               </div>
                           </div>
                       )) : (
-                        <div className="py-12 px-4 text-center text-muted-foreground italic text-xs">
+                        <div className="py-12 px-4 text-center text-muted-foreground italic text-sm">
                           No outstanding balances found.
                         </div>
                       )}

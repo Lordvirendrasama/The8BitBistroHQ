@@ -270,7 +270,7 @@ export default function OwnerDashboardPage() {
     };
   }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations, selectedPhase]);
 
-  if (!stats || !stations) return <div className="p-20 text-center animate-pulse font-headline text-xs uppercase tracking-[0.2em]">Recalibrating Owner Pulse...</div>;
+  if (!stats || !stations) return <div className="p-20 text-center animate-pulse font-headline text-sm uppercase tracking-[0.2em]">Recalibrating Owner Pulse...</div>;
 
   const healthScore = stats.revTotal / (stats.survivalGoal || 1);
   const healthStatus = healthScore >= 1.2 ? 'STRONG' : healthScore >= 0.8 ? 'STABLE' : 'DANGER';
@@ -287,25 +287,25 @@ export default function OwnerDashboardPage() {
             </h1>
             <AppUpdatesDropdown />
           </div>
-          <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
+          <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-sm pl-1">
             OPERATIONAL COMMAND & CONTROL &bull; CYCLE: {stats.todayStr}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
             <div className="space-y-1">
-                <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest text-right px-1">Analytical Phase</p>
+                <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal text-right px-1">Analytical Phase</p>
                 <Select value={selectedPhase} onValueChange={setSelectedPhase}>
-                    <SelectTrigger className="h-10 w-[240px] border-2 font-black uppercase text-[10px] tracking-tight bg-background">
+                    <SelectTrigger className="h-10 w-[240px] border-2 font-bold uppercase text-sm tracking-tight bg-background">
                         <Filter className="mr-2 h-3.5 w-3.5 text-primary" />
                         <SelectValue placeholder="All Cycles" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all_cycles" className="font-bold uppercase text-[10px]">
+                        <SelectItem value="all_cycles" className="font-bold uppercase text-sm">
                             <span className="flex items-center gap-2"><Globe className="h-3 w-3" /> Global History</span>
                         </SelectItem>
                         {availableCycles.map(c => (
-                            <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-[10px]">
+                            <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-sm">
                                 {c.name}
                             </SelectItem>
                         ))}
@@ -324,14 +324,14 @@ export default function OwnerDashboardPage() {
           <ShieldCheck className="h-10 w-10" />
           <div>
             <h3 className="text-lg md:text-xl font-pixel">TODAY'S STATUS: <span className={cn(healthStatus === 'STRONG' ? 'text-accent' : healthStatus === 'STABLE' ? 'text-yellow-500' : 'text-primary')}>{healthStatus}</span></h3>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] opacity-80">
               Audit performed based on current business day intake vs calculated survival threshold.
             </p>
           </div>
         </div>
         <div className="hidden sm:flex flex-col items-end">
-          <p className="text-[10px] font-black uppercase opacity-60">Daily Goal Performance</p>
-          <p className="text-3xl font-black font-mono">{(healthScore * 100).toFixed(1)}%</p>
+          <p className="text-sm font-bold uppercase opacity-60">Daily Goal Performance</p>
+          <p className="text-3xl font-bold font-mono">{(healthScore * 100).toFixed(1)}%</p>
         </div>
       </div>
 
@@ -339,13 +339,13 @@ export default function OwnerDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-2 bg-card shadow-sm">
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
               <IndianRupee className="h-3 w-3" /> Today's Intake
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">₹{stats.revTotal.toLocaleString()}</div>
-            <div className="flex justify-between mt-2 text-[9px] font-bold uppercase opacity-60">
+            <div className="flex justify-between mt-2 text-sm font-bold uppercase opacity-60">
               <span>Gaming: ₹{stats.revGaming}</span>
               <span>Bistro: ₹{stats.revFood}</span>
             </div>
@@ -354,22 +354,22 @@ export default function OwnerDashboardPage() {
 
         <Card className="border-2 bg-card shadow-sm">
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
               <Wallet className="h-3 w-3" /> Collection Mix
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="flex items-center gap-2">
               <div className="flex-1">
-                <p className="text-[9px] font-black uppercase text-muted-foreground leading-none mb-1">Cash</p>
+                <p className="text-sm font-bold uppercase text-muted-foreground leading-none mb-1">Cash</p>
                 <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revCash.toLocaleString()}</p>
               </div>
               <div className="flex-1 border-l border-zinc-800 pl-2">
-                <p className="text-[9px] font-black uppercase text-muted-foreground leading-none mb-1">UPI</p>
+                <p className="text-sm font-bold uppercase text-muted-foreground leading-none mb-1">UPI</p>
                 <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revUpi.toLocaleString()}</p>
               </div>
               <div className="flex-1 border-l border-zinc-800 pl-2">
-                <p className="text-[9px] font-black uppercase text-muted-foreground leading-none mb-1">Dist</p>
+                <p className="text-sm font-bold uppercase text-muted-foreground leading-none mb-1">Dist</p>
                 <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revDistrict.toLocaleString()}</p>
               </div>
             </div>
@@ -378,14 +378,14 @@ export default function OwnerDashboardPage() {
 
         <Card className="border-2 bg-primary/5 border-primary/20 shadow-lg">
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-normal text-primary flex items-center gap-2">
               <Target className="h-3 w-3" /> Survival Goal
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 space-y-2">
             <div className="flex justify-between items-baseline">
               <div className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">₹{Math.round(stats.survivalGoal).toLocaleString()}</div>
-              <Badge variant="outline" className="text-[8px] h-4 font-black border-primary/30 text-primary">DAILY TARGET</Badge>
+              <Badge variant="outline" className="text-sm h-4 font-bold border-primary/30 text-primary">DAILY TARGET</Badge>
             </div>
             <Progress value={(stats.revTotal / stats.survivalGoal) * 100} className="h-1.5" />
           </CardContent>
@@ -395,24 +395,24 @@ export default function OwnerDashboardPage() {
         <Card className="border-2 bg-muted/5 shadow-sm group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
           <CardHeader className="p-4 pb-2">
             <div className="flex justify-between items-center">
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
                     <Activity className="h-3 w-3" /> Footfall Intensity
                 </CardTitle>
                 <ChevronRight className="h-3 w-3 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="flex justify-between items-end">
-                <div>
+            <div className="flex justify-between items-end gap-2">
+                <div className="min-w-0 flex-1">
                     <div className={cn(
-                        "text-4xl md:text-5xl font-extrabold font-body tracking-tight",
+                        "text-3xl xl:text-4xl font-extrabold font-body tracking-tight truncate",
                         stats.footfallIntensity === 'HIGH' ? "text-accent" : stats.footfallIntensity === 'MODERATE' ? "text-yellow-500" : "text-white"
                     )}>
                         {stats.footfallIntensity}
                     </div>
-                    <p className="text-[9px] font-bold uppercase opacity-50 mt-1">{stats.footfallVolume} Orders Registered</p>
+                    <p className="text-sm font-bold uppercase opacity-50 mt-1 truncate">{stats.footfallVolume} Orders Registered</p>
                 </div>
-                <div className="h-10 w-10 rounded-lg bg-background border-2 border-dashed flex items-center justify-center">
+                <div className="h-10 w-10 shrink-0 rounded-lg bg-background border-2 border-dashed flex items-center justify-center">
                     <TrendingUp className="h-5 w-5 opacity-20" />
                 </div>
             </div>
@@ -426,13 +426,13 @@ export default function OwnerDashboardPage() {
           <CardHeader className="border-b bg-muted/10">
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-primary" />
                     Monthly Top Performers
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">High-Volume Items for the current month.</CardDescription>
+                <CardDescription className="text-sm font-bold uppercase tracking-normal">High-Volume Items for the current month.</CardDescription>
               </div>
-              <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary uppercase">{format(new Date(), 'MMMM yyyy')}</Badge>
+              <Badge variant="outline" className="text-sm font-bold border-primary/20 text-primary uppercase">{format(new Date(), 'MMMM yyyy')}</Badge>
             </div>
           </CardHeader>
           <CardContent className="p-6">
@@ -440,27 +440,27 @@ export default function OwnerDashboardPage() {
                 <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-orange-500/5 border-orange-500/20">
                     <div className="p-2 bg-orange-500/10 rounded-lg"><Utensils className="h-5 w-5 text-orange-600" /></div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Top Food</p>
-                        <p className="text-xs font-black uppercase truncate">{stats.topFood ? stats.topFood[0] : 'N/A'}</p>
-                        {stats.topFood && <p className="text-[10px] font-bold text-orange-600 mt-0.5">{stats.topFood[1]} Units Sold</p>}
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Top Food</p>
+                        <p className="text-sm font-bold uppercase truncate">{stats.topFood ? stats.topFood[0] : 'N/A'}</p>
+                        {stats.topFood && <p className="text-sm font-bold text-orange-600 mt-0.5">{stats.topFood[1]} Units Sold</p>}
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-blue-500/5 border-blue-500/20">
                     <div className="p-2 bg-blue-500/10 rounded-lg"><Coffee className="h-5 w-5 text-blue-600" /></div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Top Beverage</p>
-                        <p className="text-xs font-black uppercase truncate">{stats.topDrink ? stats.topDrink[0] : 'N/A'}</p>
-                        {stats.topDrink && <p className="text-[10px] font-bold text-blue-600 mt-0.5">{stats.topDrink[1]} Units Sold</p>}
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Top Beverage</p>
+                        <p className="text-sm font-bold uppercase truncate">{stats.topDrink ? stats.topDrink[0] : 'N/A'}</p>
+                        {stats.topDrink && <p className="text-sm font-bold text-blue-600 mt-0.5">{stats.topDrink[1]} Units Sold</p>}
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-primary/5 border-primary/20">
                     <div className="p-2 bg-primary/10 rounded-lg"><Zap className="h-5 w-5 text-primary" /></div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Top Package</p>
-                        <p className="text-xs font-black uppercase truncate">{stats.topPkg ? stats.topPkg[0] : 'N/A'}</p>
-                        {stats.topPkg && <p className="text-[10px] font-bold text-primary mt-0.5">{stats.topPkg[1]} Sessions</p>}
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Top Package</p>
+                        <p className="text-sm font-bold uppercase truncate">{stats.topPkg ? stats.topPkg[0] : 'N/A'}</p>
+                        {stats.topPkg && <p className="text-sm font-bold text-primary mt-0.5">{stats.topPkg[1]} Sessions</p>}
                     </div>
                 </div>
             </div>
@@ -469,7 +469,7 @@ export default function OwnerDashboardPage() {
 
         <Card className="border-2 flex flex-col">
           <CardHeader className="border-b bg-muted/10">
-            <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+            <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" /> Staff on Duty
             </CardTitle>
           </CardHeader>
@@ -479,20 +479,20 @@ export default function OwnerDashboardPage() {
                 {shift.employees.map(emp => (
                   <div key={emp.username} className="flex items-center justify-between p-3 rounded-xl border-2 bg-muted/5">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-black text-xs text-primary">{emp.displayName[0]}</div>
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm text-primary">{emp.displayName[0]}</div>
                       <div>
-                        <p className="text-xs font-black uppercase">{emp.displayName}</p>
-                        <p className="text-[9px] font-bold opacity-50 uppercase flex items-center gap-1"><Clock className="h-2 w-2" /> Since {format(new Date(shift.startTime), 'p')}</p>
+                        <p className="text-sm font-bold uppercase">{emp.displayName}</p>
+                        <p className="text-sm font-bold opacity-50 uppercase flex items-center gap-1"><Clock className="h-2 w-2" /> Since {format(new Date(shift.startTime), 'p')}</p>
                       </div>
                     </div>
-                    <Badge className="bg-emerald-600 text-[8px] font-black">ACTIVE</Badge>
+                    <Badge className="bg-emerald-600 text-sm font-bold">ACTIVE</Badge>
                   </div>
                 ))}
               </div>
             )) : (
               <div className="h-full flex flex-col items-center justify-center opacity-30 italic py-8">
                 <AlertCircle className="h-8 w-8 mb-2" />
-                <p className="text-[10px] font-black uppercase tracking-widest">No staff logged in</p>
+                <p className="text-sm font-bold uppercase tracking-normal">No staff logged in</p>
               </div>
             )}
           </CardContent>
@@ -504,31 +504,31 @@ export default function OwnerDashboardPage() {
         <Card className="border-2 bg-muted/5 overflow-hidden group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
             <CardHeader className="border-b pb-3">
                 <div className="flex justify-between items-center">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <CardTitle className="text-sm font-bold uppercase tracking-normal flex items-center gap-2">
                         <Clock className="h-4 w-4 text-primary" />
                         Phase Peak Hours
                     </CardTitle>
-                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
+                    <Badge variant="secondary" className="text-sm font-bold bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
                 </div>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Most popular login windows based on selected phase.</CardDescription>
+                <CardDescription className="text-sm font-bold uppercase tracking-tight">Most popular login windows based on selected phase.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
                     <p className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">
                         {stats.topHour ? `${stats.topHour[0]}:00` : 'N/A'}
                     </p>
-                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">Power Hour</p>
+                    <p className="text-sm font-bold uppercase text-primary tracking-normal">Power Hour</p>
                 </div>
                 <div className="h-16 w-[2px] bg-primary/10 mx-6" />
                 <div className="flex-1 space-y-3">
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase">
+                    <div className="flex justify-between items-center text-sm font-bold uppercase">
                         <span>Intake Velocity</span>
                         <span className="text-emerald-600">TREND</span>
                     </div>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-primary w-[85%] rounded-full shadow-[0_0_10px_rgba(239,0,53,0.3)]" />
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Busiest window identified from behavioral data in this phase.</p>
+                    <p className="text-sm text-muted-foreground uppercase font-bold">Busiest window identified from behavioral data in this phase.</p>
                 </div>
             </CardContent>
         </Card>
@@ -536,34 +536,34 @@ export default function OwnerDashboardPage() {
         <Card className="border-2 bg-muted/5 overflow-hidden group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
             <CardHeader className="border-b pb-3">
                 <div className="flex justify-between items-center">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <CardTitle className="text-sm font-bold uppercase tracking-normal flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-primary" />
                         Strategic Prime Days
                     </CardTitle>
-                    <Badge variant="secondary" className="text-[8px] font-black bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
+                    <Badge variant="secondary" className="text-sm font-bold bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
                 </div>
-                <CardDescription className="text-[9px] font-bold uppercase tracking-tight">Highest traffic days identified in selected period.</CardDescription>
+                <CardDescription className="text-sm font-bold uppercase tracking-tight">Highest traffic days identified in selected period.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
                     <p className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white uppercase">
                         {stats.topDay ? stats.topDay[0] : 'N/A'}
                     </p>
-                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">Strongest Day</p>
+                    <p className="text-sm font-bold uppercase text-primary tracking-normal">Strongest Day</p>
                 </div>
                 <div className="h-16 w-[2px] bg-primary/10 mx-6" />
                 <div className="flex-1 space-y-3">
                     <div className="grid grid-cols-7 gap-1">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
                             <div key={d} className={cn(
-                                "h-8 rounded flex items-center justify-center text-[8px] font-black uppercase border",
+                                "h-8 rounded flex items-center justify-center text-sm font-bold uppercase border",
                                 stats.topDay?.[0].startsWith(d) ? "bg-primary border-primary text-white shadow-md" : "bg-card border-muted opacity-40"
                             )}>
                                 {d[0]}
                             </div>
                         ))}
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Impact day derived from phase-specific longitudinal data.</p>
+                    <p className="text-sm text-muted-foreground uppercase font-bold">Impact day derived from phase-specific longitudinal data.</p>
                 </div>
             </CardContent>
         </Card>
@@ -571,19 +571,19 @@ export default function OwnerDashboardPage() {
 
       {/* 5. QUICK ACTIONS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <Button onClick={() => router.push('/financials/spending')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-primary hover:text-white transition-all shadow-md">
+        <Button onClick={() => router.push('/financials/spending')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-primary hover:text-white transition-all shadow-md">
           <Plus className="h-4 w-4" /> Add Outflow
         </Button>
-        <Button onClick={() => router.push('/financials/payroll')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-emerald-600 hover:text-white transition-all shadow-md">
+        <Button onClick={() => router.push('/financials/payroll')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-emerald-600 hover:text-white transition-all shadow-md">
           <IndianRupee className="h-4 w-4" /> Pay Salary
         </Button>
-        <Button onClick={() => router.push('/users')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-indigo-600 hover:text-white transition-all shadow-md">
+        <Button onClick={() => router.push('/users')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-indigo-600 hover:text-white transition-all shadow-md">
           <Send className="h-4 w-4" /> Broadcast
         </Button>
-        <Button onClick={() => router.push('/dashboard')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-orange-600 hover:text-white transition-all shadow-md">
+        <Button onClick={() => router.push('/dashboard')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-orange-600 hover:text-white transition-all shadow-md">
           <Play className="h-4 w-4" /> Start Station
         </Button>
-        <Button onClick={() => router.push('/settings/menu?tab=packages')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-black uppercase text-[10px] tracking-tight hover:bg-pink-600 hover:text-white transition-all shadow-md">
+        <Button onClick={() => router.push('/settings/menu?tab=packages')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-pink-600 hover:text-white transition-all shadow-md">
           <Zap className="h-4 w-4" /> Create Offer
         </Button>
       </div>

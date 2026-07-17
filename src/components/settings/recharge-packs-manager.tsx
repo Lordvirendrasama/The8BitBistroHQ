@@ -95,28 +95,28 @@ export function RechargePacksManager() {
                 <Zap className="h-6 w-6 text-yellow-500 fill-current" />
                 Manage Recharge Packs
             </CardTitle>
-            <CardDescription className="font-bold text-xs uppercase tracking-widest">Configure prepaid time packages for the Recharge Hub.</CardDescription>
+            <CardDescription className="font-bold text-sm uppercase tracking-normal">Configure prepaid time packages for the Recharge Hub.</CardDescription>
           </div>
-          <Button size="sm" className="font-black uppercase tracking-tight h-10 shadow-lg" onClick={handleAdd}>
+          <Button size="sm" className="font-bold uppercase tracking-tight h-10 shadow-lg" onClick={handleAdd}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Recharge Pack
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {loading && <div className="py-12 text-center opacity-50 font-bold uppercase tracking-widest animate-pulse">Loading Packs...</div>}
+        {loading && <div className="py-12 text-center opacity-50 font-bold uppercase tracking-normal animate-pulse">Loading Packs...</div>}
         {error && <p className="text-destructive">Error loading packages.</p>}
         {packages && (
           <ScrollArea className="h-[600px] rounded-xl border-2 border-dashed">
             <Table>
                 <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm">
                 <TableRow>
-                    <TableHead className="font-black uppercase text-[10px] bg-muted/30 px-6">Pack Name</TableHead>
-                    <TableHead className="text-center font-black uppercase text-[10px] bg-muted/30">Time</TableHead>
-                    <TableHead className="text-center font-black uppercase text-[10px] bg-muted/30">Price</TableHead>
-                    <TableHead className="text-center font-black uppercase text-[10px] bg-muted/30">Rate/Hr</TableHead>
-                    <TableHead className="text-center font-black uppercase text-[10px] bg-muted/30">Validity</TableHead>
-                    <TableHead className="text-right font-black uppercase text-[10px] bg-muted/30 pr-6">Actions</TableHead>
+                    <TableHead className="font-bold uppercase text-sm bg-muted/30 px-6">Pack Name</TableHead>
+                    <TableHead className="text-center font-bold uppercase text-sm bg-muted/30">Time</TableHead>
+                    <TableHead className="text-center font-bold uppercase text-sm bg-muted/30">Price</TableHead>
+                    <TableHead className="text-center font-bold uppercase text-sm bg-muted/30">Rate/Hr</TableHead>
+                    <TableHead className="text-center font-bold uppercase text-sm bg-muted/30">Validity</TableHead>
+                    <TableHead className="text-right font-bold uppercase text-sm bg-muted/30 pr-6">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -126,26 +126,26 @@ export function RechargePacksManager() {
 
                     return (
                         <TableRow key={pkg.id} className="hover:bg-muted/20">
-                        <TableCell className="font-black uppercase text-xs sm:text-sm px-6">{pkg.name}</TableCell>
+                        <TableCell className="font-bold uppercase text-sm sm:text-sm px-6">{pkg.name}</TableCell>
                         <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-2 font-mono font-bold text-xs">
+                            <div className="flex items-center justify-center gap-2 font-mono font-bold text-sm">
                                 <Clock className="h-3 w-3 text-muted-foreground" />
                                 <span>{formatDuration(pkg.duration)}</span>
                             </div>
                         </TableCell>
                         <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1 font-mono font-black text-sm text-primary">
+                            <div className="flex items-center justify-center gap-1 font-mono font-bold text-sm text-primary">
                                 <span>₹{pkg.price}</span>
                             </div>
                         </TableCell>
                         <TableCell className="text-center">
                             <div className="flex flex-col items-center justify-center">
-                                <span className="font-mono font-bold text-xs text-foreground">₹{Math.round(ratePerHour)}</span>
-                                <span className="text-[7px] font-black text-muted-foreground uppercase opacity-50 tracking-tighter">/ HOUR</span>
+                                <span className="font-mono font-bold text-sm text-foreground">₹{Math.round(ratePerHour)}</span>
+                                <span className="text-sm font-bold text-muted-foreground uppercase opacity-50 tracking-tight">/ HOUR</span>
                             </div>
                         </TableCell>
                         <TableCell className="text-center">
-                            <Badge variant="outline" className="font-black uppercase text-[9px] h-5 border-primary/20 bg-primary/5">
+                            <Badge variant="outline" className="font-bold uppercase text-sm h-5 border-primary/20 bg-primary/5">
                                 {pkg.validity} Days
                             </Badge>
                         </TableCell>
@@ -156,7 +156,7 @@ export function RechargePacksManager() {
                                 <Button size="icon" variant="ghost" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-sm uppercase font-bold opacity-50">Actions</DropdownMenuLabel>
                                 <DropdownMenuItem onSelect={() => handleEdit(pkg)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                                 <AlertDialogTrigger asChild>
                                     <DropdownMenuItem className="text-destructive font-bold"><Trash className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
@@ -185,7 +185,7 @@ export function RechargePacksManager() {
                         <TableCell colSpan={6} className="h-48 text-center bg-muted/5">
                             <div className="flex flex-col items-center justify-center opacity-30">
                                 <Zap className="h-10 w-10 mb-2" />
-                                <p className="font-headline text-xs tracking-widest">No recharge packs configured</p>
+                                <p className="font-headline text-sm tracking-normal">No recharge packs configured</p>
                             </div>
                         </TableCell>
                     </TableRow>

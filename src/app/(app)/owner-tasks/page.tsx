@@ -31,7 +31,7 @@ export default function OwnerTasksPage() {
           <ShieldCheck className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
           OWNER CONTROL CENTER
         </h1>
-        <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs sm:text-sm pl-1">
+        <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-sm sm:text-sm pl-1">
           WELCOME BACK, VIREN. MANAGE STRATEGIC TASKS AND UNIFIED FINANCIALS.
         </p>
       </div>
@@ -40,21 +40,21 @@ export default function OwnerTasksPage() {
         <TabsList className="flex w-full sm:w-fit gap-4 bg-transparent h-auto p-0 mb-8 overflow-x-auto no-scrollbar">
           <TabsTrigger 
             value="tasks" 
-            className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-black uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
+            className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-bold uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
           >
             <ShieldCheck className="h-5 w-5" />
             Checklist & Alerts
           </TabsTrigger>
           <TabsTrigger 
             value="daily" 
-            className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-black uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
+            className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-bold uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
           >
             <ListChecks className="h-5 w-5" />
             Daily Operations
           </TabsTrigger>
           <TabsTrigger 
             value="expenses" 
-            className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-black uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
+            className="flex-1 sm:flex-initial h-14 px-8 rounded-xl font-bold uppercase tracking-tight text-sm gap-3 border-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all"
           >
             <Wallet className="h-5 w-5" />
             Financial Dashboard

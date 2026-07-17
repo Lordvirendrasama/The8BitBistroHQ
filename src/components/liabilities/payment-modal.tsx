@@ -65,12 +65,12 @@ export function LiabilityPaymentModal({ isOpen, onOpenChange, onSuccess }: Liabi
             <Banknote className="text-primary" />
             Record Transaction
           </DialogTitle>
-          <DialogDescription className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Adjust your liability balances by recording movements.</DialogDescription>
+          <DialogDescription className="text-sm uppercase font-bold tracking-normal text-muted-foreground">Adjust your liability balances by recording movements.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Transaction Type</Label>
+            <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Transaction Type</Label>
             <RadioGroup value={type} onValueChange={(v: any) => setType(v)} className="grid grid-cols-2 gap-3">
               <Label 
                 className={cn(
@@ -81,8 +81,8 @@ export function LiabilityPaymentModal({ isOpen, onOpenChange, onSuccess }: Liabi
                 <RadioGroupItem value="payment" className="sr-only" />
                 <ArrowDownCircle className={cn("h-5 w-5", type === 'payment' ? "text-emerald-600" : "")} />
                 <div className="flex flex-col">
-                    <span className="font-black uppercase text-[10px]">Repayment</span>
-                    <span className="text-[7px] font-bold opacity-60">LOAN DOWN</span>
+                    <span className="font-bold uppercase text-sm">Repayment</span>
+                    <span className="text-sm font-bold opacity-60">LOAN DOWN</span>
                 </div>
               </Label>
               <Label 
@@ -94,15 +94,15 @@ export function LiabilityPaymentModal({ isOpen, onOpenChange, onSuccess }: Liabi
                 <RadioGroupItem value="drawdown" className="sr-only" />
                 <ArrowUpCircle className={cn("h-5 w-5", type === 'drawdown' ? "text-destructive" : "")} />
                 <div className="flex flex-col">
-                    <span className="font-black uppercase text-[10px]">Drawdown</span>
-                    <span className="text-[7px] font-bold opacity-60">LOAN UP</span>
+                    <span className="font-bold uppercase text-sm">Drawdown</span>
+                    <span className="text-sm font-bold opacity-60">LOAN UP</span>
                 </div>
               </Label>
             </RadioGroup>
           </div>
 
           <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Target Account</Label>
+            <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Target Account</Label>
             <RadioGroup value={target} onValueChange={(v: any) => setTarget(v)} className="grid grid-cols-2 gap-3">
               <Label 
                 className={cn(
@@ -112,7 +112,7 @@ export function LiabilityPaymentModal({ isOpen, onOpenChange, onSuccess }: Liabi
               >
                 <RadioGroupItem value="loan" className="sr-only" />
                 <Zap className={cn("h-5 w-5 mb-1.5", target === 'loan' ? "text-primary fill-current" : "")} />
-                <span className="font-black uppercase text-[10px]">Business Loan</span>
+                <span className="font-bold uppercase text-sm">Business Loan</span>
               </Label>
               <Label 
                 className={cn(
@@ -122,37 +122,37 @@ export function LiabilityPaymentModal({ isOpen, onOpenChange, onSuccess }: Liabi
               >
                 <RadioGroupItem value="rent" className="sr-only" />
                 <Calendar className={cn("h-5 w-5 mb-1.5", target === 'rent' ? "text-amber-600" : "")} />
-                <span className="font-black uppercase text-[10px]">Backlog Rent</span>
+                <span className="font-bold uppercase text-sm">Backlog Rent</span>
               </Label>
             </RadioGroup>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 pl-1">Amount (₹)</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal opacity-50 pl-1">Amount (₹)</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-muted-foreground">₹</span>
-                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="pl-7 h-12 font-mono font-black text-xl border-2" />
+                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="pl-7 h-12 font-mono font-bold text-xl border-2" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 pl-1">Effective Date</Label>
+              <Label className="text-sm font-bold uppercase tracking-normal opacity-50 pl-1">Effective Date</Label>
               <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 font-bold" />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 pl-1">Internal Note</Label>
+            <Label className="text-sm font-bold uppercase tracking-normal opacity-50 pl-1">Internal Note</Label>
             <div className="relative">
               <AlignLeft className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-              <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. ADDITIONAL DRAWDOWN" className="pl-10 h-11 font-bold uppercase text-xs border-2" />
+              <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. ADDITIONAL DRAWDOWN" className="pl-10 h-11 font-bold uppercase text-sm border-2" />
             </div>
           </div>
         </div>
 
         <DialogFooter className="pt-2">
           <Button disabled={isSubmitting || !amount} onClick={handlePay} className={cn(
-              "w-full h-14 font-black uppercase tracking-widest shadow-xl text-lg",
+              "w-full h-14 font-bold uppercase tracking-normal shadow-xl text-lg",
               type === 'drawdown' ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90"
           )}>
             {isSubmitting ? "Processing..." : type === 'drawdown' ? "Confirm Drawdown" : "Confirm Payment"}

@@ -26,10 +26,10 @@ export default function EmployeeSettingsPage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full max-w-[400px] grid-cols-2">
-          <TabsTrigger value="active" className="font-bold uppercase text-[10px] tracking-wider">
+          <TabsTrigger value="active" className="font-bold uppercase text-sm tracking-wider">
             Active Registry
           </TabsTrigger>
-          <TabsTrigger value="archived" className="font-bold uppercase text-[10px] tracking-wider">
+          <TabsTrigger value="archived" className="font-bold uppercase text-sm tracking-wider">
             Archived Operators
           </TabsTrigger>
         </TabsList>

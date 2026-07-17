@@ -805,7 +805,7 @@ function DashboardContent() {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center gap-4 opacity-50">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="font-headline text-[10px] tracking-widest animate-pulse">Syncing Bistro...</p>
+        <p className="font-headline text-sm tracking-normal animate-pulse">Syncing Bistro...</p>
       </div>
     );
   }
@@ -815,19 +815,19 @@ function DashboardContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
-          <p className="mt-1 sm:mt-2 text-xs sm:sm text-muted-foreground uppercase font-black tracking-widest opacity-60">Manage PS5 units and game tables.</p>
+          <p className="mt-1 sm:mt-2 text-sm sm:sm text-muted-foreground uppercase font-bold tracking-normal opacity-60">Manage PS5 units and game tables.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <Button 
                 onClick={() => setIsRewardsModalOpen(true)} 
-                className="h-12 px-6 font-black uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
+                className="h-12 px-6 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
             >
                 <Gift className="mr-2 h-5 w-5 fill-current" />
                 Redeem Perks
             </Button>
             <Button 
                 onClick={() => setIsRechargeModalOpen(true)} 
-                className="h-12 px-6 font-black uppercase tracking-widest bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
+                className="h-12 px-6 font-bold uppercase tracking-normal bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
             >
                 <Zap className="mr-2 h-5 w-5 fill-current" />
                 Quick Recharge
@@ -840,7 +840,7 @@ function DashboardContent() {
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-primary"/> PS5 Consoles</CardTitle>
             <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleManage('ps5')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                <Button variant="outline" size="sm" onClick={() => handleManage('ps5')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -871,7 +871,7 @@ function DashboardContent() {
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Users className="h-5 sm:h-6 w-5 sm:w-6 text-primary" /> Board Games</CardTitle>
             <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-[10px] sm:text-xs font-black uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -934,7 +934,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse">Initializing Dashboard...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center font-headline text-sm animate-pulse">Initializing Dashboard...</div>}>
       <DashboardContent />
     </Suspense>
   );

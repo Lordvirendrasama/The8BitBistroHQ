@@ -70,15 +70,15 @@ export function LiabilityConfigModal({ isOpen, onOpenChange, state, onSuccess }:
             <Settings2 className="text-primary" />
             ENGINE CALIBRATION
           </DialogTitle>
-          <DialogDescription className="font-black text-[9px] uppercase tracking-widest text-muted-foreground mt-1">Configure your core liability parameters.</DialogDescription>
+          <DialogDescription className="font-bold text-sm uppercase tracking-normal text-muted-foreground mt-1">Configure your core liability parameters.</DialogDescription>
         </DialogHeader>
 
         <div className="p-6 space-y-8">
           <div className="bg-primary/5 border-2 border-dashed border-primary/20 p-4 rounded-xl flex items-start gap-4">
             <ShieldCheck className="text-primary h-6 w-6 shrink-0 mt-1" />
             <div className="space-y-1">
-                <p className="font-black uppercase text-[10px] text-primary">Simple Setup</p>
-                <p className="text-xs font-medium text-foreground/80 leading-relaxed">
+                <p className="font-bold uppercase text-sm text-primary">Simple Setup</p>
+                <p className="text-sm font-medium text-foreground/80 leading-relaxed">
                     Adjust the <strong>Current Debt</strong> or <strong>Unpaid Rent</strong> if you've made manual payments that aren't logged. 
                     The system compounds interest and adds rent backlog automatically based on the Start Date.
                 </p>
@@ -88,31 +88,31 @@ export function LiabilityConfigModal({ isOpen, onOpenChange, state, onSuccess }:
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* LOAN SECTION */}
             <div className="space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b pb-2">
+                <h4 className="text-sm font-bold uppercase tracking-normal text-primary flex items-center gap-2 border-b pb-2">
                     Business Loan
                 </h4>
                 <div className="space-y-3">
                     <div className="space-y-1">
-                        <Label className="text-[9px] font-bold uppercase opacity-50 pl-1">Starting Principal (₹)</Label>
+                        <Label className="text-sm font-bold uppercase opacity-50 pl-1">Starting Principal (₹)</Label>
                         <Input type="number" value={formData.loanPrincipalStart} onChange={e => setFormData(p => ({...p, loanPrincipalStart: Number(e.target.value)}))} className="font-mono font-bold" />
                     </div>
                     <div className="space-y-1">
                         <div className="flex justify-between items-center mb-1">
-                            <Label className="text-[9px] font-bold uppercase opacity-50 pl-1">Current Debt Balance (₹)</Label>
-                            <button onClick={resetToPrincipal} className="text-[8px] font-black text-primary hover:underline flex items-center gap-1">
+                            <Label className="text-sm font-bold uppercase opacity-50 pl-1">Current Debt Balance (₹)</Label>
+                            <button onClick={resetToPrincipal} className="text-sm font-bold text-primary hover:underline flex items-center gap-1">
                                 <RefreshCcw className="h-2 w-2" /> RESET TO PRINCIPAL
                             </button>
                         </div>
-                        <Input type="number" value={formData.loanBalance} onChange={e => setFormData(p => ({...p, loanBalance: Number(e.target.value)}))} className="font-mono font-black border-primary/20 text-primary bg-primary/5" />
+                        <Input type="number" value={formData.loanBalance} onChange={e => setFormData(p => ({...p, loanBalance: Number(e.target.value)}))} className="font-mono font-bold border-primary/20 text-primary bg-primary/5" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                            <Label className="text-[9px] font-bold uppercase opacity-50 pl-1">Int. Rate (%)</Label>
+                            <Label className="text-sm font-bold uppercase opacity-50 pl-1">Int. Rate (%)</Label>
                             <Input type="number" value={formData.annualInterestRate} onChange={e => setFormData(p => ({...p, annualInterestRate: Number(e.target.value)}))} className="font-bold" />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[9px] font-bold uppercase opacity-50 pl-1">Loan Start Date</Label>
-                            <Input type="date" value={formData.loanStartDate} onChange={e => setFormData(p => ({...p, loanStartDate: e.target.value}))} className="font-bold h-10 text-xs" />
+                            <Label className="text-sm font-bold uppercase opacity-50 pl-1">Loan Start Date</Label>
+                            <Input type="date" value={formData.loanStartDate} onChange={e => setFormData(p => ({...p, loanStartDate: e.target.value}))} className="font-bold h-10 text-sm" />
                         </div>
                     </div>
                 </div>
@@ -120,17 +120,17 @@ export function LiabilityConfigModal({ isOpen, onOpenChange, state, onSuccess }:
 
             {/* RENT SECTION */}
             <div className="space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-2 border-b pb-2">
+                <h4 className="text-sm font-bold uppercase tracking-normal text-amber-600 flex items-center gap-2 border-b pb-2">
                     Rent Backlog
                 </h4>
                 <div className="space-y-3">
                     <div className="space-y-1">
-                        <Label className="text-[9px] font-bold uppercase opacity-50 pl-1">Monthly Rent Cost (₹)</Label>
+                        <Label className="text-sm font-bold uppercase opacity-50 pl-1">Monthly Rent Cost (₹)</Label>
                         <Input type="number" value={formData.monthlyRent} onChange={e => setFormData(p => ({...p, monthlyRent: Number(e.target.value)}))} className="font-mono font-bold" />
                     </div>
                     <div className="space-y-1">
-                        <Label className="text-[9px] font-bold uppercase opacity-50 pl-1">Current Unpaid Rent (₹)</Label>
-                        <Input type="number" value={formData.rentBalance} onChange={e => setFormData(p => ({...p, rentBalance: Number(e.target.value)}))} className="font-mono font-black border-amber-500/20 text-amber-600 bg-amber-500/5" />
+                        <Label className="text-sm font-bold uppercase opacity-50 pl-1">Current Unpaid Rent (₹)</Label>
+                        <Input type="number" value={formData.rentBalance} onChange={e => setFormData(p => ({...p, rentBalance: Number(e.target.value)}))} className="font-mono font-bold border-amber-500/20 text-amber-600 bg-amber-500/5" />
                     </div>
                 </div>
             </div>
@@ -138,7 +138,7 @@ export function LiabilityConfigModal({ isOpen, onOpenChange, state, onSuccess }:
         </div>
 
         <DialogFooter className="p-6 bg-muted/5 border-t">
-          <Button disabled={isSubmitting} onClick={handleSave} className="w-full h-14 font-black uppercase tracking-widest shadow-xl text-lg gap-3">
+          <Button disabled={isSubmitting} onClick={handleSave} className="w-full h-14 font-bold uppercase tracking-normal shadow-xl text-lg gap-3">
             <Save className="h-5 w-5" />
             Update Mission Control
           </Button>

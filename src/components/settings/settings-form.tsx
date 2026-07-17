@@ -60,7 +60,7 @@ export function SettingsForm() {
     setIsSubmitting(false);
   };
 
-  if (loading) return <div className="p-12 text-center opacity-50 font-bold uppercase tracking-widest animate-pulse">Loading Configuration...</div>;
+  if (loading) return <div className="p-12 text-center opacity-50 font-bold uppercase tracking-normal animate-pulse">Loading Configuration...</div>;
 
   return (
     <Card>
@@ -72,18 +72,18 @@ export function SettingsForm() {
         <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="activeCycle" className="text-primary font-black uppercase text-[10px] tracking-widest">Active Data Cycle</Label>
+                    <Label htmlFor="activeCycle" className="text-primary font-bold uppercase text-sm tracking-normal">Active Data Cycle</Label>
                     <Input name="activeCycle" id="activeCycle" defaultValue={settings?.activeCycle} className="font-bold border-primary/30 bg-primary/5" />
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">
+                    <p className="text-sm text-muted-foreground uppercase font-bold">
                         All new transactions will be tagged under this name.
                     </p>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="hourlySalaryRate" className="text-primary font-black uppercase text-[10px] tracking-widest flex items-center gap-2">
+                    <Label htmlFor="hourlySalaryRate" className="text-primary font-bold uppercase text-sm tracking-normal flex items-center gap-2">
                         <Users className="h-3 w-3" /> Staff Hourly Rate (₹)
                     </Label>
                     <Input name="hourlySalaryRate" id="hourlySalaryRate" type="number" defaultValue={settings?.hourlySalaryRate || 100} className="font-bold border-primary/30" />
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">
+                    <p className="text-sm text-muted-foreground uppercase font-bold">
                         Base earnings for staff members per hour worked.
                     </p>
                 </div>

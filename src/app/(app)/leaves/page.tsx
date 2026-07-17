@@ -181,17 +181,17 @@ export default function LeavesTrackerPage() {
     }
   };
 
-  if (loading) return <div className="p-20 text-center animate-pulse uppercase font-black text-xs">Syncing Leave Rosters...</div>;
+  if (loading) return <div className="p-20 text-center animate-pulse uppercase font-bold text-sm">Syncing Leave Rosters...</div>;
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto font-body">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-headline text-4xl tracking-wider text-foreground uppercase">Leaves Tracker</h1>
-          <p className="mt-2 text-muted-foreground font-black uppercase text-xs tracking-widest">Unified visibility of staff absences & time-off schedules.</p>
+          <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-normal">Unified visibility of staff absences & time-off schedules.</p>
         </div>
         <div className="flex gap-2">
-            <Button onClick={handleOpenAdd} className="h-12 px-6 font-black uppercase tracking-tight shadow-xl bg-primary text-white hover:bg-primary/90">
+            <Button onClick={handleOpenAdd} className="h-12 px-6 font-bold uppercase tracking-tight shadow-xl bg-primary text-white hover:bg-primary/90">
                 <Plus className="mr-2 h-5 w-5" /> Record Leave
             </Button>
         </div>
@@ -200,17 +200,17 @@ export default function LeavesTrackerPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
             <div className="bg-emerald-500/10 border-2 border-emerald-500/20 rounded-xl px-6 py-6 flex flex-col justify-center shadow-sm">
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-2">On Leave Now</p>
+                <p className="text-sm font-bold text-emerald-600 uppercase tracking-normal leading-none mb-2">On Leave Now</p>
                 <div className="flex items-center gap-3">
-                    <p className="text-4xl font-black text-emerald-600 font-mono leading-none">{stats.active}</p>
-                    <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-600 uppercase font-black text-[8px]">Operators Out</Badge>
+                    <p className="text-4xl font-bold text-emerald-600 font-mono leading-none">{stats.active}</p>
+                    <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-600 uppercase font-bold text-sm">Operators Out</Badge>
                 </div>
             </div>
             <div className="bg-primary/5 border-2 border-primary/20 rounded-xl px-6 py-6 flex flex-col justify-center shadow-sm">
-                <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-2">Upcoming Rosters</p>
+                <p className="text-sm font-bold text-primary uppercase tracking-normal leading-none mb-2">Upcoming Rosters</p>
                 <div className="flex items-center gap-3">
-                    <p className="text-4xl font-black text-primary font-mono leading-none">{stats.upcoming}</p>
-                    <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary uppercase font-black text-[8px]">Scheduled</Badge>
+                    <p className="text-4xl font-bold text-primary font-mono leading-none">{stats.upcoming}</p>
+                    <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary uppercase font-bold text-sm">Scheduled</Badge>
                 </div>
             </div>
         </div>
@@ -220,20 +220,20 @@ export default function LeavesTrackerPage() {
             <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                     <div className="space-y-1">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
+                        <CardTitle className="text-sm font-bold uppercase tracking-tight flex items-center gap-2">
                             <BarChart3 className="h-4 w-4 text-primary" />
                             Monthly Utilization Audit
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest opacity-60">Total days out per operator in selected month.</CardDescription>
+                        <CardDescription className="text-sm font-bold uppercase tracking-normal opacity-60">Total days out per operator in selected month.</CardDescription>
                     </div>
                     <Select value={auditMonth} onValueChange={setAuditMonth}>
-                        <SelectTrigger className="w-[160px] h-9 border-2 font-black uppercase text-[10px] bg-background">
+                        <SelectTrigger className="w-[160px] h-9 border-2 font-bold uppercase text-sm bg-background">
                             <Calendar className="mr-2 h-3.5 w-3.5 text-primary" />
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                             {monthOptions.map(m => (
-                                <SelectItem key={m} value={m} className="text-[10px] font-bold uppercase">
+                                <SelectItem key={m} value={m} className="text-sm font-bold uppercase">
                                     {format(new Date(m + "-01"), 'MMMM yyyy')}
                                 </SelectItem>
                             ))}
@@ -246,11 +246,11 @@ export default function LeavesTrackerPage() {
                     {stats.monthlyTotals.map((item, idx) => (
                         <div key={idx} className="space-y-1.5 hover:bg-muted/5 p-2 -mx-2 rounded-lg transition-colors">
                             <div className="flex justify-between items-end">
-                                <span className="text-[10px] font-black uppercase tracking-tight">{item.name}</span>
+                                <span className="text-sm font-bold uppercase tracking-tight">{item.name}</span>
                                 <div className="text-right">
-                                    <span className="text-xs font-black font-mono text-primary">{item.total} {item.total === 1 ? 'DAY' : 'DAYS'} TOTAL</span>
+                                    <span className="text-sm font-bold font-mono text-primary">{item.total} {item.total === 1 ? 'DAY' : 'DAYS'} TOTAL</span>
                                     {item.total > 0 && (
-                                        <div className="flex justify-end gap-2 text-[8px] font-bold uppercase opacity-60">
+                                        <div className="flex justify-end gap-2 text-sm font-bold uppercase opacity-60">
                                             {item.unpaid > 0 && <span className="text-red-500">{item.unpaid} UNPAID</span>}
                                             {item.other > 0 && <span className="text-emerald-500">{item.other} PAID/SICK</span>}
                                         </div>
@@ -264,7 +264,7 @@ export default function LeavesTrackerPage() {
                         </div>
                     ))}
                     {stats.monthlyTotals.length === 0 && (
-                        <div className="py-8 text-center opacity-30 italic font-bold uppercase text-[10px] tracking-widest border-2 border-dashed rounded-xl">
+                        <div className="py-8 text-center opacity-30 italic font-bold uppercase text-sm tracking-normal border-2 border-dashed rounded-xl">
                             No absences detected for {format(new Date(auditMonth + "-01"), 'MMMM yyyy')}.
                         </div>
                     )}
@@ -276,28 +276,28 @@ export default function LeavesTrackerPage() {
       <Card className="bg-muted/30 border-dashed border-2">
         <CardContent className="p-4 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px] space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Search Registry</Label>
+                <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Search Registry</Label>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="NAME OR REASON..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-10 h-10 border-2 font-bold uppercase text-[10px] bg-background"
+                        className="pl-10 h-10 border-2 font-bold uppercase text-sm bg-background"
                     />
                 </div>
             </div>
             <div className="w-[180px] space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Leave Type</Label>
+                <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">Leave Type</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="h-10 border-2 font-black uppercase text-[10px] bg-background">
+                    <SelectTrigger className="h-10 border-2 font-bold uppercase text-sm bg-background">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all" className="text-[10px] font-bold uppercase">All Categories</SelectItem>
-                        <SelectItem value="paid" className="text-[10px] font-bold uppercase">Paid Leave</SelectItem>
-                        <SelectItem value="unpaid" className="text-[10px] font-bold uppercase">Unpaid (LWP)</SelectItem>
-                        <SelectItem value="sick" className="text-[10px] font-bold uppercase">Sick Leave</SelectItem>
+                        <SelectItem value="all" className="text-sm font-bold uppercase">All Categories</SelectItem>
+                        <SelectItem value="paid" className="text-sm font-bold uppercase">Paid Leave</SelectItem>
+                        <SelectItem value="unpaid" className="text-sm font-bold uppercase">Unpaid (LWP)</SelectItem>
+                        <SelectItem value="sick" className="text-sm font-bold uppercase">Sick Leave</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -306,22 +306,22 @@ export default function LeavesTrackerPage() {
 
       <Card className="border-2 shadow-none overflow-hidden">
         <CardHeader className="bg-muted/10 border-b">
-            <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+            <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
                 <CalendarRange className="h-5 w-5 text-primary" />
                 Staff Absence Registry
             </CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase tracking-widest opacity-60">Complete history of workforce absences.</CardDescription>
+            <CardDescription className="text-sm font-bold uppercase tracking-normal opacity-60">Complete history of workforce absences.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
             <ScrollArea className="h-[600px]">
                 <Table>
                     <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-sm">
                         <TableRow>
-                            <TableHead className="font-black uppercase text-[10px] pl-6 bg-muted/20">Employee</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] bg-muted/20">Schedule & Duration</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] bg-muted/20 text-center">Category</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] bg-muted/20">Reason / Memo</TableHead>
-                            <TableHead className="text-right font-black uppercase text-[10px] pr-6 bg-muted/20">Actions</TableHead>
+                            <TableHead className="font-bold uppercase text-sm pl-6 bg-muted/20">Employee</TableHead>
+                            <TableHead className="font-bold uppercase text-sm bg-muted/20">Schedule & Duration</TableHead>
+                            <TableHead className="font-bold uppercase text-sm bg-muted/20 text-center">Category</TableHead>
+                            <TableHead className="font-bold uppercase text-sm bg-muted/20">Reason / Memo</TableHead>
+                            <TableHead className="text-right font-bold uppercase text-sm pr-6 bg-muted/20">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -337,37 +337,37 @@ export default function LeavesTrackerPage() {
                                 <TableRow key={leave.id} className={cn("hover:bg-muted/5 transition-colors group", isActive && "bg-emerald-500/[0.03]")}>
                                     <TableCell className="pl-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-black text-xs text-primary">
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm text-primary">
                                                 {leave.employeeName[0]}
                                             </div>
-                                            <span className="font-black uppercase text-xs sm:text-sm">{leave.employeeName}</span>
+                                            <span className="font-bold uppercase text-sm sm:text-sm">{leave.employeeName}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-black text-[10px] uppercase">{format(start, 'MMM dd')} - {format(end, 'MMM dd')}</span>
-                                            <span className="text-[8px] font-bold text-muted-foreground uppercase">{duration} {duration === 1 ? 'Day' : 'Days'} • {format(start, 'yyyy')}</span>
+                                            <span className="font-bold text-sm uppercase">{format(start, 'MMM dd')} - {format(end, 'MMM dd')}</span>
+                                            <span className="text-sm font-bold text-muted-foreground uppercase">{duration} {duration === 1 ? 'Day' : 'Days'} • {format(start, 'yyyy')}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <div className="flex flex-col items-center gap-1">
                                             {getLeaveIcon(leave.type)}
-                                            <span className="text-[8px] font-black uppercase tracking-tighter opacity-60">{leave.type}</span>
+                                            <span className="text-sm font-bold uppercase tracking-tight opacity-60">{leave.type}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="max-w-[200px] truncate text-[10px] font-medium text-foreground/80 italic">
+                                        <div className="max-w-[200px] truncate text-sm font-medium text-foreground/80 italic">
                                             "{leave.reason}"
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right pr-6">
                                         <div className="flex items-center justify-end gap-3">
                                             {isActive ? (
-                                                <Badge className="bg-emerald-600 text-[8px] font-black uppercase animate-pulse shadow-md">Active</Badge>
+                                                <Badge className="bg-emerald-600 text-sm font-bold uppercase animate-pulse shadow-md">Active</Badge>
                                             ) : isUpcoming ? (
-                                                <Badge variant="outline" className="border-primary/30 text-primary text-[8px] font-black uppercase">Scheduled</Badge>
+                                                <Badge variant="outline" className="border-primary/30 text-primary text-sm font-bold uppercase">Scheduled</Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="text-[8px] font-black uppercase opacity-40">History</Badge>
+                                                <Badge variant="secondary" className="text-sm font-bold uppercase opacity-40">History</Badge>
                                             )}
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button variant="ghost" size="icon" onClick={() => handleEditClick(leave)} className="h-8 w-8 text-muted-foreground hover:text-primary">
@@ -387,7 +387,7 @@ export default function LeavesTrackerPage() {
                                 <TableCell colSpan={5} className="h-64 text-center">
                                     <div className="flex flex-col items-center justify-center opacity-30 italic">
                                         <CalendarRange className="h-12 w-12 mb-2" />
-                                        <p className="font-headline text-[10px] tracking-widest uppercase">Registry Empty</p>
+                                        <p className="font-headline text-sm tracking-normal uppercase">Registry Empty</p>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -408,9 +408,9 @@ export default function LeavesTrackerPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase text-muted-foreground">Select Employee</Label>
+              <Label className="text-sm font-bold uppercase text-muted-foreground">Select Employee</Label>
               <Select value={formData.employeeId} onValueChange={v => setFormData({...formData, employeeId: v})}>
-                <SelectTrigger className="font-bold uppercase text-[10px] h-11 border-2"><SelectValue placeholder="PICK OPERATOR" /></SelectTrigger>
+                <SelectTrigger className="font-bold uppercase text-sm h-11 border-2"><SelectValue placeholder="PICK OPERATOR" /></SelectTrigger>
                 <SelectContent>
                   {employees?.map(e => <SelectItem key={e.id} value={e.id}>{(e.displayName || e.username || 'Unknown').toUpperCase()}</SelectItem>)}
                 </SelectContent>
@@ -418,18 +418,18 @@ export default function LeavesTrackerPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">From Date</Label>
-                <Input type="date" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} className="h-11 text-xs font-bold border-2" />
+                <Label className="text-sm font-bold uppercase text-muted-foreground">From Date</Label>
+                <Input type="date" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} className="h-11 text-sm font-bold border-2" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground">To Date</Label>
-                <Input type="date" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="h-11 text-xs font-bold border-2" />
+                <Label className="text-sm font-bold uppercase text-muted-foreground">To Date</Label>
+                <Input type="date" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="h-11 text-sm font-bold border-2" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase text-muted-foreground">Leave Type</Label>
+              <Label className="text-sm font-bold uppercase text-muted-foreground">Leave Type</Label>
               <Select value={formData.type} onValueChange={(v: any) => setFormData({...formData, type: v})}>
-                <SelectTrigger className="font-bold uppercase text-[10px] h-11 border-2"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="font-bold uppercase text-sm h-11 border-2"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="paid">Paid Leave</SelectItem>
                   <SelectItem value="unpaid">Unpaid / LWP</SelectItem>
@@ -438,12 +438,12 @@ export default function LeavesTrackerPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase text-muted-foreground">Reason / Internal Note</Label>
-              <Input value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} placeholder="e.g. FAMILY EVENT" className="font-bold text-xs uppercase h-11 border-2" />
+              <Label className="text-sm font-bold uppercase text-muted-foreground">Reason / Internal Note</Label>
+              <Input value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} placeholder="e.g. FAMILY EVENT" className="font-bold text-sm uppercase h-11 border-2" />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSave} disabled={isSubmitting || !formData.employeeId} className="w-full h-14 font-black uppercase tracking-widest shadow-xl text-lg">
+            <Button onClick={handleSave} disabled={isSubmitting || !formData.employeeId} className="w-full h-14 font-bold uppercase tracking-normal shadow-xl text-lg">
                 {isSubmitting ? 'Syncing...' : editingLeave ? 'Update Record' : 'Commit Record'}
             </Button>
           </DialogFooter>

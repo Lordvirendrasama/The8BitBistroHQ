@@ -84,12 +84,12 @@ export function ManageStationsModal({ isOpen, onOpenChange, stations, type, onAd
                 <DialogTitle className="text-xl font-display uppercase tracking-tight truncate">
                   Manage {type === 'ps5' ? 'Consoles' : 'Tables'}
                 </DialogTitle>
-                <DialogDescription className="font-bold text-[9px] uppercase text-muted-foreground mt-0.5">
+                <DialogDescription className="font-bold text-sm uppercase text-muted-foreground mt-0.5">
                   Rename or reorder units. Drag to rearrange.
                 </DialogDescription>
               </div>
             </div>
-            <Button size="sm" onClick={onAdd} variant="outline" className="h-8 border-2 font-black uppercase text-[9px] gap-1.5 shrink-0 bg-background hover:bg-primary hover:text-white transition-all">
+            <Button size="sm" onClick={onAdd} variant="outline" className="h-8 border-2 font-bold uppercase text-sm gap-1.5 shrink-0 bg-background hover:bg-primary hover:text-white transition-all">
               <Plus className="h-3 w-3" /> Add Unit
             </Button>
           </div>
@@ -119,11 +119,11 @@ export function ManageStationsModal({ isOpen, onOpenChange, stations, type, onAd
                             <Input 
                               value={station.name} 
                               onChange={(e) => handleRename(station.id, e.target.value)}
-                              className="h-9 font-bold uppercase text-xs border-none bg-muted/20 focus-visible:ring-primary"
+                              className="h-9 font-bold uppercase text-sm border-none bg-muted/20 focus-visible:ring-primary"
                             />
                             <div className="flex items-center gap-2">
                                 <Badge variant="outline" className={cn(
-                                    "h-4 text-[7px] uppercase font-black",
+                                    "h-4 text-sm uppercase font-bold",
                                     station.status === 'available' ? "text-emerald-600 border-emerald-500/20" : "text-destructive border-destructive/20"
                                 )}>
                                     {station.status}
@@ -151,7 +151,7 @@ export function ManageStationsModal({ isOpen, onOpenChange, stations, type, onAd
           </DragDropContext>
 
           {localStations.length === 0 && (
-            <div className="py-12 text-center opacity-30 italic text-xs uppercase font-bold">No units found</div>
+            <div className="py-12 text-center opacity-30 italic text-sm uppercase font-bold">No units found</div>
           )}
         </div>
 
@@ -159,7 +159,7 @@ export function ManageStationsModal({ isOpen, onOpenChange, stations, type, onAd
           <Button 
             onClick={handleApply} 
             disabled={isSubmitting} 
-            className="w-full h-12 font-black uppercase tracking-widest shadow-xl"
+            className="w-full h-12 font-bold uppercase tracking-normal shadow-xl"
           >
             {isSubmitting ? "Syncing..." : "Apply Organization"}
           </Button>

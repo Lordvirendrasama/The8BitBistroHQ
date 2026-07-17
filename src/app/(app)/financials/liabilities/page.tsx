@@ -16,7 +16,7 @@ export default function LiabilitiesRedirect() {
     <div className="flex h-[60vh] items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="font-headline text-[10px] tracking-widest text-muted-foreground animate-pulse uppercase">Relocating Liabilities Hub...</p>
+        <p className="font-headline text-sm tracking-normal text-muted-foreground animate-pulse uppercase">Relocating Liabilities Hub...</p>
       </div>
     </div>
   );

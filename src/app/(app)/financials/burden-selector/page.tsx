@@ -48,7 +48,7 @@ export default function BurdenSelectorPage() {
   };
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center font-headline text-xs animate-pulse">Syncing Strategy Engine...</div>;
+    return <div className="flex h-screen items-center justify-center font-headline text-sm animate-pulse">Syncing Strategy Engine...</div>;
   }
 
   const isViren = user?.username === 'Viren';
@@ -60,7 +60,7 @@ export default function BurdenSelectorPage() {
           <ShieldCheck className="h-10 w-10 text-primary" />
           Burden Selection
         </h1>
-        <p className="text-muted-foreground font-black uppercase tracking-[0.2em] text-xs pl-1">
+        <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-sm pl-1">
           Calibrate the Profit & Loss engine by selecting active financial liabilities.
         </p>
       </div>
@@ -69,7 +69,7 @@ export default function BurdenSelectorPage() {
         <Card className="border-destructive bg-destructive/5">
             <CardContent className="p-4 flex items-center gap-3">
                 <AlertCircle className="text-destructive h-5 w-5" />
-                <p className="text-xs font-bold text-destructive uppercase">VIEW-ONLY MODE: Only Viren can modify these strategic toggles.</p>
+                <p className="text-sm font-bold text-destructive uppercase">VIEW-ONLY MODE: Only Viren can modify these strategic toggles.</p>
             </CardContent>
         </Card>
       )}
@@ -77,11 +77,11 @@ export default function BurdenSelectorPage() {
       <div className="grid grid-cols-1 gap-6">
         <Card className="border-2 shadow-xl overflow-hidden">
             <CardHeader className="bg-muted/10 border-b">
-                <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-primary" />
                     Strategy Configuration
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Select which costs are factored into your "Survival Target".</CardDescription>
+                <CardDescription className="text-sm font-bold uppercase tracking-normal">Select which costs are factored into your "Survival Target".</CardDescription>
             </CardHeader>
             <CardContent className="p-6 space-y-8">
                 
@@ -92,8 +92,8 @@ export default function BurdenSelectorPage() {
                             <Wallet className="h-6 w-6 text-blue-600" />
                         </div>
                         <div className="space-y-0.5">
-                            <Label className="text-sm font-black uppercase">Fixed Overheads</Label>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Electricity, Internet, Water, and regular bistro bills.</p>
+                            <Label className="text-sm font-bold uppercase">Fixed Overheads</Label>
+                            <p className="text-sm text-muted-foreground font-bold uppercase tracking-tight">Electricity, Internet, Water, and regular bistro bills.</p>
                         </div>
                     </div>
                     <Switch 
@@ -110,8 +110,8 @@ export default function BurdenSelectorPage() {
                             <Percent className="h-6 w-6 text-primary" />
                         </div>
                         <div className="space-y-0.5">
-                            <Label className="text-sm font-black uppercase text-primary">Loan Interest Maintenance</Label>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Bare minimum daily intake to prevent debt growth (Interest only).</p>
+                            <Label className="text-sm font-bold uppercase text-primary">Loan Interest Maintenance</Label>
+                            <p className="text-sm text-muted-foreground font-bold uppercase tracking-tight">Bare minimum daily intake to prevent debt growth (Interest only).</p>
                         </div>
                     </div>
                     <Switch 
@@ -128,8 +128,8 @@ export default function BurdenSelectorPage() {
                             <Zap className="h-6 w-6 text-primary" />
                         </div>
                         <div className="space-y-0.5">
-                            <Label className="text-sm font-black uppercase text-primary">Loan Principal Recovery</Label>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">The required daily share to clear the principal by the 2030 deadline.</p>
+                            <Label className="text-sm font-bold uppercase text-primary">Loan Principal Recovery</Label>
+                            <p className="text-sm text-muted-foreground font-bold uppercase tracking-tight">The required daily share to clear the principal by the 2030 deadline.</p>
                         </div>
                     </div>
                     <Switch 
@@ -146,8 +146,8 @@ export default function BurdenSelectorPage() {
                             <Calendar className="h-6 w-6 text-emerald-600" />
                         </div>
                         <div className="space-y-0.5">
-                            <Label className="text-sm font-black uppercase text-emerald-600">Active Lease (Rent)</Label>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">The standard daily portion of your current monthly rent.</p>
+                            <Label className="text-sm font-bold uppercase text-emerald-600">Active Lease (Rent)</Label>
+                            <p className="text-sm text-muted-foreground font-bold uppercase tracking-tight">The standard daily portion of your current monthly rent.</p>
                         </div>
                     </div>
                     <Switch 
@@ -164,8 +164,8 @@ export default function BurdenSelectorPage() {
                             <History className="h-6 w-6 text-amber-600" />
                         </div>
                         <div className="space-y-0.5">
-                            <Label className="text-sm font-black uppercase text-amber-600">Backlog Recovery</Label>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Daily repayment share of unpaid arrears spread until 2030.</p>
+                            <Label className="text-sm font-bold uppercase text-amber-600">Backlog Recovery</Label>
+                            <p className="text-sm text-muted-foreground font-bold uppercase tracking-tight">Daily repayment share of unpaid arrears spread until 2030.</p>
                         </div>
                     </div>
                     <Switch 
@@ -183,7 +183,7 @@ export default function BurdenSelectorPage() {
                 <Info className="text-white h-8 w-8" />
             </div>
             <div className="text-center sm:text-left">
-                <h4 className="font-black uppercase tracking-tight text-lg">Impact Notice</h4>
+                <h4 className="font-bold uppercase tracking-tight text-lg">Impact Notice</h4>
                 <p className="text-sm text-muted-foreground max-w-2xl font-medium mt-1">
                     Selections made on this page update the <strong>Survival Threshold</strong> globally. This affects the daily goals on the Owner Pulse, Profit Dashboard, and the "Making It" requirements in your Financial Audits. Splitting your loan into <strong>Interest</strong> and <strong>Principal</strong> allows you to manage cashflow during lean periods.
                 </p>

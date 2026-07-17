@@ -133,7 +133,7 @@ export function AddMemberModal({ onAddMember, buttonClassName, triggerButton, re
             <UserPlus2 />
             {referrerId ? 'Refer a New Member' : 'Add New Member'}
           </DialogTitle>
-          <DialogDescription className="text-xs font-medium">
+          <DialogDescription className="text-sm font-medium">
             {referrerId 
               ? 'Enter the details for the new member being referred.'
               : 'Enter the details for the new member to enroll them in the loyalty program.'
@@ -143,7 +143,7 @@ export function AddMemberModal({ onAddMember, buttonClassName, triggerButton, re
         <ScrollArea className="max-h-[60vh] -mx-6 px-6">
             <div className="grid gap-4 py-4">
             <div className="space-y-2">
-                <Label htmlFor="name" className="text-xs font-bold uppercase text-muted-foreground">Full Name</Label>
+                <Label htmlFor="name" className="text-sm font-bold uppercase text-muted-foreground">Full Name</Label>
                 <Input 
                 id="name" 
                 placeholder="e.g., John Doe"
@@ -153,7 +153,7 @@ export function AddMemberModal({ onAddMember, buttonClassName, triggerButton, re
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="username" className="text-xs font-bold uppercase text-muted-foreground">Username</Label>
+                <Label htmlFor="username" className="text-sm font-bold uppercase text-muted-foreground">Username</Label>
                 <Input 
                 id="username" 
                 placeholder="e.g., NewPlayer99"
@@ -163,7 +163,7 @@ export function AddMemberModal({ onAddMember, buttonClassName, triggerButton, re
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground">Email Address</Label>
+                <Label htmlFor="email" className="text-sm font-bold uppercase text-muted-foreground">Email Address</Label>
                 <Input 
                 id="email" 
                 type="email"
@@ -175,7 +175,7 @@ export function AddMemberModal({ onAddMember, buttonClassName, triggerButton, re
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="phone" className="text-xs font-bold uppercase text-muted-foreground">Phone Number</Label>
+                <Label htmlFor="phone" className="text-sm font-bold uppercase text-muted-foreground">Phone Number</Label>
                 <Input 
                 id="phone" 
                 type="tel" 
@@ -188,7 +188,7 @@ export function AddMemberModal({ onAddMember, buttonClassName, triggerButton, re
             </div>
             <div className="flex items-center space-x-3 p-3 rounded-lg border-2 border-dashed bg-muted/5">
                 <Checkbox id="no-contact" checked={noContact} onCheckedChange={handleNoContactChange} />
-                <Label htmlFor="no-contact" className="text-xs font-semibold leading-tight cursor-pointer">
+                <Label htmlFor="no-contact" className="text-sm font-semibold leading-tight cursor-pointer">
                 Member does not wish to provide contact information (Red Tier).
                 </Label>
             </div>
@@ -198,7 +198,7 @@ export function AddMemberModal({ onAddMember, buttonClassName, triggerButton, re
           <div className="flex items-start space-x-2">
             <Checkbox id="consent" checked={consent} onCheckedChange={handleConsentChange} disabled={noContact} />
             <Label htmlFor="consent" className={cn(
-                "text-[10px] font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
                 noContact && "opacity-50"
             )}>
               I agree to receive promotional offers and updates from The 8 Bit Bistro on WhatsApp.

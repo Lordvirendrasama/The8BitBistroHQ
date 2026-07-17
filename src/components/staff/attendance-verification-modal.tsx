@@ -82,7 +82,7 @@ export function AttendanceVerificationModal() {
             <ShieldCheck className="h-8 w-8" />
             Shift Verification
           </DialogTitle>
-          <DialogDescription className="text-white/70 font-bold text-[10px] uppercase tracking-[0.2em] mt-1">
+          <DialogDescription className="text-white/70 font-bold text-sm uppercase tracking-[0.2em] mt-1">
             DAILY OPERATIONAL AUDIT • {format(currentTime, 'p')}
           </DialogDescription>
         </DialogHeader>
@@ -106,20 +106,20 @@ export function AttendanceVerificationModal() {
                     {shift ? <UserCheck className="h-6 w-6" /> : <UserX className="h-6 w-6" />}
                   </div>
                   <div>
-                    <p className="font-black uppercase text-sm tracking-tight">{staff.displayName}</p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">11:00 AM - 11:00 PM Shift</p>
+                    <p className="font-bold uppercase text-sm tracking-tight">{staff.displayName}</p>
+                    <p className="text-sm font-bold text-muted-foreground uppercase">11:00 AM - 11:00 PM Shift</p>
                   </div>
                 </div>
                 <div className="text-right">
                   {shift ? (
                     <div className="space-y-1">
-                      <Badge className="bg-emerald-600 uppercase font-black text-[8px] h-4">Present</Badge>
-                      <p className="text-[10px] font-mono font-bold text-emerald-700">IN: {format(new Date(shift.startTime), 'p')}</p>
+                      <Badge className="bg-emerald-600 uppercase font-bold text-sm h-4">Present</Badge>
+                      <p className="text-sm font-mono font-bold text-emerald-700">IN: {format(new Date(shift.startTime), 'p')}</p>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <Badge variant="destructive" className="uppercase font-black text-[8px] h-4">No Record</Badge>
-                      <p className="text-[10px] font-bold text-destructive uppercase">NOT LOGGED IN</p>
+                      <Badge variant="destructive" className="uppercase font-bold text-sm h-4">No Record</Badge>
+                      <p className="text-sm font-bold text-destructive uppercase">NOT LOGGED IN</p>
                     </div>
                   )}
                 </div>
@@ -130,8 +130,8 @@ export function AttendanceVerificationModal() {
           <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed flex items-start gap-3">
             <History className="text-muted-foreground h-5 w-5 shrink-0 mt-0.5" />
             <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-muted-foreground">Tally Logic</p>
-                <p className="text-[10px] font-medium text-muted-foreground leading-tight">
+                <p className="text-sm font-bold uppercase text-muted-foreground">Tally Logic</p>
+                <p className="text-sm font-medium text-muted-foreground leading-tight">
                     This data is derived directly from terminal logins for the current business cycle.
                 </p>
             </div>
@@ -139,7 +139,7 @@ export function AttendanceVerificationModal() {
         </div>
 
         <DialogFooter className="p-4 bg-muted/10 border-t">
-          <Button onClick={() => setIsOpen(false)} className="w-full h-12 font-black uppercase tracking-widest shadow-xl">
+          <Button onClick={() => setIsOpen(false)} className="w-full h-12 font-bold uppercase tracking-normal shadow-xl">
             <CheckCircle2 className="mr-2 h-4 w-4" />
             Audit Complete
           </Button>

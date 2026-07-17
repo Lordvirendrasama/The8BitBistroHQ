@@ -101,6 +101,7 @@ const allNavItems = [
         { href: '/analytics/products', label: 'Sales & Rewards', icon: PieChart },
         { href: '/analytics/accounting', label: 'Financial Audit', icon: ReceiptIndianRupee },
         { href: '/analytics/footfall', label: 'Footfall Intelligence', icon: Activity },
+        { href: '/analytics/footfall-monthly', label: 'Monthly Footfall', icon: CalendarDays },
     ]
   },
   { 
@@ -171,17 +172,17 @@ export function AppSidebar() {
   const isCollapsed = state === 'collapsed';
 
   return (
-    <Sidebar className="border-r-2 font-body">
-      <SidebarHeader className="border-b bg-muted/5">
+    <Sidebar className="border-r border-border font-sans">
+      <SidebarHeader className="border-b border-border bg-background">
         <div className="flex flex-col items-center justify-center p-4">
           <Image src="/logo.png" alt="The 8 Bit Bistro" width={80} height={80} className="drop-shadow-md" />
           {!isCollapsed && (
-            <span className="text-[8px] font-pixel mt-2 text-primary uppercase bg-primary/10 px-2.5 py-1 rounded-full">Build v{APP_VERSION}</span>
+            <span className="text-sm font-medium mt-4 text-muted-foreground bg-white/5 px-3 py-1 rounded-full">v{APP_VERSION}</span>
           )}
         </div>
       </SidebarHeader>
-      <SidebarContent className="p-3">
-        <SidebarMenu className="gap-1.5">
+      <SidebarContent className="p-6">
+        <SidebarMenu className="gap-2">
           {navItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               {item.subItems ? (
@@ -191,19 +192,19 @@ export function AppSidebar() {
                         isActive={pathname.startsWith(item.href)}
                         tooltip={item.label}
                         data-state={openSubMenus[item.href] ? 'open' : 'closed'}
-                        className="h-11 text-xs uppercase tracking-tight px-4 hover:bg-primary/5 hover:text-primary transition-all rounded-lg"
+                        className="py-5 text-base font-medium text-muted-foreground px-4 hover:bg-white/5 hover:text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground transition-all rounded-xl overflow-hidden"
                     >
                         <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="font-bold">{item.label}</span>
+                        <span className="truncate">{item.label}</span>
                     </SidebarMenuButton>
                     {openSubMenus[item.href] && !isCollapsed && (
-                        <SidebarMenuSub className="ml-6 mt-1 border-l-2 border-primary/10 pl-2 gap-1">
+                        <SidebarMenuSub className="ml-6 mt-2 border-l border-border pl-4 gap-2">
                             {item.subItems.map(subItem => (
                                 <li key={subItem.href}>
-                                  <SidebarMenuSubButton asChild isActive={pathname === subItem.href} className="h-9 px-3 rounded-md transition-all font-bold text-[10px] uppercase hover:bg-muted/50">
-                                    <Link href={subItem.href} className="flex items-center gap-2">
-                                      <subItem.icon className="h-3.5 w-3.5 opacity-60" />
-                                      <span>{subItem.label}</span>
+                                  <SidebarMenuSubButton asChild isActive={pathname === subItem.href} className="py-4 h-auto px-4 rounded-xl transition-all font-medium text-[15px] text-muted-foreground hover:bg-white/5 hover:text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground overflow-hidden">
+                                    <Link href={subItem.href} className="flex items-center gap-3 w-full">
+                                      <subItem.icon className="h-4 w-4 opacity-80 shrink-0" />
+                                      <span className="truncate">{subItem.label}</span>
                                     </Link>
                                   </SidebarMenuSubButton>
                                 </li>
@@ -216,10 +217,10 @@ export function AppSidebar() {
                     <SidebarMenuButton
                     isActive={pathname === item.href}
                     tooltip={item.label}
-                    className="h-11 text-xs uppercase tracking-tight px-4 hover:bg-primary/5 hover:text-primary transition-all rounded-lg"
+                    className="py-5 text-base font-medium text-muted-foreground px-4 hover:bg-white/5 hover:text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground transition-all rounded-xl overflow-hidden"
                     >
                     <item.icon className="h-5 w-5 shrink-0" />
-                    <span className="font-bold">{item.label}</span>
+                    <span className="truncate">{item.label}</span>
                     </SidebarMenuButton>
                 </Link>
               )}
