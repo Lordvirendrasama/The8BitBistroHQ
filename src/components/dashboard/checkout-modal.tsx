@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
 import { recordDebt } from '@/firebase/firestore/debts';
 import { useAuth } from '@/firebase/auth/use-user';
+import { getSyncedNow } from '@/lib/synced-time';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -138,7 +139,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     const totalSessionSeconds = Math.floor((new Date(station.endTime).getTime() - new Date(station.startTime).getTime()) / 1000);
     let remainingSecondsOnTimer = 0;
     if (station.status === 'paused' && station.remainingTimeOnPause != null) { remainingSecondsOnTimer = station.remainingTimeOnPause; }
-    else { const end = new Date(station.endTime).getTime(); remainingSecondsOnTimer = Math.max(0, Math.floor((end - Date.now()) / 1000)); }
+    else { const end = new Date(station.endTime).getTime(); remainingSecondsOnTimer = Math.max(0, Math.floor((end - getSyncedNow()) / 1000)); }
     return Math.max(0, totalSessionSeconds - remainingSecondsOnTimer);
   }, [station]);
 

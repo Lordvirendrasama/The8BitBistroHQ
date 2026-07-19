@@ -16,6 +16,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { isAfter } from 'date-fns';
 import { AddMemberModal } from './add-member-modal';
+import { getSyncedDate } from '@/lib/synced-time';
 import { addMember, searchMembers } from '@/firebase/firestore/members';
 
 const GUEST_AVATAR = PlaceHolderImages.find(img => img.id === 'avatar-6')?.imageUrl || 'https://picsum.photos/seed/guest/100/100';
@@ -35,7 +36,7 @@ interface JoinPlayerModalProps {
   onOpenChange: (isOpen: boolean) => void;
   station: Station;
   members: Member[];
-  onConfirm: (newPlayer: AssignedMember, billItem: BillItem | null) => void;
+  onConfirm: (newPlayer: AssignedMember, billItem: BillItem | null) => void | Promise<void>;
 }
 
 export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConfirm }: JoinPlayerModalProps) {
@@ -44,6 +45,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMember, setSelectedMember] = useState<AssignedMember | null>(null);
   const [clientTime, setClientTime] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setClientTime(new Date().toTimeString().slice(0, 5));
@@ -89,6 +91,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
       setStep('selection');
       setSearchTerm('');
       setSelectedMember(null);
+      setIsSubmitting(false);
     }
   }, [isOpen]);
 
@@ -160,50 +163,56 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
     setStep('configuration');
   };
 
-  const handleSelectPlan = (item: GamingPackage | MemberRecharge | 'pool', type: 'recharge' | 'walkin' | 'buy-recharge') => {
-    if (!selectedMember) return;
-    const now = new Date();
-    let duration = 0;
-    let name = '';
-    let billItem: BillItem | null = null;
-    let rechargeId: string | null = null;
-    let isNewRecharge = false;
+  const handleSelectPlan = async (item: GamingPackage | MemberRecharge | 'pool', type: 'recharge' | 'walkin' | 'buy-recharge') => {
+    if (!selectedMember || isSubmitting) return;
+    setIsSubmitting(true);
+    
+    try {
+        const now = getSyncedDate();
+        let duration = 0;
+        let name = '';
+        let billItem: BillItem | null = null;
+        let rechargeId: string | null = null;
+        let isNewRecharge = false;
 
-    if (item === 'pool') {
-        const member = loadedMembers[selectedMember.id];
-        duration = member?.recharges?.reduce((s, r) => s + r.remainingDuration, 0) || 0;
-        name = "Recharge: Combined Pool";
-        rechargeId = 'pool';
-    } else if (type === 'recharge') {
-        const r = item as MemberRecharge;
-        duration = r.remainingDuration;
-        name = `Recharge: ${r.packageName}`;
-        rechargeId = r.id;
-    } else {
-        const pkg = item as GamingPackage;
-        duration = pkg.duration;
-        name = type === 'buy-recharge' ? `Buy Recharge: ${pkg.name}` : `Time: ${pkg.name}`;
-        isNewRecharge = type === 'buy-recharge';
-        billItem = {
-            itemId: pkg.id,
-            name: `${name} (${selectedMember.name})`,
-            price: pkg.price,
-            quantity: 1,
-            addedAt: now.toISOString()
-        };
+        if (item === 'pool') {
+            const member = loadedMembers[selectedMember.id];
+            duration = member?.recharges?.reduce((s, r) => s + r.remainingDuration, 0) || 0;
+            name = "Recharge: Combined Pool";
+            rechargeId = 'pool';
+        } else if (type === 'recharge') {
+            const r = item as MemberRecharge;
+            duration = r.remainingDuration;
+            name = `Recharge: ${r.packageName}`;
+            rechargeId = r.id;
+        } else {
+            const pkg = item as GamingPackage;
+            duration = pkg.duration;
+            name = type === 'buy-recharge' ? `Buy Recharge: ${pkg.name}` : `Time: ${pkg.name}`;
+            isNewRecharge = type === 'buy-recharge';
+            billItem = {
+                itemId: pkg.id,
+                name: `${name} (${selectedMember.name})`,
+                price: pkg.price,
+                quantity: 1,
+                addedAt: now.toISOString()
+            };
+        }
+
+        const endTime = duration > 0 ? new Date(now.getTime() + duration * 1000).toISOString() : null;
+
+        await onConfirm({
+            ...selectedMember,
+            startTime: now.toISOString(),
+            endTime,
+            rechargeId,
+            isNewRecharge,
+            packageId: (item as any).packageId || (item as any).id || null,
+            status: 'active'
+        }, billItem);
+    } finally {
+        setIsSubmitting(false);
     }
-
-    const endTime = duration > 0 ? new Date(now.getTime() + duration * 1000).toISOString() : null;
-
-    onConfirm({
-        ...selectedMember,
-        startTime: now.toISOString(),
-        endTime,
-        rechargeId,
-        isNewRecharge,
-        packageId: (item as any).packageId || (item as any).id || null,
-        status: 'active'
-    }, billItem);
   };
 
   return (
@@ -275,7 +284,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
                                     <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">USE PREPAID PACK</h4>
                                     <div className="space-y-2">
                                         {getMemberActiveRecharges(selectedMember!.id).map(r => (
-                                            <div key={r.id} onClick={() => handleSelectPlan(r, 'recharge')} className="p-4 rounded-xl border-2 hover:border-emerald-500 bg-card transition-all cursor-pointer flex justify-between items-center group">
+                                            <div key={r.id} onClick={() => handleSelectPlan(r, 'recharge')} className={cn("p-4 rounded-xl border-2 bg-card transition-all flex justify-between items-center group", isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer")}>
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-bold uppercase truncate opacity-80">{r.packageName}</p>
                                                     <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 uppercase mt-1"><Zap className="h-3 w-3 fill-current" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
@@ -289,7 +298,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
                                     <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">BUY RECHARGE</h4>
                                     <div className="space-y-2">
                                         {rechargePackages.map(pkg => (
-                                            <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'buy-recharge')} className="p-4 rounded-xl border-2 border-dashed hover:border-emerald-500 bg-card transition-all cursor-pointer flex justify-between items-center group">
+                                            <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'buy-recharge')} className={cn("p-4 rounded-xl border-2 border-dashed bg-card transition-all flex justify-between items-center group", isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer")}>
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-bold uppercase truncate opacity-80">{pkg.name}</p>
                                                     <p className="text-sm font-bold text-muted-foreground uppercase mt-1">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
@@ -307,6 +316,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
                                 {walkInPackages.map(pkg => (
                                     <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'walkin')} className={cn(
                                         "p-4 rounded-xl border-2 hover:border-emerald-500 bg-card transition-all cursor-pointer flex justify-between items-center group shadow-sm",
+                                        isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer",
                                         pkg.isPriorityOffer && "border-amber-500/30 bg-amber-500/[0.02]"
                                     )}>
                                         <div className="min-w-0">

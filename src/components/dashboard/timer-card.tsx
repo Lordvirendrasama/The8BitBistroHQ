@@ -16,6 +16,7 @@ import { updateStation } from '@/firebase/firestore/stations';
 import { Zap } from 'lucide-react';
 import type { Member } from '@/lib/types';
 import { useCustomerView } from '@/context/customer-view-context';
+import { getSyncedNow } from '@/lib/synced-time';
 
 
 interface TimerCardProps {
@@ -75,7 +76,7 @@ const IndividualPlayerTimer = ({
                 setRem(0);
             } else {
                 const endTs = new Date(member.endTime).getTime();
-                const diff = endTs - Date.now();
+                const diff = endTs - getSyncedNow();
                 setRem(diff > 0 ? diff : 0);
             }
 
@@ -87,7 +88,7 @@ const IndividualPlayerTimer = ({
                     .reduce((sum: number, r) => sum + r.remainingDuration, 0);
 
                 if (isRunning && member.startTime) {
-                    const now = Date.now();
+                    const now = getSyncedNow();
                     const startTs = new Date(member.startTime).getTime();
                     const elapsed = Math.max(0, (now - startTs) / 1000);
                     
@@ -183,7 +184,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
   useEffect(() => {
     const update = () => {
-        const now = Date.now();
+        const now = getSyncedNow();
 
         if (isFinishing && station.finishingStartTime) {
             const start = new Date(station.finishingStartTime).getTime();
@@ -284,7 +285,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     let displayBalance = balance;
                     const assignedPlayer = station.members.find(m => m.id === shortestMember.id && m.status !== 'finished');
                     if (assignedPlayer && assignedPlayer.startTime && station.status === 'in-use' && assignedPlayer.status !== 'paused') {
-                        const now = Date.now();
+                        const now = getSyncedNow();
                         const startTs = new Date(assignedPlayer.startTime).getTime();
                         const elapsedSeconds = Math.max(0, (now - startTs) / 1000);
                         displayBalance = Math.max(0, balance - elapsedSeconds);
@@ -435,9 +436,9 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             {(isRunning || isPaused || isFinishing) && (station.members || []).length > 0 ? (
                 <PopoverTrigger asChild>
                     <button className="flex -space-x-3 hover:scale-105 transition-transform cursor-pointer focus:outline-none">
-                        {(station.members || []).map((member) => (
+                        {(station.members || []).map((member, i) => (
                             <div 
-                                key={member.id} 
+                                key={`${member.id}-${i}`} 
                                 className={cn(
                                     "relative rounded-full border-2 transition-all shadow-md",
                                     shortestMember?.id === member.id ? "border-primary z-10 scale-110" : "border-background",
@@ -478,10 +479,10 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                     </div>
                     <ScrollArea className="max-h-72">
                         <div className="divide-y">
-                            {(station.members || []).map(member => {
+                            {(station.members || []).map((member, i) => {
                                 const leftEarly = member.status === 'finished' && (member.remainingSecondsAtStop || 0) > 60;
                                 return (
-                                    <div key={member.id} className="p-3 flex items-center justify-between hover:bg-muted/5 transition-colors">
+                                    <div key={`${member.id}-${i}`} className="p-3 flex items-center justify-between hover:bg-muted/5 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0 flex-1">
                                             <Avatar className="h-8 w-8 border shadow-sm">
                                                 <AvatarImage src={member.avatarUrl} />
@@ -565,11 +566,11 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
       <CardFooter className="flex flex-col gap-2 p-3 pt-2 bg-muted/5 border-t">
           {station.status === 'available' ? (
               <div className="grid grid-cols-2 gap-2 w-full">
-                  <Button onClick={() => onToggleTimer(station)} variant={station.type === 'ps5' ? 'default' : 'outline'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm shadow-sm">
+                  <Button onClick={() => onToggleTimer(station)} variant={station.type === 'ps5' ? 'default' : 'outline'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm shadow-sm station-start-btn">
                       <Play className="h-4 w-4 mr-1.5 shrink-0" />
                       <span>{station.type === 'ps5' ? 'Start' : 'Play'}</span>
                   </Button>
-                  <Button onClick={() => onOpenBillModal(station)} variant={station.type === 'ps5' ? 'outline' : 'default'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm border-2">
+                  <Button onClick={() => onOpenBillModal(station)} variant={station.type === 'ps5' ? 'outline' : 'default'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm border-2 station-food-btn">
                       <Utensils className="h-4 w-4 mr-1.5 shrink-0" />
                       <span>Food</span>
                   </Button>
@@ -583,25 +584,25 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                               <span className="text-sm font-bold uppercase leading-none">Cancel</span>
                           </Button>
                       ) : isRunning ? (
-                          <Button onClick={() => onToggleTimer(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
+                          <Button onClick={() => onToggleTimer(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm station-pause-btn">
                               <Pause className="h-3.5 w-3.5" />
                               <span className="text-sm font-bold uppercase leading-none">Pause</span>
                           </Button>
                       ) : (
-                          <Button onClick={() => onToggleTimer(station)} variant="default" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 bg-blue-600 hover:bg-blue-700 shadow-md">
+                          <Button onClick={() => onToggleTimer(station)} variant="default" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 bg-blue-600 hover:bg-blue-700 shadow-md station-resume-btn">
                               <Play className="h-3.5 w-3.5" />
                               <span className="text-sm font-bold uppercase leading-none">Resume</span>
                           </Button>
                       )}
-                      <Button onClick={() => onOpenEditTimeModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
+                      <Button onClick={() => onOpenEditTimeModal(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm station-time-btn">
                           <Timer className="h-3.5 w-3.5" />
                           <span className="text-sm font-bold uppercase leading-none">Time</span>
                       </Button>
-                      <Button onClick={() => onOpenJoinModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
+                      <Button onClick={() => onOpenJoinModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm station-join-btn">
                           <UserPlus className="h-3.5 w-3.5"/>
                           <span className="text-sm font-bold uppercase leading-none">Join</span>
                       </Button>
-                      <Button onClick={() => onOpenMoveModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm">
+                      <Button onClick={() => onOpenMoveModal?.(station)} variant="secondary" size="sm" className="h-10 flex flex-col items-center justify-center p-0 gap-0.5 border shadow-sm station-move-btn">
                           <ArrowRightLeft className="h-3.5 w-3.5"/>
                           <span className="text-sm font-bold uppercase leading-none">Move</span>
                       </Button>
@@ -610,20 +611,20 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                   <div className="w-full">
                       {isFinishing ? (
                           <div className="grid grid-cols-2 gap-1.5">
-                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm shadow-lg animate-in zoom-in-95 duration-300">
+                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm shadow-lg animate-in zoom-in-95 duration-300 station-stop-btn">
                                 <StopCircle className="h-4 w-4 mr-1.5"/> Stop & Settle
                             </Button>
-                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm border-2 bg-background hover:bg-muted station-food-btn" onClick={() => onOpenBillModal(station)}>
                                 <Utensils className="h-4 w-4 mr-1.5" /> Food
                             </Button>
                           </div>
                       ) : (
                           <div className="grid grid-cols-2 gap-1.5">
-                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm shadow-md">
+                            <Button onClick={() => onStopSession(station)} variant="destructive" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm shadow-md station-stop-btn">
                                 <StopCircle className="h-4 w-4 mr-1.5"/> Stop All
                             </Button>
 
-                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm border-2 bg-background hover:bg-muted" onClick={() => onOpenBillModal(station)}>
+                            <Button variant="outline" size="sm" className="h-11 font-bold uppercase tracking-tight text-sm border-2 bg-background hover:bg-muted station-food-btn" onClick={() => onOpenBillModal(station)}>
                                 <Utensils className="h-4 w-4 mr-1.5" /> Food
                             </Button>
                           </div>

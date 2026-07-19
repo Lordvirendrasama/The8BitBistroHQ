@@ -23,6 +23,7 @@ import { SettingsIcon } from '@/components/icons/settings-icon';
 import { 
   Ticket, 
   Users, 
+  User,
   History, 
   Gem, 
   Utensils, 
@@ -50,13 +51,16 @@ import {
   Files,
   ClipboardCheck,
   CalendarRange,
-  QrCode
+  QrCode,
+  HelpCircle
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
 const allNavItems = [
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
+  { href: '/profile', icon: User, label: 'My Profile' },
+  { href: '/tutorial', icon: HelpCircle, label: 'POS Tutorial' },
   { href: '/owner-tasks', icon: ShieldCheck, label: 'Owner Tasks', ownerOnly: true },
   
   // Advanced Financials (Grouped for Viren/Admin)

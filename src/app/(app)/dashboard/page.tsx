@@ -6,8 +6,11 @@ import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
+import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { GuidedTour, TourStep } from '@/components/ui/guided-tour';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useData } from '@/context/data-context';
 import { collection, query, orderBy, runTransaction, doc, where } from 'firebase/firestore';
@@ -29,6 +32,7 @@ import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
 import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { getSyncedNow, getSyncedDate } from '@/lib/synced-time';
 
 const tierMultipliers: Record<MemberTier, number> = {
   Red: 1,
@@ -54,7 +58,130 @@ function DashboardContent() {
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [initialPlayers, setInitialPlayers] = useState<AssignedMember[] | undefined>(undefined);
 
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  const tourParam = searchParams.get('tour');
+
+  const defaultTourSteps: TourStep[] = [
+    {
+      selector: "#cafe-dashboard-header",
+      title: "1. Cafe Dashboard Hub",
+      description: "Welcome to your operator terminal. Here, you monitor active gaming stations, track remaining session hours, and manage customer accounts.",
+      position: "bottom"
+    },
+    {
+      selector: "#redeem-perks-btn",
+      title: "2. Redeem Perks",
+      description: "Access the reward system. Redeem free gaming hours, beverages, or snack vouchers directly to verified player accounts.",
+      position: "left"
+    },
+    {
+      selector: "#quick-recharge-btn",
+      title: "3. Quick Recharge",
+      description: "Instantly recharge a player's prepaid hour balance pool. Updates their account credits database in real-time.",
+      position: "left"
+    },
+    {
+      selector: "#ps5-consoles-grid",
+      title: "4. PS5 Consoles",
+      description: "Manage your active gaming consoles. Start sessions, add players, pause timers, add food items, and checkout players.",
+      position: "top"
+    },
+    {
+      selector: "#board-games-grid",
+      title: "5. Board Game Tables",
+      description: "Track physical board games, table rentals, and play durations. End table sessions to invoice renting customers.",
+      position: "top"
+    }
+  ];
+
+  const checkinTourSteps: TourStep[] = [
+    {
+      selector: "#ps5-consoles-grid",
+      title: "1. Idle Stations",
+      description: "Locate any idle console or table on the dashboard grid. Idle stations are marked with green START buttons.",
+      position: "top"
+    },
+    {
+      selector: ".station-start-btn, #ps5-consoles-grid",
+      title: "2. Assign Players Trigger",
+      description: "Click 'START' to open the registration dialog. Select GUEST access or search the database for registered MEMBERS.",
+      position: "bottom"
+    }
+  ];
+
+  const controlsTourSteps: TourStep[] = [
+    {
+      selector: ".station-pause-btn, #ps5-consoles-grid",
+      title: "1. Pause Session",
+      description: "Freeze time tracking for player breaks. Stops time deductions and flips status to paused.",
+      position: "bottom"
+    },
+    {
+      selector: ".station-time-btn, #ps5-consoles-grid",
+      title: "2. Adjust Time Limits",
+      description: "Click 'TIME' to add extra prepaid minutes or reduce play balance.",
+      position: "bottom"
+    },
+    {
+      selector: ".station-join-btn, #ps5-consoles-grid",
+      title: "3. Join co-player",
+      description: "Add additional players (up to 4 members) to active console slots to split hourly rates.",
+      position: "bottom"
+    },
+    {
+      selector: ".station-move-btn, #ps5-consoles-grid",
+      title: "4. Relocate Station",
+      description: "Shift active players to another console. Retains all logged items and timers.",
+      position: "bottom"
+    }
+  ];
+
+  const checkoutTourSteps: TourStep[] = [
+    {
+      selector: ".station-food-btn, #ps5-consoles-grid",
+      title: "1. Order Food",
+      description: "Click 'FOOD' to open the kitchen cart. Log drinks or snacks straight to the station drawer.",
+      position: "bottom"
+    },
+    {
+      selector: ".station-stop-btn, #ps5-consoles-grid",
+      title: "2. End & Settle Session",
+      description: "Tap 'STOP ALL' to close the session, compile totals, and launch the invoice Review dialog.",
+      position: "bottom"
+    }
+  ];
+
+  const perksTourSteps: TourStep[] = [
+    {
+      selector: "#redeem-perks-btn",
+      title: "1. Redeem Member Perks",
+      description: "Redeem free vouchers, achievements rewards, or tier bonuses for registered members.",
+      position: "left"
+    },
+    {
+      selector: "#quick-recharge-btn",
+      title: "2. Account Credits Recharge",
+      description: "Quick recharge prepaid credit hours directly to registered customer database files.",
+      position: "left"
+    }
+  ];
+
+  const tourSteps = 
+    tourParam === 'checkin' ? checkinTourSteps :
+    tourParam === 'controls' ? controlsTourSteps :
+    tourParam === 'checkout' ? checkoutTourSteps :
+    tourParam === 'perks' ? perksTourSteps : defaultTourSteps;
+
   const { stations: rawStations, stationsLoading, foodItems, foodItemsLoading: foodLoading, gamingPackages, gamingPackagesLoading: packagesLoading } = useData();
+
+  useEffect(() => {
+    const tourVal = searchParams.get('tour');
+    if (tourVal) {
+      setTourOpen(true);
+    }
+  }, [searchParams]);
 
   const activeMemberIds = useMemo(() => {
     if (!rawStations) return [];
@@ -188,10 +315,10 @@ function DashboardContent() {
   };
 
   const handlePauseTimer = (station: Station) => {
-    const now = new Date().toISOString();
+    const now = getSyncedDate().toISOString();
     const updatedMembers = station.members.map(m => {
-        if (!m.endTime || m.status === 'finished') return m;
-        const remaining = new Date(m.endTime).getTime() - Date.now();
+        if (m.status === 'finished' || !m.endTime) return m;
+        const remaining = new Date(m.endTime).getTime() - getSyncedNow();
         return { 
             ...m, 
             status: 'paused' as const,
@@ -199,7 +326,7 @@ function DashboardContent() {
         };
     });
     
-    const stationRemaining = station.endTime ? new Date(station.endTime).getTime() - Date.now() : 0;
+    const stationRemaining = station.endTime ? new Date(station.endTime).getTime() - getSyncedNow() : 0;
 
     updateStation(station.id, {
         status: 'paused',
@@ -215,13 +342,13 @@ function DashboardContent() {
           return {
               ...m,
               status: 'active' as const,
-              endTime: new Date(Date.now() + m.remainingTimeOnPause * 1000).toISOString(),
+              endTime: new Date(getSyncedNow() + m.remainingTimeOnPause * 1000).toISOString(),
               remainingTimeOnPause: null
           };
       });
       
       const newStationEndTime = station.remainingTimeOnPause 
-        ? new Date(Date.now() + station.remainingTimeOnPause * 1000).toISOString()
+        ? new Date(getSyncedNow() + station.remainingTimeOnPause * 1000).toISOString()
         : null;
 
       updateStation(station.id, {
@@ -249,7 +376,7 @@ function DashboardContent() {
         name: p.name,
         avatarUrl: p.avatarUrl,
         status: 'active' as const,
-        startTime: new Date().toISOString(),
+        startTime: getSyncedDate().toISOString(),
         endTime: null,
     }));
     setInitialPlayers(mappedMembers);
@@ -273,7 +400,7 @@ function DashboardContent() {
     }
 
     if (member.status === 'paused') {
-        const newEndTime = new Date(Date.now() + (member.remainingTimeOnPause || 0) * 1000).toISOString();
+        const newEndTime = new Date(getSyncedNow() + (member.remainingTimeOnPause || 0) * 1000).toISOString();
         updatedMembers[memberIndex] = {
             ...member,
             status: 'active',
@@ -281,7 +408,7 @@ function DashboardContent() {
             remainingTimeOnPause: null
         };
     } else {
-        const remaining = member.endTime ? new Date(member.endTime).getTime() - Date.now() : 0;
+        const remaining = member.endTime ? new Date(member.endTime).getTime() - getSyncedNow() : 0;
         updatedMembers[memberIndex] = {
             ...member,
             status: 'paused',
@@ -328,7 +455,7 @@ function DashboardContent() {
     const station = stations?.find(s => s.id === stationId);
     if (!station) return;
 
-    const now = new Date();
+    const now = getSyncedDate();
     let updatedMembers = [...station.members];
     const memberIndex = updatedMembers.findIndex(m => m.id === playerId);
     if (memberIndex === -1) return;
@@ -384,7 +511,7 @@ function DashboardContent() {
 
   const handleStartSession = (assignedPlayers: AssignedMember[], selectedPackage: GamingPackage) => {
     if (!selectedStation) return;
-    const now = new Date();
+    const now = getSyncedDate();
     const initialBill: BillItem[] = [];
     const walkinGroups: Record<string, AssignedMember[]> = {};
     
@@ -449,7 +576,7 @@ function DashboardContent() {
     updateStation(stationId, {
         status: 'in-use',
         members: assignedPlayers.map(p => ({ ...p, status: 'active' })),
-        startTime: new Date().toISOString(),
+        startTime: getSyncedDate().toISOString(),
         endTime: null,
         packageName: "Walk-in Order",
         currentBill: [],
@@ -464,7 +591,7 @@ function DashboardContent() {
     if (station?.status === 'available' && newBill.length > 0) {
         updates.status = 'in-use';
         updates.packageName = 'Walk-in Order';
-        updates.startTime = new Date().toISOString();
+        updates.startTime = getSyncedDate().toISOString();
         
         if (station.members.length === 0) {
             updates.members = [{
@@ -503,7 +630,7 @@ function DashboardContent() {
     if (!station) return;
 
     const finalMembersForBill: AssignedMember[] = [];
-    const now = new Date();
+    const now = getSyncedDate();
 
     for (const member of station.members) {
         let playedSecondsForMember = 0;
@@ -640,7 +767,7 @@ function DashboardContent() {
 
     let graceDeduction = 0;
     if (selectedStation.status === 'finishing' && selectedStation.finishingStartTime) {
-        const elapsedMs = Date.now() - new Date(selectedStation.finishingStartTime).getTime();
+        const elapsedMs = getSyncedNow() - new Date(selectedStation.finishingStartTime).getTime();
         graceDeduction = Math.floor(elapsedMs / 1000);
     }
 
@@ -653,7 +780,7 @@ function DashboardContent() {
         if (pkg.id === 'account-pool') {
             const memberData = members?.find(mem => mem.id === m.id);
             if (memberData) {
-                const now = new Date();
+                const now = getSyncedDate();
                 const totalPool = (memberData.recharges || [])
                     .filter(r => new Date(r.expiryDate) > now && r.remainingDuration > 0)
                     .reduce((sum, r) => sum + r.remainingDuration, 0);
@@ -662,7 +789,7 @@ function DashboardContent() {
                 // to make their TOTAL session duration match their TOTAL pool.
                 // However, the simplest way is to just set their endTime to now + totalPool
                 // this effectively "resets" their available time to their registry balance.
-                const newEndTime = new Date(Date.now() + totalPool * 1000).toISOString();
+                const newEndTime = new Date(getSyncedNow() + totalPool * 1000).toISOString();
                 
                 return {
                     ...m,
@@ -670,7 +797,7 @@ function DashboardContent() {
                     endTime: newEndTime,
                     rechargeId: 'pool', // Ensure they are on pool mode
                     remainingTimeOnPause: null,
-                    startTime: m.startTime || new Date().toISOString()
+                    startTime: m.startTime || getSyncedDate().toISOString()
                 };
             }
         }
@@ -691,7 +818,7 @@ function DashboardContent() {
         } else {
             const baseTime = (m.endTime && !wasFinished && selectedStation.status !== 'finishing') 
                 ? new Date(m.endTime).getTime() 
-                : Date.now();
+                : getSyncedNow();
             
             const effectiveAdd = Math.max(0, durationToAddInSeconds - graceDeduction);
             newEndTime = new Date(baseTime + effectiveAdd * 1000).toISOString();
@@ -702,7 +829,7 @@ function DashboardContent() {
             status: 'active' as const, 
             endTime: newEndTime, 
             remainingTimeOnPause: newRemaining,
-            startTime: m.startTime || new Date().toISOString()
+            startTime: m.startTime || getSyncedDate().toISOString()
         };
     });
 
@@ -724,7 +851,7 @@ function DashboardContent() {
                 name: `Time: ${pkg.name} (${playerNames})`,
                 price: pkg.price,
                 quantity: 1,
-                addedAt: new Date().toISOString()
+                addedAt: getSyncedDate().toISOString()
             });
         }
     } else {
@@ -812,13 +939,24 @@ function DashboardContent() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div id="cafe-dashboard-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
+            <Button 
+                onClick={() => { setTourOpen(true); }} 
+                variant="outline" 
+                size="sm"
+                className="h-7 px-2 font-bold uppercase tracking-tight text-[10px] border-primary/20 text-primary hover:bg-primary/5 rounded animate-in fade-in"
+            >
+                <HelpCircle className="mr-1 h-3.5 w-3.5" /> Start Tour
+            </Button>
+          </div>
           <p className="mt-1 sm:mt-2 text-sm sm:sm text-muted-foreground uppercase font-bold tracking-normal opacity-60">Manage PS5 units and game tables.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <Button 
+                id="redeem-perks-btn"
                 onClick={() => setIsRewardsModalOpen(true)} 
                 className="h-12 px-6 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
             >
@@ -826,6 +964,7 @@ function DashboardContent() {
                 Redeem Perks
             </Button>
             <Button 
+                id="quick-recharge-btn"
                 onClick={() => setIsRechargeModalOpen(true)} 
                 className="h-12 px-6 font-bold uppercase tracking-normal bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
             >
@@ -845,7 +984,7 @@ function DashboardContent() {
           </CardHeader>
           <CardContent className="p-0">
             {ps5Stations.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div id="ps5-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 {ps5Stations.map(station => (
                   <TimerCard 
                     key={station.id} 
@@ -876,7 +1015,7 @@ function DashboardContent() {
           </CardHeader>
           <CardContent className="p-0">
             {boardGameStations.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div id="board-games-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 {boardGameStations.map(station => (
                   <TimerCard 
                     key={station.id} 
@@ -928,6 +1067,13 @@ function DashboardContent() {
         members={members || []}
       />
       <SessionRequestHandler ps5Stations={ps5Stations} onApprove={handleApproveSessionRequest} />
+
+      {/* Guided Tour component */}
+      <GuidedTour
+        isOpen={tourOpen}
+        onClose={() => setTourOpen(false)}
+        steps={tourSteps}
+      />
     </div>
   );
 }

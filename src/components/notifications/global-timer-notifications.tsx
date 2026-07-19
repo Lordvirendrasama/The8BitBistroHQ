@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Clock } from 'lucide-react';
 import { updateStation } from '@/firebase/firestore/stations';
+import { getSyncedNow } from '@/lib/synced-time';
 
 /**
  * Universal Voice Announcer Engine
@@ -274,7 +275,7 @@ export function GlobalTimerNotifications() {
     if (!breakState || breakState.status !== 'active' || !breakState.endTime) return;
 
     const interval = setInterval(() => {
-      const now = Date.now();
+      const now = getSyncedNow();
       const endTimeMs = new Date(breakState.endTime).getTime();
       const diff = endTimeMs - now;
 
@@ -413,7 +414,7 @@ export function GlobalTimerNotifications() {
     if (!activeStations) return;
 
     const interval = setInterval(() => {
-      const now = Date.now();
+      const now = getSyncedNow();
       const fiveMinutes = 5 * 60 * 1000;
 
       activeStations.forEach((station) => {
@@ -496,7 +497,7 @@ export function GlobalTimerNotifications() {
       return;
     }
 
-    const now = Date.now();
+    const now = getSyncedNow();
 
     if (memberName !== "EVERYONE") {
       const activeMember = currentStation.members.find(
@@ -540,7 +541,7 @@ export function GlobalTimerNotifications() {
       return;
     }
 
-    const now = Date.now();
+    const now = getSyncedNow();
 
     if (memberName !== "EVERYONE") {
       const activeMember = currentStation.members.find(

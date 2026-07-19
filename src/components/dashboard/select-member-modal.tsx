@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Search, UserPlus, X, Clock, UserPlus2, Zap, ChevronRight, ArrowLeft, CheckCircle2, Gamepad2, Users2, User, Users, Star } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { getSyncedNow } from '@/lib/synced-time';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
@@ -371,19 +372,19 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   const handleConfirmAll = () => {
       if (!allPlayersConfigured) return;
-      const now = new Date();
+      const syncedNow = getSyncedNow();
       
       const finalPlayers = selectedPlayers.map(p => {
           const config = configs[p.id];
           const durationSeconds = config.reminderDuration || config.duration || 0;
-          const endTime = durationSeconds > 0 ? new Date(now.getTime() + durationSeconds * 1000).toISOString() : null;
+          const endTime = durationSeconds > 0 ? new Date(syncedNow + durationSeconds * 1000).toISOString() : null;
           
           return { 
               ...p, 
               rechargeId: config.rechargeId || null, 
               packageId: config.packageId || null, 
               isNewRecharge: config.mode === 'buy-recharge',
-              startTime: now.toISOString(),
+              startTime: new Date(syncedNow).toISOString(),
               endTime: endTime,
               status: 'active' as const,
               remainingTimeOnPause: null

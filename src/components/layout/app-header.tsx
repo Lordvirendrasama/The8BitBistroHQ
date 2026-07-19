@@ -36,8 +36,9 @@ import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
-import { LogOut, Volume2, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff } from "lucide-react";
+import { LogOut, Volume2, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User } from "lucide-react";
 import { useCustomerView } from '@/context/customer-view-context';
+import { getSyncedNow } from '@/lib/synced-time';
 
 const HeaderTimer = ({ station }: { station: Station }) => {
   const [remainingTime, setRemainingTime] = useState(0);
@@ -52,7 +53,7 @@ const HeaderTimer = ({ station }: { station: Station }) => {
 
     const end = new Date(station.endTime).getTime();
     const update = () => {
-      const now = Date.now();
+      const now = getSyncedNow();
       const diff = end - now;
       setRemainingTime(diff > 0 ? diff : 0);
     };
@@ -1323,6 +1324,9 @@ export function AppHeader({
                               </div>
                             )}
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => router.push('/profile')} className="font-bold text-sm uppercase h-10 cursor-pointer">
+                                <User className="mr-2 h-4 w-4" /> View Profile
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { 
                                 announceGlobally("This is a test");
                                 toast({ title: "Audio Test Triggered", description: "You should hear 'This is a test'." });
