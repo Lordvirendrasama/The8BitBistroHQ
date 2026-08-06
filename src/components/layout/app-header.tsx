@@ -36,9 +36,38 @@ import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
-import { LogOut, Volume2, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User } from "lucide-react";
+import { LogOut, Volume2, VolumeX, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User } from "lucide-react";
 import { useCustomerView } from '@/context/customer-view-context';
 import { getSyncedNow } from '@/lib/synced-time';
+import { isSoundEnabled, toggleSound } from '@/lib/audio/chiptune';
+
+const ChiptuneSoundToggle = () => {
+  const [enabled, setEnabled] = useState(true);
+
+  useEffect(() => {
+    setEnabled(isSoundEnabled());
+  }, []);
+
+  const handleToggle = () => {
+    const nextState = toggleSound();
+    setEnabled(nextState);
+  };
+
+  return (
+    <Button 
+      variant="ghost" 
+      size="icon" 
+      className={cn(
+        "h-8 w-8 rounded-lg transition-colors",
+        enabled ? "text-primary hover:bg-primary/10" : "text-muted-foreground hover:bg-muted"
+      )}
+      onClick={handleToggle}
+      title={enabled ? "8-Bit Sound FX: Enabled (Click to Mute)" : "8-Bit Sound FX: Muted (Click to Enable)"}
+    >
+      {enabled ? <Volume2 className="h-4 w-4 text-emerald-500" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+    </Button>
+  );
+};
 
 const HeaderTimer = ({ station }: { station: Station }) => {
   const [remainingTime, setRemainingTime] = useState(0);
@@ -1279,6 +1308,7 @@ export function AppHeader({
                     )}
                     
                     <div className="flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2">
+                        <ChiptuneSoundToggle />
                         <PendingNotifications />
                         <div className="flex items-center gap-1">
                             <OwnerTaskDropdown />

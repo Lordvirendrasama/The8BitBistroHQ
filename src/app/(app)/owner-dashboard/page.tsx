@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -6,54 +5,29 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
-import type { Station, Bill, Expense, Employee, Shift, LiabilityState, FixedBill, Settings, OwnerConsumption, Member, GamingPackage } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { 
-  TrendingUp, 
-  Users, 
-  Gamepad2, 
-  ShoppingBag, 
-  Wallet, 
-  AlertCircle, 
-  Clock, 
-  IndianRupee, 
-  Zap, 
-  ArrowRight, 
-  Smartphone, 
-  Banknote, 
-  ShieldCheck, 
-  Crown, 
-  Plus, 
-  Send, 
-  Play, 
-  Percent,
-  CheckCircle2,
-  Calendar,
-  Target,
-  BarChart3,
-  Utensils,
-  Coffee,
-  Flame,
-  LineChart,
-  TrendingDown,
-  Sparkles,
-  Activity,
-  ChevronRight,
-  Filter,
-  Globe,
-  MapPin
-} from 'lucide-react';
-import { isBusinessToday, getBusinessDate } from '@/lib/utils';
-import { format, differenceInCalendarMonths, subDays, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
-import { calculateDailyFixedCost } from '@/firebase/firestore/financials';
+import type { Station, Bill, Expense, Employee, Shift, LiabilityState, FixedBill, Settings, Member } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { AppUpdatesDropdown } from '@/components/owner/app-updates-dropdown';
+import { Crown, Filter, Globe, RefreshCw, LayoutDashboard, Sparkles, PieChart, Users, Gamepad2, Utensils, Wallet, Activity, ShieldCheck, Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { AppUpdatesDropdown } from '@/components/owner/app-updates-dropdown';
 import { getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/data-management';
+import { computeOwnerPulseData } from '@/lib/business-rules';
+import { getBusinessDate, formatDateDDMMYYYY } from '@/lib/utils';
+
+// 10 Core Modules
+import { OwnerPulseExecutiveSummary } from '@/components/owner-pulse/owner-pulse-executive-summary';
+import { OwnerPulseRulesInsights } from '@/components/owner-pulse/owner-pulse-rules-insights';
+import { OwnerPulseGrowthCentre } from '@/components/owner-pulse/owner-pulse-growth-centre';
+import { OwnerPulseRevenueIntel } from '@/components/owner-pulse/owner-pulse-revenue-intel';
+import { OwnerPulseCustomerIntel } from '@/components/owner-pulse/owner-pulse-customer-intel';
+import { OwnerPulseGamingIntel } from '@/components/owner-pulse/owner-pulse-gaming-intel';
+import { OwnerPulseCafeIntel } from '@/components/owner-pulse/owner-pulse-cafe-intel';
+import { OwnerPulseEmployeeIntel } from '@/components/owner-pulse/owner-pulse-employee-intel';
+import { OwnerPulseFinancialIntel } from '@/components/owner-pulse/owner-pulse-financial-intel';
+import { OwnerPulseOperationalHealth } from '@/components/owner-pulse/owner-pulse-operational-health';
 
 export default function OwnerDashboardPage() {
   const { db } = useFirebase();
@@ -61,9 +35,11 @@ export default function OwnerDashboardPage() {
   const router = useRouter();
 
   const [selectedPhase, setSelectedPhase] = useState<string>('Launch Live');
+  const [selectedDate, setSelectedDate] = useState<string>(() => getBusinessDate(new Date()));
   const [availableCycles, setAvailableCycles] = useState<CycleMetadata[]>([]);
+  const [activeTab, setActiveTab] = useState<string>('all');
 
-  // ONLY Viren can see this page
+  // ONLY Viren can view Owner Pulse
   useEffect(() => {
     if (user && user.username !== 'Viren') {
       router.push('/dashboard');
@@ -74,29 +50,29 @@ export default function OwnerDashboardPage() {
     getAvailableCycles().then(setAvailableCycles);
   }, []);
 
-  // 1. Data Subscriptions
-  const stationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
+  // Firestore Data Subscriptions
+  const stationsQuery = useMemo(() => (!db ? null : collection(db, 'stations')), [db]);
   const { data: stations } = useCollection<Station>(stationsQuery);
 
-  const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
+  const billsQuery = useMemo(() => (!db ? null : collection(db, 'bills')), [db]);
   const { data: bills } = useCollection<Bill>(billsQuery);
 
-  const expensesQuery = useMemo(() => !db ? null : collection(db, 'expenses'), [db]);
+  const expensesQuery = useMemo(() => (!db ? null : collection(db, 'expenses')), [db]);
   const { data: expenses } = useCollection<Expense>(expensesQuery);
 
-  const employeesQuery = useMemo(() => !db ? null : query(collection(db, 'employees'), where('isActive', '==', true)), [db]);
+  const employeesQuery = useMemo(
+    () => (!db ? null : query(collection(db, 'employees'), where('isActive', '==', true))),
+    [db]
+  );
   const { data: employees } = useCollection<Employee>(employeesQuery);
 
-  const shiftsQuery = useMemo(() => !db ? null : query(collection(db, 'shifts'), where('endTime', '==', null)), [db]);
+  const shiftsQuery = useMemo(() => (!db ? null : query(collection(db, 'shifts'), where('endTime', '==', null))), [db]);
   const { data: activeShifts } = useCollection<Shift>(shiftsQuery);
 
-  const fixedBillsQuery = useMemo(() => !db ? null : collection(db, 'fixedBills'), [db]);
+  const fixedBillsQuery = useMemo(() => (!db ? null : collection(db, 'fixedBills')), [db]);
   const { data: fixedBills } = useCollection<FixedBill>(fixedBillsQuery);
 
-  const consumptionQuery = useMemo(() => !db ? null : collection(db, 'ownerConsumption'), [db]);
-  const { data: consumptions } = useCollection<OwnerConsumption>(consumptionQuery);
-
-  const membersQuery = useMemo(() => !db ? null : collection(db, 'members'), [db]);
+  const membersQuery = useMemo(() => (!db ? null : collection(db, 'members')), [db]);
   const { data: members } = useCollection<Member>(membersQuery);
 
   const [liabilityState, setLiabilityState] = useState<LiabilityState | null>(null);
@@ -110,483 +86,270 @@ export default function OwnerDashboardPage() {
     const unsubSett = onSnapshot(doc(db, 'settings', 'app_config'), (snap) => {
       if (snap.exists()) setAppSettings(snap.data() as Settings);
     });
-    return () => { unsubLiab(); unsubSett(); };
+    return () => {
+      unsubLiab();
+      unsubSett();
+    };
   }, [db]);
 
-  // 2. Computed Statistics
-  const stats = useMemo(() => {
-    if (!bills || !expenses || !liabilityState || !fixedBills || !appSettings || !members || !stations) return null;
+  // Compute Owner Pulse Data Deterministically
+  const pulseData = useMemo(() => {
+    if (!bills || !expenses || !stations || !employees || !members || !fixedBills) return null;
 
-    const todayStr = getBusinessDate();
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
+    // Filter by phase if selected
+    const phaseBills = selectedPhase === 'all_cycles' ? bills : bills.filter((b) => b.cycle === selectedPhase);
+    const phaseExpenses = selectedPhase === 'all_cycles' ? expenses : expenses.filter((e) => e.cycle === selectedPhase);
 
-    // Apply Phase Filtering
-    const phaseFilteredBills = selectedPhase === 'all_cycles' 
-        ? bills 
-        : bills.filter(b => b.cycle === selectedPhase);
-    
-    const phaseFilteredExpenses = selectedPhase === 'all_cycles'
-        ? expenses
-        : expenses.filter(e => e.cycle === selectedPhase);
+    return computeOwnerPulseData(
+      phaseBills,
+      phaseExpenses,
+      stations,
+      employees,
+      activeShifts || [],
+      members,
+      fixedBills,
+      liabilityState,
+      appSettings,
+      selectedDate
+    );
+  }, [bills, expenses, stations, employees, activeShifts, members, fixedBills, liabilityState, appSettings, selectedPhase, selectedDate]);
 
-    // DAILY DATA (For main financials - always current business day regardless of phase, usually)
-    // However, if we want to see stats for a phase, we should probably still prioritize current day if phase is active
-    const dailyBills = phaseFilteredBills.filter(b => b.timestamp && isBusinessToday(b.timestamp));
-    const dailyExpenses = phaseFilteredExpenses.filter(e => e.timestamp && isBusinessToday(e.timestamp));
-    
-    // Revenue (Daily)
-    const revTotal = dailyBills.reduce((s, b) => s + b.totalAmount, 0);
-    const revCash = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'cash' ? b.totalAmount : b.paymentMethod === 'split' ? (b.cashAmount || 0) : 0), 0);
-    const revUpi = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'upi' ? b.totalAmount : b.paymentMethod === 'split' ? (b.upiAmount || 0) : 0), 0);
-    const revDistrict = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'district-dinein' ? b.totalAmount : 0), 0);
-    const revPending = dailyBills.reduce((s, b) => s + (b.paymentMethod === 'pending' ? b.totalAmount : 0), 0);
+  if (!pulseData) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center space-y-4 text-center font-body">
+        <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="font-headline text-sm uppercase tracking-[0.2em] text-muted-foreground animate-pulse">
+          Computing Owner Pulse Command Center...
+        </p>
+      </div>
+    );
+  }
 
-    const revGaming = dailyBills.reduce((s, b) => s + (b.initialPackagePrice || 0) + b.items.filter(i => {
-        const nameLower = i.name.toLowerCase();
-        return (
-            i.name.startsWith('Time:') || 
-            i.name.startsWith('Buy Recharge:') || 
-            i.name.startsWith('Recharge:') ||
-            nameLower.includes('hour') || 
-            nameLower.includes('offer') ||
-            nameLower.includes('pass') ||
-            nameLower.includes('rent')
-        );
-    }).reduce((sum, i) => sum + (i.price * i.quantity), 0), 0);
-    const revFood = revTotal - revGaming - revPending - revDistrict;
-
-    // MONTHLY DATA (For Performers) - Filtered by phase
-    const monthlyBills = phaseFilteredBills.filter(b => {
-        const d = new Date(b.timestamp);
-        return d >= monthStart && d <= monthEnd;
-    });
-
-    // Footfall Logic (Filtered Bills Volume)
-    const footfallVolume = dailyBills.length;
-    const footfallIntensity = footfallVolume > 15 ? 'HIGH' : footfallVolume > 5 ? 'MODERATE' : 'LOW';
-
-    // Item Analytics (Monthly for volume)
-    const foodCounts: Record<string, number> = {};
-    const drinkCounts: Record<string, number> = {};
-    const packageCounts: Record<string, number> = {};
-
-    monthlyBills.forEach(bill => {
-        if (bill.packageName) {
-            const pureName = bill.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
-            packageCounts[pureName] = (packageCounts[pureName] || 0) + 1;
-        }
-        bill.items.forEach(item => {
-            const nameLower = item.name.toLowerCase();
-            const isGamingItem = 
-                item.name.startsWith('Time:') || 
-                item.name.startsWith('Buy Recharge:') || 
-                item.name.startsWith('Recharge:') ||
-                nameLower.includes('hour') || 
-                nameLower.includes('offer') ||
-                nameLower.includes('pass') ||
-                nameLower.includes('rent');
-
-            if (isGamingItem) {
-                const pureName = item.name.replace(/^(Time: |Buy Recharge: |Recharge: )/i, '').split('(')[0].trim();
-                packageCounts[pureName] = (packageCounts[pureName] || 0) + item.quantity;
-            } else {
-                const isDrink = item.name.toLowerCase().includes('coffee') || 
-                                item.name.toLowerCase().includes('tea') || 
-                                item.name.toLowerCase().includes('latte') ||
-                                item.name.toLowerCase().includes('soda');
-                const target = isDrink ? drinkCounts : foodCounts;
-                target[item.name] = (target[item.name] || 0) + item.quantity;
-            }
-        });
-    });
-
-    const getTop = (map: Record<string, number>) => {
-        const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
-        return sorted.length > 0 ? sorted[0] : null;
-    };
-    
-    const topFood = getTop(foodCounts);
-    const topDrink = getTop(drinkCounts);
-    const topPkg = getTop(packageCounts);
-
-    // --- MONTH-ON-MONTH (MoM) ANALYTICS FOR HEATMAPS ---
-    const momHourCounts: Record<number, number> = {};
-    const momDayCounts: Record<string, number> = {};
-    
-    // Use phase-filtered bills for heatmaps
-    phaseFilteredBills.forEach(b => {
-        const d = new Date(b.timestamp);
-        const h = d.getHours();
-        const day = format(d, 'EEEE');
-        momHourCounts[h] = (momHourCounts[h] || 0) + 1;
-        momDayCounts[day] = (momDayCounts[day] || 0) + 1;
-    });
-
-    const topHour = Object.entries(momHourCounts).sort((a, b) => b[1] - a[1])[0];
-    const topDay = Object.entries(momDayCounts).sort((a, b) => b[1] - a[1])[0];
-
-    // Survival Goal (Fixed costs logic)
-    const otherBills = fixedBills.filter(fb => !(fb.name || '').toLowerCase().includes('rent'));
-    const overheads = calculateDailyFixedCost(otherBills);
-    const targetDate = new Date(`2030-01-01`);
-    const monthsUntilTarget = Math.max(1, differenceInCalendarMonths(targetDate, new Date()));
-    const monthlyInterestRate = (liabilityState.annualInterestRate || 9) / 100 / 12;
-    const P = liabilityState.loanBalance;
-    const r = monthlyInterestRate;
-    const n = monthsUntilTarget;
-    
-    // Monthly Split
-    const monthlyInterest = P * r;
-    const totalMonthlyEMI = P > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : 0;
-    const monthlyPrincipal = Math.max(0, totalMonthlyEMI - monthlyInterest);
-
-    const loanIntShare = monthlyInterest / 30;
-    const loanPriShare = monthlyPrincipal / 30;
-    
-    const rentShare = (liabilityState.monthlyRent || 0) / 30;
-    const backlogShare = (liabilityState.rentBalance || 0) / monthsUntilTarget / 30;
-
-    const survivalGoal = 
-      (appSettings.includeFixed ? overheads : 0) + 
-      (appSettings.includeLoanInterest ? loanIntShare : 0) + 
-      (appSettings.includeLoanPrincipal ? loanPriShare : 0) + 
-      (appSettings.includeRent ? rentShare : 0) + 
-      (appSettings.includeBacklog ? backlogShare : 0);
-
-    return {
-        revTotal, revCash, revUpi, revPending, revGaming, revFood,
-        survivalGoal,
-        topFood, topDrink, topPkg,
-        topHour, topDay,
-        expToday: dailyExpenses.reduce((s, e) => s + e.amount, 0),
-        revDistrict,
-        loanBalance: liabilityState.loanBalance,
-        rentBalance: liabilityState.rentBalance,
-        footfallIntensity,
-        footfallVolume,
-        todayStr
-    };
-  }, [bills, expenses, liabilityState, fixedBills, appSettings, members, stations, selectedPhase]);
-
-  if (!stats || !stations) return <div className="p-20 text-center animate-pulse font-headline text-sm uppercase tracking-[0.2em]">Recalibrating Owner Pulse...</div>;
-
-  const healthScore = stats.revTotal / (stats.survivalGoal || 1);
-  const healthStatus = healthScore >= 1.2 ? 'STRONG' : healthScore >= 0.8 ? 'STABLE' : 'DANGER';
-  const healthColor = healthStatus === 'STRONG' ? 'bg-emerald-600' : healthStatus === 'STABLE' ? 'bg-amber-600' : 'bg-destructive';
+  const scrollToSection = (id: string) => {
+    setActiveTab(id);
+    if (id === 'all') return;
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12 font-body">
+    <div className="space-y-8 max-w-7xl mx-auto pb-16 font-body">
+      {/* HEADER BAR */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-4">
-            <h1 className="font-pixel text-2xl md:text-3xl text-foreground flex items-center gap-4">
-              <Crown className="h-8 w-8 text-primary fill-current" />
+            <h1 className="font-pixel text-2xl md:text-3xl text-foreground flex items-center gap-3">
+              <Crown className="h-8 w-8 text-primary fill-primary/20" />
               OWNER PULSE
             </h1>
             <AppUpdatesDropdown />
           </div>
-          <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-sm pl-1">
-            OPERATIONAL COMMAND & CONTROL &bull; CYCLE: {stats.todayStr}
+          <p className="text-muted-foreground font-bold uppercase tracking-[0.2em] text-xs pl-1">
+            CEO BUSINESS COMMAND CENTER &bull; {pulseData.todayStr}
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-            <div className="space-y-1">
-                <p className="text-sm font-bold uppercase text-muted-foreground tracking-normal text-right px-1">Analytical Phase</p>
-                <Select value={selectedPhase} onValueChange={setSelectedPhase}>
-                    <SelectTrigger className="h-10 w-[240px] border-2 font-bold uppercase text-sm tracking-tight bg-background">
-                        <Filter className="mr-2 h-3.5 w-3.5 text-primary" />
-                        <SelectValue placeholder="All Cycles" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all_cycles" className="font-bold uppercase text-sm">
-                            <span className="flex items-center gap-2"><Globe className="h-3 w-3" /> Global History</span>
-                        </SelectItem>
-                        {availableCycles.map(c => (
-                            <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-sm">
-                                {c.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
-      </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Target Date Picker Control displaying DD/MM/YYYY */}
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 border-2 border-primary/30 bg-background font-mono text-xs font-bold uppercase gap-2 px-3.5 hover:border-primary shadow-sm"
+                >
+                  <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
+                  <span>{formatDateDDMMYYYY(selectedDate)}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={new Date(selectedDate)}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(getBusinessDate(date, true));
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
 
-      {/* 1. FINAL HEALTH BANNER */}
-      <div className={cn(
-        "w-full p-6 rounded-2xl flex items-center justify-between text-white shadow-2xl transition-all duration-500",
-        healthColor
-      )}>
-        <div className="flex items-center gap-4">
-          <ShieldCheck className="h-10 w-10" />
-          <div>
-            <h3 className="text-lg md:text-xl font-pixel">TODAY'S STATUS: <span className={cn(healthStatus === 'STRONG' ? 'text-accent' : healthStatus === 'STABLE' ? 'text-yellow-500' : 'text-primary')}>{healthStatus}</span></h3>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] opacity-80">
-              Audit performed based on current business day intake vs calculated survival threshold.
-            </p>
+            {selectedDate !== getBusinessDate(new Date()) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedDate(getBusinessDate(new Date()))}
+                className="h-10 text-[10px] font-bold uppercase px-2.5 text-primary hover:bg-primary/10 border border-primary/20 rounded-lg gap-1"
+              >
+                <RotateCcw className="h-3 w-3" /> Reset Today
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <Select value={selectedPhase} onValueChange={setSelectedPhase}>
+              <SelectTrigger className="h-10 w-[200px] border-2 font-bold uppercase text-xs tracking-tight bg-background">
+                <Filter className="mr-2 h-3.5 w-3.5 text-primary" />
+                <SelectValue placeholder="All Cycles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_cycles" className="font-bold uppercase text-xs">
+                  <span className="flex items-center gap-2">
+                    <Globe className="h-3 w-3" /> Global History
+                  </span>
+                </SelectItem>
+                {availableCycles.map((c) => (
+                  <SelectItem key={c.name} value={c.name} className="font-bold uppercase text-xs">
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        <div className="hidden sm:flex flex-col items-end">
-          <p className="text-sm font-bold uppercase opacity-60">Daily Goal Performance</p>
-          <p className="text-3xl font-bold font-mono">{(healthScore * 100).toFixed(1)}%</p>
-        </div>
       </div>
 
-      {/* 2. TOP ROW: FINANCIAL OVERVIEW */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-2 bg-card shadow-sm">
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
-              <IndianRupee className="h-3 w-3" /> Today's Intake
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">₹{stats.revTotal.toLocaleString()}</div>
-            <div className="flex justify-between mt-2 text-sm font-bold uppercase opacity-60">
-              <span>Gaming: ₹{stats.revGaming}</span>
-              <span>Bistro: ₹{stats.revFood}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 bg-card shadow-sm">
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
-              <Wallet className="h-3 w-3" /> Collection Mix
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <p className="text-sm font-bold uppercase text-muted-foreground leading-none mb-1">Cash</p>
-                <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revCash.toLocaleString()}</p>
-              </div>
-              <div className="flex-1 border-l border-zinc-800 pl-2">
-                <p className="text-sm font-bold uppercase text-muted-foreground leading-none mb-1">UPI</p>
-                <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revUpi.toLocaleString()}</p>
-              </div>
-              <div className="flex-1 border-l border-zinc-800 pl-2">
-                <p className="text-sm font-bold uppercase text-muted-foreground leading-none mb-1">Dist</p>
-                <p className="text-lg md:text-xl font-bold font-body text-white">₹{stats.revDistrict.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 bg-primary/5 border-primary/20 shadow-lg">
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-normal text-primary flex items-center gap-2">
-              <Target className="h-3 w-3" /> Survival Goal
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 space-y-2">
-            <div className="flex justify-between items-baseline">
-              <div className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">₹{Math.round(stats.survivalGoal).toLocaleString()}</div>
-              <Badge variant="outline" className="text-sm h-4 font-bold border-primary/30 text-primary">DAILY TARGET</Badge>
-            </div>
-            <Progress value={(stats.revTotal / stats.survivalGoal) * 100} className="h-1.5" />
-          </CardContent>
-        </Card>
-
-        {/* FOOTFALL INTENSITY SUMMARY */}
-        <Card className="border-2 bg-muted/5 shadow-sm group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
-          <CardHeader className="p-4 pb-2">
-            <div className="flex justify-between items-center">
-                <CardTitle className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-2">
-                    <Activity className="h-3 w-3" /> Footfall Intensity
-                </CardTitle>
-                <ChevronRight className="h-3 w-3 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="flex justify-between items-end gap-2">
-                <div className="min-w-0 flex-1">
-                    <div className={cn(
-                        "text-3xl xl:text-4xl font-extrabold font-body tracking-tight truncate",
-                        stats.footfallIntensity === 'HIGH' ? "text-accent" : stats.footfallIntensity === 'MODERATE' ? "text-yellow-500" : "text-white"
-                    )}>
-                        {stats.footfallIntensity}
-                    </div>
-                    <p className="text-sm font-bold uppercase opacity-50 mt-1 truncate">{stats.footfallVolume} Orders Registered</p>
-                </div>
-                <div className="h-10 w-10 shrink-0 rounded-lg bg-background border-2 border-dashed flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 opacity-20" />
-                </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 3. MIDDLE ROW: STRATEGIC PULSE & STAFF */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 border-2 overflow-hidden flex flex-col">
-          <CardHeader className="border-b bg-muted/10">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                    Monthly Top Performers
-                </CardTitle>
-                <CardDescription className="text-sm font-bold uppercase tracking-normal">High-Volume Items for the current month.</CardDescription>
-              </div>
-              <Badge variant="outline" className="text-sm font-bold border-primary/20 text-primary uppercase">{format(new Date(), 'MMMM yyyy')}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-orange-500/5 border-orange-500/20">
-                    <div className="p-2 bg-orange-500/10 rounded-lg"><Utensils className="h-5 w-5 text-orange-600" /></div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Top Food</p>
-                        <p className="text-sm font-bold uppercase truncate">{stats.topFood ? stats.topFood[0] : 'N/A'}</p>
-                        {stats.topFood && <p className="text-sm font-bold text-orange-600 mt-0.5">{stats.topFood[1]} Units Sold</p>}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-blue-500/5 border-blue-500/20">
-                    <div className="p-2 bg-blue-500/10 rounded-lg"><Coffee className="h-5 w-5 text-blue-600" /></div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Top Beverage</p>
-                        <p className="text-sm font-bold uppercase truncate">{stats.topDrink ? stats.topDrink[0] : 'N/A'}</p>
-                        {stats.topDrink && <p className="text-sm font-bold text-blue-600 mt-0.5">{stats.topDrink[1]} Units Sold</p>}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 rounded-xl border-2 bg-primary/5 border-primary/20">
-                    <div className="p-2 bg-primary/10 rounded-lg"><Zap className="h-5 w-5 text-primary" /></div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Top Package</p>
-                        <p className="text-sm font-bold uppercase truncate">{stats.topPkg ? stats.topPkg[0] : 'N/A'}</p>
-                        {stats.topPkg && <p className="text-sm font-bold text-primary mt-0.5">{stats.topPkg[1]} Sessions</p>}
-                    </div>
-                </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 flex flex-col">
-          <CardHeader className="border-b bg-muted/10">
-            <CardTitle className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" /> Staff on Duty
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-4 flex-1">
-            {activeShifts && activeShifts.length > 0 ? activeShifts.map(shift => (
-              <div key={shift.id} className="space-y-3">
-                {shift.employees.map(emp => (
-                  <div key={emp.username} className="flex items-center justify-between p-3 rounded-xl border-2 bg-muted/5">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm text-primary">{emp.displayName[0]}</div>
-                      <div>
-                        <p className="text-sm font-bold uppercase">{emp.displayName}</p>
-                        <p className="text-sm font-bold opacity-50 uppercase flex items-center gap-1"><Clock className="h-2 w-2" /> Since {format(new Date(shift.startTime), 'p')}</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-emerald-600 text-sm font-bold">ACTIVE</Badge>
-                  </div>
-                ))}
-              </div>
-            )) : (
-              <div className="h-full flex flex-col items-center justify-center opacity-30 italic py-8">
-                <AlertCircle className="h-8 w-8 mb-2" />
-                <p className="text-sm font-bold uppercase tracking-normal">No staff logged in</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 4. OPERATIONAL INTELLIGENCE HEATMAPS - PHASE DATA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-2 bg-muted/5 overflow-hidden group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
-            <CardHeader className="border-b pb-3">
-                <div className="flex justify-between items-center">
-                    <CardTitle className="text-sm font-bold uppercase tracking-normal flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-primary" />
-                        Phase Peak Hours
-                    </CardTitle>
-                    <Badge variant="secondary" className="text-sm font-bold bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
-                </div>
-                <CardDescription className="text-sm font-bold uppercase tracking-tight">Most popular login windows based on selected phase.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 flex items-center justify-between">
-                <div className="space-y-1">
-                    <p className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white">
-                        {stats.topHour ? `${stats.topHour[0]}:00` : 'N/A'}
-                    </p>
-                    <p className="text-sm font-bold uppercase text-primary tracking-normal">Power Hour</p>
-                </div>
-                <div className="h-16 w-[2px] bg-primary/10 mx-6" />
-                <div className="flex-1 space-y-3">
-                    <div className="flex justify-between items-center text-sm font-bold uppercase">
-                        <span>Intake Velocity</span>
-                        <span className="text-emerald-600">TREND</span>
-                    </div>
-                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary w-[85%] rounded-full shadow-[0_0_10px_rgba(239,0,53,0.3)]" />
-                    </div>
-                    <p className="text-sm text-muted-foreground uppercase font-bold">Busiest window identified from behavioral data in this phase.</p>
-                </div>
-            </CardContent>
-        </Card>
-
-        <Card className="border-2 bg-muted/5 overflow-hidden group hover:border-primary/30 transition-all cursor-pointer" onClick={() => router.push('/analytics/footfall')}>
-            <CardHeader className="border-b pb-3">
-                <div className="flex justify-between items-center">
-                    <CardTitle className="text-sm font-bold uppercase tracking-normal flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        Strategic Prime Days
-                    </CardTitle>
-                    <Badge variant="secondary" className="text-sm font-bold bg-primary/10 text-primary uppercase">{selectedPhase === 'all_cycles' ? 'MoM' : selectedPhase} ANALYTICS</Badge>
-                </div>
-                <CardDescription className="text-sm font-bold uppercase tracking-tight">Highest traffic days identified in selected period.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 flex items-center justify-between">
-                <div className="space-y-1">
-                    <p className="text-4xl md:text-5xl font-extrabold font-body tracking-tight text-white uppercase">
-                        {stats.topDay ? stats.topDay[0] : 'N/A'}
-                    </p>
-                    <p className="text-sm font-bold uppercase text-primary tracking-normal">Strongest Day</p>
-                </div>
-                <div className="h-16 w-[2px] bg-primary/10 mx-6" />
-                <div className="flex-1 space-y-3">
-                    <div className="grid grid-cols-7 gap-1">
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                            <div key={d} className={cn(
-                                "h-8 rounded flex items-center justify-center text-sm font-bold uppercase border",
-                                stats.topDay?.[0].startsWith(d) ? "bg-primary border-primary text-white shadow-md" : "bg-card border-muted opacity-40"
-                            )}>
-                                {d[0]}
-                            </div>
-                        ))}
-                    </div>
-                    <p className="text-sm text-muted-foreground uppercase font-bold">Impact day derived from phase-specific longitudinal data.</p>
-                </div>
-            </CardContent>
-        </Card>
-      </div>
-
-      {/* 5. QUICK ACTIONS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <Button onClick={() => router.push('/financials/spending')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-primary hover:text-white transition-all shadow-md">
-          <Plus className="h-4 w-4" /> Add Outflow
+      {/* QUICK SECTION COMMAND BAR */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-border/40 text-xs font-bold uppercase no-scrollbar">
+        <Button
+          size="sm"
+          variant={activeTab === 'all' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('all')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <LayoutDashboard className="h-3.5 w-3.5" /> All Overview
         </Button>
-        <Button onClick={() => router.push('/financials/payroll')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-emerald-600 hover:text-white transition-all shadow-md">
-          <IndianRupee className="h-4 w-4" /> Pay Salary
+        <Button
+          size="sm"
+          variant={activeTab === 'exec-summary' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('exec-summary')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <Crown className="h-3.5 w-3.5" /> Executive Summary
         </Button>
-        <Button onClick={() => router.push('/users')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-indigo-600 hover:text-white transition-all shadow-md">
-          <Send className="h-4 w-4" /> Broadcast
+        <Button
+          size="sm"
+          variant={activeTab === 'growth' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('growth')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <Sparkles className="h-3.5 w-3.5" /> Growth Centre
         </Button>
-        <Button onClick={() => router.push('/dashboard')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-orange-600 hover:text-white transition-all shadow-md">
-          <Play className="h-4 w-4" /> Start Station
+        <Button
+          size="sm"
+          variant={activeTab === 'revenue' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('revenue')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <PieChart className="h-3.5 w-3.5" /> Revenue Intel
         </Button>
-        <Button onClick={() => router.push('/settings/menu?tab=packages')} variant="outline" className="h-16 flex flex-col gap-1 border-2 font-bold uppercase text-sm tracking-tight hover:bg-pink-600 hover:text-white transition-all shadow-md">
-          <Zap className="h-4 w-4" /> Create Offer
+        <Button
+          size="sm"
+          variant={activeTab === 'customer' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('customer')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <Users className="h-3.5 w-3.5" /> Customer Intel
+        </Button>
+        <Button
+          size="sm"
+          variant={activeTab === 'gaming' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('gaming')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <Gamepad2 className="h-3.5 w-3.5" /> Gaming Intel
+        </Button>
+        <Button
+          size="sm"
+          variant={activeTab === 'cafe' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('cafe')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <Utensils className="h-3.5 w-3.5" /> Café Intel
+        </Button>
+        <Button
+          size="sm"
+          variant={activeTab === 'employee' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('employee')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <ShieldCheck className="h-3.5 w-3.5" /> Staff Intel
+        </Button>
+        <Button
+          size="sm"
+          variant={activeTab === 'financial' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('financial')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <Wallet className="h-3.5 w-3.5" /> Financial P&L
+        </Button>
+        <Button
+          size="sm"
+          variant={activeTab === 'operational' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('operational')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+        >
+          <Activity className="h-3.5 w-3.5" /> Operations
         </Button>
       </div>
+
+      {/* 1. EXECUTIVE SUMMARY & HEALTH SCORE BANNER */}
+      <section id="exec-summary">
+        <OwnerPulseExecutiveSummary
+          kpis={pulseData.executiveSummary}
+          healthBreakdown={pulseData.healthBreakdown}
+          todayStr={pulseData.todayStr}
+        />
+      </section>
+
+      {/* 2. RULE-BASED INSIGHTS ALERTS */}
+      <section id="insights">
+        <OwnerPulseRulesInsights insights={pulseData.ruleInsights} />
+      </section>
+
+      {/* 3. GROWTH CENTRE */}
+      <section id="growth">
+        <OwnerPulseGrowthCentre benchmarks={pulseData.periodBenchmarks} />
+      </section>
+
+      {/* 4. REVENUE INTELLIGENCE */}
+      <section id="revenue">
+        <OwnerPulseRevenueIntel data={pulseData.revenueIntelligence} />
+      </section>
+
+      {/* 5. CUSTOMER INTELLIGENCE */}
+      <section id="customer">
+        <OwnerPulseCustomerIntel data={pulseData.customerIntelligence} />
+      </section>
+
+      {/* 6. GAMING INTELLIGENCE */}
+      <section id="gaming">
+        <OwnerPulseGamingIntel data={pulseData.gamingIntelligence} />
+      </section>
+
+      {/* 7. CAFE INTELLIGENCE */}
+      <section id="cafe">
+        <OwnerPulseCafeIntel data={pulseData.cafeIntelligence} />
+      </section>
+
+      {/* 8. EMPLOYEE INTELLIGENCE */}
+      <section id="employee">
+        <OwnerPulseEmployeeIntel employees={pulseData.employeeIntelList} />
+      </section>
+
+      {/* 9. FINANCIAL INTELLIGENCE */}
+      <section id="financial">
+        <OwnerPulseFinancialIntel data={pulseData.financialIntelligence} />
+      </section>
+
+      {/* 10. OPERATIONAL HEALTH */}
+      <section id="operational">
+        <OwnerPulseOperationalHealth data={pulseData.operationalHealth} />
+      </section>
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { GiftIcon } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { logUserAction } from '@/firebase/firestore/logs';
+import { playLevelUpSound } from '@/lib/audio/chiptune';
 
 interface GrantXpModalProps {
   member: Member;
@@ -59,6 +60,7 @@ export function GrantXpModal({ member, onGrantXp }: GrantXpModalProps) {
       return;
     }
     
+    playLevelUpSound();
     onGrantXp(member.id, baseXp, parsedBillAmount);
     
     logUserAction(`Granted ${finalXpToGrant} XP to ${member.name} for a bill of ₹${parsedBillAmount}.`, {

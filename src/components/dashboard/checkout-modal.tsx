@@ -17,6 +17,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { recordDebt } from '@/firebase/firestore/debts';
 import { useAuth } from '@/firebase/auth/use-user';
 import { getSyncedNow } from '@/lib/synced-time';
+import { playCoinSound } from '@/lib/audio/chiptune';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -224,6 +225,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
   const handleCheckout = (method: PaymentMethod, cash?: number, upi?: number) => {
     if (!station || isClosing) return;
     setIsClosing(true);
+    playCoinSound();
     onConfirmCheckout(station.id, finalBillTotal, billItems, discount, method, cash, upi, initialPackageInfo?.isNewRechargePurchase, initialPackageInfo?.purePackage);
   };
 

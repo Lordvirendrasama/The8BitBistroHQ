@@ -390,7 +390,7 @@ export default function DashboardPage() {
             {ps5Stations.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {ps5Stations.map(station => (
-                  <TimerCard key={station.id} station={station} onToggleTimer={() => handleToggleTimer(station)} onStopSession={() => handleStopSession(station)} onOpenBillModal={() => handleOpenBillModal(station)} onOpenEditTimeModal={() => handleOpenAddTimeModal(station)} />
+                  <TimerCard key={station.id} station={station} onToggleTimer={() => handleToggleTimer(station)} onStopSession={() => handleStopSession(station)} onOpenBillModal={() => handleOpenBillModal(station)} onOpenEditTimeModal={() => handleOpenAddTimeModal(station)} gamingPackages={gamingPackages || []} />
                 ))}
               </div>
             ) : (
@@ -411,7 +411,7 @@ export default function DashboardPage() {
             {boardGameStations.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {boardGameStations.map(station => (
-                  <TimerCard key={station.id} station={station} onToggleTimer={() => handleToggleTimer(station)} onStopSession={() => handleStopSession(station)} onOpenBillModal={() => handleOpenBillModal(station)} onOpenEditTimeModal={() => handleOpenAddTimeModal(station)}/>
+                  <TimerCard key={station.id} station={station} onToggleTimer={() => handleToggleTimer(station)} onStopSession={() => handleStopSession(station)} onOpenBillModal={() => handleOpenBillModal(station)} onOpenEditTimeModal={() => handleOpenAddTimeModal(station)} gamingPackages={gamingPackages || []} />
                 ))}
               </div>
             ) : (

@@ -1028,6 +1028,7 @@ function DashboardContent() {
                     onStopPlayer={handleStopPlayer}
                     onOpenJoinModal={handleOpenJoinModal}
                     onTogglePlayerTimer={handleTogglePlayerTimer}
+                    gamingPackages={gamingPackages || []}
                   />
                 ))}
               </div>

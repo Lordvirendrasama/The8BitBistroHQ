@@ -15,13 +15,10 @@ export function cn(...inputs: ClassValue[]) {
 export function getBusinessDate(date: Date = new Date(), ignoreOffset: boolean = false): string {
   const d = new Date(date);
   
-  // Business day starts at 5:00 AM local time
-  // If evaluateTimestamp is true, we check if the hour is before 5 AM
   if (!ignoreOffset && d.getHours() < 5) {
     d.setDate(d.getDate() - 1);
   }
   
-  // Format as YYYY-MM-DD using local time components
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -40,4 +37,24 @@ export function isBusinessToday(date: Date | string): boolean {
   const targetBusinessDate = getBusinessDate(target);
   
   return todayBusinessDate === targetBusinessDate;
+}
+
+/**
+ * Formats any date string or Date object into DD/MM/YYYY format.
+ */
+export function formatDateDDMMYYYY(date: Date | string): string {
+  if (!date) return '';
+  if (typeof date === 'string' && date.includes('-')) {
+    const parts = date.split('T')[0].split('-');
+    if (parts.length === 3) {
+      // YYYY-MM-DD -> DD/MM/YYYY
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return String(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }

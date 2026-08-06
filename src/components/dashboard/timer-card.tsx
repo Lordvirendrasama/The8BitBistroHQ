@@ -2,22 +2,20 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Station, AssignedMember, StationStatus } from '@/lib/types';
+import type { Station, AssignedMember, StationStatus, GamingPackage, BillItem, Member } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle, X } from 'lucide-react';
+import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle, X, Zap, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { updateStation } from '@/firebase/firestore/stations';
-import { Zap } from 'lucide-react';
-import type { Member } from '@/lib/types';
 import { useCustomerView } from '@/context/customer-view-context';
 import { getSyncedNow } from '@/lib/synced-time';
-
+import { useToast } from '@/hooks/use-toast';
 
 interface TimerCardProps {
   station: Station;
@@ -30,6 +28,7 @@ interface TimerCardProps {
   onOpenJoinModal?: (station: Station) => void;
   onTogglePlayerTimer?: (stationId: string, playerId: string) => void;
   allMembers?: Member[];
+  gamingPackages?: GamingPackage[];
 }
 
 
@@ -143,8 +142,9 @@ const IndividualPlayerTimer = ({
 };
 
 
-export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer, allMembers }: TimerCardProps) {
+export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer, allMembers, gamingPackages }: TimerCardProps) {
   const { isCustomerView } = useCustomerView();
+  const { toast } = useToast();
 
   const [minRemaining, setMinRemaining] = useState(0);
   const [maxRemaining, setMaxRemaining] = useState(0);
@@ -163,6 +163,122 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   [station.members]);
 
   const activeWithTimers = useMemo(() => activeMembers.filter(m => !!m.endTime), [activeMembers]);
+
+  const price30 = useMemo(() => {
+    if (!gamingPackages) return 50;
+    const pkg = gamingPackages.find(p => p.duration === 1800 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages.find(p => p.duration === 1800);
+    return pkg ? pkg.price : 50;
+  }, [gamingPackages, station.type]);
+
+  const price60 = useMemo(() => {
+    if (!gamingPackages) return 100;
+    const pkg = gamingPackages.find(p => p.duration === 3600 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages.find(p => p.duration === 3600);
+    return pkg ? pkg.price : 100;
+  }, [gamingPackages, station.type]);
+
+  const handleQuickAdjust = async (minutes: number) => {
+    if (!activeMembers || activeMembers.length === 0) {
+      toast({ variant: 'destructive', title: 'No Active Players', description: 'Cannot adjust time on idle session.' });
+      return;
+    }
+
+    const activeTids = activeMembers.map(m => m.id);
+    const seconds = minutes * 60;
+    const now = getSyncedNow();
+
+    if (minutes > 0) {
+      const pkg30 = gamingPackages?.find(p => p.duration === 1800 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages?.find(p => p.duration === 1800);
+      const pkg60 = gamingPackages?.find(p => p.duration === 3600 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages?.find(p => p.duration === 3600);
+      const matchedPkg = minutes === 30 ? pkg30 : pkg60;
+
+      const basePrice = matchedPkg ? matchedPkg.price : (minutes === 30 ? 50 : 100);
+      const playerNames = activeMembers.map(m => m.name).join(', ');
+
+      const updatedMembers = station.members.map(m => {
+        if (!activeTids.includes(m.id)) return m;
+        let newEndTime = m.endTime ? new Date(m.endTime).toISOString() : null;
+        let newRemaining = m.remainingTimeOnPause;
+
+        if ((station.status === 'paused' || m.status === 'paused') && m.remainingTimeOnPause != null) {
+          newRemaining = m.remainingTimeOnPause + seconds;
+        } else {
+          const baseTime = (m.endTime && m.status !== 'finished' && station.status !== 'finishing')
+            ? new Date(m.endTime).getTime()
+            : now;
+          newEndTime = new Date(baseTime + seconds * 1000).toISOString();
+        }
+
+        return {
+          ...m,
+          status: 'active' as const,
+          endTime: newEndTime,
+          remainingTimeOnPause: newRemaining,
+          startTime: m.startTime || new Date(now).toISOString()
+        };
+      });
+
+      const currentBill = station.currentBill || [];
+      const newBillItems: BillItem[] = [
+        ...currentBill,
+        {
+          itemId: matchedPkg?.id || `quick-time-${minutes}`,
+          name: `Time: +${minutes}m (${playerNames})`,
+          price: basePrice,
+          quantity: 1,
+          addedAt: new Date(now).toISOString()
+        }
+      ];
+
+      const activeM = updatedMembers.filter(m => m.status !== 'finished');
+      const endTimes = activeM.map(p => p.endTime ? new Date(p.endTime).getTime() : 0).filter(t => t > 0);
+      const latestEndTime = endTimes.length > 0 ? new Date(Math.max(...endTimes)).toISOString() : null;
+
+      const updates: Partial<Station> = {
+        currentBill: newBillItems,
+        members: updatedMembers,
+        endTime: latestEndTime
+      };
+
+      if (station.status === 'finishing') {
+        updates.status = 'in-use';
+        updates.finishingStartTime = null;
+      }
+
+      await updateStation(station.id, updates);
+      toast({ title: `Time Added (+₹${basePrice})`, description: `Added ${minutes} mins to ${station.name}` });
+    } else {
+      const secondsToReduce = Math.abs(seconds);
+      const updatedMembers = station.members.map(m => {
+        if (m.status === 'finished' || !activeTids.includes(m.id)) return m;
+        let newEndTime = m.endTime ? new Date(m.endTime).toISOString() : null;
+        let newRemaining = m.remainingTimeOnPause;
+
+        if ((station.status === 'paused' || m.status === 'paused') && m.remainingTimeOnPause != null) {
+          newRemaining = Math.max(0, m.remainingTimeOnPause - secondsToReduce);
+        } else if (m.endTime) {
+          const currentEnd = new Date(m.endTime).getTime();
+          newEndTime = new Date(Math.max(now, currentEnd - secondsToReduce * 1000)).toISOString();
+        }
+
+        return {
+          ...m,
+          endTime: newEndTime,
+          remainingTimeOnPause: newRemaining
+        };
+      });
+
+      const activeM = updatedMembers.filter(m => m.status !== 'finished');
+      const endTimes = activeM.map(p => p.endTime ? new Date(p.endTime).getTime() : 0).filter(t => t > 0);
+      const latestEndTime = endTimes.length > 0 ? new Date(Math.max(...endTimes)).toISOString() : null;
+
+      await updateStation(station.id, {
+        members: updatedMembers,
+        endTime: latestEndTime
+      });
+
+      toast({ title: `Time Reduced`, description: `Reduced ${Math.abs(minutes)} mins on ${station.name}` });
+    }
+  };
 
   const shortestMember = useMemo(() => {
     if (activeWithTimers.length === 0) return null;
@@ -389,6 +505,57 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 </>
             )}
         </div>
+
+        {/* QUICK TIME ADJUSTMENT BAR */}
+        {(isRunning || isPaused || isFinishing) && (
+          <div className="w-full mt-2 bg-muted/20 border border-border/50 rounded-xl p-1.5 flex items-center justify-between gap-1 shadow-sm">
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleQuickAdjust(-60)}
+                className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                title="Reduce 1 Hour"
+              >
+                -1h
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleQuickAdjust(-30)}
+                className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                title="Reduce 30 Mins"
+              >
+                -30m
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleQuickAdjust(30)}
+                className="h-7 text-xs font-bold font-mono px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1"
+                title={`Add 30 Mins (+₹${price30})`}
+              >
+                <Plus className="h-3 w-3" />
+                <span>30m</span>
+                <span className="text-[10px] font-sans font-semibold text-emerald-100">(+₹{price30})</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleQuickAdjust(60)}
+                className="h-7 text-xs font-bold font-mono px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1"
+                title={`Add 1 Hour (+₹${price60})`}
+              >
+                <Plus className="h-3 w-3" />
+                <span>1h</span>
+                <span className="text-[10px] font-sans font-semibold text-indigo-100">(+₹{price60})</span>
+              </Button>
+            </div>
+          </div>
+        )}
 
         {(isRunning || isPaused || isFinishing) && allOrderItems.length > 0 && (
             <div className="w-full mt-2">

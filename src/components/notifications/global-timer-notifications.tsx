@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, Clock } from 'lucide-react';
 import { updateStation } from '@/firebase/firestore/stations';
 import { getSyncedNow } from '@/lib/synced-time';
+import { playChiptuneAlarmSound } from '@/lib/audio/chiptune';
 
 /**
  * Universal Voice Announcer Engine
@@ -433,6 +434,7 @@ export function GlobalTimerNotifications() {
         if (endCandidates.length > 1) {
             // Group announcement for multiple players
             endCandidates.forEach(m => announcedEnds.current.add(`${station.id}-${m.id}-ended`));
+            playChiptuneAlarmSound();
             playAnnouncement(`Time is up for ${station.name}. All sessions ended.`);
             const maxEndTime = new Date(Math.max(...endCandidates.map(m => new Date(m.endTime!).getTime()))).toISOString();
             setActiveEndAlert({ station, memberName: "EVERYONE", endTime: maxEndTime });
@@ -441,6 +443,7 @@ export function GlobalTimerNotifications() {
             // Individual announcement for single player
             const m = endCandidates[0];
             announcedEnds.current.add(`${station.id}-${m.id}-ended`);
+            playChiptuneAlarmSound();
             playAnnouncement(`Time is up for ${m.name} at ${station.name}.`);
             setActiveEndAlert({ station, memberName: m.name, endTime: m.endTime });
             setActiveWarningAlert(null);

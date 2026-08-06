@@ -12,6 +12,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where } from 'firebase/firestore';
 import { rechargeMember } from '@/firebase/firestore/members';
 import { useToast } from '@/hooks/use-toast';
+import { playCoinSound } from '@/lib/audio/chiptune';
 import { Clock, IndianRupee, Zap, Calendar, Banknote, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
@@ -45,6 +46,7 @@ export function RechargeModal({ isOpen, onOpenChange, member }: RechargeModalPro
     const result = await rechargeMember(member.id, pkg, paymentMethod);
     
     if (result) {
+      playCoinSound();
       toast({ title: "Recharge Successful", description: `${pkg.name} added to ${member.name}'s account.` });
       onOpenChange(false);
     } else {
