@@ -1,11 +1,11 @@
 
 'use client';
 import { useParams, useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Member, MemberTier, Transaction, ClaimedReward, MemberRecharge } from '@/lib/types';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,8 +18,13 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { settings } from '@/lib/data';
-import { ArrowLeft, Coins, Edit, Gift, Star, Utensils, Zap, Clock } from 'lucide-react';
+import { ArrowLeft, Coins, Edit, Gift, Star, Utensils, Zap, Clock, QrCode, RefreshCw, Eye, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { QRCodeSVG } from 'qrcode.react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
 
 const tierColors: Record<MemberTier, string> = {
     Red: 'bg-red-500/20 text-red-500 border-red-500/50',
@@ -27,11 +32,83 @@ const tierColors: Record<MemberTier, string> = {
     Gold: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50',
 }
 
+const generateSvgIdCard = (member: Member) => {
+  const tierColorMap: Record<MemberTier, { color: string; bg: string; text: string }> = {
+    Red: { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', text: 'RED' },
+    Green: { color: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)', text: 'GREEN' },
+    Gold: { color: '#eab308', bg: 'rgba(234, 179, 8, 0.15)', text: 'GOLD' }
+  };
+  
+  const tier = tierColorMap[member.tier] || tierColorMap.Red;
+  
+  return `<svg width="400" height="250" viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .title { font-family: 'Courier New', monospace; font-weight: bold; fill: #00ffcc; font-size: 16px; }
+    .name { font-family: 'Segoe UI', Roboto, sans-serif; font-weight: 800; fill: #ffffff; font-size: 20px; }
+    .username { font-family: 'Segoe UI', Roboto, sans-serif; fill: #a0aec0; font-size: 13px; }
+    .label { font-family: 'Segoe UI', Roboto, sans-serif; font-weight: bold; fill: #718096; font-size: 9px; letter-spacing: 1px; }
+    .value { font-family: 'Segoe UI', Roboto, sans-serif; font-weight: bold; fill: #ffffff; font-size: 13px; }
+    .tier-badge { font-family: 'Segoe UI', Roboto, sans-serif; font-weight: bold; font-size: 11px; }
+  </style>
+  
+  <defs>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0c20" />
+      <stop offset="100%" stop-color="#060210" />
+    </linearGradient>
+    <linearGradient id="borderGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444" />
+      <stop offset="50%" stop-color="#00ffcc" />
+      <stop offset="100%" stop-color="#9d4edd" />
+    </linearGradient>
+    <clipPath id="avatarClip">
+      <rect x="20" y="70" width="70" height="70" rx="15" />
+    </clipPath>
+  </defs>
+
+  <!-- Background Card -->
+  <rect x="5" y="5" width="390" height="240" rx="20" fill="url(#cardBg)" stroke="url(#borderGlow)" stroke-width="2.5" />
+  
+  <!-- Bistro Brand Logo -->
+  <text x="20" y="40" class="title">THE 8-BIT BISTRO</text>
+  
+  <!-- Tier Badge -->
+  <rect x="300" y="22" width="80" height="24" rx="12" fill="${tier.bg}" stroke="${tier.color}" stroke-width="1.5" />
+  <text x="340" y="38" text-anchor="middle" class="tier-badge" fill="${tier.color}">${tier.text}</text>
+
+  <!-- Avatar -->
+  <image href="${member.avatarUrl || 'https://via.placeholder.com/150'}" x="20" y="70" width="70" height="70" clip-path="url(#avatarClip)" />
+  <rect x="20" y="70" width="70" height="70" rx="15" fill="none" stroke="${tier.color}" stroke-width="1.5" />
+
+  <!-- Info -->
+  <text x="110" y="90" class="name">${member.name}</text>
+  <text x="110" y="110" class="username">@${member.username}</text>
+
+  <!-- Stats Grid -->
+  <!-- Level -->
+  <text x="20" y="180" class="label">LEVEL</text>
+  <text x="20" y="198" class="value">${member.level}</text>
+  
+  <!-- Points -->
+  <text x="110" y="180" class="label">LOYALTY POINTS</text>
+  <text x="110" y="198" class="value">${member.points.toLocaleString()} pts</text>
+
+  <!-- XP -->
+  <text x="260" y="180" class="label">XP</text>
+  <text x="260" y="198" class="value">${member.xp.toLocaleString()} xp</text>
+
+  <!-- Scanner line decoration -->
+  <line x1="20" y1="222" x2="380" y2="222" stroke="#ff007f" stroke-width="1" stroke-dasharray="4,4" opacity="0.4" />
+</svg>`;
+};
+
 export default function MemberProfilePage() {
   const router = useRouter();
   const params = useParams();
   const memberId = params.memberId as string;
-  const { db } = useFirebase();
+  const { db, storage } = useFirebase();
+  const { toast } = useToast();
+  const [generating, setGenerating] = useState(false);
 
   const memberRef = useMemo(() => {
     if (!db || !memberId) return null;
@@ -65,9 +142,45 @@ export default function MemberProfilePage() {
     return <div>Member not found</div>;
   }
 
+  const handleGenerateId = async () => {
+    if (!storage || !db || !member) return;
+    setGenerating(true);
+    try {
+      const uuid = typeof window !== 'undefined' && window.crypto?.randomUUID 
+        ? window.crypto.randomUUID() 
+        : Math.random().toString(36).substring(2) + Date.now().toString(36);
+      
+      const storageRef = ref(storage, `digital-ids/${uuid}.svg`);
+      const svgContent = generateSvgIdCard(member);
+      
+      await uploadString(storageRef, svgContent, 'raw', { contentType: 'image/svg+xml' });
+      const downloadUrl = await getDownloadURL(storageRef);
+      
+      const mRef = doc(db, 'members', member.id);
+      await updateDoc(mRef, {
+        digitalIdUrl: downloadUrl,
+      });
+      
+      toast({
+        title: 'Success!',
+        description: 'Digital ID Card has been generated.',
+      });
+    } catch (err: any) {
+      console.error('Error generating Digital ID:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Generation Failed',
+        description: err.message || 'Something went wrong.',
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const xpPerLevel = settings.xpPerLevel;
   const currentLevelXp = member.xp - ((member.level - 1) * xpPerLevel);
   const progressPercentage = (currentLevelXp / xpPerLevel) * 100;
+  const scanUrl = typeof window !== 'undefined' ? `${window.location.origin}/scan?memberId=${member.id}` : '';
 
   const formatDuration = (sec: number) => {
     const h = Math.floor(sec / 3600);
@@ -130,6 +243,93 @@ export default function MemberProfilePage() {
                         </Link>
                     </Button>
                 </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="font-headline tracking-wide text-xl flex items-center gap-2">
+                        <QrCode className="h-5 w-5" />
+                        Digital ID Card
+                    </CardTitle>
+                    <CardDescription>
+                        Generate a secure, off-domain scannable ID card.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 flex flex-col items-center">
+                    {member.digitalIdUrl ? (
+                        <div className="flex flex-col items-center gap-4 w-full">
+                            <div className="bg-white p-3 rounded-xl border-2 shadow-sm flex items-center justify-center">
+                                <QRCodeSVG value={scanUrl} size={150} />
+                            </div>
+                            
+                            <div className="flex gap-2 w-full">
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" className="flex-1 font-bold">
+                                            <Eye className="mr-2 h-4 w-4" />
+                                            Preview ID
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-[440px] p-6 bg-zinc-950 border-zinc-800 text-white rounded-2xl flex flex-col items-center">
+                                        <DialogHeader className="w-full text-center">
+                                            <DialogTitle className="font-headline tracking-widest text-lg text-primary text-center">
+                                                MEMBER DIGITAL ID
+                                            </DialogTitle>
+                                        </DialogHeader>
+                                        <div 
+                                            className="w-full border border-white/10 rounded-2xl overflow-hidden shadow-2xl mt-4"
+                                            dangerouslySetInnerHTML={{ __html: generateSvgIdCard(member) }}
+                                        />
+                                        <div className="mt-6 flex flex-col items-center gap-2">
+                                            <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Scan to load profile</p>
+                                            <div className="bg-white p-2 rounded-lg">
+                                                <QRCodeSVG value={scanUrl} size={100} />
+                                            </div>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+
+                                <Button 
+                                    variant="secondary" 
+                                    className="flex-1 font-bold"
+                                    onClick={handleGenerateId}
+                                    disabled={generating}
+                                >
+                                    {generating ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                            Regenerate
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-full text-center py-6">
+                            <p className="text-sm text-muted-foreground mb-4">No Digital ID generated for this member yet.</p>
+                            <Button 
+                                className="w-full font-bold"
+                                onClick={handleGenerateId}
+                                disabled={generating}
+                                variant="default"
+                            >
+                                {generating ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Generating ID...
+                                    </>
+                                ) : (
+                                    <>
+                                        <QrCode className="mr-2 h-4 w-4" />
+                                        Generate Digital ID
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
             </Card>
 
             <Card className="border-primary/20 bg-primary/5">

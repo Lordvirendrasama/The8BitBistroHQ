@@ -25,6 +25,7 @@ export interface Member {
   avatarUrl: string;
   joinDate: string;
   pendingAmount?: number;
+  digitalIdUrl?: string;
   cycle?: string; // Data Cycle tag
   recharges?: MemberRecharge[];
 }

@@ -1043,7 +1043,7 @@ function DashboardContent() {
           <BillModal isOpen={isBillModalOpen} onOpenChange={setIsBillModalOpen} station={selectedStation} allMembers={members || []} foodItems={foodItems || []} onSaveBill={handleSaveBill} gamingPackages={gamingPackages || []} onConfirmCheckout={handleConfirmCheckout} onStartFoodSession={handleStartFoodSession} onCheckoutClick={handleCheckoutClickFromBillModal} />
           <CheckoutModal isOpen={isCheckoutModalOpen} onOpenChange={setIsCheckoutModalOpen} station={selectedStation} gamingPackages={gamingPackages || []} onConfirmCheckout={handleConfirmCheckout} onSaveBill={handleSaveBill} allMembers={members || []} foodItems={foodItems || []} />
           <EditTimeModal isOpen={isEditTimeModalOpen} onOpenChange={setIsEditTimeModalOpen} onAddTime={handleAddTime} onReduceTime={handleReduceTime} gamingPackages={gamingPackages || []} station={selectedStation} />
-          <MoveStationModal isOpen={isMoveModalOpen} onOpenChange={setIsMoveModalOpen} sourceStation={selectedStation} availableStations={availableStations} />
+          <MoveStationModal isOpen={isMoveModalOpen} onOpenChange={setIsMoveModalOpen} sourceStation={selectedStation} allStations={stations} />
           <JoinPlayerModal isOpen={isJoinModalOpen} onOpenChange={setIsJoinModalOpen} station={selectedStation} members={members || []} onConfirm={handleConfirmJoin} />
         </>
       )}

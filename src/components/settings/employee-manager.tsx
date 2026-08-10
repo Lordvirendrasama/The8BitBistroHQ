@@ -135,11 +135,14 @@ export function EmployeeManager() {
     setIsSubmitting(true);
     
     if (selectedEmp) {
-      await updateEmployee(selectedEmp.id, formData);
-      toast({ title: "Staff Updated" });
+      await updateEmployee(selectedEmp.id, formData, {
+        username: selectedEmp.username,
+        pin: selectedEmp.pin
+      });
+      toast({ title: "Staff Profile Updated", description: "Profile details and login credentials have been synced." });
     } else {
       await addEmployee(formData);
-      toast({ title: "New Staff Added" });
+      toast({ title: "New Staff Added", description: "Profile and login credentials have been created." });
     }
     
     setModalOpen(false);

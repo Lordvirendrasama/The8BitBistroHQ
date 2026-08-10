@@ -88,9 +88,43 @@ export const updateStationsBatch = async (stations: Station[]) => {
 };
 
 /**
- * Transfers an active session from a source station to an available target station.
+ * Helper to merge bill items by summing their quantities.
  */
-export const moveStationSession = async (sourceId: string, targetId: string) => {
+const mergeBillItems = (items1: BillItem[], items2: BillItem[]): BillItem[] => {
+    const merged: Record<string, BillItem> = {};
+    (items1 || []).forEach(item => {
+        merged[item.itemId] = { ...item };
+    });
+    (items2 || []).forEach(item => {
+        if (merged[item.itemId]) {
+            merged[item.itemId].quantity += item.quantity;
+        } else {
+            merged[item.itemId] = { ...item };
+        }
+    });
+    return Object.values(merged);
+};
+
+const getEarlierDate = (d1: string | null | undefined, d2: string | null | undefined) => {
+    if (!d1) return d2 || null;
+    if (!d2) return d1 || null;
+    return new Date(d1).getTime() < new Date(d2).getTime() ? d1 : d2;
+};
+
+const getLaterDate = (d1: string | null | undefined, d2: string | null | undefined) => {
+    if (!d1) return d2 || null;
+    if (!d2) return d1 || null;
+    return new Date(d1).getTime() > new Date(d2).getTime() ? d1 : d2;
+};
+
+/**
+ * Transfers, swaps, or merges active sessions between source and target stations.
+ */
+export const moveStationSession = async (
+    sourceId: string, 
+    targetId: string, 
+    mode: 'move' | 'merge' | 'swap' = 'move'
+) => {
     const db = getFirestore();
     try {
         await runTransaction(db, async (transaction) => {
@@ -106,37 +140,106 @@ export const moveStationSession = async (sourceId: string, targetId: string) => 
             const sourceData = sourceDoc.data() as Station;
             const targetData = targetDoc.data() as Station;
             
-            if (targetData.status !== 'available') throw new Error("Target station is no longer available");
-            
-            // 1. Update target with source data
-            transaction.update(targetRef, sanitize({
-                status: sourceData.status,
-                startTime: sourceData.startTime,
-                endTime: sourceData.endTime,
-                pauseStartTime: sourceData.pauseStartTime || null,
-                remainingTimeOnPause: sourceData.remainingTimeOnPause || null,
-                packageName: sourceData.packageName,
-                members: sourceData.members,
-                currentBill: sourceData.currentBill || [],
-                discount: sourceData.discount || 0,
-            }));
-            
-            // 2. Reset source station to available
-            transaction.update(sourceRef, {
-                status: 'available',
-                startTime: null,
-                endTime: null,
-                pauseStartTime: null,
-                remainingTimeOnPause: null,
-                packageName: null,
-                members: [],
-                currentBill: [],
-                discount: 0,
-            });
+            if (mode === 'move') {
+                if (targetData.status !== 'available') {
+                    throw new Error("Target station is no longer available");
+                }
+                
+                // 1. Update target with source data
+                transaction.update(targetRef, sanitize({
+                    status: sourceData.status,
+                    startTime: sourceData.startTime,
+                    endTime: sourceData.endTime,
+                    pauseStartTime: sourceData.pauseStartTime || null,
+                    remainingTimeOnPause: sourceData.remainingTimeOnPause || null,
+                    packageName: sourceData.packageName,
+                    members: sourceData.members,
+                    currentBill: sourceData.currentBill || [],
+                    discount: sourceData.discount || 0,
+                }));
+                
+                // 2. Reset source station to available
+                transaction.update(sourceRef, {
+                    status: 'available',
+                    startTime: null,
+                    endTime: null,
+                    pauseStartTime: null,
+                    remainingTimeOnPause: null,
+                    packageName: null,
+                    members: [],
+                    currentBill: [],
+                    discount: 0,
+                });
+            } else if (mode === 'swap') {
+                // Swap the session fields completely
+                transaction.update(targetRef, sanitize({
+                    status: sourceData.status,
+                    startTime: sourceData.startTime,
+                    endTime: sourceData.endTime,
+                    pauseStartTime: sourceData.pauseStartTime || null,
+                    remainingTimeOnPause: sourceData.remainingTimeOnPause || null,
+                    packageName: sourceData.packageName,
+                    members: sourceData.members,
+                    currentBill: sourceData.currentBill || [],
+                    discount: sourceData.discount || 0,
+                }));
+                
+                transaction.update(sourceRef, sanitize({
+                    status: targetData.status,
+                    startTime: targetData.startTime,
+                    endTime: targetData.endTime,
+                    pauseStartTime: targetData.pauseStartTime || null,
+                    remainingTimeOnPause: targetData.remainingTimeOnPause || null,
+                    packageName: targetData.packageName,
+                    members: targetData.members,
+                    currentBill: targetData.currentBill || [],
+                    discount: targetData.discount || 0,
+                }));
+            } else if (mode === 'merge') {
+                // Merge source session into target session
+                const mergedMembers = [...(targetData.members || []), ...(sourceData.members || [])];
+                const mergedBill = mergeBillItems(targetData.currentBill || [], sourceData.currentBill || []);
+                const mergedStartTime = getEarlierDate(targetData.startTime, sourceData.startTime);
+                const mergedEndTime = getLaterDate(targetData.endTime, sourceData.endTime);
+                
+                let mergedPackageName = targetData.packageName;
+                if (sourceData.packageName && sourceData.packageName !== targetData.packageName) {
+                    mergedPackageName = targetData.packageName 
+                        ? `${targetData.packageName}, ${sourceData.packageName}` 
+                        : sourceData.packageName;
+                }
+                
+                const mergedStatus = (targetData.status === 'in-use' || sourceData.status === 'in-use') ? 'in-use' : 'paused';
+                
+                transaction.update(targetRef, sanitize({
+                    status: mergedStatus,
+                    startTime: mergedStartTime,
+                    endTime: mergedEndTime,
+                    pauseStartTime: targetData.pauseStartTime || sourceData.pauseStartTime || null,
+                    remainingTimeOnPause: targetData.remainingTimeOnPause || sourceData.remainingTimeOnPause || null,
+                    packageName: mergedPackageName,
+                    members: mergedMembers,
+                    currentBill: mergedBill,
+                    discount: (targetData.discount || 0) + (sourceData.discount || 0),
+                }));
+                
+                // Reset source station to available
+                transaction.update(sourceRef, {
+                    status: 'available',
+                    startTime: null,
+                    endTime: null,
+                    pauseStartTime: null,
+                    remainingTimeOnPause: null,
+                    packageName: null,
+                    members: [],
+                    currentBill: [],
+                    discount: 0,
+                });
+            }
         });
         return { success: true };
     } catch (e: any) {
-        console.error("Error moving station session: ", e);
+        console.error("Error moving/swapping/merging station session: ", e);
         return { success: false, message: e.message };
     }
 }

@@ -461,7 +461,15 @@ export default function BillingHistoryPage() {
                 </CardContent>
             </Card>
             {editingBill && (
-                <EditBillModal isOpen={!!editingBill} onOpenChange={(isOpen) => !isOpen && setEditingBill(null)} bill={editingBill} foodItems={foodItems || []} gamingPackages={gamingPackages || []} onSave={handleUpdateBill} />
+                <EditBillModal 
+                    isOpen={!!editingBill} 
+                    onOpenChange={(isOpen) => !isOpen && setEditingBill(null)} 
+                    bill={editingBill} 
+                    foodItems={foodItems || []} 
+                    gamingPackages={gamingPackages || []} 
+                    stations={allStations || []}
+                    onSave={handleUpdateBill} 
+                />
             )}
             <CreateBillModal
                 isOpen={isCreateModalOpen}

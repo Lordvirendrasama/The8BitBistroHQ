@@ -36,7 +36,7 @@ import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
-import { LogOut, Volume2, VolumeX, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User } from "lucide-react";
+import { LogOut, Volume2, VolumeX, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User, ListChecks } from "lucide-react";
 import { useCustomerView } from '@/context/customer-view-context';
 import { getSyncedNow } from '@/lib/synced-time';
 import { isSoundEnabled, toggleSound } from '@/lib/audio/chiptune';
@@ -1313,10 +1313,10 @@ export function AppHeader({
                         <div className="flex items-center gap-1">
                             <OwnerTaskDropdown />
                             <StaffNotepad />
-                            <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-primary rounded-lg" onClick={() => setTasksVisible(true)}>
-                              <Bell className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" title="Daily Shift Tasks Wizard" className="relative h-8 w-8 text-muted-foreground hover:text-primary rounded-lg" onClick={() => setTasksVisible(true)}>
+                              <ListChecks className="h-4 w-4 text-primary" />
                               {uncompletedTaskCount > 0 && (
-                                <Badge variant="destructive" className="absolute -right-1.5 -top-1.5 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold">{uncompletedTaskCount}</Badge>
+                                <Badge variant="destructive" className="absolute -right-1.5 -top-1.5 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold animate-pulse">{uncompletedTaskCount}</Badge>
                               )}
                             </Button>
                             <AdminNotifications />

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning, MapPin, FilePlus2, Monitor, Pencil, CalendarIcon } from 'lucide-react';
+import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning, MapPin, FilePlus2, Monitor, Pencil, CalendarIcon, Clock } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -37,6 +37,7 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
   const [selectedStationId, setSelectedStationId] = useState<string>('');
   const [customStationName, setCustomStationName] = useState('');
   const [billDate, setBillDate] = useState<Date>(new Date());
+  const [billTime, setBillTime] = useState<string>('12:00:00');
   const [isSaving, setIsSaving] = useState(false);
 
   // Custom item entry
@@ -55,7 +56,13 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
       setCustomStationName('');
       setCustomItemName('');
       setCustomItemPrice('');
-      setBillDate(initialDate || new Date());
+      const targetDate = initialDate || new Date();
+      setBillDate(targetDate);
+
+      const hh = String(targetDate.getHours()).padStart(2, '0');
+      const mm = String(targetDate.getMinutes()).padStart(2, '0');
+      const ss = String(targetDate.getSeconds()).padStart(2, '0');
+      setBillTime(`${hh}:${mm}:${ss}`);
     }
   }, [isOpen, initialDate]);
 
@@ -118,10 +125,9 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
     if (!canSave) return;
     setIsSaving(true);
     try {
-      const current = new Date();
-      if (billDate) {
-        current.setFullYear(billDate.getFullYear(), billDate.getMonth(), billDate.getDate());
-      }
+      const current = billDate ? new Date(billDate) : new Date();
+      const parts = billTime.split(':').map(Number);
+      current.setHours(parts[0] || 0, parts[1] || 0, parts[2] || 0, 0);
 
       const billData: Omit<Bill, 'id' | 'shiftId'> = {
         stationId: selectedStationId || 'manual',
@@ -140,6 +146,8 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
       };
       await onSave(billData);
       onOpenChange(false);
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsSaving(false);
     }
@@ -302,6 +310,18 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
                       <Calendar mode="single" selected={billDate} onSelect={(d) => d && setBillDate(d)} initialFocus />
                     </PopoverContent>
                   </Popover>
+                </div>
+                <div className="w-28 space-y-2">
+                  <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" /> Time
+                  </Label>
+                  <Input
+                    type="time"
+                    step="1"
+                    value={billTime}
+                    onChange={e => setBillTime(e.target.value)}
+                    className="h-9 text-sm font-mono font-bold bg-background border-2"
+                  />
                 </div>
               </div>
               {(selectedStationId === 'manual-custom' || !selectedStationId) && (
