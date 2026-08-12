@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash, Edit, Users, Shield, Banknote, Calendar, Clock } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Users, Shield, Banknote, Calendar, Clock, Eye, EyeOff } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +38,7 @@ export function EmployeeManager() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -66,42 +67,46 @@ export function EmployeeManager() {
     if (loading || !employees) return;
     if (employees.length === 0) {
       const seedData = async () => {
-        await addEmployee({
-          username: 'kaif',
-          displayName: 'Kaif',
-          role: 'staff',
-          salary: 6000,
-          salaryType: 'monthly',
-          weekOffDay: 4, // Thursday
-          joinDate: new Date().toISOString().slice(0, 10),
-          pin: '1234',
-          workStartTime: '09:00',
-          workEndTime: '15:00',
-          workingDaysPerWeek: 6,
-          overtimeMultiplier: 1.5,
-          isActive: true,
-          gracePeriod: 5,
-          assignedShift: 'opening',
-          foodAllowanceBalance: 1000
-        });
-        await addEmployee({
-          username: 'musaib',
-          displayName: 'Musaib',
-          role: 'staff',
-          salary: 6000,
-          salaryType: 'monthly',
-          weekOffDay: 4, // Thursday
-          joinDate: new Date().toISOString().slice(0, 10),
-          pin: '1234',
-          workStartTime: '17:00',
-          workEndTime: '23:00',
-          workingDaysPerWeek: 6,
-          overtimeMultiplier: 1.5,
-          isActive: true,
-          gracePeriod: 5,
-          assignedShift: 'closing',
-          foodAllowanceBalance: 1000
-        });
+        try {
+          await addEmployee({
+            username: 'kaif',
+            displayName: 'Kaif',
+            role: 'staff',
+            salary: 6000,
+            salaryType: 'monthly',
+            weekOffDay: 4, // Thursday
+            joinDate: new Date().toISOString().slice(0, 10),
+            pin: '1234',
+            workStartTime: '09:00',
+            workEndTime: '15:00',
+            workingDaysPerWeek: 6,
+            overtimeMultiplier: 1.5,
+            isActive: true,
+            gracePeriod: 5,
+            assignedShift: 'opening',
+            foodAllowanceBalance: 1000
+          });
+          await addEmployee({
+            username: 'musaib',
+            displayName: 'Musaib',
+            role: 'staff',
+            salary: 6000,
+            salaryType: 'monthly',
+            weekOffDay: 4, // Thursday
+            joinDate: new Date().toISOString().slice(0, 10),
+            pin: '1234',
+            workStartTime: '17:00',
+            workEndTime: '23:00',
+            workingDaysPerWeek: 6,
+            overtimeMultiplier: 1.5,
+            isActive: true,
+            gracePeriod: 5,
+            assignedShift: 'closing',
+            foodAllowanceBalance: 1000
+          });
+        } catch (err) {
+          console.error("Auto-seeding workforce failed:", err);
+        }
       };
       seedData();
     }
@@ -109,6 +114,7 @@ export function EmployeeManager() {
 
   const handleEdit = (emp: Employee) => {
     setSelectedEmp(emp);
+    setShowPin(false);
     setFormData({
       username: emp.username,
       displayName: emp.displayName,
@@ -134,25 +140,35 @@ export function EmployeeManager() {
     if (!formData.username || !formData.displayName || !formData.pin) return;
     setIsSubmitting(true);
     
-    if (selectedEmp) {
-      await updateEmployee(selectedEmp.id, formData, {
-        username: selectedEmp.username,
-        pin: selectedEmp.pin
+    try {
+      if (selectedEmp) {
+        await updateEmployee(selectedEmp.id, formData, {
+          username: selectedEmp.username,
+          pin: selectedEmp.pin
+        });
+        toast({ title: "Staff Profile Updated", description: "Profile details and login credentials have been synced." });
+      } else {
+        await addEmployee(formData);
+        toast({ title: "New Staff Added", description: "Profile and login credentials have been created." });
+      }
+      
+      setModalOpen(false);
+      setFormData({ 
+          username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', 
+          weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '',
+          workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true, gracePeriod: 5,
+          assignedShift: 'opening', foodAllowanceBalance: 1000
       });
-      toast({ title: "Staff Profile Updated", description: "Profile details and login credentials have been synced." });
-    } else {
-      await addEmployee(formData);
-      toast({ title: "New Staff Added", description: "Profile and login credentials have been created." });
+    } catch (err: any) {
+      console.error(err);
+      toast({ 
+        title: "Sync Warning / Error", 
+        description: err.message || "Failed to update profile or sync credentials.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setModalOpen(false);
-    setIsSubmitting(false);
-    setFormData({ 
-        username: '', displayName: '', role: 'staff', salary: 0, salaryType: 'monthly', 
-        weekOffDay: 5, joinDate: new Date().toISOString().slice(0, 10), pin: '',
-        workStartTime: '11:00', workEndTime: '23:00', workingDaysPerWeek: 6, overtimeMultiplier: 1.5, isActive: true, gracePeriod: 5,
-        assignedShift: 'opening', foodAllowanceBalance: 1000
-    });
   };
 
   return (
@@ -162,7 +178,7 @@ export function EmployeeManager() {
           <CardTitle className="font-headline text-xl flex items-center gap-2"><Users className="text-primary" /> Staff Registry</CardTitle>
           <CardDescription className="text-sm font-bold uppercase tracking-normal">Manage employee profiles, salaries, and weekly offs.</CardDescription>
         </div>
-        <Button onClick={() => { setSelectedEmp(null); setModalOpen(true); }} className="font-bold uppercase tracking-tight h-10 shadow-lg">
+        <Button onClick={() => { setSelectedEmp(null); setShowPin(false); setModalOpen(true); }} className="font-bold uppercase tracking-tight h-10 shadow-lg">
           <PlusCircle className="mr-2 h-4 w-4" /> Add Operator
         </Button>
       </CardHeader>
@@ -253,7 +269,24 @@ export function EmployeeManager() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Terminal PIN (4-Digit)</Label>
-                <Input type="password" maxLength={4} value={formData.pin} onChange={e => setFormData({...formData, pin: e.target.value})} className="font-mono text-center tracking-[0.5em]" />
+                <div className="relative">
+                  <Input 
+                    type={showPin ? "text" : "password"} 
+                    maxLength={4} 
+                    value={formData.pin} 
+                    onChange={e => setFormData({...formData, pin: e.target.value})} 
+                    className="font-mono text-center tracking-[0.5em] pr-10" 
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPin(!showPin)}
+                  >
+                    {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Access Role</Label>

@@ -1,7 +1,7 @@
 
 import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, query, where, setDoc } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, updateEmail, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, updateEmail, signOut, initializeAuth, inMemoryPersistence } from 'firebase/auth';
 import { firebaseConfig } from '../config';
 import type { Employee, LogEntry } from '@/lib/types';
 
@@ -19,7 +19,9 @@ async function createOrUpdateAuthAccount(options: {
   const { oldUsername, oldPin, newUsername, newPin, role, employeeId } = options;
   const tempAppName = `emp-sync-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const tempApp = initializeApp(firebaseConfig, tempAppName);
-  const tempAuth = getAuth(tempApp);
+  const tempAuth = initializeAuth(tempApp, {
+    persistence: inMemoryPersistence
+  });
 
   const newEmail = `${newUsername.toLowerCase()}@8bitbistro.local`;
   const newPassword = `${newPin}-8bit`;
@@ -57,13 +59,29 @@ async function createOrUpdateAuthAccount(options: {
       } catch (createErr: any) {
         if (createErr.code === 'auth/email-already-in-use') {
           try {
+            // Attempt to sign in with the new PIN/password
             const loginCred = await signInWithEmailAndPassword(tempAuth, newEmail, newPassword);
             authUid = loginCred.user.uid;
-          } catch (e) {
-            console.error("User email already exists but login failed:", e);
+          } catch (e: any) {
+            // If sign in with new password fails, attempt with the old password (if we have oldPin)
+            if (oldPin) {
+              try {
+                const oldPassword = `${oldPin}-8bit`;
+                const loginCred = await signInWithEmailAndPassword(tempAuth, newEmail, oldPassword);
+                authUid = loginCred.user.uid;
+                // Since we successfully signed in with the old password, update it now to the new one!
+                if (newPin && newPin !== oldPin) {
+                  await updatePassword(loginCred.user, newPassword);
+                }
+              } catch (signInOldErr: any) {
+                throw new Error(`User account exists but login failed with both old and new credentials: ${signInOldErr.message}`);
+              }
+            } else {
+              throw new Error(`User account already exists but login failed: ${e.message}`);
+            }
           }
         } else {
-          console.error("Failed to create Auth user:", createErr);
+          throw new Error(`Failed to create Auth user: ${createErr.message}`);
         }
       }
     }
@@ -76,11 +94,14 @@ async function createOrUpdateAuthAccount(options: {
         username: newUsername,
         employeeId: employeeId
       });
+    } else {
+      throw new Error("Could not determine user Auth UID after synchronization.");
     }
 
     await signOut(tempAuth);
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error syncing Auth account:", err);
+    throw err;
   } finally {
     try {
       await deleteApp(tempApp);
@@ -93,7 +114,19 @@ async function createOrUpdateAuthAccount(options: {
 export const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
   const db = getFirestore();
   try {
-    const docRef = await addDoc(collection(db, 'employees'), {
+    const docRef = doc(collection(db, 'employees'));
+    const employeeId = docRef.id;
+
+    if (employeeData.username && employeeData.pin) {
+      await createOrUpdateAuthAccount({
+        newUsername: employeeData.username,
+        newPin: employeeData.pin,
+        role: employeeData.role,
+        employeeId: employeeId
+      });
+    }
+
+    await setDoc(docRef, {
       ...employeeData,
       isActive: true
     });
@@ -105,19 +138,10 @@ export const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
       user: { uid: 'system', displayName: 'System' }
     });
 
-    if (employeeData.username && employeeData.pin) {
-      await createOrUpdateAuthAccount({
-        newUsername: employeeData.username,
-        newPin: employeeData.pin,
-        role: employeeData.role,
-        employeeId: docRef.id
-      });
-    }
-
-    return docRef.id;
+    return employeeId;
   } catch (e) {
     console.error("Error adding employee:", e);
-    return null;
+    throw e;
   }
 };
 
@@ -129,8 +153,6 @@ export const updateEmployee = async (
   const db = getFirestore();
   const ref = doc(db, 'employees', employeeId);
   try {
-    await updateDoc(ref, updates);
-
     // Sync to userRoles and Firebase Auth if username, pin, or role has changed
     const effectiveUsername = updates.username ?? previousState?.username ?? '';
     const effectivePin = updates.pin ?? previousState?.pin ?? '';
@@ -147,10 +169,11 @@ export const updateEmployee = async (
       });
     }
 
+    await updateDoc(ref, updates);
     return true;
   } catch (e) {
     console.error("Error updating employee:", e);
-    return false;
+    throw e;
   }
 };
 

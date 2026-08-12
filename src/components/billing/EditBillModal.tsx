@@ -550,4 +550,7 @@ export function EditBillModal({ isOpen, onOpenChange, bill, foodItems, gamingPac
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialo
+    </Dialog>
+  );
+}
+
