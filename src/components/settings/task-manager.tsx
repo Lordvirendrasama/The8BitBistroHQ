@@ -595,10 +595,10 @@ export function TaskManager() {
                         <span>{task.name}</span>
                         {task.assignedTo && task.assignedTo.length > 0 ? (
                           <div className="flex flex-wrap gap-1 mt-1.5">
-                            {task.assignedTo.map(username => {
+                            {task.assignedTo.map((username, idx) => {
                               const emp = employees?.find(e => e.username === username);
                               return (
-                                <Badge key={username} variant="outline" className="text-sm h-4 bg-muted/40 font-bold uppercase tracking-wider">
+                                <Badge key={`${username}-${idx}`} variant="outline" className="text-sm h-4 bg-muted/40 font-bold uppercase tracking-wider">
                                   {emp ? emp.displayName : username}
                                 </Badge>
                               );

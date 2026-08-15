@@ -35,8 +35,9 @@ import { startBreak, endBreak, notifyLateBreak } from "@/firebase/firestore/shif
 import { calculateDailyFixedCost } from "@/firebase/firestore/financials";
 import { updateOwnerTask } from "@/firebase/firestore/owner-tasks";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
-import { LogOut, Volume2, VolumeX, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User, ListChecks } from "lucide-react";
+import { LogOut, Volume2, VolumeX, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Sun, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User, ListChecks } from "lucide-react";
 import { useCustomerView } from '@/context/customer-view-context';
 import { getSyncedNow } from '@/lib/synced-time';
 import { isSoundEnabled, toggleSound } from '@/lib/audio/chiptune';
@@ -1005,6 +1006,149 @@ const OwnerTaskDropdown = () => {
   );
 };
 
+const ShiftTaskDropdown = ({ 
+  activeShift, 
+  onTaskToggle 
+}: { 
+  activeShift: Shift | null; 
+  onTaskToggle: (task: ShiftTask, result?: 'yes' | 'no') => void; 
+}) => {
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  const tasks = activeShift?.tasks || [];
+  
+  const operationalTasks = useMemo(() => 
+    tasks.filter(t => t.shiftType !== undefined || t.type === 'strategic'),
+  [tasks]);
+
+  const pendingTasks = useMemo(() => 
+    operationalTasks.filter(t => !t.completed),
+  [operationalTasks]);
+
+  const completedTasks = useMemo(() => 
+    operationalTasks.filter(t => t.completed),
+  [operationalTasks]);
+
+  const totalCount = operationalTasks.length;
+  const completedCount = completedTasks.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 100;
+
+  const isNightShift = activeShift?.shiftType === 'night';
+  const shiftTitle = isNightShift ? "Closing Shift Protocols" : "Opening Shift Protocols";
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          title="Daily Shift Tasks & Protocols" 
+          className="relative h-8 w-8 rounded-lg border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all"
+        >
+          <ListChecks className="h-4 w-4 text-primary" />
+          {pendingTasks.length > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -right-2 -top-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold animate-pulse"
+            >
+              {pendingTasks.length}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 sm:w-96 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
+        <div className="p-4 bg-muted/20 border-b">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              {isNightShift ? <Moon className="h-4 w-4 text-indigo-400" /> : <Sun className="h-4 w-4 text-amber-500" />}
+              <h4 className="font-bold text-sm uppercase tracking-normal text-foreground">{shiftTitle}</h4>
+            </div>
+            <Badge variant={progressPercent === 100 ? "default" : "outline"} className="text-xs font-bold font-mono">
+              {progressPercent}%
+            </Badge>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-muted-foreground uppercase">
+              <span>Progress ({completedCount} / {totalCount} Done)</span>
+              <span className="text-destructive font-mono">{pendingTasks.length} Remaining</span>
+            </div>
+            <Progress value={progressPercent} className="h-2 bg-muted/50" />
+          </div>
+        </div>
+
+        <ScrollArea className="h-[350px]">
+          <div className="p-2 space-y-1">
+            {pendingTasks.length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto animate-bounce" />
+                <p className="font-bold text-sm uppercase text-emerald-500">All Shift Tasks Done!</p>
+                <p className="text-xs text-muted-foreground uppercase font-bold">Great job keeping the bistro operational.</p>
+              </div>
+            ) : (
+              pendingTasks.map((task, idx) => (
+                <div 
+                  key={`${task.name}-${idx}`} 
+                  className="flex items-start gap-3 p-2.5 rounded-lg bg-card hover:bg-muted/30 border border-border/40 transition-colors group cursor-pointer"
+                  onClick={() => onTaskToggle(task)}
+                >
+                  <Checkbox 
+                    id={`shift-task-${task.name}-${idx}`}
+                    checked={task.completed}
+                    onCheckedChange={() => onTaskToggle(task)}
+                    className="mt-0.5 border-primary/40 data-[state=checked]:bg-primary"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <Label 
+                      htmlFor={`shift-task-${task.name}-${idx}`}
+                      className="text-sm font-bold uppercase tracking-tight text-foreground leading-tight cursor-pointer group-hover:text-primary transition-colors block"
+                    >
+                      {task.name}
+                    </Label>
+                    {(task as any).description && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 font-medium">
+                        {(task as any).description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+
+            {completedTasks.length > 0 && (
+              <div className="pt-3 border-t border-dashed mt-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-xs font-bold uppercase tracking-wider text-muted-foreground h-7"
+                  onClick={() => setShowCompleted(!showCompleted)}
+                >
+                  {showCompleted ? "Hide Completed Tasks" : `Show Completed Tasks (${completedTasks.length})`}
+                </Button>
+                {showCompleted && completedTasks.map((task, idx) => (
+                  <div 
+                    key={`${task.name}-${idx}`} 
+                    className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/20 opacity-60 border border-border/20 transition-colors cursor-pointer mt-1"
+                    onClick={() => onTaskToggle(task)}
+                  >
+                    <Checkbox 
+                      checked={task.completed}
+                      onCheckedChange={() => onTaskToggle(task)}
+                      className="mt-0.5 border-emerald-500 data-[state=checked]:bg-emerald-500"
+                    />
+                    <p className="text-sm font-bold uppercase tracking-tight text-muted-foreground leading-tight line-through">
+                      {task.name}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 interface AppHeaderProps {
   activeShift: Shift | null;
   onTaskToggle: (task: ShiftTask, result?: 'yes' | 'no') => void;
@@ -1313,12 +1457,7 @@ export function AppHeader({
                         <div className="flex items-center gap-1">
                             <OwnerTaskDropdown />
                             <StaffNotepad />
-                            <Button variant="ghost" size="icon" title="Daily Shift Tasks Wizard" className="relative h-8 w-8 text-muted-foreground hover:text-primary rounded-lg" onClick={() => setTasksVisible(true)}>
-                              <ListChecks className="h-4 w-4 text-primary" />
-                              {uncompletedTaskCount > 0 && (
-                                <Badge variant="destructive" className="absolute -right-1.5 -top-1.5 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs rounded-full ring-2 ring-background font-bold animate-pulse">{uncompletedTaskCount}</Badge>
-                              )}
-                            </Button>
+                            <ShiftTaskDropdown activeShift={activeShift} onTaskToggle={onTaskToggle} />
                             <AdminNotifications />
                         </div>
                         {isNightShift && (

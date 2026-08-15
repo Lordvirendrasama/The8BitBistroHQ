@@ -432,13 +432,13 @@ export function ProfileOperations() {
                 <SelectValue placeholder="Select Profile" />
               </SelectTrigger>
               <SelectContent className="font-body">
-                <SelectItem value={user?.username || ''} className="font-bold uppercase text-xs">
+                <SelectItem key="my-profile" value={user?.username || ''} className="font-bold uppercase text-xs">
                   My Profile ({user?.displayName})
                 </SelectItem>
                 {sortedEmployees
-                  .filter(emp => emp.username !== user?.username)
-                  .map(emp => (
-                    <SelectItem key={emp.id} value={emp.username} className="font-bold uppercase text-xs">
+                  .filter(emp => emp.username?.toLowerCase() !== user?.username?.toLowerCase())
+                  .map((emp, idx) => (
+                    <SelectItem key={emp.id || `${emp.username}-${idx}`} value={emp.username} className="font-bold uppercase text-xs">
                       {emp.displayName} (@{emp.username})
                     </SelectItem>
                   ))

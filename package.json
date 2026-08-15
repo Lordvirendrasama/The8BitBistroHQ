@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "1.0.65",
+  "version": "1.0.71",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,8 +11,14 @@
     "lint": "next lint",
     "run": "npm run dev",
     "typecheck": "tsc --noEmit",
-    "deploy": "node scripts/deploy.js && npm run dev",
+    "check": "npm run typecheck && npm run lint && npm run build",
+    "preview": "npm run build && npm run start",
+    "clean": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true }); console.log('Cache cleared!');\"",
+    "pull": "node scripts/sync.js",
+    "push": "node scripts/push.js",
     "sync": "node scripts/sync.js",
+    "deploy": "node scripts/deploy.js",
+    "vercel:deploy": "npx vercel --prod",
     "change-pin": "node scripts/change-pin.js"
   },
   "dependencies": {

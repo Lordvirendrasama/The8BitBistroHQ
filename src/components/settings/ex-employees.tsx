@@ -220,7 +220,7 @@ export function ArchivedOperators() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-6">
-          {exEmployees.map((emp) => {
+          {exEmployees.map((emp, empIdx) => {
             // Find orders for this ex-employee
             const orders = (staffOrders || [])
               .filter(o => o.employeeUsername.toLowerCase() === emp.username.toLowerCase())
@@ -230,7 +230,7 @@ export function ArchivedOperators() {
             const isExpanded = !!expandedEmployees[emp.username];
 
             return (
-              <Card key={emp.username} className="border-2 border-foreground/5 bg-card/30 backdrop-blur-xl overflow-hidden rounded-2xl">
+              <Card key={`${emp.username}-${empIdx}`} className="border-2 border-foreground/5 bg-card/30 backdrop-blur-xl overflow-hidden rounded-2xl">
                 <CardHeader className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-foreground/5 bg-muted/10">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-muted/50 rounded-xl border-2 border-foreground/10 flex items-center justify-center shrink-0">

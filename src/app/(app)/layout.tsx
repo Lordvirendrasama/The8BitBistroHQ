@@ -24,7 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const [activeShift, setActiveShift] = useState<Shift | null>(null);
   const [isLoadingShift, setIsLoadingShift] = useState(true);
-  const [tasksVisible, setTasksVisible] = useState(true);
+  const [tasksVisible, setTasksVisible] = useState(false);
 
   // Atomic Shift Initialization and Listener
   useEffect(() => {

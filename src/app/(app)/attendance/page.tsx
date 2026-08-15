@@ -1062,7 +1062,7 @@ export default function AttendanceRegistryPage() {
                     <Label className="text-sm font-bold uppercase opacity-50 pl-1">Target Operator</Label>
                     <Select value={addFormData.username} onValueChange={v => setAddFormData(p => ({...p, username: v}))}>
                         <SelectTrigger className="h-12 font-bold uppercase border-2"><SelectValue placeholder="PICK OPERATOR" /></SelectTrigger>
-                        <SelectContent>{employees?.filter(e => e.isActive).map(e => <SelectItem key={e.username} value={e.username} className="font-bold">{e.displayName.toUpperCase()}</SelectItem>)}</SelectContent>
+                        <SelectContent>{employees?.filter(e => e.isActive).map((e, idx) => <SelectItem key={e.id || `${e.username}-${idx}`} value={e.username} className="font-bold">{e.displayName.toUpperCase()}</SelectItem>)}</SelectContent>
                     </Select>
                 </div>
                 

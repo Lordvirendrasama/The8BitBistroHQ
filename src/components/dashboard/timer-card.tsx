@@ -163,18 +163,27 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
   [station.members]);
 
   const activeWithTimers = useMemo(() => activeMembers.filter(m => !!m.endTime), [activeMembers]);
+  const activeMembersCount = useMemo(() => Math.max(1, activeMembers.length), [activeMembers.length]);
 
-  const price30 = useMemo(() => {
-    if (!gamingPackages) return 50;
+  const unitPrice30 = useMemo(() => {
+    if (!gamingPackages) return 75;
     const pkg = gamingPackages.find(p => p.duration === 1800 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages.find(p => p.duration === 1800);
-    return pkg ? pkg.price : 50;
+    return pkg ? pkg.price : 75;
   }, [gamingPackages, station.type]);
 
-  const price60 = useMemo(() => {
+  const unitPrice60 = useMemo(() => {
     if (!gamingPackages) return 100;
     const pkg = gamingPackages.find(p => p.duration === 3600 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages.find(p => p.duration === 3600);
     return pkg ? pkg.price : 100;
   }, [gamingPackages, station.type]);
+
+  const price30 = useMemo(() => {
+    return unitPrice30 * activeMembersCount;
+  }, [unitPrice30, activeMembersCount]);
+
+  const price60 = useMemo(() => {
+    return unitPrice60 * activeMembersCount;
+  }, [unitPrice60, activeMembersCount]);
 
   const handleQuickAdjust = async (minutes: number) => {
     if (!activeMembers || activeMembers.length === 0) {
@@ -191,7 +200,9 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
       const pkg60 = gamingPackages?.find(p => p.duration === 3600 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages?.find(p => p.duration === 3600);
       const matchedPkg = minutes === 30 ? pkg30 : pkg60;
 
-      const basePrice = matchedPkg ? matchedPkg.price : (minutes === 30 ? 50 : 100);
+      const baseUnitPrice = matchedPkg ? matchedPkg.price : (minutes === 30 ? 75 : 100);
+      const playerCount = activeMembers.length;
+      const totalCost = baseUnitPrice * playerCount;
       const playerNames = activeMembers.map(m => m.name).join(', ');
 
       const updatedMembers = station.members.map(m => {
@@ -223,7 +234,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
         {
           itemId: matchedPkg?.id || `quick-time-${minutes}`,
           name: `Time: +${minutes}m (${playerNames})`,
-          price: basePrice,
+          price: totalCost,
           quantity: 1,
           addedAt: new Date(now).toISOString()
         }
@@ -245,7 +256,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
       }
 
       await updateStation(station.id, updates);
-      toast({ title: `Time Added (+₹${basePrice})`, description: `Added ${minutes} mins to ${station.name}` });
+      toast({ title: `Time Added (+₹${totalCost})`, description: `Added ${minutes} mins for ${playerCount} ${playerCount === 1 ? 'player' : 'players'} on ${station.name}` });
     } else {
       const secondsToReduce = Math.abs(seconds);
       const updatedMembers = station.members.map(m => {
@@ -276,7 +287,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
         endTime: latestEndTime
       });
 
-      toast({ title: `Time Reduced`, description: `Reduced ${Math.abs(minutes)} mins on ${station.name}` });
+      toast({ title: `Time Reduced`, description: `Reduced ${Math.abs(minutes)} mins for ${activeMembers.length} ${activeMembers.length === 1 ? 'player' : 'players'} on ${station.name}` });
     }
   };
 
@@ -515,7 +526,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 variant="ghost"
                 onClick={() => handleQuickAdjust(-60)}
                 className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                title="Reduce 1 Hour"
+                title={`Reduce 1 Hour for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
                 -1h
               </Button>
@@ -524,7 +535,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 variant="ghost"
                 onClick={() => handleQuickAdjust(-30)}
                 className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                title="Reduce 30 Mins"
+                title={`Reduce 30 Mins for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
                 -30m
               </Button>
@@ -536,7 +547,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 variant="default"
                 onClick={() => handleQuickAdjust(30)}
                 className="h-7 text-xs font-bold font-mono px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1"
-                title={`Add 30 Mins (+₹${price30})`}
+                title={`Add 30 Mins (+₹${price30}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
                 <Plus className="h-3 w-3" />
                 <span>30m</span>
@@ -547,7 +558,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 variant="default"
                 onClick={() => handleQuickAdjust(60)}
                 className="h-7 text-xs font-bold font-mono px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1"
-                title={`Add 1 Hour (+₹${price60})`}
+                title={`Add 1 Hour (+₹${price60}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
                 <Plus className="h-3 w-3" />
                 <span>1h</span>

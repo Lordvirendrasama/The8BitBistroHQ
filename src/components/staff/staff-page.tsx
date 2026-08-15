@@ -365,8 +365,8 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <div className="hidden sm:flex -space-x-2">
-                                            {(shift.employees || []).map(emp => (
-                                                <Avatar key={emp.username} className="h-7 w-7 border-2 border-background shadow-sm">
+                                            {(shift.employees || []).map((emp, idx) => (
+                                                <Avatar key={`${emp.username}-${idx}`} className="h-7 w-7 border-2 border-background shadow-sm">
                                                     <AvatarImage src={`https://picsum.photos/seed/${emp.username}/40/40`} />
                                                     <AvatarFallback className="text-sm font-bold">{emp.displayName.charAt(0)}</AvatarFallback>
                                                 </Avatar>

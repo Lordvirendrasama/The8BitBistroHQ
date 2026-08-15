@@ -719,7 +719,7 @@ export default function LoginPage() {
                                     return <p className="text-sm italic font-bold text-muted-foreground uppercase opacity-50 py-2">No staff currently clocked in</p>;
                                 }
 
-                                return filteredActiveShifts.map(emp => {
+                                return filteredActiveShifts.map((emp, idx) => {
                                     const loginTime = new Date(emp.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                                     const elapsedMs = currentTime.getTime() - new Date(emp.startTime).getTime();
                                     const h = Math.floor(elapsedMs / 3600000);
@@ -727,7 +727,7 @@ export default function LoginPage() {
                                     const workedStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
                                     
                                     return (
-                                        <div key={emp.username} className="flex items-start gap-2.5 animate-in fade-in duration-300">
+                                        <div key={`${emp.username}-${idx}`} className="flex items-start gap-2.5 animate-in fade-in duration-300">
                                             <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5 animate-pulse shrink-0" />
                                             <div>
                                                 <p className="font-bold text-sm text-foreground uppercase leading-none">{emp.displayName}</p>

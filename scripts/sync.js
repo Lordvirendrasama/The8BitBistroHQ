@@ -9,8 +9,23 @@ function runCmd(cmd) {
   }
 }
 
+function hasGit() {
+  try {
+    execSync('git --version', { stdio: 'ignore' });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 try {
   console.log('=== STARTING BISTRO SYNC ===');
+
+  if (!hasGit()) {
+    console.error('[ERROR] Git is not installed or not found in PATH.');
+    console.error('Please install Git for Windows (https://git-scm.com/downloads) to use git sync.');
+    process.exit(1);
+  }
 
   // 1. Check for uncommitted changes
   console.log('Checking for local changes...');

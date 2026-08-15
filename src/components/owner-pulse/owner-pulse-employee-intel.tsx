@@ -29,9 +29,9 @@ export function OwnerPulseEmployeeIntel({ employees }: EmployeeIntelProps) {
       </CardHeader>
       <CardContent className="p-5 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {employees.map((emp) => (
+          {employees.map((emp, idx) => (
             <div
-              key={emp.username}
+              key={`${emp.username}-${idx}`}
               className="p-4 rounded-xl border border-border/60 bg-muted/10 hover:border-indigo-500/40 transition-all space-y-3"
             >
               <div className="flex items-center justify-between border-b border-border/40 pb-2.5">

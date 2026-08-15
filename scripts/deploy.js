@@ -2,6 +2,14 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Ensure Git is in PATH if installed in user directory
+if (process.platform === 'win32') {
+  const userGitPath = 'C:\\Users\\Viren\\AppData\\Local\\Programs\\Git\\cmd';
+  if (!process.env.PATH.includes(userGitPath) && fs.existsSync(userGitPath)) {
+    process.env.PATH = `${userGitPath};${process.env.PATH}`;
+  }
+}
+
 try {
   const pkgPath = path.join(__dirname, '../package.json');
   const verPath = path.join(__dirname, '../src/lib/version.ts');
