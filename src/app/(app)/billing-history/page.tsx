@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { Bill, FoodItem, GamingPackage, Station } from '@/lib/types';
+import type { Bill, FoodItem, GamingPackage, Station, Member } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,12 +12,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format, differenceInMinutes, differenceInSeconds, addSeconds, addDays, subDays } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle, ChevronLeft, ChevronRight, Banknote, Smartphone, MapPin, FilePlus2 } from 'lucide-react';
+import { Edit, Trash2, Info, Calendar as CalendarIcon, Clock, Users, Moon, Timer, ArrowRight, UserCheck, AlertTriangle, ChevronLeft, ChevronRight, Banknote, Smartphone, MapPin, FilePlus2, MessageSquare } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteBill, updateBill, archiveBill } from '@/firebase/firestore/bills';
 import { useToast } from '@/hooks/use-toast';
 import { EditBillModal } from '@/components/billing/EditBillModal';
 import { CreateBillModal } from '@/components/billing/CreateBillModal';
+import { ShareWhatsAppModal } from '@/components/billing/ShareWhatsAppModal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn, getBusinessDate } from '@/lib/utils';
@@ -29,6 +30,7 @@ export default function BillingHistoryPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [editingBill, setEditingBill] = useState<Bill | null>(null);
+    const [whatsAppBill, setWhatsAppBill] = useState<Bill | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
 
@@ -56,6 +58,9 @@ export default function BillingHistoryPage() {
 
     const allStationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
     const { data: allStations } = useCollection<Station>(allStationsQuery);
+
+    const membersQuery = useMemo(() => !db ? null : collection(db, 'members'), [db]);
+    const { data: members } = useCollection<Member>(membersQuery);
 
     const filteredBills = useMemo(() => {
         if (!bills) return [];
@@ -425,30 +430,40 @@ export default function BillingHistoryPage() {
                                         )}
                                         
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
-                                            <div className="text-sm font-bold uppercase text-muted-foreground tracking-normal flex items-center gap-2">
-                                                <Users className="h-3 w-3 text-primary" />
-                                                XP awarded to {bill.members.filter(m => m.id && !m.id.startsWith('guest-')).length} members.
-                                            </div>
-                                            {canEdit && (
-                                                <div className="flex gap-2 w-full sm:w-auto">
-                                                    <Button variant="outline" size="sm" onClick={() => setEditingBill(bill)} className="flex-1 sm:flex-none font-bold uppercase text-sm h-9 border-2"><Edit className="mr-2 h-3.5 w-3.5" /> Edit</Button>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="destructive" size="sm" className="flex-1 sm:flex-none font-bold uppercase text-sm h-9 shadow-md"><Trash2 className="mr-2 h-3.5 w-3.5" /> Wipe</Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent className="border-4 border-destructive">
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle className="font-headline text-destructive uppercase tracking-tight">Destroy Data?</AlertDialogTitle>
-                                                                <AlertDialogDescription className="font-bold text-foreground">This will erase the bill and REVERT XP for all associated members. This is permanent.</AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter className="gap-2">
-                                                                <AlertDialogCancel className="font-bold">ABORT</AlertDialogCancel>
-                                                                <AlertDialogAction className="bg-destructive hover:bg-destructive/90 font-bold uppercase shadow-xl" onClick={() => handleDeleteBill(bill.id)}>CONFIRM WIPEOUT</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </div>
-                                            )}
+                                             <div className="text-sm font-bold uppercase text-muted-foreground tracking-normal flex items-center gap-2">
+                                                 <Users className="h-3 w-3 text-primary" />
+                                                 XP awarded to {bill.members.filter(m => m.id && !m.id.startsWith('guest-')).length} members.
+                                             </div>
+                                             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                                 <Button 
+                                                     variant="outline" 
+                                                     size="sm" 
+                                                     onClick={() => setWhatsAppBill(bill)} 
+                                                     className="flex-1 sm:flex-none font-bold uppercase text-sm h-9 border-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                                                 >
+                                                     <MessageSquare className="mr-1.5 h-3.5 w-3.5 text-emerald-600" /> WhatsApp
+                                                 </Button>
+                                                 {canEdit && (
+                                                     <>
+                                                         <Button variant="outline" size="sm" onClick={() => setEditingBill(bill)} className="flex-1 sm:flex-none font-bold uppercase text-sm h-9 border-2"><Edit className="mr-2 h-3.5 w-3.5" /> Edit</Button>
+                                                         <AlertDialog>
+                                                             <AlertDialogTrigger asChild>
+                                                                 <Button variant="destructive" size="sm" className="flex-1 sm:flex-none font-bold uppercase text-sm h-9 shadow-md"><Trash2 className="mr-2 h-3.5 w-3.5" /> Wipe</Button>
+                                                             </AlertDialogTrigger>
+                                                             <AlertDialogContent className="border-4 border-destructive">
+                                                                 <AlertDialogHeader>
+                                                                     <AlertDialogTitle className="font-headline text-destructive uppercase tracking-tight">Destroy Data?</AlertDialogTitle>
+                                                                     <AlertDialogDescription className="font-bold text-foreground">This will erase the bill and REVERT XP for all associated members. This is permanent.</AlertDialogDescription>
+                                                                 </AlertDialogHeader>
+                                                                 <AlertDialogFooter className="gap-2">
+                                                                     <AlertDialogCancel className="font-bold">ABORT</AlertDialogCancel>
+                                                                     <AlertDialogAction className="bg-destructive hover:bg-destructive/90 font-bold uppercase shadow-xl" onClick={() => handleDeleteBill(bill.id)}>CONFIRM WIPEOUT</AlertDialogAction>
+                                                                 </AlertDialogFooter>
+                                                             </AlertDialogContent>
+                                                         </AlertDialog>
+                                                     </>
+                                                 )}
+                                             </div>
                                         </div>
                                     </div>
                                 </AccordionContent>
@@ -480,6 +495,23 @@ export default function BillingHistoryPage() {
                 initialDate={date}
                 onSave={handleCreateBill}
             />
+            {whatsAppBill && (
+                <ShareWhatsAppModal
+                    isOpen={!!whatsAppBill}
+                    onOpenChange={(isOpen) => !isOpen && setWhatsAppBill(null)}
+                    bill={whatsAppBill}
+                    defaultPhone={
+                        whatsAppBill.members && whatsAppBill.members.length > 0
+                            ? members?.find(m => m.id === whatsAppBill.members[0].id)?.phone || ''
+                            : ''
+                    }
+                    defaultName={
+                        whatsAppBill.members && whatsAppBill.members.length > 0
+                            ? whatsAppBill.members[0].name
+                            : ''
+                    }
+                />
+            )}
         </div>
     );
 }

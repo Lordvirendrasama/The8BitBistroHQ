@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning, MapPin, FilePlus2, Monitor, Pencil, CalendarIcon, Clock } from 'lucide-react';
+import { PlusCircle, MinusCircle, Save, Ticket, ShoppingBag, Utensils, Tag, Search, Gamepad2, Banknote, Smartphone, Layers, FileWarning, MapPin, FilePlus2, Monitor, Pencil, CalendarIcon, Clock, MessageSquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { openWhatsAppBillLink } from '@/lib/whatsapp';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -151,6 +152,33 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSaveAndWhatsApp = async () => {
+    if (!canSave) return;
+    const current = billDate ? new Date(billDate) : new Date();
+    const parts = billTime.split(':').map(Number);
+    current.setHours(parts[0] || 0, parts[1] || 0, parts[2] || 0, 0);
+
+    const billData: Bill = {
+      id: `manual-${Date.now()}`,
+      stationId: selectedStationId || 'manual',
+      stationName: stationDisplayName,
+      packageName: 'Manual Entry',
+      members: [],
+      items: billItems,
+      initialPackagePrice: 0,
+      foodSubtotal: subtotal,
+      discount: totalDiscountValue,
+      totalAmount: total,
+      timestamp: current.toISOString(),
+      paymentMethod,
+      cashAmount: paymentMethod === 'split' ? parseFloat(cashAmount) || 0 : paymentMethod === 'cash' ? total : 0,
+      upiAmount: paymentMethod === 'split' ? parseFloat(upiAmount) || 0 : paymentMethod === 'upi' ? total : 0,
+    };
+
+    openWhatsAppBillLink(billData);
+    await handleSave();
   };
 
   return (
@@ -434,14 +462,23 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
         </div>
 
         <DialogFooter className="p-4 bg-background border-t shrink-0 flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:flex-1 font-bold uppercase text-sm h-12 border-2 tracking-normal">Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto font-bold uppercase text-sm h-12 border-2 tracking-normal">Cancel</Button>
+          <Button
+            onClick={handleSaveAndWhatsApp}
+            disabled={!canSave || isSaving}
+            variant="outline"
+            className="w-full sm:flex-1 font-bold uppercase text-sm h-12 border-2 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 tracking-normal gap-1.5"
+          >
+            <MessageSquare className="h-4 w-4 text-emerald-600" />
+            WhatsApp & Save
+          </Button>
           <Button
             onClick={handleSave}
             disabled={!canSave || isSaving}
-            className="w-full sm:flex-[2] font-bold uppercase text-sm h-12 shadow-xl tracking-normal"
+            className="w-full sm:flex-1 font-bold uppercase text-sm h-12 shadow-xl tracking-normal"
           >
             <Save className="mr-2 h-4 w-4" />
-            {isSaving ? 'Creating Bill...' : 'Create & Archive Bill'}
+            {isSaving ? 'Creating Bill...' : 'Create & Archive'}
           </Button>
         </DialogFooter>
       </DialogContent>

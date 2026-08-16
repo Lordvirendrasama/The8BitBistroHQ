@@ -65,53 +65,37 @@ export function BillModal({
     }
   }, [isOpen, station?.id]);
 
-  // Master Categories
-  const categories = ["SESSION", "FOOD", "BEVERAGES", "ADD ONS"];
-
-  // Helper to map raw product category to Master POS Categories
-  const getMasterCategory = (item: FoodItem) => {
-    const cat = item.category.toLowerCase();
-    const name = item.name.toLowerCase();
-    
-    if (
-      cat.includes('coffee') || 
-      cat.includes('beverage') || 
-      cat.includes('drink') || 
-      cat.includes('tea') || 
-      name.includes('coffee') || 
-      name.includes('hot chocolate') || 
-      name.includes('tea') || 
-      name.includes('latte') || 
-      name.includes('water') || 
-      name.includes('drink') || 
-      name.includes('shake') || 
-      name.includes('cooler')
-    ) {
-      return 'BEVERAGES';
-    }
-    
-    if (cat.includes('add-on') || cat.includes('addon') || cat.includes('add ons') || cat.includes('add-ons') || cat.includes('dip')) {
-      return 'ADD ONS';
-    }
-    
-    return 'FOOD';
-  };
-
-  // Group food items under master categories, filtering by search query
-  const menuByMasterCategory = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    const grouped: Record<string, FoodItem[]> = {
-      FOOD: [],
-      BEVERAGES: [],
-      'ADD ONS': []
-    };
-    
+  // Dynamically extract all unique categories present in foodItems
+  const categories = useMemo(() => {
+    const catsSet = new Set<string>();
     foodItems.forEach(item => {
-      if (term && !item.name.toLowerCase().includes(term)) return;
-      const mCat = getMasterCategory(item);
-      grouped[mCat].push(item);
+      if (item.category && item.category.trim()) {
+        catsSet.add(item.category.trim().toUpperCase());
+      } else {
+        catsSet.add('FOOD');
+      }
     });
-    
+
+    const sortedCats = Array.from(catsSet).sort((a, b) => a.localeCompare(b));
+    return ["SESSION", ...sortedCats];
+  }, [foodItems]);
+
+  // Group food items dynamically by category
+  const menuByDynamicCategory = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    const grouped: Record<string, FoodItem[]> = {};
+
+    foodItems.forEach(item => {
+      if (term && !item.name.toLowerCase().includes(term) && !item.category.toLowerCase().includes(term)) {
+        return;
+      }
+      const catKey = (item.category && item.category.trim()) ? item.category.trim().toUpperCase() : 'FOOD';
+      if (!grouped[catKey]) {
+        grouped[catKey] = [];
+      }
+      grouped[catKey].push(item);
+    });
+
     return grouped;
   }, [foodItems, searchTerm]);
 
@@ -432,77 +416,34 @@ export function BillModal({
                             </div>
                         )}
 
-                        {/* FOOD MASTER CATEGORY */}
-                        {menuByMasterCategory.FOOD.length > 0 && (
-                            <div key="FOOD" id="category-section-FOOD" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
-                                    FOOD
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                                    {menuByMasterCategory.FOOD.map(item => (
-                                        <button 
-                                            key={item.id} 
-                                            onClick={() => handleAddItem(item)}
-                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
-                                        >
-                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
-                                            <div className="flex justify-between items-end">
-                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
-                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                        </button>
-                                    ))}
+                        {/* DYNAMIC FOOD CATEGORIES */}
+                        {Object.entries(menuByDynamicCategory).map(([categoryName, items]) => {
+                            if (!items || items.length === 0) return null;
+                            const catSectionId = `category-section-${categoryName.replace(/\s+/g, '-')}`;
+                            return (
+                                <div key={categoryName} id={catSectionId} className="space-y-2 md:space-y-3">
+                                    <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm flex items-center justify-between pr-2">
+                                        <span>{categoryName}</span>
+                                        <span className="text-xs font-mono font-bold text-muted-foreground/60">{items.length} ITEMS</span>
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                                        {items.map(item => (
+                                            <button 
+                                                key={item.id} 
+                                                onClick={() => handleAddItem(item)}
+                                                className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
+                                            >
+                                                <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                                <div className="flex justify-between items-end">
+                                                    <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
+                                                    <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* BEVERAGES MASTER CATEGORY */}
-                        {menuByMasterCategory.BEVERAGES.length > 0 && (
-                            <div key="BEVERAGES" id="category-section-BEVERAGES" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
-                                    BEVERAGES
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                                    {menuByMasterCategory.BEVERAGES.map(item => (
-                                        <button 
-                                            key={item.id} 
-                                            onClick={() => handleAddItem(item)}
-                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
-                                        >
-                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
-                                            <div className="flex justify-between items-end">
-                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
-                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ADD ONS MASTER CATEGORY */}
-                        {menuByMasterCategory['ADD ONS'].length > 0 && (
-                            <div key="ADD ONS" id="category-section-ADD-ONS" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm">
-                                    ADD ONS
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                                    {menuByMasterCategory['ADD ONS'].map(item => (
-                                        <button 
-                                            key={item.id} 
-                                            onClick={() => handleAddItem(item)}
-                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
-                                        >
-                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
-                                            <div className="flex justify-between items-end">
-                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
-                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })}
                     </div>
                 </div>
             </div>

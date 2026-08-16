@@ -1,10 +1,10 @@
 
 'use client';
 import { useMemo, useState, useEffect } from 'react';
-import type { Station, GamingPackage, Member, MemberTier, BillItem, PaymentMethod, FoodItem } from '@/lib/types';
+import type { Station, GamingPackage, Member, MemberTier, BillItem, PaymentMethod, FoodItem, Bill } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Star, Receipt, Banknote, Smartphone, ArrowLeft, Layers, Tag, ChevronRight, FileWarning, Zap, Phone, Clock, CheckCircle2, Search, Plus, Minus, Trash2, ShoppingBag, MapPin } from 'lucide-react';
+import { Star, Receipt, Banknote, Smartphone, ArrowLeft, Layers, Tag, ChevronRight, FileWarning, Zap, Phone, Clock, CheckCircle2, Search, Plus, Minus, Trash2, ShoppingBag, MapPin, MessageSquare, Send } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { settings } from '@/lib/data';
@@ -18,6 +18,7 @@ import { recordDebt } from '@/firebase/firestore/debts';
 import { useAuth } from '@/firebase/auth/use-user';
 import { getSyncedNow } from '@/lib/synced-time';
 import { playCoinSound } from '@/lib/audio/chiptune';
+import { openWhatsAppBillLink } from '@/lib/whatsapp';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ interface CheckoutModalProps {
 const tierMultipliers: Record<MemberTier, number> = { Red: 1, Green: 1.5, Gold: 2 };
 const tierColors: Record<MemberTier, string> = { Red: 'bg-red-500/20 text-red-500 border-red-500/50', Green: 'bg-green-500/20 text-green-500 border-green-500/50', Gold: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50' };
 
-type CheckoutStep = 'review-bill' | 'member-xp' | 'payment-method' | 'split-details' | 'pending-details';
+type CheckoutStep = 'review-bill' | 'member-xp' | 'payment-method' | 'split-details' | 'pending-details' | 'checkout-success';
 
 export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, onConfirmCheckout, onSaveBill, allMembers, foodItems }: CheckoutModalProps) {
   const { user } = useAuth();
@@ -59,6 +60,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
   const [contactName, setContactName] = useState<string>('');
   const [isClosing, setIsClosing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('cash');
 
   useEffect(() => {
     if (isOpen && station) {
@@ -68,6 +70,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
         setStep('review-bill');
         setIsClosing(false);
         setSearchTerm('');
+        setSelectedMethod('cash');
         const members = station.members || [];
         if (members.length > 0) {
             setContactName(members[0].name);
@@ -222,6 +225,30 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     return foodItems.filter(f => f.name.toLowerCase().includes(term)).slice(0, 5);
   }, [foodItems, searchTerm]);
 
+  const handleShareWhatsApp = () => {
+    if (!station) return;
+    const tempBill = {
+      id: `checkout-${Date.now()}`,
+      stationId: station.id,
+      stationName: station.name,
+      packageName: initialPackageInfo?.name || station.packageName || undefined,
+      members: station.members || [],
+      items: billItems,
+      initialPackagePrice: initialPackageInfo?.total || 0,
+      foodSubtotal,
+      discount,
+      totalAmount: finalBillTotal,
+      timestamp: new Date().toISOString(),
+      paymentMethod: selectedMethod,
+    };
+
+    openWhatsAppBillLink(tempBill, contactPhone, contactName);
+    toast({
+      title: "WhatsApp Opened",
+      description: "Bill text pre-filled into WhatsApp chat.",
+    });
+  };
+
   const handleCheckout = (method: PaymentMethod, cash?: number, upi?: number) => {
     if (!station || isClosing) return;
     setIsClosing(true);
@@ -272,6 +299,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                     {step === 'payment-method' && <><Banknote className="h-4 w-4 text-primary" /> CHECKOUT</>}
                     {step === 'split-details' && <><Layers className="h-4 w-4 text-amber-500" /> SPLIT PAYMENT</>}
                     {step === 'pending-details' && <><FileWarning className="h-4 w-4 text-destructive" /> RECORD PENDING</>}
+                    {step === 'checkout-success' && <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> CHECKOUT COMPLETE</>}
                 </DialogTitle>
             </DialogHeader>
 
@@ -350,34 +378,125 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                     </div>
                 )}
                 {step === 'payment-method' && (
-                    <div className="grid grid-cols-2 gap-3 p-4 sm:p-6 my-2">
-                        <Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-green-500 uppercase tracking-tight" onClick={() => handleCheckout('cash')}>
-                            <Banknote className="h-8 w-8 text-green-600" /> Cash
-                        </Button>
-                        <Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-primary uppercase tracking-tight" onClick={() => handleCheckout('upi')}>
-                            <Smartphone className="h-8 w-8 text-primary" /> UPI
-                        </Button>
-                        <Button variant="outline" className="h-24 flex flex-col gap-1 text-base font-bold border-2 hover:border-amber-500 uppercase tracking-tight" onClick={() => handleCheckout('district-dinein')}>
-                            <MapPin className="h-8 w-8 text-amber-500" /> District
-                        </Button>
-                        <div className="grid grid-cols-1 gap-3">
-                            <Button variant="outline" className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-sm" onClick={() => setStep('split-details')}>
-                                <Layers className="h-4 w-4 text-amber-500" /> Split
+                    <div className="space-y-4 p-4 sm:p-6 my-2">
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button 
+                                type="button"
+                                variant="outline" 
+                                className={cn(
+                                    "h-24 flex flex-col gap-1 text-base font-bold border-2 transition-all relative uppercase tracking-tight",
+                                    selectedMethod === 'cash' ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 ring-2 ring-emerald-500/20" : "hover:border-emerald-500"
+                                )} 
+                                onClick={() => setSelectedMethod('cash')}
+                            >
+                                {selectedMethod === 'cash' && (
+                                    <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    </div>
+                                )}
+                                <Banknote className="h-8 w-8 text-emerald-600" /> Cash
                             </Button>
-                            <Button variant="outline" className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-sm" onClick={() => setStep('pending-details')}>
-                                <FileWarning className="h-4 w-4 text-destructive" /> Pending
+                            
+                            <Button 
+                                type="button"
+                                variant="outline" 
+                                className={cn(
+                                    "h-24 flex flex-col gap-1 text-base font-bold border-2 transition-all relative uppercase tracking-tight",
+                                    selectedMethod === 'upi' ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "hover:border-primary"
+                                )} 
+                                onClick={() => setSelectedMethod('upi')}
+                            >
+                                {selectedMethod === 'upi' && (
+                                    <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-0.5 shadow-sm">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    </div>
+                                )}
+                                <Smartphone className="h-8 w-8 text-primary" /> UPI
                             </Button>
+
+                            <Button 
+                                type="button"
+                                variant="outline" 
+                                className={cn(
+                                    "h-24 flex flex-col gap-1 text-base font-bold border-2 transition-all relative uppercase tracking-tight",
+                                    selectedMethod === 'district-dinein' ? "border-amber-500 bg-amber-500/10 text-amber-600 ring-2 ring-amber-500/20" : "hover:border-amber-500"
+                                )} 
+                                onClick={() => setSelectedMethod('district-dinein')}
+                            >
+                                {selectedMethod === 'district-dinein' && (
+                                    <div className="absolute top-2 right-2 bg-amber-500 text-white rounded-full p-0.5 shadow-sm">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    </div>
+                                )}
+                                <MapPin className="h-8 w-8 text-amber-500" /> District
+                            </Button>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                <Button 
+                                    type="button"
+                                    variant="outline" 
+                                    className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-sm" 
+                                    onClick={() => setStep('split-details')}
+                                >
+                                    <Layers className="h-4 w-4 text-amber-500" /> Split
+                                </Button>
+                                <Button 
+                                    type="button"
+                                    variant="outline" 
+                                    className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-sm" 
+                                    onClick={() => setStep('pending-details')}
+                                >
+                                    <FileWarning className="h-4 w-4 text-destructive" /> Pending
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Integrated WhatsApp Section under options */}
+                        <div className="bg-card border-2 rounded-xl p-3.5 space-y-2 shadow-xs">
+                            <Label className="text-xs font-bold uppercase tracking-normal opacity-70 flex items-center gap-1.5 text-emerald-600">
+                                <MessageSquare className="h-3.5 w-3.5" /> Send WhatsApp Receipt
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Customer WhatsApp phone..." 
+                                        value={contactPhone} 
+                                        onChange={e => setContactPhone(e.target.value)} 
+                                        className="h-9 pl-8 font-mono text-xs border-2 bg-background" 
+                                    />
+                                </div>
+                                <Button 
+                                    type="button" 
+                                    onClick={handleShareWhatsApp} 
+                                    variant="outline" 
+                                    className="h-9 px-3 border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 font-bold uppercase text-xs gap-1.5 shrink-0"
+                                >
+                                    <Send className="h-3.5 w-3.5 text-emerald-600" /> Send
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}
-                {step === 'split-details' && <div className="space-y-4 p-4 sm:p-6 my-2"><div className="space-y-4"><div className="space-y-1"><Label className="text-sm font-bold uppercase tracking-normal opacity-50">Cash Portion (₹)</Label><Input type="number" value={splitCash} onChange={e => { setSplitCash(e.target.value); setSplitUpi((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div><div className="space-y-1"><Label className="text-sm font-bold uppercase tracking-normal opacity-50">UPI Portion (₹)</Label><Input type="number" value={splitUpi} onChange={e => { setSplitUpi(e.target.value); setSplitCash((finalBillTotal - (parseFloat(e.target.value) || 0)).toString()); }} className="h-12 text-xl font-mono font-bold border-2"/></div></div></div>}
-                {step === 'pending-details' && <div className="space-y-4 p-4 sm:p-6 my-2"><div className="grid gap-3"><div className="space-y-1"><Label className="text-sm font-bold uppercase tracking-normal opacity-50">Collected Now (₹)</Label><Input type="number" value={paidNow} onChange={e => setPaidNow(e.target.value)} className="h-12 text-xl font-mono font-bold border-2"/></div><div className="space-y-1"><Label className="text-sm font-bold uppercase tracking-normal opacity-50">Customer Name</Label><Input value={contactName} onChange={e => setContactName(e.target.value)} className="h-10 font-bold uppercase text-sm"/></div><div className="space-y-1"><Label className="text-sm font-bold uppercase tracking-normal opacity-50">Phone Number</Label><Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} className="h-10 font-bold font-mono text-sm"/></div></div></div>}
             </ScrollArea>
 
             <DialogFooter className="px-4 py-3 border-t bg-muted/10 shrink-0">
                 {step === 'review-bill' && <Button disabled={isClosing} onClick={handleContinueToPayment} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
                 {step === 'member-xp' && <Button disabled={isClosing} onClick={handleConfirmRewards} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
-                {step === 'payment-method' && <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="w-full h-10 font-bold uppercase text-sm tracking-normal"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> BACK TO REVIEW</Button>}
+                {step === 'payment-method' && (
+                    <div className="flex items-center gap-2 w-full">
+                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="h-12 px-3 font-bold uppercase text-xs tracking-normal">
+                            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> REVIEW
+                        </Button>
+                        <Button 
+                            disabled={!selectedMethod || isClosing} 
+                            onClick={() => handleCheckout(selectedMethod)} 
+                            className="flex-1 h-12 font-bold uppercase tracking-tight text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl gap-2"
+                        >
+                            <CheckCircle2 className="h-4 w-4" /> CONFIRM & CLOSE SESSION
+                        </Button>
+                    </div>
+                )}
                 {step === 'split-details' && <Button onClick={() => handleCheckout('split', parseFloat(splitCash), parseFloat(splitUpi))} disabled={isClosing || Math.abs((parseFloat(splitCash)||0) + (parseFloat(splitUpi)||0) - finalBillTotal) > 0.1} className="w-full h-12 font-bold uppercase tracking-tight text-base bg-primary shadow-xl">FINALIZE SPLIT</Button>}
                 {step === 'pending-details' && <Button onClick={handlePendingConfirm} disabled={isClosing} className="w-full h-12 font-bold uppercase tracking-tight text-base bg-destructive shadow-xl">SAVE DEBT & CLOSE</Button>}
             </DialogFooter>
