@@ -6,7 +6,7 @@ import type { Station, AssignedMember, StationStatus, GamingPackage, BillItem, M
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle, X, Zap, Plus } from 'lucide-react';
+import { Gamepad2, Pause, Play, StopCircle, Users, User, Clock, Utensils, ArrowRightLeft, Bell, ChevronDown, ChevronUp, CheckCircle2, UserPlus, Receipt, Timer, AlertTriangle, X, Zap, Plus, Undo2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,8 +14,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { updateStation } from '@/firebase/firestore/stations';
 import { useCustomerView } from '@/context/customer-view-context';
+import { useAuth } from '@/firebase/auth/use-user';
 import { getSyncedNow } from '@/lib/synced-time';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 
 interface TimerCardProps {
   station: Station;
@@ -143,8 +145,100 @@ const IndividualPlayerTimer = ({
 
 
 export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer, allMembers, gamingPackages }: TimerCardProps) {
+  const { user } = useAuth();
+  const isViren = user?.username === 'Viren' || user?.role === 'admin';
   const { isCustomerView } = useCustomerView();
   const { toast } = useToast();
+
+  const [lastCancelledBackup, setLastCancelledBackup] = useState<Partial<Station> | null>(null);
+
+  const handleRestoreBackup = async () => {
+    if (!lastCancelledBackup) return;
+    try {
+      await updateStation(station.id, lastCancelledBackup);
+      setLastCancelledBackup(null);
+      toast({
+        title: "Station Restored!",
+        description: `${station.name} bill and session have been recovered.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: "Failed to Restore",
+        description: err.message,
+      });
+    }
+  };
+
+  const handleCancelTestBill = async () => {
+    if (!confirm(`Cancel and completely wipe the bill for ${station.name}? This will reset the station back to Available.`)) {
+      return;
+    }
+
+    const backupSnapshot: Partial<Station> = {
+      status: station.status,
+      currentBill: station.currentBill || [],
+      discount: station.discount || 0,
+      members: station.members || [],
+      startTime: station.startTime || null,
+      endTime: station.endTime || null,
+      pauseStartTime: station.pauseStartTime || null,
+      remainingTimeOnPause: station.remainingTimeOnPause || null,
+      packageName: station.packageName || null,
+      finishingStartTime: station.finishingStartTime || null,
+    };
+
+    try {
+      setLastCancelledBackup(backupSnapshot);
+      await updateStation(station.id, {
+        status: 'available',
+        currentBill: [],
+        discount: 0,
+        members: [],
+        startTime: null,
+        endTime: null,
+        pauseStartTime: null,
+        remainingTimeOnPause: null,
+        packageName: null,
+        finishingStartTime: null,
+      });
+
+      toast({
+        title: "Test Bill Cancelled",
+        description: `${station.name} has been reset to Available.`,
+        action: (
+          <ToastAction
+            altText="Undo cancel bill"
+            onClick={async () => {
+              try {
+                await updateStation(station.id, backupSnapshot);
+                setLastCancelledBackup(null);
+                toast({
+                  title: "Station Restored!",
+                  description: `${station.name} has been fully recovered.`,
+                });
+              } catch (restoreErr: any) {
+                toast({
+                  variant: "destructive",
+                  title: "Restore Failed",
+                  description: restoreErr.message,
+                });
+              }
+            }}
+            className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold uppercase text-xs"
+          >
+            ↩ Undo
+          </ToastAction>
+        ),
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: "Error Resetting Station",
+        description: err.message,
+      });
+    }
+  };
 
   const [minRemaining, setMinRemaining] = useState(0);
   const [maxRemaining, setMaxRemaining] = useState(0);
@@ -443,7 +537,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}
         </div>
 
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex items-center gap-1.5">
             <Badge variant="outline" className={cn(
                 "font-bold uppercase text-sm tracking-tight",
                 !isRunning && !isPaused && !isFinishing && 'bg-accent/10 text-accent border-accent/20',
@@ -456,6 +550,19 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             )}>
                 {isPaused ? "Paused" : isFinishing ? (isGraceOver ? "Grace Expired" : "Finishing Up") : isTimeUp ? "Time's Up" : isRunning ? 'In Use' : 'Available'}
             </Badge>
+
+            {isViren && (isRunning || isPaused || isFinishing || (station.currentBill && station.currentBill.length > 0) || (station.members && station.members.length > 0)) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelTestBill}
+                title="Cancel bill completely & reset station (Viren Only)"
+                className="h-7 w-7 text-zinc-400 hover:text-red-400 hover:bg-red-500/20 border border-zinc-700/50 hover:border-red-500/40 rounded-lg transition-all"
+              >
+                <X className="h-4 w-4 stroke-[2.5]" />
+              </Button>
+            )}
         </div>
       </CardHeader>
       
@@ -743,15 +850,29 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
       <CardFooter className="flex flex-col gap-2 p-3 pt-2 bg-muted/5 border-t">
           {station.status === 'available' ? (
-              <div className="grid grid-cols-2 gap-2 w-full">
-                  <Button onClick={() => onToggleTimer(station)} variant={station.type === 'ps5' ? 'default' : 'outline'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm shadow-sm station-start-btn">
-                      <Play className="h-4 w-4 mr-1.5 shrink-0" />
-                      <span>{station.type === 'ps5' ? 'Start' : 'Play'}</span>
+              <div className="flex flex-col gap-2 w-full">
+                {isViren && lastCancelledBackup && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRestoreBackup}
+                    className="w-full h-9 font-bold uppercase text-xs border-2 border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 gap-1.5 shadow-sm animate-in fade-in duration-200"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    <span>Undo Cancelled Bill ({lastCancelledBackup.members?.length || 0} Players)</span>
                   </Button>
-                  <Button onClick={() => onOpenBillModal(station)} variant={station.type === 'ps5' ? 'outline' : 'default'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm border-2 station-food-btn">
-                      <Utensils className="h-4 w-4 mr-1.5 shrink-0" />
-                      <span>Food</span>
-                  </Button>
+                )}
+                <div className="grid grid-cols-2 gap-2 w-full">
+                    <Button onClick={() => onToggleTimer(station)} variant={station.type === 'ps5' ? 'default' : 'outline'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm shadow-sm station-start-btn">
+                        <Play className="h-4 w-4 mr-1.5 shrink-0" />
+                        <span>{station.type === 'ps5' ? 'Start' : 'Play'}</span>
+                    </Button>
+                    <Button onClick={() => onOpenBillModal(station)} variant={station.type === 'ps5' ? 'outline' : 'default'} size="sm" className="font-bold uppercase h-11 tracking-tight text-sm border-2 station-food-btn">
+                        <Utensils className="h-4 w-4 mr-1.5 shrink-0" />
+                        <span>Food</span>
+                    </Button>
+                </div>
               </div>
           ) : (
               <>

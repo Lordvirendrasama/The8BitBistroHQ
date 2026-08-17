@@ -60,10 +60,39 @@ export function BillModal({
         setBillItems(station.currentBill || []);
         setDiscount(station.discount || 0);
         setSearchTerm('');
-        setActiveCategory('SESSION');
+        setActiveCategory('MOST SOLD');
         setActiveTab('menu');
     }
   }, [isOpen, station?.id]);
+
+  // Calculate Most Sold / Popular Food Items from recent bill history
+  const popularItems = useMemo(() => {
+    if (!foodItems || foodItems.length === 0) return [];
+    
+    const counts: Record<string, number> = {};
+    if (recentBills) {
+      recentBills.forEach(b => {
+        (b.items || []).forEach(item => {
+          if (!item.name.startsWith('Time:') && !item.name.startsWith('Walk-in:')) {
+            counts[item.name.toLowerCase()] = (counts[item.name.toLowerCase()] || 0) + item.quantity;
+          }
+        });
+      });
+    }
+
+    const term = searchTerm.toLowerCase();
+    
+    // Sort food items by sales frequency
+    const sortedBySales = [...foodItems]
+      .filter(item => !term || item.name.toLowerCase().includes(term) || item.category.toLowerCase().includes(term))
+      .sort((a, b) => {
+        const countA = counts[a.name.toLowerCase()] || 0;
+        const countB = counts[b.name.toLowerCase()] || 0;
+        return countB - countA;
+      });
+
+    return sortedBySales.slice(0, 9);
+  }, [foodItems, recentBills, searchTerm]);
 
   // Dynamically extract all unique categories present in foodItems
   const categories = useMemo(() => {
@@ -77,7 +106,7 @@ export function BillModal({
     });
 
     const sortedCats = Array.from(catsSet).sort((a, b) => a.localeCompare(b));
-    return ["SESSION", ...sortedCats];
+    return ["MOST SOLD", "SESSION", ...sortedCats];
   }, [foodItems]);
 
   // Group food items dynamically by category
@@ -391,6 +420,34 @@ export function BillModal({
                                 </Button>
                             </div>
                         </div>
+
+                        {/* MOST SOLD CATEGORY */}
+                        {popularItems.length > 0 && (
+                            <div key="MOST SOLD" id="category-section-MOST-SOLD" className="space-y-2 md:space-y-3">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-amber-500 bg-background/95 backdrop-blur-sm border-b border-amber-500/30 py-1.5 uppercase shadow-sm flex items-center justify-between pr-2">
+                                    <span className="flex items-center gap-1.5"><Flame className="h-4 w-4 text-amber-500 fill-amber-500/20" /> MOST SOLD ITEMS</span>
+                                    <span className="text-xs font-mono font-bold text-amber-600/80">TOP SELLERS</span>
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                                    {popularItems.map(item => (
+                                        <button 
+                                            key={`popular-${item.id}`} 
+                                            onClick={() => handleAddItem(item)}
+                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-amber-500/30 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-2 group-hover:text-amber-500 transition-colors line-clamp-2">{item.name}</p>
+                                                <Badge variant="outline" className="text-[10px] h-4 bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase font-bold shrink-0">BESTSELLER</Badge>
+                                            </div>
+                                            <div className="flex justify-between items-end">
+                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
+                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-amber-500 opacity-40 group-hover:opacity-100 transition-opacity" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* SESSION MASTER CATEGORY */}
                         {filteredGaming.length > 0 && (

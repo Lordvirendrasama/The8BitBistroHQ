@@ -6,7 +6,7 @@ import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils, Sparkles } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -33,6 +33,7 @@ import { useSearchParams } from 'next/navigation';
 import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow, getSyncedDate } from '@/lib/synced-time';
+import { GuestLoginWizardModal } from '@/components/dashboard/guest-login-wizard-modal';
 
 const tierMultipliers: Record<MemberTier, number> = {
   Red: 1,
@@ -54,6 +55,7 @@ function DashboardContent() {
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [isRewardsModalOpen, setIsRewardsModalOpen] = useState(false);
+  const [isGuestWizardOpen, setIsGuestWizardOpen] = useState(false);
   const [manageType, setManageType] = useState<'ps5' | 'boardgame'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [initialPlayers, setInitialPlayers] = useState<AssignedMember[] | undefined>(undefined);
@@ -584,6 +586,34 @@ function DashboardContent() {
     });
   };
 
+  const handleAssignStationFromWizard = (
+    station: Station,
+    guestInfo: { name: string; phone: string; groupSize: string; member: Member | null; experience: string }
+  ) => {
+    const player: AssignedMember = {
+      id: guestInfo.member?.id || `guest-${Date.now()}`,
+      name: guestInfo.name || guestInfo.member?.name || 'Walk-in Guest',
+      avatarUrl: guestInfo.member?.avatarUrl || PlaceHolderImages.find(img => img.id === 'avatar-6')?.imageUrl || 'https://picsum.photos/seed/guest/100/100',
+      status: 'active' as const,
+      startTime: getSyncedDate().toISOString(),
+      endTime: null,
+    };
+
+    setInitialPlayers([player]);
+    setSelectedStation(station);
+
+    if (guestInfo.experience === 'fnb') {
+      if (station.status === 'in-use') {
+        setIsBillModalOpen(true);
+      } else {
+        handleStartFoodSession(station.id, [player]);
+        setIsBillModalOpen(true);
+      }
+    } else {
+      setIsModalOpen(true);
+    }
+  };
+
   const handleSaveBill = (stationId: string, newBill: BillItem[], newDiscount: number) => {
     const station = stations.find(s => s.id === stationId);
     const updates: Partial<Station> = { currentBill: newBill, discount: newDiscount };
@@ -956,6 +986,14 @@ function DashboardContent() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <Button 
+                id="guest-login-btn"
+                onClick={() => setIsGuestWizardOpen(true)} 
+                className="h-12 px-6 font-bold uppercase tracking-normal bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg animate-in fade-in slide-in-from-right-4 duration-500 gap-2"
+            >
+                <Sparkles className="h-5 w-5" />
+                Guest Login &amp; Check-in
+            </Button>
+            <Button 
                 id="redeem-perks-btn"
                 onClick={() => setIsRewardsModalOpen(true)} 
                 className="h-12 px-6 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
@@ -1067,6 +1105,16 @@ function DashboardContent() {
         onOpenChange={setIsRewardsModalOpen}
         members={members || []}
       />
+
+      <GuestLoginWizardModal
+        isOpen={isGuestWizardOpen}
+        onOpenChange={setIsGuestWizardOpen}
+        stations={stations}
+        onOpenSelectMemberModal={() => setIsModalOpen(true)}
+        onOpenAddMemberModal={() => setIsModalOpen(true)}
+        onAssignStation={handleAssignStationFromWizard}
+      />
+
       <SessionRequestHandler ps5Stations={ps5Stations} onApprove={handleApproveSessionRequest} />
 
       {/* Guided Tour component */}
