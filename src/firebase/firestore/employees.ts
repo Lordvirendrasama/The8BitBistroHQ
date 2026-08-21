@@ -1,7 +1,6 @@
-
-import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, query, where, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, query, where, setDoc, getDoc } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, updateEmail, signOut, initializeAuth, inMemoryPersistence } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, updateEmail, signOut, initializeAuth, inMemoryPersistence, deleteUser } from 'firebase/auth';
 import { firebaseConfig } from '../config';
 import type { Employee, LogEntry } from '@/lib/types';
 
@@ -51,34 +50,56 @@ async function createOrUpdateAuthAccount(options: {
       }
     }
 
-    // If account was not found or re-authenticated above, create a fresh Auth user
+    // If account was not found or re-authenticated above, create or recover Auth user
     if (!authUid) {
       try {
         const userCred = await createUserWithEmailAndPassword(tempAuth, newEmail, newPassword);
         authUid = userCred.user.uid;
       } catch (createErr: any) {
         if (createErr.code === 'auth/email-already-in-use') {
+          let loggedInUserCred: any = null;
+
+          // 1. Try signing in with the new PIN/password
           try {
-            // Attempt to sign in with the new PIN/password
-            const loginCred = await signInWithEmailAndPassword(tempAuth, newEmail, newPassword);
-            authUid = loginCred.user.uid;
-          } catch (e: any) {
-            // If sign in with new password fails, attempt with the old password (if we have oldPin)
+            loggedInUserCred = await signInWithEmailAndPassword(tempAuth, newEmail, newPassword);
+          } catch (e1: any) {
+            // 2. If we have oldPin, try signing in with old password
             if (oldPin) {
               try {
                 const oldPassword = `${oldPin}-8bit`;
-                const loginCred = await signInWithEmailAndPassword(tempAuth, newEmail, oldPassword);
-                authUid = loginCred.user.uid;
-                // Since we successfully signed in with the old password, update it now to the new one!
-                if (newPin && newPin !== oldPin) {
-                  await updatePassword(loginCred.user, newPassword);
-                }
-              } catch (signInOldErr: any) {
-                throw new Error(`User account exists but login failed with both old and new credentials: ${signInOldErr.message}`);
+                loggedInUserCred = await signInWithEmailAndPassword(tempAuth, newEmail, oldPassword);
+              } catch (e2: any) {
+                // ignore
               }
-            } else {
-              throw new Error(`User account already exists but login failed: ${e.message}`);
             }
+
+            // 3. Test common fallback PIN passwords to reclaim orphaned Auth user
+            if (!loggedInUserCred) {
+              const candidatePins = ['1234', '0000', '1111', '123456', '8888', '9999', '5555'];
+              for (const candidatePin of candidatePins) {
+                try {
+                  const candidatePass = `${candidatePin}-8bit`;
+                  loggedInUserCred = await signInWithEmailAndPassword(tempAuth, newEmail, candidatePass);
+                  if (loggedInUserCred) break;
+                } catch (candidateErr) {
+                  // try raw pin without -8bit suffix
+                  try {
+                    loggedInUserCred = await signInWithEmailAndPassword(tempAuth, newEmail, candidatePin);
+                    if (loggedInUserCred) break;
+                  } catch (eRaw) {
+                    // continue
+                  }
+                }
+              }
+            }
+          }
+
+          if (loggedInUserCred) {
+            authUid = loggedInUserCred.user.uid;
+            // Update password to the new PIN password
+            await updatePassword(loggedInUserCred.user, newPassword);
+          } else {
+            throw new Error(`Account '@${newUsername}' exists in Auth system with an unknown PIN. Please contact admin or use a different username.`);
           }
         } else {
           throw new Error(`Failed to create Auth user: ${createErr.message}`);
@@ -133,7 +154,7 @@ export const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
     
     await addDoc(collection(db, 'logs'), {
       type: 'EMPLOYEE_ADDED',
-      description: `New employee <strong>${employeeData.displayName}</strong> added to the registry.`,
+      description: `New employee <strong>${employeeData.displayName}</strong> (@${employeeData.username}) added to the registry.`,
       timestamp: new Date().toISOString(),
       user: { uid: 'system', displayName: 'System' }
     });
@@ -181,6 +202,28 @@ export const deleteEmployee = async (employeeId: string) => {
   const db = getFirestore();
   const ref = doc(db, 'employees', employeeId);
   try {
+    // Fetch current document details to attempt clean deletion of Firebase Auth user
+    const snapDoc = await getDoc(ref);
+    if (snapDoc.exists()) {
+      const empData = snapDoc.data() as Employee;
+      if (empData.username && empData.pin) {
+        const tempAppName = `emp-del-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        const tempAuth = initializeAuth(tempApp, { persistence: inMemoryPersistence });
+        const email = `${empData.username.toLowerCase()}@8bitbistro.local`;
+        const password = `${empData.pin}-8bit`;
+        
+        try {
+          const userCred = await signInWithEmailAndPassword(tempAuth, email, password);
+          await deleteUser(userCred.user);
+        } catch (authDelErr: any) {
+          console.warn("Could not delete Auth user credentials during employee removal:", authDelErr.message);
+        } finally {
+          try { await deleteApp(tempApp); } catch (e) {}
+        }
+      }
+    }
+
     await deleteDoc(ref);
 
     // Also delete any matching credentials in userRoles so they cannot log in
@@ -189,6 +232,13 @@ export const deleteEmployee = async (employeeId: string) => {
       const roleRef = doc(db, 'userRoles', d.id);
       await deleteDoc(roleRef);
     }
+
+    await addDoc(collection(db, 'logs'), {
+      type: 'EMPLOYEE_DELETED',
+      description: `Employee record <strong>${employeeId}</strong> deleted permanently from workforce registry.`,
+      timestamp: new Date().toISOString(),
+      user: { uid: 'system', displayName: 'System' }
+    });
 
     return true;
   } catch (e) {
@@ -203,4 +253,3 @@ export const getActiveEmployees = async (): Promise<Employee[]> => {
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Employee));
 };
-

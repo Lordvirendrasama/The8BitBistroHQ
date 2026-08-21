@@ -58,6 +58,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
   const [paidNow, setPaidNow] = useState<string>('0');
   const [contactPhone, setContactPhone] = useState<string>('');
   const [contactName, setContactName] = useState<string>('');
+  const [wantWhatsAppBill, setWantWhatsAppBill] = useState<boolean | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('cash');
@@ -71,11 +72,15 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
         setIsClosing(false);
         setSearchTerm('');
         setSelectedMethod('cash');
+        setWantWhatsAppBill(null);
         const members = station.members || [];
         if (members.length > 0) {
             setContactName(members[0].name);
             const member = allMembers.find(m => m.id && m.id === members[0].id);
             setContactPhone(member?.phone || '');
+            if (member?.phone) {
+                setWantWhatsAppBill(true);
+            }
         }
     }
   }, [isOpen, station?.id]);
@@ -436,7 +441,16 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                     type="button"
                                     variant="outline" 
                                     className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-sm" 
-                                    onClick={() => setStep('split-details')}
+                                    onClick={() => {
+                                        setStep('split-details');
+                                        const cashVal = parseFloat(splitCash) || 0;
+                                        const upiVal = parseFloat(splitUpi) || 0;
+                                        if (cashVal === 0 && upiVal === 0) {
+                                            const half = Math.floor(finalBillTotal / 2);
+                                            setSplitCash(half.toString());
+                                            setSplitUpi((finalBillTotal - half).toString());
+                                        }
+                                    }}
                                 >
                                     <Layers className="h-4 w-4 text-amber-500" /> Split
                                 </Button>
@@ -452,30 +466,297 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                         </div>
 
                         {/* Integrated WhatsApp Section under options */}
-                        <div className="bg-card border-2 rounded-xl p-3.5 space-y-2 shadow-xs">
-                            <Label className="text-xs font-bold uppercase tracking-normal opacity-70 flex items-center gap-1.5 text-emerald-600">
-                                <MessageSquare className="h-3.5 w-3.5" /> Send WhatsApp Receipt
-                            </Label>
-                            <div className="flex items-center gap-2">
-                                <div className="relative flex-1">
-                                    <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                    <Input 
-                                        placeholder="Customer WhatsApp phone..." 
-                                        value={contactPhone} 
-                                        onChange={e => setContactPhone(e.target.value)} 
-                                        className="h-9 pl-8 font-mono text-xs border-2 bg-background" 
+                        <div className="bg-card border-2 rounded-xl p-3.5 space-y-3 shadow-xs">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-extrabold uppercase tracking-tight flex items-center gap-1.5 text-emerald-600">
+                                    <MessageSquare className="h-4 w-4 text-emerald-600" /> Would you like your bill on WhatsApp?
+                                </Label>
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setWantWhatsAppBill(true)}
+                                        className={cn(
+                                            "h-7 px-3 text-[11px] font-extrabold uppercase rounded-md border-2 transition-all",
+                                            wantWhatsAppBill === true
+                                                ? "bg-emerald-500 text-black border-emerald-500 shadow-xs"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        YES
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                            setWantWhatsAppBill(false);
+                                            setContactPhone('');
+                                        }}
+                                        className={cn(
+                                            "h-7 px-3 text-[11px] font-extrabold uppercase rounded-md border-2 transition-all",
+                                            wantWhatsAppBill === false
+                                                ? "bg-zinc-800 text-white border-zinc-700"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        NO
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {wantWhatsAppBill !== false && (
+                                <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                                    <div className="relative flex-1">
+                                        <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Enter 10-digit Mobile Number..." 
+                                            value={contactPhone} 
+                                            onChange={e => {
+                                                setContactPhone(e.target.value);
+                                                if (wantWhatsAppBill === null) setWantWhatsAppBill(true);
+                                            }} 
+                                            className="h-9 pl-8 font-mono text-xs border-2 bg-background" 
+                                        />
+                                    </div>
+                                    <Button 
+                                        type="button" 
+                                        onClick={handleShareWhatsApp} 
+                                        disabled={!contactPhone.trim()}
+                                        variant="outline" 
+                                        className="h-9 px-3 border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 font-bold uppercase text-xs gap-1.5 shrink-0"
+                                    >
+                                        <Send className="h-3.5 w-3.5 text-emerald-600" /> Send Bill
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+                {step === 'split-details' && (
+                    <div className="space-y-4 p-4 sm:p-6">
+                        <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 text-center space-y-1">
+                            <p className="text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">Total Bill to Split</p>
+                            <p className="text-3xl font-extrabold font-mono text-foreground">₹{finalBillTotal.toLocaleString()}</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-card border-2 p-4 rounded-xl space-y-2 shadow-xs">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-extrabold uppercase tracking-tight flex items-center gap-1.5 text-emerald-600">
+                                        <Banknote className="h-4 w-4 text-emerald-600" /> Cash Amount (₹)
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 text-[10px] font-bold uppercase text-muted-foreground hover:text-emerald-600"
+                                        onClick={() => {
+                                            const upiVal = parseFloat(splitUpi) || 0;
+                                            setSplitCash(Math.max(0, finalBillTotal - upiVal).toString());
+                                        }}
+                                    >
+                                        Auto-Fill Remainder
+                                    </Button>
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-base text-muted-foreground">₹</span>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="0"
+                                        value={splitCash}
+                                        onChange={(e) => setSplitCash(e.target.value)}
+                                        className="h-11 pl-8 font-mono text-lg font-bold border-2 bg-background focus-visible:ring-emerald-500"
                                     />
                                 </div>
-                                <Button 
-                                    type="button" 
-                                    onClick={handleShareWhatsApp} 
-                                    variant="outline" 
-                                    className="h-9 px-3 border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 font-bold uppercase text-xs gap-1.5 shrink-0"
+                            </div>
+
+                            <div className="bg-card border-2 p-4 rounded-xl space-y-2 shadow-xs">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-extrabold uppercase tracking-tight flex items-center gap-1.5 text-primary">
+                                        <Smartphone className="h-4 w-4 text-primary" /> UPI Amount (₹)
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 text-[10px] font-bold uppercase text-muted-foreground hover:text-primary"
+                                        onClick={() => {
+                                            const cashVal = parseFloat(splitCash) || 0;
+                                            setSplitUpi(Math.max(0, finalBillTotal - cashVal).toString());
+                                        }}
+                                    >
+                                        Auto-Fill Remainder
+                                    </Button>
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-base text-muted-foreground">₹</span>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="0"
+                                        value={splitUpi}
+                                        onChange={(e) => setSplitUpi(e.target.value)}
+                                        className="h-11 pl-8 font-mono text-lg font-bold border-2 bg-background focus-visible:ring-primary"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 pt-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs font-bold uppercase border-dashed"
+                                    onClick={() => {
+                                        const half = Math.floor(finalBillTotal / 2);
+                                        setSplitCash(half.toString());
+                                        setSplitUpi((finalBillTotal - half).toString());
+                                    }}
                                 >
-                                    <Send className="h-3.5 w-3.5 text-emerald-600" /> Send
+                                    50 / 50 Split
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs font-bold uppercase border-dashed"
+                                    onClick={() => {
+                                        setSplitCash(finalBillTotal.toString());
+                                        setSplitUpi('0');
+                                    }}
+                                >
+                                    100% Cash
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs font-bold uppercase border-dashed"
+                                    onClick={() => {
+                                        setSplitCash('0');
+                                        setSplitUpi(finalBillTotal.toString());
+                                    }}
+                                >
+                                    100% UPI
                                 </Button>
                             </div>
+
+                            {(() => {
+                                const cashVal = parseFloat(splitCash) || 0;
+                                const upiVal = parseFloat(splitUpi) || 0;
+                                const splitSum = cashVal + upiVal;
+                                const diff = Math.round((finalBillTotal - splitSum) * 100) / 100;
+
+                                if (Math.abs(diff) <= 0.1) {
+                                    return (
+                                        <div className="p-3 rounded-lg bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+                                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                            <span>Split amounts match total bill (₹{finalBillTotal.toLocaleString()})</span>
+                                        </div>
+                                    );
+                                } else if (diff > 0) {
+                                    return (
+                                        <div className="p-3 rounded-lg bg-amber-500/10 border-2 border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-between">
+                                            <span className="flex items-center gap-2">
+                                                <FileWarning className="h-4 w-4 shrink-0" />
+                                                Remaining to allocate: ₹{diff.toLocaleString()}
+                                            </span>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="link"
+                                                className="h-auto p-0 text-xs font-extrabold underline text-amber-600 dark:text-amber-400"
+                                                onClick={() => setSplitUpi((upiVal + diff).toString())}
+                                            >
+                                                Add to UPI
+                                            </Button>
+                                        </div>
+                                    );
+                                } else {
+                                    return (
+                                        <div className="p-3 rounded-lg bg-destructive/10 border-2 border-destructive/30 text-destructive text-xs font-bold flex items-center gap-2">
+                                            <FileWarning className="h-4 w-4 shrink-0" />
+                                            <span>Total split (₹{splitSum.toLocaleString()}) exceeds bill by ₹{Math.abs(diff).toLocaleString()}</span>
+                                        </div>
+                                    );
+                                }
+                            })()}
                         </div>
+                    </div>
+                )}
+                {step === 'pending-details' && (
+                    <div className="space-y-4 p-4 sm:p-6">
+                        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-4 text-center space-y-1">
+                            <p className="text-xs font-bold uppercase tracking-wide text-destructive">Total Bill Due</p>
+                            <p className="text-3xl font-extrabold font-mono text-foreground">₹{finalBillTotal.toLocaleString()}</p>
+                        </div>
+
+                        <div className="space-y-3 bg-card border-2 p-4 rounded-xl shadow-xs">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-extrabold uppercase tracking-tight text-muted-foreground">
+                                    Customer Name
+                                </Label>
+                                <Input
+                                    placeholder="Enter customer name..."
+                                    value={contactName}
+                                    onChange={(e) => setContactName(e.target.value)}
+                                    className="h-10 text-sm font-bold border-2 bg-background"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-extrabold uppercase tracking-tight text-muted-foreground">
+                                    Mobile Number
+                                </Label>
+                                <div className="relative">
+                                    <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Enter 10-digit phone number..."
+                                        value={contactPhone}
+                                        onChange={(e) => setContactPhone(e.target.value)}
+                                        className="h-10 pl-8 font-mono text-sm font-bold border-2 bg-background"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5 pt-2 border-t border-dashed">
+                                <Label className="text-xs font-extrabold uppercase tracking-tight text-emerald-600 flex items-center gap-1.5">
+                                    <Banknote className="h-4 w-4 text-emerald-600" /> Amount Paid Now (₹)
+                                </Label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-base text-muted-foreground">₹</span>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="0"
+                                        value={paidNow}
+                                        onChange={(e) => setPaidNow(e.target.value)}
+                                        className="h-11 pl-8 font-mono text-lg font-bold border-2 bg-background focus-visible:ring-emerald-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {(() => {
+                            const paid = parseFloat(paidNow) || 0;
+                            const diff = finalBillTotal - paid;
+                            return (
+                                <div className={cn(
+                                    "p-3 rounded-lg border-2 text-xs font-bold flex items-center justify-between",
+                                    diff > 0 ? "bg-destructive/10 border-destructive/30 text-destructive" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600"
+                                )}>
+                                    <span>
+                                        {diff > 0 ? `Pending Debt to Record: ₹${diff.toLocaleString()}` : diff < 0 ? `Overpayment / Change: ₹${Math.abs(diff).toLocaleString()}` : 'Fully Paid'}
+                                    </span>
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
             </ScrollArea>
@@ -497,8 +778,22 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                         </Button>
                     </div>
                 )}
-                {step === 'split-details' && <Button onClick={() => handleCheckout('split', parseFloat(splitCash), parseFloat(splitUpi))} disabled={isClosing || Math.abs((parseFloat(splitCash)||0) + (parseFloat(splitUpi)||0) - finalBillTotal) > 0.1} className="w-full h-12 font-bold uppercase tracking-tight text-base bg-primary shadow-xl">FINALIZE SPLIT</Button>}
-                {step === 'pending-details' && <Button onClick={handlePendingConfirm} disabled={isClosing} className="w-full h-12 font-bold uppercase tracking-tight text-base bg-destructive shadow-xl">SAVE DEBT & CLOSE</Button>}
+                {step === 'split-details' && (
+                    <div className="flex items-center gap-2 w-full">
+                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('payment-method')} className="h-12 px-3 font-bold uppercase text-xs tracking-normal">
+                            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> BACK
+                        </Button>
+                        <Button onClick={() => handleCheckout('split', parseFloat(splitCash), parseFloat(splitUpi))} disabled={isClosing || Math.abs((parseFloat(splitCash)||0) + (parseFloat(splitUpi)||0) - finalBillTotal) > 0.1} className="flex-1 h-12 font-bold uppercase tracking-tight text-base bg-primary shadow-xl">FINALIZE SPLIT</Button>
+                    </div>
+                )}
+                {step === 'pending-details' && (
+                    <div className="flex items-center gap-2 w-full">
+                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('payment-method')} className="h-12 px-3 font-bold uppercase text-xs tracking-normal">
+                            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> BACK
+                        </Button>
+                        <Button onClick={handlePendingConfirm} disabled={isClosing} className="flex-1 h-12 font-bold uppercase tracking-tight text-base bg-destructive shadow-xl">SAVE DEBT & CLOSE</Button>
+                    </div>
+                )}
             </DialogFooter>
         </DialogContent>
     </Dialog>

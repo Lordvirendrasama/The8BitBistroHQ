@@ -6,17 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
-  Sparkles, Users, Phone, Gamepad2, Utensils, CheckCircle2, ChevronRight, ChevronLeft, 
-  Search, UserPlus, Dice5, Coffee, RotateCcw, X, MessageSquare, PlayCircle, Plus, Loader2 
+  Sparkles, Users, Gamepad2, Utensils, CheckCircle2, ChevronRight, ChevronLeft, 
+  Search, Dice5, RotateCcw, X, MessageSquare, PlayCircle, Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { addMember } from '@/firebase/firestore/members';
 import { useToast } from '@/hooks/use-toast';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import type { Member, Station, MemberTier } from '@/lib/types';
+import type { Member, Station } from '@/lib/types';
 
 export type ExperienceChoice = 'ps5' | 'fnb' | 'boardgame';
 
@@ -41,56 +39,44 @@ export function GuestLoginWizardModal({
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [lang, setLang] = useState<'en' | 'hi'>('en');
   const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
   const [groupSize, setGroupSize] = useState('1');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [selectedExperience, setSelectedExperience] = useState<ExperienceChoice>('ps5');
+  const [selectedExperiences, setSelectedExperiences] = useState<ExperienceChoice[]>(['ps5']);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
   // Sub-views inside wizard
   const [showSearchDirectory, setShowSearchDirectory] = useState(false);
-  const [showQuickRegister, setShowQuickRegister] = useState(false);
-
-  // Search directory internal query
   const [directorySearchQuery, setDirectorySearchQuery] = useState('');
-
-  // Quick register form state
-  const [regName, setRegName] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
 
   // Real-time listener for all members directory
   const allMembersCollection = useMemo(() => (!db ? null : collection(db, 'members')), [db]);
-  const { data: allMembers, loading: membersLoading } = useCollection<Member>(allMembersCollection);
+  const { data: allMembers } = useCollection<Member>(allMembersCollection);
 
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(1);
+      setCustomerName('');
+      setGroupSize('1');
+      setSelectedMember(null);
+      setSelectedExperiences(['ps5']);
       setSelectedStation(null);
       setShowSearchDirectory(false);
-      setShowQuickRegister(false);
     }
   }, [isOpen]);
 
-  // Compute live matching members as staff types name or phone
+  // Compute live matching members as staff types name
   const matchingMembers = useMemo(() => {
     if (!allMembers || allMembers.length === 0) return [];
     const nameTerm = (customerName || '').trim().toLowerCase();
-    const phoneTerm = (customerPhone || '').replace(/\D/g, '');
 
-    if (nameTerm.length < 2 && phoneTerm.length < 3) return [];
+    if (nameTerm.length < 2) return [];
 
     return allMembers
-      .filter((m) => {
-        const nameMatch = nameTerm.length >= 2 && m.name && m.name.toLowerCase().includes(nameTerm);
-        const phoneMatch = phoneTerm.length >= 3 && m.phone && m.phone.replace(/\D/g, '').includes(phoneTerm);
-        return nameMatch || phoneMatch;
-      })
+      .filter((m) => m.name && m.name.toLowerCase().includes(nameTerm))
       .slice(0, 4);
-  }, [allMembers, customerName, customerPhone]);
+  }, [allMembers, customerName]);
 
-  // Full Directory search filter
+  // Directory search filter
   const directoryFilteredMembers = useMemo(() => {
     if (!allMembers || allMembers.length === 0) return [];
     const term = directorySearchQuery.trim().toLowerCase();
@@ -99,25 +85,31 @@ export function GuestLoginWizardModal({
     return allMembers
       .filter((m) => {
         const nameMatch = m.name && m.name.toLowerCase().includes(term);
-        const phoneMatch = m.phone && m.phone.replace(/\D/g, '').includes(term);
         const usernameMatch = m.username && m.username.toLowerCase().includes(term);
-        return nameMatch || phoneMatch || usernameMatch;
+        const phoneMatch = m.phone && m.phone.replace(/\D/g, '').includes(term);
+        return nameMatch || usernameMatch || phoneMatch;
       })
       .slice(0, 20);
   }, [allMembers, directorySearchQuery]);
 
-  // Filter stations based on chosen experience on Step 3
+  // Filter stations based on chosen experiences on Step 3
   const filteredStations = useMemo(() => {
     if (!stations || stations.length === 0) return [];
-    if (selectedExperience === 'ps5') {
-      return stations.filter((s) => s.type === 'ps5');
+    
+    // Priority 1: PS5 stations if PS5 experience selected
+    if (selectedExperiences.includes('ps5')) {
+      const ps5Only = stations.filter((s) => s.type === 'ps5');
+      if (ps5Only.length > 0) return ps5Only;
     }
-    if (selectedExperience === 'boardgame') {
-      return stations.filter((s) => s.type === 'boardgame');
+    
+    // Priority 2: Board game stations if Board Games selected
+    if (selectedExperiences.includes('boardgame')) {
+      const bgOnly = stations.filter((s) => s.type === 'boardgame');
+      if (bgOnly.length > 0) return bgOnly;
     }
-    // 'fnb' (Food and Beverage) - return all stations / dining tables
+
     return stations;
-  }, [stations, selectedExperience]);
+  }, [stations, selectedExperiences]);
 
   if (!isOpen) return null;
 
@@ -125,53 +117,53 @@ export function GuestLoginWizardModal({
     en: {
       step1: {
         tag: "STEP 1 OF 4",
-        title: "Ask Customer Name",
+        title: "Guest Details",
         dialogue: '"Welcome to The 8 Bit Bistro! May I have your Name and how many people are in your group today?"',
         hint: "Type customer's name below. Any registered member will appear instantly."
       },
       step2: {
         tag: "STEP 2 OF 4",
-        title: "Ask Mobile Number",
-        dialogue: '"Could you please share your Mobile Number for your WhatsApp bill and member rewards?"',
-        hint: "Type 10-digit mobile number for WhatsApp billing."
+        title: "What are you here for?",
+        dialogue: '"Awesome! Are you guys here for PS5 Gaming, Food & Drinks, or Board Games today?"',
+        hint: "Select one or more activities to proceed to table/seat selection."
       },
       step3: {
         tag: "STEP 3 OF 4",
-        title: "Select Experience: PS5, FnB, or Board/Retrogames",
-        dialogue: '"Awesome! Are you guys here for PS5 Gaming, FnB (Food & Drinks), or Board/Retro Games today?"',
-        hint: "Select 1 of the 3 experience options to proceed to seat selection."
+        title: "Select Table / Station",
+        dialogue: '"Great! Please pick your preferred seat/table, and we will get your session setup!"',
+        hint: "Click on an available station or table to seat the guest."
       },
       step4: {
         tag: "STEP 4 OF 4",
-        title: "Choose Table / Seat",
-        dialogue: '"Great! Please pick your preferred seat/table, and we will get your session and orders started!"',
-        hint: "Click on an available station or table to seat the guest and launch session."
+        title: "Confirm & Start",
+        dialogue: '"All set! Review your details and let\'s start your session!"',
+        hint: "Review details below and click Start Session."
       },
     },
     hi: {
       step1: {
         tag: "STEP 1 OF 4",
-        title: "Customer Ka Name Pucho",
+        title: "Guest Ki Details",
         dialogue: '"8 Bit Bistro me aapka welcome hai! Kya me aapka Name aur aapke sath kitne log hain, jaan sakta hu?"',
-        hint: "Neeche diye gaye box me customer ka naam likhein. Match niche dikhega."
+        hint: "Neeche diye gaye box me customer ka naam likhein."
       },
       step2: {
         tag: "STEP 2 OF 4",
-        title: "Mobile Number Pucho",
-        dialogue: '"Kya aap apna Mobile Number share kar sakte hain, WhatsApp billing aur reward points ke liye?"',
-        hint: "Billing aur rewards ke liye 10-digit phone number likhein."
+        title: "Aaj kya plan hai?",
+        dialogue: '"Bahut badiya! Aaj aap log PS5 Gaming, Food & Drinks, ya Board Games ke liye aaye hain?"',
+        hint: "Aap multiple activities bhi select kar sakte hain."
       },
       step3: {
         tag: "STEP 3 OF 4",
-        title: "PS5, FnB ya Board/Retrogames Choose Karo",
-        dialogue: '"Bahut badiya! Aaj aap log PS5 Gaming, FnB (Food & Drinks), ya Board/Retro Games ke liye aaye hain?"',
-        hint: "3 options me se 1 choose karein taaki table/seat select kar sakein."
+        title: "Table / Seat Choose Karo",
+        dialogue: '"Great! Aap apna pasandeeda table/seat choose karein!"',
+        hint: "Available table/seat par click karein."
       },
       step4: {
         tag: "STEP 4 OF 4",
-        title: "Table / Seat Choose Karo",
-        dialogue: '"Great! Aap apna pasandeeda table/seat choose karein, aur hum aapka session start karte hain!"',
-        hint: "Available table/seat par click karein aur session start karein."
+        title: "Session Start Karo",
+        dialogue: '"Sab ready hai! Details check karein aur session start karein!"',
+        hint: "Start Session button dabayein."
       },
     }
   };
@@ -181,9 +173,6 @@ export function GuestLoginWizardModal({
   const handleSelectMember = (member: Member) => {
     setSelectedMember(member);
     setCustomerName(member.name);
-    if (member.phone) {
-      setCustomerPhone(member.phone);
-    }
     setShowSearchDirectory(false);
     toast({
       title: "Member Selected",
@@ -191,87 +180,24 @@ export function GuestLoginWizardModal({
     });
   };
 
-  const handleOpenSearchDirectory = () => {
-    setDirectorySearchQuery(customerName || customerPhone || '');
-    setShowSearchDirectory(true);
-  };
-
-  const handleOpenQuickRegister = () => {
-    setRegName(customerName || '');
-    setRegPhone(customerPhone || '');
-    setRegEmail('');
-    setShowQuickRegister(true);
-  };
-
-  const handleExecuteQuickRegister = async () => {
-    if (!regName.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Name Required',
-        description: 'Please enter the customer full name.',
-      });
-      return;
-    }
-
-    setIsRegistering(true);
-    try {
-      const generatedUsername = `${regName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Math.floor(100 + Math.random() * 900)}`;
-      const tier: MemberTier = regPhone.trim() ? 'Green' : 'Red';
-      const avatarUrl = PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)]?.imageUrl || 'https://picsum.photos/seed/guest/100/100';
-
-      const newMemberData: Omit<Member, 'id'> = {
-        name: regName.trim(),
-        username: generatedUsername,
-        phone: regPhone.trim() || undefined,
-        email: regEmail.trim() || undefined,
-        tier,
-        level: 1,
-        xp: 0,
-        points: 0,
-        totalSpent: 0,
-        joinDate: new Date().toISOString(),
-        avatarUrl,
-      };
-
-      const newId = await addMember(newMemberData);
-      
-      const createdMember: Member = {
-        id: newId || `member-${Date.now()}`,
-        ...newMemberData,
-      };
-
-      setSelectedMember(createdMember);
-      setCustomerName(createdMember.name);
-      if (createdMember.phone) {
-        setCustomerPhone(createdMember.phone);
+  const handleToggleExperience = (exp: ExperienceChoice) => {
+    setSelectedExperiences((prev) => {
+      if (prev.includes(exp)) {
+        if (prev.length === 1) return prev; // Keep at least one selected
+        return prev.filter((e) => e !== exp);
       }
-
-      setShowQuickRegister(false);
-      toast({
-        title: "Member Registered!",
-        description: `${createdMember.name} is now a registered member and selected!`,
-      });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Registration Error',
-        description: error.message || 'Failed to create new member.',
-      });
-    } finally {
-      setIsRegistering(false);
-    }
+      return [...prev, exp];
+    });
   };
 
   const handleReset = () => {
     setCurrentStep(1);
     setCustomerName('');
-    setCustomerPhone('');
     setGroupSize('1');
     setSelectedMember(null);
-    setSelectedExperience('ps5');
+    setSelectedExperiences(['ps5']);
     setSelectedStation(null);
     setShowSearchDirectory(false);
-    setShowQuickRegister(false);
   };
 
   const handleClose = () => {
@@ -280,20 +206,29 @@ export function GuestLoginWizardModal({
   };
 
   const handleConfirmStationAssignment = (station: Station) => {
+    const primaryExp = selectedExperiences[0] || 'ps5';
     onAssignStation(station, {
       name: customerName || selectedMember?.name || 'Walk-in Guest',
-      phone: customerPhone || selectedMember?.phone || '',
+      phone: selectedMember?.phone || '',
       groupSize,
       member: selectedMember,
-      experience: selectedExperience,
+      experience: primaryExp,
     });
     handleClose();
   };
 
+  const formatActivitySummary = () => {
+    const labels: string[] = [];
+    if (selectedExperiences.includes('ps5')) labels.push('🎮 PS5 Gaming');
+    if (selectedExperiences.includes('fnb')) labels.push('☕ Food & Drinks');
+    if (selectedExperiences.includes('boardgame')) labels.push('🎲 Board & Retro');
+    return labels.join(' + ') || 'General';
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
       
-      {/* Centered Focused Popup Box */}
+      {/* Centered Popup Card */}
       <div className="relative w-full max-w-2xl bg-zinc-950 border-2 border-primary/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
         
         {/* Top Header */}
@@ -304,10 +239,10 @@ export function GuestLoginWizardModal({
             </div>
             <div>
               <h2 className="font-headline text-lg sm:text-xl uppercase tracking-wider text-white">
-                Guest Check-in &amp; Login Wizard
+                Guest Check-in
               </h2>
               <p className="text-xs font-bold uppercase text-zinc-400 tracking-wide">
-                Staff Hospitality Assistant
+                The 8 Bit Bistro HQ
               </p>
             </div>
           </div>
@@ -354,13 +289,13 @@ export function GuestLoginWizardModal({
           </div>
         </div>
 
-        {/* SUB-VIEW 1: SEARCH MEMBER DIRECTORY MODAL */}
+        {/* SUB-VIEW: SEARCH MEMBER DIRECTORY MODAL */}
         {showSearchDirectory ? (
           <div className="p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
                 <Search className="h-5 w-5 text-primary" />
-                <h3 className="font-bold text-base uppercase text-white">Search Member Directory</h3>
+                <h3 className="font-bold text-base uppercase text-white">Search Regular Member</h3>
               </div>
               <Button
                 type="button"
@@ -369,7 +304,7 @@ export function GuestLoginWizardModal({
                 onClick={() => setShowSearchDirectory(false)}
                 className="h-8 px-3 text-xs text-zinc-400 hover:text-white uppercase font-bold"
               >
-                <ChevronLeft className="h-4 w-4 mr-1" /> Back to Wizard
+                <ChevronLeft className="h-4 w-4 mr-1" /> Back
               </Button>
             </div>
 
@@ -378,7 +313,7 @@ export function GuestLoginWizardModal({
                 autoFocus
                 value={directorySearchQuery}
                 onChange={(e) => setDirectorySearchQuery(e.target.value)}
-                placeholder="Search by Name, Phone Number, or Username..."
+                placeholder="Search by Member Name or Username..."
                 className="h-12 bg-zinc-900 border-2 border-zinc-700 focus:border-primary text-white text-base rounded-xl"
               />
             </div>
@@ -401,26 +336,13 @@ export function GuestLoginWizardModal({
                       </Avatar>
                       <div>
                         <p className="font-bold text-sm text-white">{member.name}</p>
-                        <p className="text-xs font-mono text-zinc-400">{member.phone || 'No phone'}</p>
+                        <p className="text-xs text-zinc-400">{member.tier || 'Member'}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] font-bold uppercase",
-                          member.tier === 'Gold' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
-                          member.tier === 'Green' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
-                          "bg-red-500/20 text-red-400 border-red-500/30"
-                        )}
-                      >
-                        {member.tier || 'Member'}
-                      </Badge>
-                      <Button size="sm" className="h-7 text-[11px] font-bold uppercase bg-emerald-500 hover:bg-emerald-600 text-black">
-                        Select
-                      </Button>
-                    </div>
+                    <Button size="sm" className="h-7 text-[11px] font-bold uppercase bg-emerald-500 hover:bg-emerald-600 text-black">
+                      Select Member
+                    </Button>
                   </button>
                 ))
               ) : (
@@ -430,91 +352,8 @@ export function GuestLoginWizardModal({
               )}
             </div>
           </div>
-        ) : showQuickRegister ? (
-          /* SUB-VIEW 2: QUICK MEMBER REGISTRATION FORM */
-          <div className="p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <div className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-emerald-400" />
-                <h3 className="font-bold text-base uppercase text-white">Quick Member Registration</h3>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowQuickRegister(false)}
-                className="h-8 px-3 text-xs text-zinc-400 hover:text-white uppercase font-bold"
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" /> Back to Wizard
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase text-zinc-300">Customer Full Name *</label>
-                <Input
-                  autoFocus
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  placeholder="e.g. Rahul Sharma"
-                  className="h-12 bg-zinc-900 border-2 border-zinc-700 focus:border-emerald-500 text-white rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase text-zinc-300">Mobile Number (For WhatsApp Bill &amp; Rewards) *</label>
-                <Input
-                  type="tel"
-                  value={regPhone}
-                  onChange={(e) => setRegPhone(e.target.value)}
-                  placeholder="e.g. 9876543210"
-                  className="h-12 bg-zinc-900 border-2 border-zinc-700 focus:border-emerald-500 text-white rounded-xl font-mono"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase text-zinc-400">Email Address (Optional)</label>
-                <Input
-                  type="email"
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="e.g. rahul@gmail.com"
-                  className="h-12 bg-zinc-900 border-2 border-zinc-700 focus:border-emerald-500 text-white rounded-xl"
-                />
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowQuickRegister(false)}
-                  className="flex-1 h-12 font-bold uppercase text-xs border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  disabled={isRegistering || !regName.trim()}
-                  onClick={handleExecuteQuickRegister}
-                  className="flex-1 h-12 font-bold uppercase text-xs bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg gap-2"
-                >
-                  {isRegistering ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Registering...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Register &amp; Select Member
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
         ) : (
-          /* REGULAR WIZARD STEP-BY-STEP FLOW */
+          /* REGULAR 4-STEP WIZARD FLOW */
           <>
             {/* Stepper Progress Bar */}
             <div className="px-6 pt-4 pb-2 bg-zinc-900/40 border-b border-zinc-800">
@@ -522,7 +361,7 @@ export function GuestLoginWizardModal({
                 {[1, 2, 3, 4].map((stepNum) => {
                   const isDone = currentStep > stepNum;
                   const isActive = currentStep === stepNum;
-                  const stepLabels = ["1. Name", "2. Number", "3. Experience", "4. Seat"];
+                  const stepLabels = ["1. Guest", "2. Activity", "3. Setup", "4. Start"];
                   return (
                     <button
                       key={stepNum}
@@ -561,22 +400,33 @@ export function GuestLoginWizardModal({
             {/* Modal Body: Active Step */}
             <div className="p-6 sm:p-8 space-y-6">
               
-              {/* STEP 1: Customer Name */}
+              {/* STEP 1: Guest Name & Players */}
               {currentStep === 1 && (
                 <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                   
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
                         <Users className="h-3.5 w-3.5 mr-1.5" />
                         {activeScript.step1.tag}
                       </Badge>
-                      <span className="text-xs font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
-                        <MessageSquare className="h-4 w-4" /> SAY THIS OUT LOUD TO GUEST:
-                      </span>
+                      
+                      {/* Optional Member Directory Button */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDirectorySearchQuery(customerName || '');
+                          setShowSearchDirectory(true);
+                        }}
+                        className="text-xs text-primary hover:text-primary/90 font-bold uppercase tracking-wider gap-1"
+                      >
+                        <Search className="h-3.5 w-3.5" /> Regular Member Lookup
+                      </Button>
                     </div>
 
-                    {/* Big Script Text */}
+                    {/* Script Prompt */}
                     <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900 border-2 border-primary/40 shadow-inner">
                       <h3 className="text-xl sm:text-2xl font-extrabold tracking-wide text-white leading-snug">
                         {activeScript.step1.dialogue}
@@ -584,13 +434,13 @@ export function GuestLoginWizardModal({
                     </div>
                   </div>
 
-                  {/* Customer Name Input Box */}
+                  {/* Customer Name Input */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
-                      <span>Type Customer's Name:</span>
+                      <span>Guest Name:</span>
                       {selectedMember && (
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Member Selected ({selectedMember.tier || 'Member'})
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Regular Member ({selectedMember.name})
                         </span>
                       )}
                     </label>
@@ -604,7 +454,7 @@ export function GuestLoginWizardModal({
                         }
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && customerName.trim()) {
                           setCurrentStep(2);
                         }
                       }}
@@ -613,11 +463,11 @@ export function GuestLoginWizardModal({
                     />
                   </div>
 
-                  {/* LIVE MATCHING MEMBERS SECTION */}
+                  {/* LIVE MATCHING MEMBERS BY NAME */}
                   {matchingMembers.length > 0 && (
                     <div className="space-y-2 pt-1 animate-in fade-in slide-in-from-top-2 duration-200">
                       <p className="text-[11px] font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Member Match Found ({matchingMembers.length}) • Click to select:
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Existing Member Found ({matchingMembers.length}) • Click to select:
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {matchingMembers.map((member) => (
@@ -641,23 +491,9 @@ export function GuestLoginWizardModal({
                               </Avatar>
                               <div className="truncate">
                                 <p className="font-bold text-sm text-white truncate">{member.name}</p>
-                                <p className="text-xs font-mono text-zinc-400">{member.phone || 'No phone'}</p>
+                                <p className="text-xs text-zinc-400">{member.tier || 'Member'}</p>
                               </div>
                             </div>
-
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px] font-bold uppercase px-2 shrink-0",
-                                member.tier === 'Gold'
-                                  ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                                  : member.tier === 'Green'
-                                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                                  : "bg-red-500/20 text-red-400 border-red-500/30"
-                              )}
-                            >
-                              {member.tier || 'Member'}
-                            </Badge>
                           </button>
                         ))}
                       </div>
@@ -666,7 +502,7 @@ export function GuestLoginWizardModal({
 
                   {/* Group Size Selector */}
                   <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-900 border border-zinc-800">
-                    <span className="text-xs font-bold uppercase text-zinc-400">How Many People in Group?</span>
+                    <span className="text-xs font-bold uppercase text-zinc-300">Number of Players:</span>
                     <div className="flex gap-1.5">
                       {['1', '2', '3', '4', '5+'].map((num) => (
                         <button
@@ -674,10 +510,10 @@ export function GuestLoginWizardModal({
                           type="button"
                           onClick={() => setGroupSize(num)}
                           className={cn(
-                            "h-8 w-10 rounded-lg text-xs font-bold transition-all border",
+                            "h-10 w-12 rounded-lg text-sm font-extrabold transition-all border",
                             groupSize === num
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
+                              ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
+                              : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700 hover:text-white"
                           )}
                         >
                           {num}
@@ -689,226 +525,112 @@ export function GuestLoginWizardModal({
                 </div>
               )}
 
-              {/* STEP 2: Mobile Number */}
+              {/* STEP 2: What are you here for? (Multi-Select) */}
               {currentStep === 2 && (
                 <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                   
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
-                        <Phone className="h-3.5 w-3.5 mr-1.5" />
-                        {activeScript.step2.tag}
-                      </Badge>
-                      <span className="text-xs font-extrabold uppercase text-emerald-400 tracking-widest flex items-center gap-1.5">
-                        <MessageSquare className="h-4 w-4" /> SAY THIS OUT LOUD TO GUEST:
-                      </span>
-                    </div>
-
-                    {/* Big Script Text */}
-                    <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900 border-2 border-emerald-500/40 shadow-inner">
-                      <h3 className="text-xl sm:text-2xl font-extrabold tracking-wide text-white leading-snug">
-                        {activeScript.step2.dialogue}
-                      </h3>
-                    </div>
-                  </div>
-
-                  {/* Mobile Number Input Box */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
-                      <span>Type Mobile Number (For WhatsApp Bill &amp; Points):</span>
-                      {customerName && <span className="text-emerald-400 font-bold">Customer: {customerName}</span>}
-                    </label>
-                    <Input 
-                      type="tel"
-                      autoFocus
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          setCurrentStep(3);
-                        }
-                      }}
-                      placeholder="e.g. 9876543210"
-                      className="h-14 text-lg font-mono font-bold bg-zinc-900 border-2 border-zinc-700 focus:border-emerald-500 text-white px-4 rounded-xl shadow-inner placeholder:text-zinc-600"
-                    />
-                  </div>
-
-                  {/* LIVE MATCHING MEMBERS BY PHONE */}
-                  {matchingMembers.length > 0 && (
-                    <div className="space-y-2 pt-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <p className="text-[11px] font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Member Match Found ({matchingMembers.length}) • Click to select:
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {matchingMembers.map((member) => (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() => handleSelectMember(member)}
-                            className={cn(
-                              "p-3 rounded-xl border-2 text-left flex items-center justify-between gap-3 transition-all",
-                              selectedMember?.id === member.id
-                                ? "border-emerald-500 bg-emerald-500/10 shadow-md ring-1 ring-emerald-500"
-                                : "border-zinc-800 bg-zinc-900/80 hover:border-primary/50 hover:bg-zinc-800"
-                            )}
-                          >
-                            <div className="flex items-center gap-2.5 overflow-hidden">
-                              <Avatar className="h-9 w-9 border border-zinc-700 shrink-0">
-                                <AvatarImage src={member.avatarUrl} alt={member.name} />
-                                <AvatarFallback className="font-bold text-xs bg-zinc-800 text-white">
-                                  {member.name.substring(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="truncate">
-                                <p className="font-bold text-sm text-white truncate">{member.name}</p>
-                                <p className="text-xs font-mono text-zinc-400">{member.phone || 'No phone'}</p>
-                              </div>
-                            </div>
-
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px] font-bold uppercase px-2 shrink-0",
-                                member.tier === 'Gold'
-                                  ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                                  : member.tier === 'Green'
-                                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                                  : "bg-red-500/20 text-red-400 border-red-500/30"
-                              )}
-                            >
-                              {member.tier || 'Member'}
-                            </Badge>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ACTION BUTTONS FOR DIRECTORY SEARCH & QUICK REGISTER */}
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <Button
-                      type="button"
-                      size="lg"
-                      variant="outline"
-                      onClick={handleOpenSearchDirectory}
-                      className="h-12 font-bold uppercase text-xs border-2 border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-400 gap-2"
-                    >
-                      <Search className="h-4 w-4" />
-                      <span>Search Member Directory</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="lg"
-                      variant="outline"
-                      onClick={handleOpenQuickRegister}
-                      className="h-12 font-bold uppercase text-xs border-2 border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-400 gap-2"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      <span>+ Quick Member Registration</span>
-                    </Button>
-                  </div>
-
-                </div>
-              )}
-
-              {/* STEP 3: 3 Options: PS5, FnB, Board/Retrogames */}
-              {currentStep === 3 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
                       <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
                         <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                        {activeScript.step3.tag}
+                        {activeScript.step2.tag}
                       </Badge>
                       <span className="text-xs font-extrabold uppercase text-purple-400 tracking-widest flex items-center gap-1.5">
                         <MessageSquare className="h-4 w-4" /> SAY THIS OUT LOUD TO GUEST:
                       </span>
                     </div>
 
-                    {/* Big Script Text */}
+                    {/* Script Dialogue */}
                     <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900 border-2 border-purple-500/40 shadow-inner">
                       <h3 className="text-xl sm:text-2xl font-extrabold tracking-wide text-white leading-snug">
-                        {activeScript.step3.dialogue}
+                        {activeScript.step2.dialogue}
                       </h3>
                     </div>
                   </div>
 
-                  {/* 3 DISTINCT EXPERIENCE OPTIONS */}
+                  {/* 3 MULTI-SELECT EXPERIENCE OPTIONS */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                     
                     {/* OPTION 1: PS5 */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedExperience('ps5');
-                        setCurrentStep(4);
-                      }}
+                      onClick={() => handleToggleExperience('ps5')}
                       className={cn(
-                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-28 transition-all relative overflow-hidden group shadow-lg",
-                        selectedExperience === 'ps5'
+                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group shadow-lg",
+                        selectedExperiences.includes('ps5')
                           ? "border-purple-500 bg-purple-500/20 ring-2 ring-purple-500 shadow-purple-500/20"
                           : "border-zinc-800 bg-zinc-900/90 hover:border-purple-500/50 hover:bg-zinc-800"
                       )}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="font-headline text-lg uppercase tracking-wide text-purple-400 font-extrabold">
-                          1. PS5
+                        <span className="font-headline text-lg uppercase tracking-wide text-purple-400 font-extrabold flex items-center gap-2">
+                          🎮 PS5
                         </span>
-                        <Gamepad2 className="h-6 w-6 text-purple-400 group-hover:scale-110 transition-transform" />
+                        {selectedExperiences.includes('ps5') ? (
+                          <div className="bg-purple-500 text-white rounded-full p-1 shadow-sm">
+                            <Check className="h-4 w-4" />
+                          </div>
+                        ) : (
+                          <Gamepad2 className="h-6 w-6 text-purple-400/60 group-hover:scale-110 transition-transform" />
+                        )}
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white uppercase">Console Gaming</p>
-                        <p className="text-[11px] text-zinc-400">PlayStation 5 Stations &amp; Packs</p>
+                        <p className="text-[11px] text-zinc-400">PlayStation 5 Consoles &amp; Controller Session</p>
                       </div>
                     </button>
 
-                    {/* OPTION 2: FnB */}
+                    {/* OPTION 2: Food & Drinks */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedExperience('fnb');
-                        setCurrentStep(4);
-                      }}
+                      onClick={() => handleToggleExperience('fnb')}
                       className={cn(
-                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-28 transition-all relative overflow-hidden group shadow-lg",
-                        selectedExperience === 'fnb'
+                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group shadow-lg",
+                        selectedExperiences.includes('fnb')
                           ? "border-amber-500 bg-amber-500/20 ring-2 ring-amber-500 shadow-amber-500/20"
                           : "border-zinc-800 bg-zinc-900/90 hover:border-amber-500/50 hover:bg-zinc-800"
                       )}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="font-headline text-lg uppercase tracking-wide text-amber-400 font-extrabold">
-                          2. FnB
+                        <span className="font-headline text-lg uppercase tracking-wide text-amber-400 font-extrabold flex items-center gap-2">
+                          ☕ Food &amp; Drinks
                         </span>
-                        <Utensils className="h-6 w-6 text-amber-400 group-hover:scale-110 transition-transform" />
+                        {selectedExperiences.includes('fnb') ? (
+                          <div className="bg-amber-500 text-black rounded-full p-1 shadow-sm">
+                            <Check className="h-4 w-4 font-bold" />
+                          </div>
+                        ) : (
+                          <Utensils className="h-6 w-6 text-amber-400/60 group-hover:scale-110 transition-transform" />
+                        )}
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white uppercase">Food &amp; Beverages</p>
-                        <p className="text-[11px] text-zinc-400">Cold Coffee, Snacks &amp; Drinks</p>
+                        <p className="text-[11px] text-zinc-400">Cafe Orders, Coffee, Snacks &amp; Refreshments</p>
                       </div>
                     </button>
 
-                    {/* OPTION 3: Board/Retrogames */}
+                    {/* OPTION 3: Board & Retro */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedExperience('boardgame');
-                        setCurrentStep(4);
-                      }}
+                      onClick={() => handleToggleExperience('boardgame')}
                       className={cn(
-                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-28 transition-all relative overflow-hidden group shadow-lg",
-                        selectedExperience === 'boardgame'
+                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group shadow-lg",
+                        selectedExperiences.includes('boardgame')
                           ? "border-emerald-500 bg-emerald-500/20 ring-2 ring-emerald-500 shadow-emerald-500/20"
                           : "border-zinc-800 bg-zinc-900/90 hover:border-emerald-500/50 hover:bg-zinc-800"
                       )}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="font-headline text-lg uppercase tracking-wide text-emerald-400 font-extrabold">
-                          3. Board/Retrogames
+                        <span className="font-headline text-lg uppercase tracking-wide text-emerald-400 font-extrabold flex items-center gap-2">
+                          🎲 Board &amp; Retro
                         </span>
-                        <Dice5 className="h-6 w-6 text-emerald-400 group-hover:scale-110 transition-transform" />
+                        {selectedExperiences.includes('boardgame') ? (
+                          <div className="bg-emerald-500 text-black rounded-full p-1 shadow-sm">
+                            <Check className="h-4 w-4 font-bold" />
+                          </div>
+                        ) : (
+                          <Dice5 className="h-6 w-6 text-emerald-400/60 group-hover:scale-110 transition-transform" />
+                        )}
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white uppercase">Board &amp; Retro</p>
@@ -921,20 +643,15 @@ export function GuestLoginWizardModal({
                 </div>
               )}
 
-              {/* STEP 4: Choose Table / Seat Based on Page 3 Selection */}
-              {currentStep === 4 && (
+              {/* STEP 3: Setup - Select Table / Seat */}
+              {currentStep === 3 && (
                 <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge className={cn(
-                          "text-xs font-bold uppercase tracking-wider px-3 py-1",
-                          selectedExperience === 'ps5' ? "bg-purple-500/20 text-purple-400 border-purple-500/30" :
-                          selectedExperience === 'fnb' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
-                          "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                        )}>
-                          {selectedExperience === 'ps5' ? 'PS5 Stations' : selectedExperience === 'fnb' ? 'FnB Dining Tables' : 'Board / Retro Tables'}
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
+                          {activeScript.step3.tag}
                         </Badge>
                         <span className="text-xs font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
                           <MessageSquare className="h-4 w-4" /> SAY OUT LOUD:
@@ -946,21 +663,21 @@ export function GuestLoginWizardModal({
                       </span>
                     </div>
 
-                    {/* Big Script Text */}
+                    {/* Script Prompt */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900 border-2 border-primary/40 shadow-inner">
                       <h3 className="text-lg sm:text-xl font-extrabold tracking-wide text-white leading-snug">
-                        {activeScript.step4.dialogue}
+                        {activeScript.step3.dialogue}
                       </h3>
                     </div>
                   </div>
 
-                  {/* Dynamic Seat / Table Selection Grid */}
+                  {/* Seat / Table Grid */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                        Select Table / Seat to Assign:
+                        Select Available Station / Table:
                       </label>
-                      <span className="text-[11px] text-zinc-500">Tap table to confirm check-in</span>
+                      <span className="text-[11px] text-zinc-400">Click a station to select</span>
                     </div>
 
                     {filteredStations.length > 0 ? (
@@ -973,13 +690,16 @@ export function GuestLoginWizardModal({
                             <button
                               key={station.id}
                               type="button"
-                              onClick={() => setSelectedStation(station)}
+                              onClick={() => {
+                                setSelectedStation(station);
+                                setCurrentStep(4);
+                              }}
                               className={cn(
-                                "p-3 rounded-xl border-2 text-left flex flex-col justify-between h-24 transition-all relative",
+                                "p-3 rounded-xl border-2 text-left flex flex-col justify-between h-24 transition-all relative cursor-pointer",
                                 isSelected
                                   ? "border-primary bg-primary/20 ring-2 ring-primary shadow-lg"
                                   : isAvailable
-                                  ? "border-zinc-800 bg-zinc-900/90 hover:border-zinc-600 hover:bg-zinc-800"
+                                  ? "border-zinc-800 bg-zinc-900/90 hover:border-zinc-500 hover:bg-zinc-800"
                                   : "border-zinc-800/60 bg-zinc-900/40 opacity-75 hover:opacity-100"
                               )}
                             >
@@ -1014,26 +734,68 @@ export function GuestLoginWizardModal({
                       </div>
                     ) : (
                       <div className="p-6 text-center rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs">
-                        No stations found for this category.
+                        No stations available for this selection.
                       </div>
                     )}
                   </div>
 
-                  {/* Bottom Confirm Action for Selected Seat */}
-                  {selectedStation && (
-                    <div className="p-3.5 rounded-xl border-2 border-primary/50 bg-primary/10 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2 duration-200">
+                </div>
+              )}
+
+              {/* STEP 4: Start - Simple Summary & 1-Click Launch */}
+              {currentStep === 4 && (
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                  
+                  <div className="flex items-center justify-between">
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                      {activeScript.step4.tag}
+                    </Badge>
+                  </div>
+
+                  {/* Summary Card */}
+                  <div className="p-5 rounded-2xl bg-zinc-900 border-2 border-emerald-500/40 space-y-4 shadow-xl">
+                    <h3 className="text-lg font-extrabold text-white uppercase tracking-wide border-b border-zinc-800 pb-2">
+                      Session Summary
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-xs uppercase font-bold text-zinc-400">Selected Station</p>
-                        <p className="text-base font-extrabold text-white">{selectedStation.name} • {customerName || 'Walk-in Guest'}</p>
+                        <p className="text-xs uppercase font-bold text-zinc-400">Guest Name</p>
+                        <p className="text-base font-extrabold text-white">{customerName || 'Walk-in Guest'}</p>
                       </div>
 
-                      <Button
-                        type="button"
-                        onClick={() => handleConfirmStationAssignment(selectedStation)}
-                        className="h-11 px-5 font-bold uppercase text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg gap-1.5"
-                      >
-                        <PlayCircle className="h-4 w-4" /> Start Session Now
-                      </Button>
+                      <div>
+                        <p className="text-xs uppercase font-bold text-zinc-400">Players</p>
+                        <p className="text-base font-extrabold text-white">{groupSize} Person(s)</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase font-bold text-zinc-400">Activities</p>
+                        <p className="text-sm font-bold text-purple-400">{formatActivitySummary()}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase font-bold text-zinc-400">Assigned Station / Table</p>
+                        <p className="text-base font-extrabold text-emerald-400">
+                          {selectedStation ? selectedStation.name : 'Not Selected'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ONE CLEAR BUTTON: START SESSION */}
+                  {selectedStation ? (
+                    <Button
+                      type="button"
+                      onClick={() => handleConfirmStationAssignment(selectedStation)}
+                      className="w-full h-14 text-base font-extrabold uppercase bg-emerald-500 hover:bg-emerald-600 text-black shadow-xl gap-2 rounded-xl transition-transform active:scale-[0.99]"
+                    >
+                      <PlayCircle className="h-6 w-6" /> START SESSION NOW
+                    </Button>
+                  ) : (
+                    <div className="p-4 text-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase">
+                      Please go back to Step 3 and select a station to start.
                     </div>
                   )}
 
@@ -1042,7 +804,7 @@ export function GuestLoginWizardModal({
 
             </div>
 
-            {/* Footer Navigation (Back / Next / Finish) */}
+            {/* Footer Navigation */}
             <div className="px-6 py-4 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between">
               <div>
                 {currentStep > 1 ? (
@@ -1069,29 +831,45 @@ export function GuestLoginWizardModal({
               </div>
 
               <div className="flex items-center gap-2">
-                {currentStep < 4 ? (
+                {currentStep === 1 && (
                   <Button
                     type="button"
-                    onClick={() => setCurrentStep((prev) => (prev + 1) as 1 | 2 | 3 | 4)}
+                    disabled={!customerName.trim()}
+                    onClick={() => setCurrentStep(2)}
                     className="h-11 px-6 font-bold uppercase text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg gap-1.5"
                   >
-                    Next Step <ChevronRight className="h-4 w-4" />
+                    Next: Activity <ChevronRight className="h-4 w-4" />
                   </Button>
-                ) : selectedStation ? (
+                )}
+
+                {currentStep === 2 && (
+                  <Button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    className="h-11 px-6 font-bold uppercase text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg gap-1.5"
+                  >
+                    Next: Select Station <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {currentStep === 3 && (
+                  <Button
+                    type="button"
+                    disabled={!selectedStation}
+                    onClick={() => setCurrentStep(4)}
+                    className="h-11 px-6 font-bold uppercase text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg gap-1.5"
+                  >
+                    Next: Review <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {currentStep === 4 && selectedStation && (
                   <Button
                     type="button"
                     onClick={() => handleConfirmStationAssignment(selectedStation)}
                     className="h-11 px-6 font-bold uppercase text-xs bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg gap-1.5"
                   >
-                    <CheckCircle2 className="h-4 w-4" /> Assign {selectedStation.name} &amp; Launch
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={handleClose}
-                    className="h-11 px-6 font-bold uppercase text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 shadow-md gap-1.5"
-                  >
-                    <CheckCircle2 className="h-4 w-4" /> Complete &amp; Close
+                    <CheckCircle2 className="h-4 w-4" /> Start Session
                   </Button>
                 )}
               </div>

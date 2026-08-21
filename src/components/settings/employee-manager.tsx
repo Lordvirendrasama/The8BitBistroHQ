@@ -1,12 +1,12 @@
-
 'use client';
+
 import { useState, useMemo, useEffect } from 'react';
 import type { Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash, Edit, Users, Shield, Banknote, Calendar, Clock, Eye, EyeOff } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, PlusCircle, Trash, Edit, Users, Shield, Banknote, Calendar, Clock, Eye, EyeOff, UserX, UserCheck, AlertTriangle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase/provider';
@@ -27,7 +26,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -39,6 +37,10 @@ export function EmployeeManager() {
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPin, setShowPin] = useState(false);
+
+  // Delete dialog state
+  const [empToDelete, setEmpToDelete] = useState<Employee | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -137,19 +139,52 @@ export function EmployeeManager() {
   };
 
   const handleSave = async () => {
-    if (!formData.username || !formData.displayName || !formData.pin) return;
+    if (!formData.username.trim() || !formData.displayName.trim() || !formData.pin.trim()) {
+      toast({ variant: "destructive", title: "Incomplete Profile", description: "Display Name, Username, and PIN are required." });
+      return;
+    }
+
+    const cleanUsername = formData.username.trim().toLowerCase();
     setIsSubmitting(true);
     
     try {
       if (selectedEmp) {
-        await updateEmployee(selectedEmp.id, formData, {
+        await updateEmployee(selectedEmp.id, {
+          ...formData,
+          username: cleanUsername
+        }, {
           username: selectedEmp.username,
           pin: selectedEmp.pin
         });
         toast({ title: "Staff Profile Updated", description: "Profile details and login credentials have been synced." });
       } else {
-        await addEmployee(formData);
-        toast({ title: "New Staff Added", description: "Profile and login credentials have been created." });
+        // Check if employee with same username already exists in Firestore
+        const existingEmp = employees?.find(e => e.username.toLowerCase() === cleanUsername);
+        
+        if (existingEmp) {
+          if (!existingEmp.isActive) {
+            // Reactivate existing inactive profile instead of failing
+            await updateEmployee(existingEmp.id, {
+              ...formData,
+              username: cleanUsername,
+              isActive: true
+            }, {
+              username: existingEmp.username,
+              pin: existingEmp.pin
+            });
+            toast({ title: "Operator Reactivated", description: `@${cleanUsername} was inactive and has been reactivated with updated credentials.` });
+          } else {
+            toast({ variant: "destructive", title: "Username Taken", description: `An active operator with username '@${cleanUsername}' already exists.` });
+            setIsSubmitting(false);
+            return;
+          }
+        } else {
+          await addEmployee({
+            ...formData,
+            username: cleanUsername
+          });
+          toast({ title: "New Staff Added", description: `Operator @${cleanUsername} and terminal credentials created successfully.` });
+        }
       }
       
       setModalOpen(false);
@@ -168,6 +203,37 @@ export function EmployeeManager() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async (emp: Employee) => {
+    try {
+      const nextStatus = !(emp.isActive ?? true);
+      await updateEmployee(emp.id, { isActive: nextStatus });
+      toast({
+        title: nextStatus ? "Operator Activated" : "Operator Deactivated",
+        description: `@${emp.username} terminal access status set to ${nextStatus ? 'Active' : 'Inactive'}.`
+      });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Update Failed", description: err.message });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!empToDelete) return;
+    setIsDeleting(true);
+    try {
+      const success = await deleteEmployee(empToDelete.id);
+      if (success) {
+        toast({ title: "Operator Permanently Deleted", description: `Record and Auth credentials for @${empToDelete.username} have been removed.` });
+      } else {
+        toast({ variant: "destructive", title: "Deletion Error", description: "Could not remove employee record." });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Deletion Error", description: err.message });
+    } finally {
+      setIsDeleting(false);
+      setEmpToDelete(null);
     }
   };
 
@@ -238,8 +304,20 @@ export function EmployeeManager() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(emp)} className="font-bold uppercase text-sm"><Edit className="mr-2 h-3 w-3"/> Edit Profile</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateEmployee(emp.id, { isActive: false })} className="text-destructive font-bold uppercase text-sm"><Trash className="mr-2 h-3 w-3"/> Remove</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(emp)} className="font-bold uppercase text-sm">
+                          <Edit className="mr-2 h-3.5 w-3.5"/> Edit Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleActive(emp)} className="font-bold uppercase text-sm">
+                          {emp.isActive === false ? (
+                            <><UserCheck className="mr-2 h-3.5 w-3.5 text-emerald-600"/> Reactivate Operator</>
+                          ) : (
+                            <><UserX className="mr-2 h-3.5 w-3.5 text-amber-500"/> Deactivate Access</>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setEmpToDelete(emp)} className="text-destructive font-bold uppercase text-sm">
+                          <Trash className="mr-2 h-3.5 w-3.5"/> Delete Permanently
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -250,6 +328,7 @@ export function EmployeeManager() {
         </Table>
       </CardContent>
 
+      {/* Add / Edit Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -396,6 +475,27 @@ export function EmployeeManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!empToDelete} onOpenChange={(open) => !open && setEmpToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-headline text-lg flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Permanently Delete Operator?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 pt-1">
+              <p>Are you sure you want to permanently delete <strong>{empToDelete?.displayName}</strong> (<code>@{empToDelete?.username}</code>)?</p>
+              <p className="text-xs text-muted-foreground">This will remove their profile record from Firestore and wipe their login credentials from Firebase Authentication. This action cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={isDeleting} className="bg-destructive text-white hover:bg-destructive/90 font-bold uppercase">
+              {isDeleting ? 'Deleting...' : 'Permanently Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
