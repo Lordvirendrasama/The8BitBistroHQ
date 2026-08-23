@@ -64,7 +64,7 @@ export function RechargeModal({ isOpen, onOpenChange, member }: RechargeModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-md h-[90vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-yellow-500/30 shadow-2xl rounded-xl">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Zap className="text-yellow-500 h-5 w-5" />

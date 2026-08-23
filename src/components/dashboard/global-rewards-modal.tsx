@@ -59,7 +59,7 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl font-body">
+      <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-4xl h-[94vh] sm:h-[85vh] flex flex-col p-0 overflow-hidden border-2 border-emerald-500/30 shadow-2xl font-body rounded-xl">
         <DialogHeader className="p-6 pb-2 bg-emerald-600 text-white shrink-0">
           <DialogTitle className="flex items-center gap-3 text-xl font-display uppercase tracking-tight">
             <Gift className="h-6 w-6" />

@@ -406,7 +406,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[98vw] sm:max-w-2xl h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl font-body">
+      <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-2xl h-[94vh] sm:h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl font-body rounded-xl">
         <DialogHeader className="px-4 pt-4 pb-2 relative shrink-0 border-b bg-muted/5">
           <DialogTitle className="font-headline text-xl sm:text-2xl text-primary tracking-tight uppercase">
               {step === 'selection' ? 'ASSIGN PLAYERS' : 'CONFIGURE LOGINS'}

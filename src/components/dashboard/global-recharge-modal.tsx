@@ -69,7 +69,7 @@ export function GlobalRechargeModal({ isOpen, onOpenChange, members }: GlobalRec
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl font-body">
+        <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-md h-[90vh] sm:h-[80vh] flex flex-col p-0 overflow-hidden border-2 border-yellow-500/30 shadow-2xl font-body rounded-xl">
           <DialogHeader className="p-6 pb-2 bg-yellow-500 text-black shrink-0">
             <DialogTitle className="flex items-center gap-3 text-xl font-display uppercase tracking-tight">
               <Zap className="h-6 w-6 fill-current" />

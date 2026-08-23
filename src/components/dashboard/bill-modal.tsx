@@ -267,21 +267,21 @@ export function BillModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] md:max-w-7xl h-[92vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="w-[98vw] max-w-[98vw] md:max-w-7xl h-[94vh] md:h-[92vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl rounded-xl">
         <div className="flex flex-col shrink-0 bg-background border-b z-20">
-            <DialogHeader className="px-4 pt-3 md:px-5 md:pt-4 pb-1 relative">
+            <DialogHeader className="px-4 pt-3 md:px-5 md:pt-4 pb-2 relative">
                 <div className="flex justify-between items-start gap-2 pr-8">
                     <div className="min-w-0">
-                        <DialogTitle className="font-headline tracking-[0.1em] text-lg md:text-2xl text-primary truncate">{station.name}</DialogTitle>
-                        <DialogDescription className="font-bold text-sm uppercase tracking-normal text-muted-foreground hidden sm:block">
+                        <DialogTitle className="font-headline tracking-[0.1em] text-xl md:text-2xl text-primary truncate">{station.name}</DialogTitle>
+                        <DialogDescription className="font-bold text-xs md:text-sm uppercase tracking-normal text-muted-foreground hidden sm:block">
                             Station Management
                         </DialogDescription>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
                         {(station.members || []).map(m => (
-                            <Badge key={m.id} variant="outline" className="h-5 md:h-7 gap-1 pl-1 pr-2 rounded-full bg-muted/50 border-primary/20">
-                                <Avatar className="h-3.5 w-3.5 md:h-5 md:w-5 border-none"><AvatarFallback className="text-sm md:text-sm">{m.name[0]}</AvatarFallback></Avatar>
-                                <span className="font-bold text-sm md:text-sm uppercase truncate max-w-[45px]">{m.name}</span>
+                            <Badge key={m.id} variant="outline" className="h-6 md:h-7 gap-1 pl-1 pr-2 rounded-full bg-muted/50 border-primary/20">
+                                <Avatar className="h-4 w-4 md:h-5 md:w-5 border-none"><AvatarFallback className="text-xs md:text-sm">{m.name[0]}</AvatarFallback></Avatar>
+                                <span className="font-bold text-xs md:text-sm uppercase truncate max-w-[60px]">{m.name}</span>
                             </Badge>
                         ))}
                     </div>
@@ -296,21 +296,21 @@ export function BillModal({
                 <button 
                     onClick={() => setActiveTab('menu')}
                     className={cn(
-                        "flex-1 h-10 font-bold uppercase text-sm tracking-normal border-b-4 transition-all", 
-                        activeTab === 'menu' ? "border-primary text-primary bg-primary/5" : "border-transparent text-muted-foreground"
+                        "flex-1 h-11 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-1.5", 
+                        activeTab === 'menu' ? "border-primary text-primary bg-primary/10" : "border-transparent text-muted-foreground"
                     )}
                 >
-                    <Utensils className="inline h-3 w-3 mr-1" /> Menu
+                    <Utensils className="h-4 w-4" /> Menu
                 </button>
                 <button 
                     onClick={() => setActiveTab('review')}
                     className={cn(
-                        "flex-1 h-10 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
-                        activeTab === 'review' ? "border-primary text-primary bg-primary/5" : "border-transparent text-muted-foreground"
+                        "flex-1 h-11 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
+                        activeTab === 'review' ? "border-primary text-primary bg-primary/10" : "border-transparent text-muted-foreground"
                     )}
                 >
                     Review
-                    <Badge className="font-mono h-3.5 px-1 min-w-[16px] bg-primary text-primary-foreground text-sm">{billItems.length}</Badge>
+                    <Badge className="font-mono h-4 px-1.5 min-w-[18px] bg-primary text-primary-foreground text-xs">{billItems.length}</Badge>
                 </button>
             </div>
 

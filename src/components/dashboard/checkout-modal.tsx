@@ -296,7 +296,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !isClosing && onOpenChange(open)}>
-        <DialogContent className="w-[95vw] sm:max-w-lg h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-lg h-[94vh] sm:h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl rounded-xl">
             <DialogHeader className="px-6 pt-5 shrink-0 bg-background border-b pb-3">
                 <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-base sm:text-xl">
                     {step === 'review-bill' && <><Receipt className="h-4 w-4 text-primary" /> BILL REVIEW: {station.name}</>}
