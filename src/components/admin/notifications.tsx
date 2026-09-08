@@ -1,14 +1,14 @@
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where } from 'firebase/firestore';
 import type { AdminNotification } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { Button } from '@/components/ui/button';
-import { X, FileWarning, ShieldAlert, Receipt, Trash2, StickyNote, User } from 'lucide-react';
+import { X, FileWarning, ShieldAlert, Receipt, Trash2, StickyNote, User, CheckCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { dismissAdminNotification } from '@/firebase/firestore/notifications';
+import { dismissAdminNotification, dismissAllAdminNotifications } from '@/firebase/firestore/notifications';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -18,6 +18,7 @@ export function AdminNotifications() {
   const { db } = useFirebase();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isDismissingAll, setIsDismissingAll] = useState(false);
 
   const notificationsQuery = useMemo(() => {
     if (!db) return null;
@@ -44,6 +45,25 @@ export function AdminNotifications() {
     toast({
       title: 'Notification Dismissed',
     });
+  };
+
+  const handleDismissAll = async () => {
+    if (notifications.length === 0) return;
+    setIsDismissingAll(true);
+    try {
+      await dismissAllAdminNotifications(notifications.map((n) => n.id));
+      toast({
+        title: 'All Security Alerts Dismissed',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to dismiss security alerts.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDismissingAll(false);
+    }
   };
 
   const getNotificationStyles = (type: string) => {
@@ -80,8 +100,23 @@ export function AdminNotifications() {
             </Button>
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0">
-            <div className="p-4 border-b">
-                 <h4 className="font-medium leading-none flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" />Security Alerts</h4>
+            <div className="p-4 border-b flex items-center justify-between">
+                 <h4 className="font-medium leading-none flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-primary" />
+                    Security Alerts
+                 </h4>
+                 {notifications.length > 0 && (
+                     <Button
+                         variant="ghost"
+                         size="sm"
+                         className="h-7 px-2 text-xs font-bold uppercase tracking-normal text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1.5"
+                         onClick={handleDismissAll}
+                         disabled={isDismissingAll}
+                     >
+                         <CheckCheck className="h-3.5 w-3.5" />
+                         {isDismissingAll ? 'Dismissing...' : 'Dismiss All'}
+                     </Button>
+                 )}
             </div>
             <div className="space-y-0 max-h-[400px] overflow-y-auto">
                 {notifications.length > 0 ? notifications.map((notification) => {
@@ -115,4 +150,4 @@ export function AdminNotifications() {
         </PopoverContent>
     </Popover>
   );
-}
+}

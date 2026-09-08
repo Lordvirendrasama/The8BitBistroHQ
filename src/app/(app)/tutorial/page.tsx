@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/firebase/auth/use-user';
+import { useToast } from '@/hooks/use-toast';
 import { 
   HelpCircle, 
   Clock, 
@@ -36,6 +38,8 @@ import {
 
 export default function TutorialPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('shift');
   const [stepIndex, setStepIndex] = useState(0);
   
@@ -59,6 +63,14 @@ export default function TutorialPage() {
 
   const handleLaunchLiveTour = () => {
     if (activeTab === 'shift') {
+      if (user?.role === 'staff' || user?.role === 'guest') {
+        toast({
+          title: "Access Restricted",
+          description: "Live tour for Roster & Shift requires Admin or Owner clearances.",
+          variant: "destructive"
+        });
+        return;
+      }
       if (stepIndex === 3) {
         router.push('/profile?tour=leaves');
       } else {

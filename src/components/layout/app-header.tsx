@@ -1493,9 +1493,11 @@ export function AppHeader({
                               </div>
                             )}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => router.push('/profile')} className="font-bold text-sm uppercase h-10 cursor-pointer">
-                                <User className="mr-2 h-4 w-4" /> View Profile
-                            </DropdownMenuItem>
+                            {(user?.role === 'admin' || user?.username === 'Viren') && (
+                              <DropdownMenuItem onClick={() => router.push('/profile')} className="font-bold text-sm uppercase h-10 cursor-pointer">
+                                  <User className="mr-2 h-4 w-4" /> View Profile
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => { 
                                 announceGlobally("This is a test");
                                 toast({ title: "Audio Test Triggered", description: "You should hear 'This is a test'." });

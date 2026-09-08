@@ -78,7 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const hasAccess = useMemo(() => {
     if (loading || !user) return false;
 
-    const isAdmin = user.role === 'admin';
+    const isAdmin = user.role === 'admin' || user.username === 'Viren';
     const isOwner = user.username === 'Viren';
 
     // 1. Owner-only routes
@@ -87,7 +87,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (isOwnerRoute && !isOwner) return false;
 
     // 2. Admin-only routes
-    const adminOnlyPrefixes = ['/settings', '/users', '/analytics', '/attendance', '/leaves', '/staff'];
+    const adminOnlyPrefixes = ['/settings', '/users', '/analytics', '/attendance', '/leaves', '/staff', '/marketing', '/profile'];
     const isAdminRoute = adminOnlyPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
     if (isAdminRoute && !isAdmin) return false;
 

@@ -1,4 +1,4 @@
-export const BASE_VERSION = '1.0.78';
+export const BASE_VERSION = '1.0.79';
 export const ALPHA_CHANGES_COUNT = 0;
 
 export const IS_ALPHA =
