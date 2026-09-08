@@ -30,6 +30,7 @@ import { SessionRequestHandler } from '@/components/dashboard/session-request-ha
 import { archiveBill } from '@/firebase/firestore/bills';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/firebase/auth/use-user';
 import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow, getSyncedDate } from '@/lib/synced-time';
@@ -43,8 +44,11 @@ const tierMultipliers: Record<MemberTier, number> = {
 
 function DashboardContent() {
   const { db } = useFirebase();
+  const { user } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
+
+  const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
@@ -968,53 +972,39 @@ function DashboardContent() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <div id="cafe-dashboard-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-headline text-3xl sm:text-4xl tracking-wider text-foreground">Cafe Dashboard</h1>
-            <Button 
-                onClick={() => { setTourOpen(true); }} 
-                variant="outline" 
-                size="sm"
-                className="h-7 px-2 font-bold uppercase tracking-tight text-[10px] border-primary/20 text-primary hover:bg-primary/5 rounded animate-in fade-in"
-            >
-                <HelpCircle className="mr-1 h-3.5 w-3.5" /> Start Tour
-            </Button>
-          </div>
-          <p className="mt-1 sm:mt-2 text-sm sm:sm text-muted-foreground uppercase font-bold tracking-normal opacity-60">Manage PS5 units and game tables.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-3 sm:space-y-4 -mt-2 sm:-mt-4">
+      {isAdmin && (
+        <div id="cafe-dashboard-header" className="flex flex-wrap items-center justify-end gap-2 pb-1">
             <Button 
                 id="guest-login-btn"
                 onClick={() => setIsGuestWizardOpen(true)} 
-                className="h-12 px-6 font-bold uppercase tracking-normal bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg animate-in fade-in slide-in-from-right-4 duration-500 gap-2"
+                className="h-9 px-4 font-bold uppercase tracking-normal bg-primary hover:bg-primary/90 text-primary-foreground shadow-md animate-in fade-in gap-1.5 text-xs"
             >
-                <Sparkles className="h-5 w-5" />
+                <Sparkles className="h-3.5 w-3.5" />
                 Guest Login &amp; Check-in
             </Button>
             <Button 
                 id="redeem-perks-btn"
                 onClick={() => setIsRewardsModalOpen(true)} 
-                className="h-12 px-6 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
+                className="h-9 px-4 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-md animate-in fade-in text-xs"
             >
-                <Gift className="mr-2 h-5 w-5 fill-current" />
+                <Gift className="mr-1.5 h-3.5 w-3.5 fill-current" />
                 Redeem Perks
             </Button>
             <Button 
                 id="quick-recharge-btn"
                 onClick={() => setIsRechargeModalOpen(true)} 
-                className="h-12 px-6 font-bold uppercase tracking-normal bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
+                className="h-9 px-4 font-bold uppercase tracking-normal bg-yellow-500 hover:bg-yellow-600 text-black shadow-md animate-in fade-in text-xs"
             >
-                <Zap className="mr-2 h-5 w-5 fill-current" />
+                <Zap className="mr-1.5 h-3.5 w-3.5 fill-current" />
                 Quick Recharge
             </Button>
         </div>
-      </div>
+      )}
 
-      <div className="space-y-6 sm:space-y-8">
+      <div className="space-y-3 sm:space-y-4">
         <Card className="border-none shadow-none bg-transparent">
-          <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
+          <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-primary"/> PS5 Consoles</CardTitle>
             <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleManage('ps5')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
@@ -1045,7 +1035,7 @@ function DashboardContent() {
         </Card>
 
         <Card className="border-none shadow-none bg-transparent">
-          <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
+          <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Users className="h-5 sm:h-6 w-5 sm:w-6 text-primary" /> Board Games</CardTitle>
             <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>

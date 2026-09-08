@@ -39,6 +39,13 @@ export default function BillingHistoryPage() {
     }, []);
 
     const canEdit = user?.role === 'admin' || user?.role === 'staff' || user?.role === 'guest';
+    const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
+
+    useEffect(() => {
+        if (!isAdmin) {
+            setDate(new Date());
+        }
+    }, [isAdmin]);
 
     const billsQuery = useMemo(() => {
         if (!db) return null;
@@ -64,10 +71,11 @@ export default function BillingHistoryPage() {
 
     const filteredBills = useMemo(() => {
         if (!bills) return [];
-        if (!date) return bills;
-        const selectedBusinessDate = getBusinessDate(date, true);
+        const effectiveDate = isAdmin ? date : new Date();
+        if (!effectiveDate) return bills;
+        const selectedBusinessDate = getBusinessDate(effectiveDate, true);
         return bills.filter(bill => getBusinessDate(new Date(bill.timestamp)) === selectedBusinessDate);
-    }, [bills, date]);
+    }, [bills, date, isAdmin]);
 
     const { filteredTotal, filteredCashTotal, filteredUpiTotal, filteredDistrictTotal } = useMemo(() => {
         return filteredBills.reduce((acc, bill) => {
@@ -182,38 +190,45 @@ export default function BillingHistoryPage() {
                     )}
                 </div>
                  <div className="flex flex-col xs:flex-row gap-3 items-stretch xs:items-center">
-                    <div className="flex items-center bg-muted/30 rounded-xl p-1 border-2 border-dashed">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-10 w-10" 
-                            onClick={() => setDate(prev => subDays(prev || new Date(), 1))}
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                        </Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" className={cn("h-10 px-4 justify-start text-left font-bold uppercase text-sm tracking-normal", !date && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                                    {date ? format(date, "MMM dd, yyyy") : <span>All History</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end">
-                                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                                <div className="p-1 border-t border-border">
-                                    <Button variant="ghost" onClick={() => setDate(undefined)} className="w-full text-sm font-bold uppercase">View Full History</Button>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-10 w-10" 
-                            onClick={() => setDate(prev => addDays(prev || new Date(), 1))}
-                        >
-                            <ChevronRight className="h-5 w-5" />
-                        </Button>
-                    </div>
+                     {isAdmin ? (
+                        <div className="flex items-center bg-muted/30 rounded-xl p-1 border-2 border-dashed">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-10 w-10" 
+                                onClick={() => setDate(prev => subDays(prev || new Date(), 1))}
+                            >
+                                <ChevronLeft className="h-5 w-5" />
+                            </Button>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" className={cn("h-10 px-4 justify-start text-left font-bold uppercase text-sm tracking-normal", !date && "text-muted-foreground")}>
+                                        <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                        {date ? format(date, "MMM dd, yyyy") : <span>All History</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="end">
+                                    <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                                    <div className="p-1 border-t border-border">
+                                        <Button variant="ghost" onClick={() => setDate(undefined)} className="w-full text-sm font-bold uppercase">View Full History</Button>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-10 w-10" 
+                                onClick={() => setDate(prev => addDays(prev || new Date(), 1))}
+                            >
+                                <ChevronRight className="h-5 w-5" />
+                            </Button>
+                        </div>
+                     ) : (
+                        <div className="flex items-center bg-muted/30 rounded-xl px-4 h-11 border-2 border-dashed font-bold uppercase text-sm text-foreground gap-2">
+                            <CalendarIcon className="h-4 w-4 text-primary" />
+                            <span>{format(new Date(), "MMM dd, yyyy")} (Today)</span>
+                        </div>
+                     )}
                     <div className="flex flex-wrap gap-2">
                         <div className="bg-emerald-500/5 border-2 border-emerald-500/20 rounded-lg px-3 py-1.5 flex flex-col justify-center shrink-0">
                             <p className="text-sm font-bold text-emerald-600 uppercase tracking-normal leading-none mb-1 flex items-center gap-1">

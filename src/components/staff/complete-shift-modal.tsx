@@ -1,4 +1,3 @@
-
 'use client';
 import type { Shift, ShiftTask, Bill, Debt, Employee, Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -10,10 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Moon, IndianRupee, Wallet, ListChecks, TrendingUp, AlertTriangle, User, Phone, Info, MinusCircle, PlusCircle, Clock, MapPin, ShoppingCart, RefreshCw, Link2 } from 'lucide-react';
+import { Moon, Wallet, TrendingUp, AlertTriangle, User, Phone, MinusCircle, PlusCircle, ShoppingCart, RefreshCw, Link2 } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Input } from '../ui/input';
@@ -28,7 +26,7 @@ interface CompleteShiftModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   activeShift: Shift | null;
-  onTaskToggle: (task: ShiftTask) => void;
+  onTaskToggle?: (task: ShiftTask) => void;
   onConfirmLogout: (totals: { cashTotal: number, upiTotal: number, shiftExpenses: number }, forceLogout: boolean) => void;
 }
 
@@ -36,7 +34,6 @@ export function CompleteShiftModal({
   isOpen,
   onOpenChange,
   activeShift,
-  onTaskToggle,
   onConfirmLogout,
 }: CompleteShiftModalProps) {
   const { user } = useAuth();
@@ -158,19 +155,7 @@ export function CompleteShiftModal({
       opExpenses: totalOpExpenses, 
       activeDebtors: todayDebts.filter(d => d.type === 'receivable') 
     };
-}, [bills, debts, totalOpExpenses]);
-
-  const visibleTasks = useMemo(() => {
-    if (!activeShift?.tasks) return [];
-    return activeShift.tasks.filter((task) => 
-        task.type !== 'strategic'
-    );
-  }, [activeShift]);
-
-  const allTasksCompleted = useMemo(() => {
-    if (!activeShift) return false;
-    return activeShift.tasks.filter(t => t.type !== 'strategic').every(task => task.completed);
-  }, [activeShift]);
+  }, [bills, debts, totalOpExpenses]);
 
   const enteredCash = parseFloat(cashTotal) || 0;
   const enteredUpi = parseFloat(upiTotal) || 0;
@@ -181,18 +166,14 @@ export function CompleteShiftModal({
   const variance = totalEntered - totalExpected;
 
   const handleConfirm = () => {
-    onConfirmLogout({ cashTotal: enteredCash, upiTotal: enteredUpi, shiftExpenses: enteredExpenses }, !allTasksCompleted);
-  };
-  
-  const handleLogoutAnyway = () => {
-    onConfirmLogout({ cashTotal: enteredCash, upiTotal: enteredUpi, shiftExpenses: enteredExpenses }, true);
+    onConfirmLogout({ cashTotal: enteredCash, upiTotal: enteredUpi, shiftExpenses: enteredExpenses }, false);
   };
 
   const titleText = activeShift?.shiftType === 'opening' ? 'Opening Shift Complete' : activeShift?.shiftType === 'closing' ? 'Closing Shift Complete' : 'Complete Shift';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-2xl lg:max-w-5xl h-[95vh] lg:h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl font-body">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl lg:max-w-3xl h-[95vh] lg:h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl font-body">
         <DialogHeader className="p-4 sm:p-6 bg-muted/10 border-b shrink-0">
           <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-display uppercase tracking-tight">
             <Moon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
@@ -216,271 +197,200 @@ export function CompleteShiftModal({
                 </div>
             )}
 
-            {!allTasksCompleted && (
-                <div className="p-4 rounded-xl border-2 border-amber-500 bg-amber-500/5 flex items-center gap-3 animate-pulse">
-                    <AlertTriangle className="h-6 w-6 text-amber-500" />
-                    <div className="space-y-0.5">
-                        <p className="font-bold uppercase text-sm text-amber-600">Pending Shift Tasks</p>
-                        <p className="text-sm font-bold text-foreground">
-                            You have <span className="text-amber-600 font-bold">{activeShift?.tasks.filter(t => !t.completed && t.type !== 'strategic').length} checklist items</span> remaining. Please review and check the remaining items in the accountability checklist on the right to finish.
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* LEFT COLUMN: Expected and Physical Tally */}
-              <div className="lg:col-span-7 space-y-6">
-                <div className="p-4 sm:p-5 rounded-2xl border-2 bg-muted/5 space-y-4 shadow-sm">
-                  <div>
-                    <h3 className="font-bold text-sm sm:text-sm uppercase tracking-normal text-muted-foreground flex items-center gap-2 mb-3">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      System Reconciliation
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-                        <div className="space-y-1">
-                            <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Expected Cash</p>
-                            <p className="text-sm sm:text-base font-bold text-emerald-600 font-mono">₹{systemTally.cash.toLocaleString()}</p>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Expected UPI</p>
-                            <p className="text-sm sm:text-base font-bold text-primary font-mono">₹{systemTally.upi.toLocaleString()}</p>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Op. Expenses</p>
-                            <p className="text-sm sm:text-base font-bold text-destructive font-mono">₹{totalOpExpenses.toLocaleString()}</p>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">District</p>
-                            <p className="text-sm sm:text-base font-bold text-amber-600 font-mono">₹{systemTally.district.toLocaleString()}</p>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Owed (Debts)</p>
-                            <p className="text-sm sm:text-base font-bold text-amber-600 font-mono">₹{systemTally.pending.toLocaleString()}</p>
-                        </div>
-                    </div>
-                  </div>
-
-                  {(enteredCash > 0 || enteredUpi > 0 || enteredExpenses > 0) && (
-                    <div className={cn(
-                      "p-3 sm:p-4 rounded-xl border-2 animate-in fade-in zoom-in-95 duration-300",
-                      variance === 0 ? "bg-emerald-500/5 border-emerald-500/20" : 
-                      variance < 0 ? "bg-destructive/5 border-destructive/20" : "bg-blue-500/5 border-blue-500/20"
-                    )}>
-                      <div className="flex justify-between items-center">
-                        <div className="space-y-0.5">
-                          <p className="text-sm sm:text-sm font-bold uppercase tracking-normal text-muted-foreground">EOD Financial Reconciled Total</p>
-                          <div className="flex items-baseline gap-2 font-mono">
-                            <span className="text-lg sm:text-2xl font-bold text-foreground">₹{totalEntered.toLocaleString()}</span>
-                            <span className="text-xs text-muted-foreground font-semibold uppercase">Expected Revenue: ₹{totalExpected.toLocaleString()}</span>
-                          </div>
-                          <p className={cn("text-xs font-bold uppercase pt-0.5", 
-                            variance === 0 ? "text-emerald-600" : 
-                            variance < 0 ? "text-destructive" : "text-blue-600"
-                          )}>
-                            Shift Variance: {variance === 0 ? 'Perfect Match (₹0)' : `${variance < 0 ? '-' : '+'} ₹${Math.abs(variance).toLocaleString()}`}
-                          </p>
-                        </div>
-                        {variance < 0 ? (
-                          <div className="bg-destructive/10 text-destructive p-1.5 sm:p-2 rounded-lg flex items-center gap-2">
-                            <MinusCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                            <span className="text-sm font-bold uppercase">Short</span>
-                          </div>
-                        ) : variance > 0 ? (
-                          <div className="bg-blue-500/10 text-blue-600 p-1.5 sm:p-2 rounded-lg flex items-center gap-2">
-                            <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                            <span className="text-sm font-bold uppercase">Surplus</span>
-                          </div>
-                        ) : (
-                          <Badge className="bg-emerald-600 uppercase font-bold text-sm sm:text-sm">OK</Badge>
-                        )}
+            <div className="space-y-6">
+              {/* Expected and Physical Tally */}
+              <div className="p-4 sm:p-5 rounded-2xl border-2 bg-muted/5 space-y-4 shadow-sm">
+                <div>
+                  <h3 className="font-bold text-sm sm:text-sm uppercase tracking-normal text-muted-foreground flex items-center gap-2 mb-3">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    System Reconciliation
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+                      <div className="space-y-1">
+                          <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Expected Cash</p>
+                          <p className="text-sm sm:text-base font-bold text-emerald-600 font-mono">₹{systemTally.cash.toLocaleString()}</p>
                       </div>
-                    </div>
-                  )}
+                      <div className="space-y-1">
+                          <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Expected UPI</p>
+                          <p className="text-sm sm:text-base font-bold text-primary font-mono">₹{systemTally.upi.toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1">
+                          <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Op. Expenses</p>
+                          <p className="text-sm sm:text-base font-bold text-destructive font-mono">₹{totalOpExpenses.toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1">
+                          <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">District</p>
+                          <p className="text-sm sm:text-base font-bold text-amber-600 font-mono">₹{systemTally.district.toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1">
+                          <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground opacity-60">Owed (Debts)</p>
+                          <p className="text-sm sm:text-base font-bold text-amber-600 font-mono">₹{systemTally.pending.toLocaleString()}</p>
+                      </div>
+                  </div>
                 </div>
 
-                {systemTally.activeDebtors.length > 0 && (
-                  <div className="space-y-3">
-                    <h3 className="font-bold text-sm sm:text-sm uppercase tracking-normal text-muted-foreground flex items-center gap-2 pl-1">
-                      <User className="h-3.5 w-3.5" />
-                      Active Debtors
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {systemTally.activeDebtors.map(debt => (
-                        <div key={debt.id} className="p-2.5 sm:p-3 rounded-xl border-2 border-dashed bg-amber-500/5 flex items-center justify-between group">
-                          <div className="min-w-0">
-                            <p className="font-bold text-sm sm:text-sm uppercase truncate text-amber-700">{debt.contactName}</p>
-                            <p className="text-sm sm:text-sm font-bold text-muted-foreground uppercase flex items-center gap-1">
-                              <Phone className="h-2.5 w-2.5" /> {debt.contactPhone || 'No Phone'}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-mono font-bold text-sm sm:text-sm text-amber-600">₹{debt.amount.toLocaleString()}</p>
-                          </div>
+                {(enteredCash > 0 || enteredUpi > 0 || enteredExpenses > 0) && (
+                  <div className={cn(
+                    "p-3 sm:p-4 rounded-xl border-2 animate-in fade-in zoom-in-95 duration-300",
+                    variance === 0 ? "bg-emerald-500/5 border-emerald-500/20" : 
+                    variance < 0 ? "bg-destructive/5 border-destructive/20" : "bg-blue-500/5 border-blue-500/20"
+                  )}>
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-0.5">
+                        <p className="text-sm sm:text-sm font-bold uppercase tracking-normal text-muted-foreground">EOD Financial Reconciled Total</p>
+                        <div className="flex items-baseline gap-2 font-mono">
+                          <span className="text-lg sm:text-2xl font-bold text-foreground">₹{totalEntered.toLocaleString()}</span>
+                          <span className="text-xs text-muted-foreground font-semibold uppercase">Expected Revenue: ₹{totalExpected.toLocaleString()}</span>
                         </div>
-                      ))}
+                        <p className={cn("text-xs font-bold uppercase pt-0.5", 
+                          variance === 0 ? "text-emerald-600" : 
+                          variance < 0 ? "text-destructive" : "text-blue-600"
+                        )}>
+                          Shift Variance: {variance === 0 ? 'Perfect Match (₹0)' : `${variance < 0 ? '-' : '+'} ₹${Math.abs(variance).toLocaleString()}`}
+                        </p>
+                      </div>
+                      {variance < 0 ? (
+                        <div className="bg-destructive/10 text-destructive p-1.5 sm:p-2 rounded-lg flex items-center gap-2">
+                          <MinusCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <span className="text-sm font-bold uppercase">Short</span>
+                        </div>
+                      ) : variance > 0 ? (
+                        <div className="bg-blue-500/10 text-blue-600 p-1.5 sm:p-2 rounded-lg flex items-center gap-2">
+                          <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <span className="text-sm font-bold uppercase">Surplus</span>
+                        </div>
+                      ) : (
+                        <Badge className="bg-emerald-600 uppercase font-bold text-sm sm:text-sm">OK</Badge>
+                      )}
                     </div>
                   </div>
                 )}
-
-                <div className="space-y-4 bg-card p-4 sm:p-5 rounded-2xl border-2">
-                  <h3 className="font-bold text-sm sm:text-sm uppercase tracking-tight text-muted-foreground flex items-center gap-2">
-                    <Wallet className="h-4 w-4" />
-                    Physical Reconciliation
-                  </h3>
-                  <div className="grid gap-3 sm:gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                      <Label htmlFor="cash-total" className="text-sm sm:text-sm font-bold uppercase w-32 shrink-0">In-Hand Cash</Label>
-                      <div className="relative flex-1">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">₹</span>
-                        <Input
-                          id="cash-total"
-                          type="number"
-                          placeholder="Actual cash..."
-                          value={cashTotal}
-                          onChange={(e) => setCashTotal(e.target.value)}
-                          className="pl-8 h-10 sm:h-12 font-mono font-bold text-base sm:text-lg bg-muted/10 border-2"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                      <Label htmlFor="upi-total" className="text-sm sm:text-sm font-bold uppercase w-32 shrink-0">Settled UPI</Label>
-                      <div className="relative flex-1">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">₹</span>
-                        <Input
-                          id="upi-total"
-                          type="number"
-                          placeholder="UPI summary..."
-                          value={upiTotal}
-                          onChange={(e) => setUpiTotal(e.target.value)}
-                          className="pl-8 h-10 sm:h-12 font-mono font-bold text-base sm:text-lg bg-muted/10 border-2"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                        <Label htmlFor="shift-expenses" className="text-sm sm:text-sm font-bold uppercase w-32 shrink-0 flex items-center gap-1">
-                          Petty Cash Out
-                        </Label>
-                        <div className="relative flex-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-destructive/60 font-bold text-sm">₹</span>
-                          <Input
-                            id="shift-expenses"
-                            type="number"
-                            placeholder="Misc. expenses..."
-                            value={shiftExpenses}
-                            onChange={(e) => {
-                              setShiftExpenses(e.target.value);
-                              setIsExpenseCustomized(true);
-                            }}
-                            className="pl-8 pr-20 h-10 sm:h-12 font-mono font-bold text-base sm:text-lg text-destructive border-2 border-destructive/20 bg-destructive/5 focus-visible:ring-destructive"
-                          />
-                          {isExpenseCustomized ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              title="Re-link to logged Operational Expenses"
-                              onClick={() => {
-                                setIsExpenseCustomized(false);
-                                setShiftExpenses(totalOpExpenses > 0 ? totalOpExpenses.toString() : '0');
-                              }}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 text-xs font-bold text-primary hover:bg-primary/10 gap-1 flex items-center"
-                            >
-                              <RefreshCw className="h-3.5 w-3.5" /> Sync
-                            </Button>
-                          ) : (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                              <Link2 className="h-3 w-3" /> Linked
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="sm:pl-35 flex items-center justify-between text-xs text-muted-foreground font-bold">
-                        <span className="flex items-center gap-1">
-                          <ShoppingCart className="h-3 w-3 text-destructive" />
-                          Logged Op. Expenses: <strong className="text-foreground">₹{totalOpExpenses.toLocaleString()}</strong> ({todayExpensesList.length} items)
-                        </span>
-                      </div>
-                    </div>
-
-                    {todayExpensesList.length > 0 && (
-                      <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
-                        <div className="flex justify-between items-center text-xs font-bold uppercase text-muted-foreground border-b pb-1">
-                          <span className="flex items-center gap-1.5">
-                            <ShoppingCart className="h-3.5 w-3.5 text-destructive" />
-                            Logged Op. Expenses Today
-                          </span>
-                          <span className="font-mono text-destructive">Total: ₹{totalOpExpenses.toLocaleString()}</span>
-                        </div>
-                        <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
-                          {todayExpensesList.map((exp) => (
-                            <div key={exp.id} className="flex justify-between items-center text-xs p-1 rounded bg-background">
-                              <span className="font-semibold uppercase truncate max-w-[220px]">{exp.description}</span>
-                              <span className="font-mono font-bold text-destructive shrink-0">₹{exp.amount}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
 
-              {/* RIGHT COLUMN: Checklist Audit */}
-              <div className="lg:col-span-5 space-y-6">
-                <div className="bg-card p-4 sm:p-5 rounded-2xl border-2 border-dashed space-y-4">
-                  <div className="flex justify-between items-center pb-2 border-b">
-                      <h3 className="font-bold text-sm sm:text-sm uppercase tracking-tight text-muted-foreground flex items-center gap-2">
-                        <ListChecks className="h-4 w-4" />
-                        Accountability Audit
-                      </h3>
-                      {!allTasksCompleted && (
-                          <Badge variant="outline" className="text-sm sm:text-sm font-bold border-destructive/30 text-destructive bg-destructive/5 gap-1 uppercase h-5 sm:h-6 px-2">
-                              <AlertTriangle className="h-3 w-3" /> {activeShift?.tasks.filter(t => !t.completed && t.type !== 'strategic').length} Pending
-                          </Badge>
-                      )}
-                  </div>
-                  <div className="space-y-4">
-                    {visibleTasks.map((task, idx) => (
-                      <div key={`${task.name}-${task.type}-${idx}`} className="flex items-start space-x-3 group">
-                        <Checkbox
-                          id={`eod-${task.name}`}
-                          checked={task.completed}
-                          onCheckedChange={() => onTaskToggle(task)}
-                          className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 border-2"
-                        />
-                         <div className="flex-1">
-                            <Label
-                                htmlFor={`eod-${task.name}`}
-                                className={cn(
-                                  "text-sm sm:text-sm font-bold transition-all cursor-pointer block leading-tight",
-                                  task.completed ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'
-                                )}
-                            >
-                              {task.name}
-                                 {task.shiftType === 'opening' && (
-                                     <Badge variant="outline" className="ml-2 text-sm sm:text-sm font-bold text-amber-600 border-amber-600/30 uppercase h-3.5 sm:h-4">Opening Item</Badge>
-                                 )}
-                            </Label>
-                              {task.completed && task.completedBy ? (
-                                <p className="text-sm sm:text-sm font-medium text-green-600 uppercase mt-1">
-                                    Verified by {task.completedBy.displayName}
-                                </p>
-                              ) : (
-                                  <p className="text-sm sm:text-sm text-destructive/70 font-medium uppercase mt-1">
-                                      Not Verified
-                                  </p>
-                              )}
-                          </div>
+              {systemTally.activeDebtors.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-bold text-sm sm:text-sm uppercase tracking-normal text-muted-foreground flex items-center gap-2 pl-1">
+                    <User className="h-3.5 w-3.5" />
+                    Active Debtors
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {systemTally.activeDebtors.map(debt => (
+                      <div key={debt.id} className="p-2.5 sm:p-3 rounded-xl border-2 border-dashed bg-amber-500/5 flex items-center justify-between group">
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm sm:text-sm uppercase truncate text-amber-700">{debt.contactName}</p>
+                          <p className="text-sm sm:text-sm font-bold text-muted-foreground uppercase flex items-center gap-1">
+                            <Phone className="h-2.5 w-2.5" /> {debt.contactPhone || 'No Phone'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-mono font-bold text-sm sm:text-sm text-amber-600">₹{debt.amount.toLocaleString()}</p>
+                        </div>
                       </div>
                     ))}
-                    {visibleTasks.length === 0 && (
-                        <p className="text-sm sm:text-sm text-muted-foreground text-center py-4 italic">
-                          All tasks verified for this shift.
-                        </p>
-                    )}
                   </div>
+                </div>
+              )}
+
+              <div className="space-y-4 bg-card p-4 sm:p-5 rounded-2xl border-2">
+                <h3 className="font-bold text-sm sm:text-sm uppercase tracking-tight text-muted-foreground flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Physical Reconciliation
+                </h3>
+                <div className="grid gap-3 sm:gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <Label htmlFor="cash-total" className="text-sm sm:text-sm font-bold uppercase w-32 shrink-0">In-Hand Cash</Label>
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">₹</span>
+                      <Input
+                        id="cash-total"
+                        type="number"
+                        placeholder="Actual cash..."
+                        value={cashTotal}
+                        onChange={(e) => setCashTotal(e.target.value)}
+                        className="pl-8 h-10 sm:h-12 font-mono font-bold text-base sm:text-lg bg-muted/10 border-2"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <Label htmlFor="upi-total" className="text-sm sm:text-sm font-bold uppercase w-32 shrink-0">Settled UPI</Label>
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">₹</span>
+                      <Input
+                        id="upi-total"
+                        type="number"
+                        placeholder="UPI summary..."
+                        value={upiTotal}
+                        onChange={(e) => setUpiTotal(e.target.value)}
+                        className="pl-8 h-10 sm:h-12 font-mono font-bold text-base sm:text-lg bg-muted/10 border-2"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                      <Label htmlFor="shift-expenses" className="text-sm sm:text-sm font-bold uppercase w-32 shrink-0 flex items-center gap-1">
+                        Petty Cash Out
+                      </Label>
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-destructive/60 font-bold text-sm">₹</span>
+                        <Input
+                          id="shift-expenses"
+                          type="number"
+                          placeholder="Misc. expenses..."
+                          value={shiftExpenses}
+                          onChange={(e) => {
+                            setShiftExpenses(e.target.value);
+                            setIsExpenseCustomized(true);
+                          }}
+                          className="pl-8 pr-20 h-10 sm:h-12 font-mono font-bold text-base sm:text-lg text-destructive border-2 border-destructive/20 bg-destructive/5 focus-visible:ring-destructive"
+                        />
+                        {isExpenseCustomized ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            title="Re-link to logged Operational Expenses"
+                            onClick={() => {
+                              setIsExpenseCustomized(false);
+                              setShiftExpenses(totalOpExpenses > 0 ? totalOpExpenses.toString() : '0');
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 text-xs font-bold text-primary hover:bg-primary/10 gap-1 flex items-center"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" /> Sync
+                          </Button>
+                        ) : (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Link2 className="h-3 w-3" /> Linked
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="sm:pl-35 flex items-center justify-between text-xs text-muted-foreground font-bold">
+                      <span className="flex items-center gap-1">
+                        <ShoppingCart className="h-3 w-3 text-destructive" />
+                        Logged Op. Expenses: <strong className="text-foreground">₹{totalOpExpenses.toLocaleString()}</strong> ({todayExpensesList.length} items)
+                      </span>
+                    </div>
+                  </div>
+
+                  {todayExpensesList.length > 0 && (
+                    <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
+                      <div className="flex justify-between items-center text-xs font-bold uppercase text-muted-foreground border-b pb-1">
+                        <span className="flex items-center gap-1.5">
+                          <ShoppingCart className="h-3.5 w-3.5 text-destructive" />
+                          Logged Op. Expenses Today
+                        </span>
+                        <span className="font-mono text-destructive">Total: ₹{totalOpExpenses.toLocaleString()}</span>
+                      </div>
+                      <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                        {todayExpensesList.map((exp) => (
+                          <div key={exp.id} className="flex justify-between items-center text-xs p-1 rounded bg-background">
+                            <span className="font-semibold uppercase truncate max-w-[220px]">{exp.description}</span>
+                            <span className="font-mono font-bold text-destructive shrink-0">₹{exp.amount}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -491,11 +401,6 @@ export function CompleteShiftModal({
           <Button variant="outline" onClick={() => onOpenChange(false)} className="h-10 sm:h-12 uppercase font-bold text-sm sm:text-sm tracking-normal flex-1 border-2">
             CANCEL
           </Button>
-          {!allTasksCompleted && (
-            <Button variant="secondary" onClick={handleLogoutAnyway} className="h-10 sm:h-12 uppercase font-bold text-sm sm:text-sm tracking-normal flex-1 border-2 border-amber-500/20 text-amber-700 bg-amber-500/5 hover:bg-amber-500/10">
-              FORCE EXIT
-            </Button>
-          )}
           <Button
             variant="destructive"
             onClick={handleConfirm}
@@ -508,4 +413,3 @@ export function CompleteShiftModal({
     </Dialog>
   );
 }
-
