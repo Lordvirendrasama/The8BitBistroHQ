@@ -17,7 +17,8 @@ import { getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/dat
 import { computeOwnerPulseData } from '@/lib/business-rules';
 import { getBusinessDate, formatDateDDMMYYYY } from '@/lib/utils';
 
-// 10 Core Modules
+// 11 Core Modules
+import { OwnerPulseBrief } from '@/components/owner-pulse/owner-pulse-brief';
 import { OwnerPulseExecutiveSummary } from '@/components/owner-pulse/owner-pulse-executive-summary';
 import { OwnerPulseRulesInsights } from '@/components/owner-pulse/owner-pulse-rules-insights';
 import { OwnerPulseGrowthCentre } from '@/components/owner-pulse/owner-pulse-growth-centre';
@@ -296,6 +297,11 @@ export default function OwnerDashboardPage() {
           <Activity className="h-3.5 w-3.5" /> Operations
         </Button>
       </div>
+
+      {/* 0. OWNER BRIEF */}
+      <section id="owner-brief">
+        <OwnerPulseBrief data={pulseData.ownerBrief} />
+      </section>
 
       {/* 1. EXECUTIVE SUMMARY & HEALTH SCORE BANNER */}
       <section id="exec-summary">

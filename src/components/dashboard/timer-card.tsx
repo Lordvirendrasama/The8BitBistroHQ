@@ -31,6 +31,7 @@ interface TimerCardProps {
   onTogglePlayerTimer?: (stationId: string, playerId: string) => void;
   allMembers?: Member[];
   gamingPackages?: GamingPackage[];
+  compactMode?: boolean;
 }
 
 
@@ -144,7 +145,20 @@ const IndividualPlayerTimer = ({
 };
 
 
-export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillModal, onOpenEditTimeModal, onOpenMoveModal, onStopPlayer, onOpenJoinModal, onTogglePlayerTimer, allMembers, gamingPackages }: TimerCardProps) {
+export function TimerCard({ 
+  station, 
+  onToggleTimer, 
+  onStopSession, 
+  onOpenBillModal, 
+  onOpenEditTimeModal, 
+  onOpenMoveModal, 
+  onStopPlayer, 
+  onOpenJoinModal, 
+  onTogglePlayerTimer, 
+  allMembers, 
+  gamingPackages,
+  compactMode = false 
+}: TimerCardProps) {
   const { user } = useAuth();
   const isViren = user?.username === 'Viren' || user?.role === 'admin';
   const { isCustomerView } = useCustomerView();
@@ -477,10 +491,38 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
 
   return (
     <Card className={cn(
-        "flex flex-col transition-all h-full overflow-hidden border-2 shadow-sm font-body min-h-[340px]",
+        "group flex flex-col transition-all h-full overflow-hidden border-2 shadow-sm font-body relative",
+        !(compactMode && station.status === 'available') && "min-h-[340px]",
         cardBorderColor,
         cardBgColor
     )}>
+      {user?.role === 'admin' && station.status !== 'available' && (
+          <Button
+            variant="destructive"
+            size="icon"
+            className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-50 rounded-full shadow-md"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("Are you sure you want to silently close this session without recording any billing or logs?")) {
+                 updateStation(station.id, {
+                   status: 'available',
+                   startTime: null,
+                   endTime: null,
+                   members: [],
+                   currentBill: [],
+                   packageName: null,
+                   pauseStartTime: null,
+                   remainingTimeOnPause: null,
+                   finishingStartTime: null
+                 });
+                 toast({ title: 'Session Cleared', description: 'Session was closed silently.' });
+              }
+            }}
+            title="Silently Close Session"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+      )}
       <CardHeader className="flex-row items-start justify-between space-y-0 pb-2 p-4">
         <div className="flex flex-col gap-1">
             <CardTitle className="text-lg font-display tracking-tight uppercase flex items-center gap-2">
@@ -567,7 +609,8 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
       </CardHeader>
       
       <CardContent className="flex-grow flex flex-col items-center justify-center py-2 px-4 relative">
-        <div className="flex flex-col items-center mb-4">
+        {!(compactMode && station.status === 'available') && (
+            <div className="flex flex-col items-center mb-4">
             {isFinishing ? (
                 <div className="flex flex-col items-center">
                     <div className={cn(
@@ -623,10 +666,11 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 </>
             )}
         </div>
+        )}
 
         {/* QUICK TIME ADJUSTMENT BAR */}
         {(isRunning || isPaused || isFinishing) && (
-          <div className="w-full mt-2 bg-muted/20 border border-border/50 rounded-xl p-1.5 flex items-center justify-between gap-1 shadow-sm">
+          <div className="w-full mt-2 bg-muted/20 border border-border/50 rounded-xl p-1.5 flex items-center justify-center gap-4 shadow-sm">
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
@@ -716,6 +760,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
             </div>
         )}
 
+        {!(compactMode && station.status === 'available') && (
         <Popover open={isManageOpen} onOpenChange={setIsManageOpen}>
             <div className="h-14 flex items-center justify-center">
             {(isRunning || isPaused || isFinishing) && (station.members || []).length > 0 ? (
@@ -836,6 +881,7 @@ export function TimerCard({ station, onToggleTimer, onStopSession, onOpenBillMod
                 </PopoverContent>
             )}
         </Popover>
+        )}
 
         <div className="flex flex-col items-center gap-1 mt-2">
             {station.startTime && (isRunning || isPaused || isFinishing) && (

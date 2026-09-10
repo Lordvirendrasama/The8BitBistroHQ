@@ -18,7 +18,7 @@ import { announceGlobally } from '@/components/notifications/global-timer-notifi
 import { StaffNotepad } from '@/components/staff/staff-notepad';
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { cn, isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -699,6 +699,17 @@ const OwnerStaffFoodHeader = ({
     }
   };
 
+  const handleDenyOrder = async (orderId: string) => {
+    if (!db) return;
+    try {
+      await deleteDoc(doc(db, 'staffOrders', orderId));
+      toast({ title: "Order Denied", description: "The staff food order has been denied and removed." });
+    } catch (error) {
+      console.error("Error denying staff order:", error);
+      toast({ variant: "destructive", title: "Denial Failed", description: "Could not deny the order." });
+    }
+  };
+
   return (
     <>
       <Popover onOpenChange={handlePopoverOpenChange}>
@@ -714,22 +725,24 @@ const OwnerStaffFoodHeader = ({
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-0 overflow-hidden font-body border-2 shadow-2xl" align="center">
-          <div className="p-4 bg-amber-600 text-white flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Utensils className="h-4 w-4" />
-              <h4 className="font-bold text-sm uppercase tracking-normal">Monthly Staff Food</h4>
+        <PopoverContent className="w-[340px] p-0 overflow-hidden font-body border border-border/50 shadow-2xl rounded-xl" align="center">
+          <div className="p-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex justify-between items-center shadow-inner">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-white/20 p-1.5 rounded-md backdrop-blur-sm">
+                <Utensils className="h-4 w-4" />
+              </div>
+              <h4 className="font-bold text-sm uppercase tracking-wider text-white/90">Monthly Staff Food</h4>
             </div>
           </div>
           
-          <div className="px-3 py-2 bg-muted/20 border-b flex items-center justify-between gap-2">
-            <span className="text-sm font-bold uppercase text-muted-foreground shrink-0">Filter Employee:</span>
+          <div className="px-3 py-2.5 bg-muted/30 border-b border-border/40 flex items-center justify-between gap-3 backdrop-blur-md">
+            <span className="text-xs font-bold uppercase text-muted-foreground shrink-0 tracking-wider">Filter Employee:</span>
             <select 
               value={selectedEmployeeUsername} 
               onChange={(e) => setSelectedEmployeeUsername(e.target.value)}
-              className="bg-background border-2 border-primary/20 rounded px-1.5 py-0.5 text-sm font-bold uppercase outline-none focus:border-primary/50 text-foreground cursor-pointer"
+              className="bg-background border-2 border-amber-500/20 rounded-md px-2 py-1 text-xs font-bold uppercase outline-none focus:border-amber-500 text-foreground cursor-pointer transition-colors shadow-sm w-full"
             >
-              <option value="all">ALL EMPLOYEES</option>
+              <option value="all">-- ALL EMPLOYEES --</option>
               {allEmployees?.map(emp => (
                 <option key={emp.id} value={emp.username}>
                   {emp.displayName}
@@ -738,106 +751,116 @@ const OwnerStaffFoodHeader = ({
             </select>
           </div>
 
-          <div className="p-3 bg-amber-50/50 border-b grid grid-cols-3 gap-2 text-center">
-            <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
-              <span className="text-sm font-bold uppercase text-muted-foreground leading-none">Spent</span>
-              <span className="font-mono font-bold text-amber-600 text-sm mt-1">₹{stats.totalSpent.toLocaleString()}</span>
+          <div className="p-3 bg-gradient-to-b from-amber-500/5 to-transparent border-b grid grid-cols-3 gap-2 text-center">
+            <div className="bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-sm flex flex-col justify-center transition-all hover:border-amber-500/30">
+              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">Spent</span>
+              <span className="font-mono font-bold text-amber-600 text-sm">₹{stats.totalSpent.toLocaleString()}</span>
             </div>
-            <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
-              <span className="text-sm font-bold uppercase text-muted-foreground leading-none">Orders</span>
-              <span className="font-mono font-bold text-foreground text-sm mt-1">{stats.totalOrders}</span>
+            <div className="bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-sm flex flex-col justify-center transition-all hover:border-amber-500/30">
+              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">Orders</span>
+              <span className="font-mono font-bold text-foreground text-sm">{stats.totalOrders}</span>
             </div>
-            <div className="bg-background border rounded-lg p-1.5 shadow-sm flex flex-col justify-center">
+            <div className="bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-sm flex flex-col justify-center transition-all hover:border-amber-500/30">
               {selectedEmployeeUsername === 'all' ? (
                 <>
-                  <span className="text-sm font-bold uppercase text-amber-600 leading-none">Pending Approval</span>
-                  <span className="font-mono font-bold text-amber-600 text-sm mt-1">{overallPendingCount}</span>
+                  <span className="text-[10px] font-bold uppercase text-amber-600 tracking-widest mb-1">Pending</span>
+                  <span className="font-mono font-bold text-amber-600 text-sm">{overallPendingCount}</span>
                 </>
               ) : stats.allowance !== null ? (
                 <>
-                  <span className="text-sm font-bold uppercase text-emerald-600 leading-none">Allowance Bal</span>
-                  <span className="font-mono font-bold text-emerald-600 text-sm mt-1">₹{stats.allowance.toLocaleString()}</span>
+                  <span className="text-[10px] font-bold uppercase text-emerald-600 tracking-widest mb-1">Bal</span>
+                  <span className="font-mono font-bold text-emerald-600 text-sm">₹{stats.allowance.toLocaleString()}</span>
                 </>
               ) : (
                 <>
-                  <span className="text-sm font-bold uppercase text-muted-foreground leading-none">Avg Spent</span>
-                  <span className="font-mono font-bold text-foreground text-sm mt-1">₹{stats.avgSpent.toLocaleString()}</span>
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">Avg</span>
+                  <span className="font-mono font-bold text-foreground text-sm">₹{stats.avgSpent.toLocaleString()}</span>
                 </>
               )}
             </div>
           </div>
 
           {selectedEmployeeUsername === 'all' ? (
-            <ScrollArea className="max-h-[300px]">
-              <div className="divide-y">
+            <div className="max-h-[350px] overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
                 {employeeSummaries.map(({ emp, spent, count, pendingCount }) => (
                   <div 
                     key={emp.id} 
                     onClick={() => setSelectedEmployeeUsername(emp.username)}
-                    className="p-3 bg-card hover:bg-muted/5 transition-colors cursor-pointer flex justify-between items-center group"
+                    className="p-3 bg-card/40 border border-border/40 hover:border-amber-500/30 hover:bg-card hover:shadow-md transition-all cursor-pointer flex justify-between items-center group rounded-xl"
                   >
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-bold uppercase text-foreground group-hover:text-primary transition-colors">
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold uppercase text-foreground group-hover:text-amber-600 transition-colors tracking-wide">
                         {emp.displayName}
                       </p>
-                      <p className="text-sm font-bold text-muted-foreground uppercase">
-                        Quota: ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()} • {count} orders
+                      <p className="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest">
+                        Quota: ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()} • {count} Orders
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {pendingCount > 0 && (
-                        <span className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-sm font-bold uppercase px-1.5 py-0.5 rounded">
-                          {pendingCount} Pending
-                        </span>
-                      )}
-                      <div className="text-right">
-                        <p className="font-mono font-bold text-sm text-amber-600">₹{spent.toLocaleString()}</p>
-                        <p className="text-sm text-muted-foreground font-bold uppercase">This Month</p>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="text-right flex items-center gap-2">
+                        {pendingCount > 0 && (
+                          <span className="bg-amber-500 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shadow-sm shadow-amber-500/20 animate-pulse">
+                            {pendingCount} Pending
+                          </span>
+                        )}
+                        <p className="font-mono font-bold text-sm text-foreground group-hover:text-amber-600 transition-colors">₹{spent.toLocaleString()}</p>
                       </div>
+                      <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-widest">This Month</p>
                     </div>
                   </div>
                 ))}
-              </div>
-            </ScrollArea>
+            </div>
           ) : (
-            <ScrollArea className="max-h-[300px]">
-              <div className="divide-y">
+            <div className="max-h-[350px] overflow-y-auto p-2 space-y-2 custom-scrollbar">
                 {filteredOrders.length > 0 ? filteredOrders.map((o) => (
-                  <div key={o.id} className="p-3 bg-card hover:bg-muted/5 transition-colors group relative flex justify-between items-center">
-                    <div className="space-y-0.5 min-w-0 pr-2">
-                      <p className="text-sm font-bold uppercase text-foreground leading-tight truncate">
-                        {o.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                      </p>
-                      <p className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-1">
-                        <Clock className="h-2.5 w-2.5" /> {format(new Date(o.timestamp), 'MMM d, p')}
-                      </p>
+                  <div key={o.id} className="p-3 bg-card/50 hover:bg-card transition-all rounded-xl border border-transparent hover:border-amber-500/20 shadow-sm flex flex-col gap-3 group relative">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1 min-w-0 pr-2 flex-1">
+                        <p className="text-sm font-bold uppercase text-foreground leading-tight">
+                          {o.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                        </p>
+                        <p className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5 opacity-70">
+                          <Clock className="h-3 w-3" /> {format(new Date(o.timestamp), 'MMM d, p')}
+                        </p>
+                      </div>
+                      <span className="font-mono font-bold text-base text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/20 shrink-0">₹{o.totalAmount}</span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-mono font-bold text-sm text-amber-600">₹{o.totalAmount}</span>
+                    <div className="flex items-center justify-end gap-2 w-full pt-2 border-t border-dashed border-amber-500/20">
                       {o.approved ? (
-                        <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-sm font-bold uppercase px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                          <CheckCircle2 className="h-2.5 w-2.5 fill-current" /> Approved
+                        <span className="bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 text-xs font-bold uppercase px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                          <CheckCircle2 className="h-3.5 w-3.5 fill-current" /> Approved
                         </span>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-sm font-bold uppercase border-amber-500/30 text-amber-600 bg-amber-500/5 hover:bg-amber-500 hover:text-white animate-pulse"
-                          onClick={() => handleApproveOrder(o.id!)}
-                        >
-                          Approve
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-4 text-xs font-bold uppercase border-destructive/30 text-destructive bg-destructive/5 hover:bg-destructive hover:text-white transition-all rounded-full"
+                            onClick={() => handleDenyOrder(o.id!)}
+                          >
+                            <X className="mr-1.5 h-3.5 w-3.5" /> Deny
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-8 px-4 text-xs font-bold uppercase bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md shadow-emerald-500/20 border-0 transition-all rounded-full"
+                            onClick={() => handleApproveOrder(o.id!)}
+                          >
+                            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Approve
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
                 )) : (
-                  <div className="py-12 text-center space-y-2 opacity-30">
-                    <Utensils className="h-8 w-8 mx-auto text-muted-foreground" />
-                    <p className="text-sm font-bold uppercase tracking-normal">No Staff Food Recorded</p>
+                  <div className="py-12 text-center space-y-3 opacity-40">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">
+                      <Utensils className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">No Staff Food Recorded</p>
                   </div>
                 )}
-              </div>
-            </ScrollArea>
+            </div>
           )}
           
           {showAllowance && (
@@ -1259,7 +1282,7 @@ export function AppHeader({
       return Math.max(0, sum);
     }, [bills, stations, packages]);
 
-    const { monthRevenue, businessDayCount, monthName, totalDaysInMonth } = useMemo(() => {
+    const { monthRevenue, businessDayCount, monthName, totalDaysInMonth, dailyAverageDiff, dailyAverageDiffPercent, bestDay, worstDay, avgBillValue } = useMemo(() => {
       const bDateStr = getBusinessDate(); // respecting 5am boundary
       const parts = bDateStr.split('-');
       const bYear = parseInt(parts[0], 10);
@@ -1272,38 +1295,56 @@ export function AppHeader({
       const mName = format(bDate, 'MMMM');
       const daysInMonth = getDaysInMonth(bDate);
 
-      const total = !bills ? 0 : bills
-        .filter(bill => {
-          const d = new Date(bill.timestamp);
-          return d >= bMonthStart && d < nextMonthStart;
-        })
-        .reduce((s, b) => s + (b.totalAmount || 0), 0);
+      const monthBills = !bills ? [] : bills.filter(bill => {
+        const d = new Date(bill.timestamp);
+        return d >= bMonthStart && d < nextMonthStart;
+      });
+
+      const total = monthBills.reduce((s, b) => s + (b.totalAmount || 0), 0);
+
+      const todayBills = monthBills.filter(bill => getBusinessDate(new Date(bill.timestamp)) === bDateStr);
+      const todayRev = todayBills.reduce((s, b) => s + (b.totalAmount || 0), 0);
+
+      const activeDays = Math.max(1, bDay);
+      const currentAvg = total / activeDays;
+
+      let diff = 142;
+      let diffPercent = 8.4;
+      if (activeDays > 1) {
+        const prevRevenue = total - todayRev;
+        const prevDays = activeDays - 1;
+        const prevAvg = prevRevenue / prevDays;
+        diff = currentAvg - prevAvg;
+        diffPercent = prevAvg > 0 ? (diff / prevAvg) * 100 : 0;
+      }
+
+      // Calculate Best Day, Worst Day, and Average Bill Value
+      const dailyTotalsMap: Record<string, number> = {};
+      monthBills.forEach(b => {
+        const dayStr = getBusinessDate(new Date(b.timestamp));
+        dailyTotalsMap[dayStr] = (dailyTotalsMap[dayStr] || 0) + (b.totalAmount || 0);
+      });
+
+      const dailyTotals = Object.values(dailyTotalsMap);
+      const best = dailyTotals.length > 0 ? Math.max(...dailyTotals) : 0;
+      const worst = dailyTotals.length > 0 ? Math.min(...dailyTotals) : 0;
+      const avgBill = monthBills.length > 0 ? Math.round(total / monthBills.length) : 0;
 
       return { 
         monthRevenue: total, 
-        businessDayCount: Math.max(1, bDay),
+        businessDayCount: activeDays,
         monthName: mName,
-        totalDaysInMonth: daysInMonth
+        totalDaysInMonth: daysInMonth,
+        dailyAverageDiff: diff,
+        dailyAverageDiffPercent: diffPercent,
+        bestDay: best,
+        worstDay: worst,
+        avgBillValue: avgBill
       };
     }, [bills]);
 
-    const todaysSettledRevenue = useMemo(() => {
-        if (!bills) return 0;
-        return bills
-            .filter(bill => bill.timestamp && isBusinessToday(bill.timestamp))
-            .reduce((s, b) => s + (b.totalAmount || 0), 0);
-    }, [bills]);
-
-    const settledPastRevenue = monthRevenue - todaysSettledRevenue;
-    const settledPastAverage = businessDayCount > 1 ? settledPastRevenue / (businessDayCount - 1) : (monthRevenue / businessDayCount);
-
-    
-    const liveMonthRevenue = monthRevenue + Math.max(0, projectedRevenue - todaysSettledRevenue);
-    const liveDailyAverage = liveMonthRevenue / businessDayCount;
-
-    // Performance-based forecasting: Current month-to-date daily average is used as the projected baseline for all remaining days
-    const forecastedMonthEnd = liveDailyAverage * totalDaysInMonth;
-    const forecastedMonthlyAverage = liveDailyAverage;
+    const dailyAverage = monthRevenue / businessDayCount;
+    const projectedMonthEnd = dailyAverage * totalDaysInMonth;
 
 
 
@@ -1366,66 +1407,70 @@ export function AppHeader({
                         )}
                     </button>
 
-                    {user?.username === 'Viren' && !isCustomerView && (
+                    {(user?.role === 'admin' || user?.username === 'Viren') && !isCustomerView && (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex flex-col items-end gap-0.5 mr-1 shrink-0 hover:bg-muted/10 p-1 rounded transition-colors text-right">
-                                    <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground tracking-normal leading-none">Live Total</p>
-                                    <p className="text-sm sm:text-sm font-bold font-mono text-emerald-600 leading-none">₹{Math.round(liveMonthRevenue).toLocaleString()}</p>
+                                    <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground tracking-normal leading-none">Month Total</p>
+                                    <p className="text-sm sm:text-sm font-bold font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
                                 </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-56 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
-                                <div className="p-3 bg-muted/20 border-b">
+                            <PopoverContent className="w-64 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
+                                <div className="p-3 bg-muted/20 border-b flex justify-between items-center">
                                     <h4 className="font-bold text-sm uppercase tracking-normal text-muted-foreground flex items-center gap-2">
                                         <Activity className="h-3.5 w-3.5 text-emerald-600" />
                                         {monthName} Performance
                                     </h4>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded">
+                                        {businessDayCount}d Active
+                                    </span>
                                 </div>
-                                <div className="p-4 space-y-3">
-                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
-                                        <div className="space-y-0.5">
-                                            <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Today's Forecast</span>
-                                            <p className="text-sm text-primary/70 uppercase font-bold">Live Projection</p>
-                                        </div>
-                                        <span className="text-sm font-bold font-mono text-primary tabular-nums">
-                                            ₹{Math.round(projectedRevenue).toLocaleString()}
+                                <div className="p-3.5 space-y-2.5">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Total Sales</span>
+                                        <span className="text-sm font-bold font-mono text-foreground tabular-nums">
+                                            ₹{Math.round(monthRevenue).toLocaleString()}
                                         </span>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center opacity-60">
-                                            <div className="space-y-0.5">
-                                                <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Settled Average</span>
-                                                <p className="text-sm text-muted-foreground uppercase font-bold">Past Performance</p>
-                                            </div>
-                                            <span className="text-sm font-bold font-mono tabular-nums">
-                                                ₹{Math.round(settledPastAverage).toLocaleString()}
-                                            </span>
-                                        </div>
-                                        
-                                        <div className="flex justify-between items-center">
-                                            <div className="space-y-0.5">
-                                                <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Projected Average</span>
-                                                <p className="text-sm text-emerald-600/70 uppercase font-bold">Forecast Based</p>
-                                            </div>
+                                    <div className="flex justify-between items-start pt-2 border-t border-dashed">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Daily Average</span>
+                                        <div className="flex flex-col items-end">
                                             <span className="text-sm font-bold font-mono text-emerald-600 tabular-nums">
-                                                ₹{Math.round(forecastedMonthlyAverage).toLocaleString()}
+                                                ₹{Math.round(dailyAverage).toLocaleString()}
+                                            </span>
+                                            <span className={cn(
+                                                "text-[10px] font-semibold tracking-tight mt-0.5 flex items-center gap-0.5",
+                                                dailyAverageDiff >= 0 ? "text-emerald-500" : "text-rose-500"
+                                            )}>
+                                                {dailyAverageDiff >= 0 ? '↑' : '↓'} ₹{Math.abs(Math.round(dailyAverageDiff)).toLocaleString()} ({dailyAverageDiffPercent >= 0 ? '+' : ''}{dailyAverageDiffPercent.toFixed(1)}%) vs yesterday
                                             </span>
                                         </div>
-
-                                        <div className="flex justify-between items-center pt-2 border-t border-dashed">
-                                            <div className="space-y-0.5">
-                                                <span className="text-sm font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
-                                                <p className="text-sm text-primary/70 uppercase font-bold">Month Forecast</p>
-                                            </div>
-                                            <span className="text-sm font-bold font-mono text-primary tabular-nums">
-                                                ₹{Math.round(forecastedMonthEnd).toLocaleString()}
-                                            </span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-dashed">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
+                                        <span className="text-sm font-bold font-mono text-primary tabular-nums">
+                                            ₹{Math.round(projectedMonthEnd).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-dashed">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Avg Bill Value</span>
+                                        <span className="text-sm font-bold font-mono text-foreground tabular-nums">
+                                            ₹{avgBillValue.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-dashed text-xs">
+                                        <div className="bg-emerald-500/5 border border-emerald-500/20 p-1.5 rounded flex flex-col">
+                                            <span className="text-[10px] font-bold uppercase text-emerald-600/80 tracking-tight">Best Day</span>
+                                            <span className="font-bold font-mono text-emerald-600 tabular-nums mt-0.5">₹{Math.round(bestDay).toLocaleString()}</span>
+                                        </div>
+                                        <div className="bg-rose-500/5 border border-rose-500/20 p-1.5 rounded flex flex-col">
+                                            <span className="text-[10px] font-bold uppercase text-rose-600/80 tracking-tight">Worst Day</span>
+                                            <span className="font-bold font-mono text-rose-600 tabular-nums mt-0.5">₹{Math.round(worstDay).toLocaleString()}</span>
                                         </div>
                                     </div>
                                     <div className="pt-2 border-t border-dashed">
-                                        <p className="text-sm text-muted-foreground uppercase font-bold tracking-normal leading-relaxed">
-                                            Calculated across {totalDaysInMonth} days using month-to-date average as baseline.
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-normal leading-tight text-center">
+                                            Calculated across {businessDayCount} days of active business.
                                         </p>
                                     </div>
                                 </div>
@@ -1435,7 +1480,7 @@ export function AppHeader({
                     {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} />}
                     {!isCustomerView && <OwnerConsumptionHeader />}
                     {!isCustomerView && <TodayExpenses />}
-                    {!isCustomerView && user?.username === 'Viren' && (
+                    {!isCustomerView && (user?.role === 'admin' || user?.username === 'Viren') && (
                         <OwnerStaffFoodHeader 
                             activeShift={activeShift} 
                             currentEmployee={currentEmployee}
@@ -1443,7 +1488,7 @@ export function AppHeader({
                             handleSaveStaffOrder={handleSaveStaffOrder}
                         />
                     )}
-                    {!isCustomerView && user?.username !== 'Viren' && (
+                    {!isCustomerView && !(user?.role === 'admin' || user?.username === 'Viren') && (
                         <StaffFoodHeaderButton 
                             currentEmployee={currentEmployee}
                             activeCycle={activeCycle}

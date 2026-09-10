@@ -94,7 +94,15 @@ export function OwnerPulseCustomerIntel({ data }: CustomerIntelProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Avg Customer Spend:</span>
-                <span className="font-bold text-foreground">₹{data.avgSpendPerCustomer}</span>
+                <span className="font-bold text-foreground">₹{data.avgSpendPerCustomer} <span className="text-muted-foreground text-[10px] ml-1">(n={data.avgSpendSampleSize})</span></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Avg Revenue / Gamer:</span>
+                <span className="font-bold text-purple-400">₹{data.avgRevenuePerGamer}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Member Revenue %:</span>
+                <span className="font-bold text-foreground">{data.memberRevenuePct}%</span>
               </div>
             </div>
           </div>

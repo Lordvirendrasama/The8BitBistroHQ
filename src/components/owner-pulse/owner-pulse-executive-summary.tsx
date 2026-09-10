@@ -76,15 +76,35 @@ export function OwnerPulseExecutiveSummary({ kpis, healthBreakdown, todayStr }: 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-[11px] font-medium pt-2 border-t border-border/40 text-muted-foreground">
-            <div>
-              <span className="opacity-70">Yesterday:</span>{' '}
-              <span className="font-bold text-foreground">{prefix}{metric.previous.toLocaleString()}{suffix}</span>
+          <div className="grid grid-cols-1 gap-1 text-[11px] font-medium pt-2 border-t border-border/40 text-muted-foreground">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="opacity-70">Yesterday:</span>{' '}
+                <span className="font-bold text-foreground">{prefix}{metric.previous.toLocaleString()}{suffix}</span>
+                <span className={cn("ml-1 font-mono text-[10px]", metric.pctDiff >= 0 ? "text-emerald-400" : "text-destructive")}>
+                  ({metric.pctDiff > 0 ? '+' : ''}{metric.pctDiff}%)
+                </span>
+              </div>
+              {metric.target !== undefined && (
+                <div>
+                  <span className="opacity-70">Target:</span>{' '}
+                  <span className="font-bold text-foreground">{prefix}{(metric.target || 0).toLocaleString()}{suffix}</span>
+                </div>
+              )}
             </div>
-            <div>
-              <span className="opacity-70">Target:</span>{' '}
-              <span className="font-bold text-foreground">{prefix}{(metric.target || 0).toLocaleString()}{suffix}</span>
-            </div>
+            {metric.lastMonth !== undefined && (
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="opacity-70">Same Weekday Last Mo:</span>{' '}
+                  <span className="font-bold text-foreground">{prefix}{metric.lastMonth.toLocaleString()}{suffix}</span>
+                  {metric.lastMonthPctDiff !== undefined && (
+                    <span className={cn("ml-1 font-mono text-[10px]", metric.lastMonthPctDiff >= 0 ? "text-emerald-400" : "text-destructive")}>
+                      ({metric.lastMonthPctDiff > 0 ? '+' : ''}{metric.lastMonthPctDiff}%)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

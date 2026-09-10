@@ -388,10 +388,11 @@ export default function FootfallAnalyticsPage() {
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                 <Tooltip 
-                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                                    cursor={{ fill: 'var(--muted)' }}
+                                    contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', borderRadius: '12px', borderColor: 'var(--border)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
+                                    itemStyle={{ color: 'var(--foreground)' }}
                                 />
-                                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -412,13 +413,14 @@ export default function FootfallAnalyticsPage() {
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fontWeight: 'bold' }} interval={2} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                 <Tooltip 
-                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                                    cursor={{ fill: 'var(--muted)' }}
+                                    contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', borderRadius: '12px', borderColor: 'var(--border)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
+                                    itemStyle={{ color: 'var(--foreground)' }}
                                 />
-                                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
+                                <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]}>
                                     {stats.hourChartData.map((entry, index) => {
                                         const hour = parseInt(entry.name);
-                                        return <Cell key={`bar-${index}`} fill={hour >= 18 || hour <= 2 ? 'hsl(var(--primary))' : 'hsl(var(--primary)/0.4)'} />;
+                                        return <Cell key={`bar-${index}`} fill={hour >= 18 || hour <= 2 ? 'var(--primary)' : 'rgba(239, 0, 53, 0.4)'} />;
                                     })}
                                 </Bar>
                             </BarChart>
@@ -441,9 +443,10 @@ export default function FootfallAnalyticsPage() {
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                 <Tooltip 
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                                    contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', borderRadius: '12px', borderColor: 'var(--border)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
+                                    itemStyle={{ color: 'var(--foreground)' }}
                                 />
-                                <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={4} dot={{ r: 6, fill: 'hsl(var(--primary))' }} activeDot={{ r: 8 }} />
+                                <Line type="monotone" dataKey="count" stroke="var(--primary)" strokeWidth={4} dot={{ r: 6, fill: 'var(--primary)' }} activeDot={{ r: 8 }} />
                             </LineChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -464,10 +467,11 @@ export default function FootfallAnalyticsPage() {
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                 <Tooltip 
-                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                                    cursor={{ fill: 'var(--muted)' }}
+                                    contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', borderRadius: '12px', borderColor: 'var(--border)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
+                                    itemStyle={{ color: 'var(--foreground)' }}
                                 />
-                                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>

@@ -55,7 +55,7 @@ export function OwnerPulseFinancialIntel({ data }: FinancialIntelProps) {
         </div>
 
         {/* EXPENSE BREAKDOWN & GOAL PROGRESS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl border border-border/60 bg-muted/10 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 border-b border-border/40 pb-2">
               <PieChart className="h-4 w-4 text-emerald-400" /> Fixed Costs & Outflows Breakdown
@@ -84,21 +84,41 @@ export function OwnerPulseFinancialIntel({ data }: FinancialIntelProps) {
             </h4>
             <div className="space-y-3">
               <div className="space-y-1">
-                <div className="flex justify-between text-xs font-bold uppercase">
-                  <span className="text-muted-foreground">Daily Target Progress (₹{data.survivalTargetDaily.toLocaleString()})</span>
+                <div className="flex justify-between text-xs font-bold uppercase mb-1">
+                  <span className="text-muted-foreground">Daily Target (₹{data.survivalTargetDaily.toLocaleString()})</span>
                   <span className="text-emerald-400">{data.breakevenProgressPct}%</span>
                 </div>
                 <Progress value={data.breakevenProgressPct} className="h-2 bg-muted" />
+                <p className="text-[10px] text-muted-foreground text-right mt-1">Need ₹{data.revenueNeededToday.toLocaleString()} more</p>
               </div>
 
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs font-bold uppercase">
+              <div className="space-y-1 mt-3">
+                <div className="flex justify-between text-xs font-bold uppercase mb-1">
                   <span className="text-muted-foreground">Monthly Goal Progress</span>
                   <span className="text-emerald-400">{data.monthlyGoalProgressPct}%</span>
                 </div>
                 <Progress value={data.monthlyGoalProgressPct} className="h-2 bg-muted" />
               </div>
             </div>
+          </div>
+
+          <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 space-y-4">
+             <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2 border-b border-emerald-500/20 pb-2">
+               <Target className="h-4 w-4 text-emerald-400" /> Projected Month-End Run Rate
+             </h4>
+             <div className="space-y-4 text-xs">
+                <div className="flex justify-between items-center bg-background/40 p-2 rounded-lg">
+                  <span className="text-emerald-400/80 font-bold uppercase">Proj. Revenue</span>
+                  <span className="font-bold text-emerald-400 text-sm">₹{data.projectedEomRevenue.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center bg-background/40 p-2 rounded-lg">
+                  <span className="text-emerald-400/80 font-bold uppercase">Proj. Gross Profit</span>
+                  <span className="font-bold text-emerald-400 text-sm">₹{data.projectedEomProfit.toLocaleString()}</span>
+                </div>
+                <p className="text-[10px] text-emerald-400/60 leading-tight italic">
+                   *Projections based on {data.grossMarginPct}% gross margin and current monthly velocity.
+                </p>
+             </div>
           </div>
         </div>
       </CardContent>

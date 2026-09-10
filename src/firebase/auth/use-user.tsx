@@ -37,10 +37,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const roleDoc = await getDoc(doc(db, 'userRoles', firebaseUser.uid));
         if (roleDoc.exists()) {
           const roleData = roleDoc.data();
+          const rawUsername = roleData.username || '';
+          const formattedUsername = rawUsername ? rawUsername.charAt(0).toUpperCase() + rawUsername.slice(1) : rawUsername;
           const loggedInUser: CustomUser = {
-              username: roleData.username,
-              displayName: roleData.username,
-              photoURL: `https://picsum.photos/seed/${roleData.username}/100/100`,
+              username: formattedUsername,
+              displayName: formattedUsername,
+              photoURL: `https://picsum.photos/seed/${formattedUsername}/100/100`,
               role: roleData.role,
           };
           setUser(loggedInUser);
@@ -62,10 +64,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // onAuthStateChanged will handle the rest
+      const formattedUsername = username.charAt(0).toUpperCase() + username.slice(1);
       const loggedInUser: CustomUser = {
-        username: username,
-        displayName: username,
-        photoURL: `https://picsum.photos/seed/${username}/100/100`,
+        username: formattedUsername,
+        displayName: formattedUsername,
+        photoURL: `https://picsum.photos/seed/${formattedUsername}/100/100`,
         role: 'staff', // Temporary until onAuthStateChanged fetches the real role
       };
       await logUserLogin(loggedInUser);

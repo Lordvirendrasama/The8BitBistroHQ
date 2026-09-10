@@ -6,7 +6,7 @@ import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils, Sparkles } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils, Sparkles, LayoutTemplate } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -60,6 +60,7 @@ function DashboardContent() {
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [isRewardsModalOpen, setIsRewardsModalOpen] = useState(false);
   const [isGuestWizardOpen, setIsGuestWizardOpen] = useState(false);
+  const [isCompactMode, setIsCompactMode] = useState(false);
   const [manageType, setManageType] = useState<'ps5' | 'boardgame'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [initialPlayers, setInitialPlayers] = useState<AssignedMember[] | undefined>(undefined);
@@ -984,6 +985,14 @@ function DashboardContent() {
                 Guest Login &amp; Check-in
             </Button>
             <Button 
+                onClick={() => setIsCompactMode(!isCompactMode)} 
+                variant="outline"
+                className="h-9 px-4 font-bold uppercase tracking-normal border-2 text-xs"
+            >
+                <LayoutTemplate className="mr-1.5 h-3.5 w-3.5" />
+                {isCompactMode ? 'Original Mode' : 'Compact Mode'}
+            </Button>
+            <Button 
                 id="redeem-perks-btn"
                 onClick={() => setIsRewardsModalOpen(true)} 
                 className="h-9 px-4 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-md animate-in fade-in text-xs"
@@ -1026,6 +1035,7 @@ function DashboardContent() {
                     onOpenJoinModal={handleOpenJoinModal}
                     onTogglePlayerTimer={handleTogglePlayerTimer}
                     allMembers={members || []}
+                    compactMode={isCompactMode}
                   />
 
                 ))}
@@ -1057,6 +1067,7 @@ function DashboardContent() {
                     onOpenJoinModal={handleOpenJoinModal}
                     onTogglePlayerTimer={handleTogglePlayerTimer}
                     gamingPackages={gamingPackages || []}
+                    compactMode={isCompactMode}
                   />
                 ))}
               </div>

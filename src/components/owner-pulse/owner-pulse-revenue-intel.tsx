@@ -91,6 +91,28 @@ export function OwnerPulseRevenueIntel({ data }: RevenueIntelProps) {
             </div>
           ))}
         </div>
+
+        {/* NEW REVENUE KPIS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-border/40">
+           <div className="p-4 rounded-xl border border-border/60 bg-muted/10 flex flex-col justify-between">
+              <span className="text-xs text-muted-foreground uppercase font-bold">Rev / Operating Hr</span>
+              <span className="text-xl font-extrabold text-foreground">₹{data.revenuePerOperatingHour.toLocaleString()}</span>
+           </div>
+           <div className="p-4 rounded-xl border border-border/60 bg-muted/10 flex flex-col justify-between">
+              <span className="text-xs text-muted-foreground uppercase font-bold">Best Weekday</span>
+              <span className="text-xl font-extrabold text-emerald-400">{data.bestPerformingWeekday}</span>
+           </div>
+           <div className="p-4 rounded-xl border border-border/60 bg-muted/10 flex flex-col justify-between">
+              <span className="text-xs text-muted-foreground uppercase font-bold">Slowest Weekday</span>
+              <span className="text-xl font-extrabold text-amber-400">{data.slowestWeekday}</span>
+           </div>
+           <div className="p-4 rounded-xl border border-border/60 bg-muted/10 flex flex-col justify-between">
+              <span className="text-xs text-muted-foreground uppercase font-bold">Gaming / F&B Split</span>
+              <span className="text-lg font-extrabold text-foreground">
+                 {Math.round((data.revenueSplit.gaming / (data.revenueSplit.gaming + data.revenueSplit.food + data.revenueSplit.coffee + data.revenueSplit.other || 1)) * 100)}% / {Math.round(((data.revenueSplit.food + data.revenueSplit.coffee) / (data.revenueSplit.gaming + data.revenueSplit.food + data.revenueSplit.coffee + data.revenueSplit.other || 1)) * 100)}%
+              </span>
+           </div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -470,18 +470,17 @@ export default function LoginPage() {
   };
 
   const handleLogoClick = () => {
-    setLogoTaps(prev => {
-      const next = prev + 1;
-      if (next >= 4) {
-        setShowMoney(true);
-        toast({
-          title: "Easter Egg Unlocked!",
-          description: "Intake stats are now visible.",
-        });
-        return 0;
-      }
-      return next;
-    });
+    const nextTaps = logoTaps + 1;
+    if (nextTaps >= 4) {
+      setShowMoney(true);
+      toast({
+        title: "Easter Egg Unlocked!",
+        description: "Intake stats are now visible.",
+      });
+      setLogoTaps(0);
+    } else {
+      setLogoTaps(nextTaps);
+    }
   };
 
   return (
@@ -748,8 +747,39 @@ export default function LoginPage() {
                     )}
                 </div>
 
+                {/* Active Stations Widget */}
+                <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col mt-4">
+                    <div className="flex items-center gap-2 mb-4 border-b border-foreground/5 pb-2">
+                        <Gamepad2 className="h-4 w-4 text-purple-500" />
+                        <span className="font-headline text-sm tracking-normal text-muted-foreground uppercase font-bold">ACTIVE STATIONS</span>
+                    </div>
+                    {stations && stations.filter(s => s.status === 'in-use' || s.status === 'paused').length > 0 ? (
+                        <div className="space-y-4 font-body">
+                            {stations.filter(s => s.status === 'in-use' || s.status === 'paused').map((station) => {
+                                const activePlayers = station.members?.filter(m => m.status !== 'finished').length || 0;
+                                return (
+                                    <div key={station.id} className="flex items-start gap-2.5 animate-in fade-in duration-300">
+                                        <div className={cn("h-2 w-2 rounded-full mt-1.5 shrink-0", station.status === 'paused' ? "bg-amber-500" : "bg-purple-500 animate-pulse")} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-sm text-foreground uppercase leading-none truncate">{station.name}</p>
+                                            <p className="text-sm text-muted-foreground font-bold uppercase mt-1 truncate">
+                                                Package: <span className="text-foreground/80">{station.packageName || 'Walk-in'}</span>
+                                            </p>
+                                            <p className="text-sm text-muted-foreground font-bold uppercase">
+                                                Players: <span className="text-purple-500">{activePlayers}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-sm italic font-bold text-muted-foreground uppercase opacity-50 py-2">No stations currently active</p>
+                    )}
+                </div>
+
                 {/* Today's Top Products Widget */}
-                <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
+                {/* <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
                     <div className="flex items-center gap-2 mb-4 border-b border-foreground/5 pb-2">
                         <Gamepad2 className="h-4 w-4 text-blue-500" />
                         <span className="font-headline text-sm tracking-normal text-muted-foreground uppercase font-bold">TOP SELLERS</span>
@@ -769,10 +799,10 @@ export default function LoginPage() {
                     ) : (
                         <p className="text-sm italic font-bold text-muted-foreground uppercase opacity-50 py-2">No product sales today</p>
                     )}
-                </div>
+                </div> */}
 
                 {/* Cash Register Snapshot Widget */}
-                <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
+                {/* <div className="bg-card/30 backdrop-blur-xl border-2 border-foreground/5 p-5 rounded-2xl relative overflow-hidden flex flex-col">
                     <div className="flex items-center gap-2 mb-3 border-b border-foreground/5 pb-2">
                         <TrendingUp className="h-4 w-4 text-emerald-500" />
                         <span className="font-headline text-sm tracking-normal text-muted-foreground uppercase font-bold">TODAY</span>
@@ -796,7 +826,7 @@ export default function LoginPage() {
                             <span className="text-emerald-500 font-mono text-base">₹{registerSnapshot.total.toLocaleString()}</span>
                         </div>
                     </div>
-                </div>
+                </div> */}
             </div>
         </div>
 

@@ -9,8 +9,64 @@ import {
   endOfWeek, 
   startOfMonth, 
   endOfMonth, 
-  format
+  format,
+  getDaysInMonth
 } from 'date-fns';
+
+function getEquivalentWeekdayLastMonth(currentDate: Date): Date {
+  const currentDayOfWeek = currentDate.getDay(); // 0-6
+  const currentDateNum = currentDate.getDate(); // 1-31
+  const occurrence = Math.ceil(currentDateNum / 7); // 1 to 5
+
+  let targetMonth = currentDate.getMonth() - 1;
+  let targetYear = currentDate.getFullYear();
+  if (targetMonth < 0) {
+    targetMonth = 11;
+    targetYear--;
+  }
+
+  const firstDayOfTargetMonth = new Date(targetYear, targetMonth, 1);
+  const firstDayOfWeek = firstDayOfTargetMonth.getDay();
+  
+  const firstOccurrenceDate = 1 + (currentDayOfWeek - firstDayOfWeek + 7) % 7;
+  let targetDateNum = firstOccurrenceDate + (occurrence - 1) * 7;
+  
+  const daysInTargetMonth = getDaysInMonth(firstDayOfTargetMonth);
+  if (targetDateNum > daysInTargetMonth) {
+    targetDateNum -= 7; // fallback to the last occurrence if the 5th doesn't exist
+  }
+  
+  return new Date(targetYear, targetMonth, targetDateNum);
+}
+
+/**
+ * Gets the number of elapsed operating hours for a given date.
+ * Operating hours: 11:00 AM to 11:00 PM (12 hours max)
+ */
+export function getElapsedOperatingHours(date: Date): number {
+  const h = date.getHours();
+  const m = date.getMinutes();
+  
+  if (h < 11) return 0; // Before opening
+  if (h >= 23) return 12; // After closing
+  
+  return (h - 11) + (m / 60);
+}
+
+/**
+ * Checks if a targetDate is at or before the same time of day as referenceNow.
+ */
+export function isWithinElapsedPeriodOfDay(targetDate: Date | string, referenceNow: Date): boolean {
+  const d = typeof targetDate === 'string' ? new Date(targetDate) : targetDate;
+  const targetH = d.getHours();
+  const targetM = d.getMinutes();
+  const refH = referenceNow.getHours();
+  const refM = referenceNow.getMinutes();
+  
+  if (targetH < refH) return true;
+  if (targetH === refH && targetM <= refM) return true;
+  return false;
+}
 
 export type StatusLevel = 'Healthy' | 'Growing' | 'Monitor' | 'Needs Attention' | 'No Data';
 export type StatusColor = 'green' | 'blue' | 'amber' | 'red' | 'grey';
@@ -25,6 +81,8 @@ export interface MetricComparison {
   status: StatusLevel;
   color: StatusColor;
   target?: number;
+  lastMonth?: number;
+  lastMonthPctDiff?: number;
 }
 
 export interface RuleInsight {
@@ -55,7 +113,7 @@ export interface PeriodBenchmarks {
   thisMonthVsLastMonth: { current: number; previous: number; pct: number };
   thisMonthVsSameMonthLastYear: { current: number; previous: number; pct: number };
   last30DaysTrend: number[];
-  lifetimeBest: { date: string; amount: number };
+  lifetimeBest: { date: string; amount: number; remainingToBeat: number };
   lifetimeWorst: { date: string; amount: number };
 }
 
@@ -74,6 +132,10 @@ export interface RevenueIntelligenceData {
   totalRevenue: number;
   totalExpenses: number;
   totalProfit: number;
+  revenuePerOperatingHour: number;
+  revenueSplit: { gaming: number; food: number; coffee: number; other: number };
+  bestPerformingWeekday: string;
+  slowestWeekday: string;
 }
 
 export interface CustomerIntelligenceData {
@@ -83,6 +145,9 @@ export interface CustomerIntelligenceData {
   walkinVisits: number;
   repeatRatePct: number;
   avgSpendPerCustomer: number;
+  avgSpendSampleSize: number;
+  avgRevenuePerGamer: number;
+  memberRevenuePct: number;
   mostPopularVisitTime: string;
   mostPopularDay: string;
   highestSpendingCustomer: { name: string; amount: number } | null;
@@ -92,18 +157,26 @@ export interface CustomerIntelligenceData {
 
 export interface GamingIntelligenceData {
   consoleUtilizationPct: number;
+  potentialGamingHours: number;
   hoursPlayedTotal: number;
   idleHoursTotal: number;
-  lostRevenueIdle: number;
+  revenuePerPs5: number;
+  avgSessionLengthMinutes: number;
   mostPopularPackage: string;
   mostPopularConsole: string;
-  mostProfitableHour: string;
+  peakGamingHour: string;
 }
 
 export interface CafeIntelligenceData {
   bestSeller: { name: string; count: number; revenue: number } | null;
   fastestGrowingProduct: { name: string; currentCount: number; prevCount: number } | null;
   slowestSellingProduct: { name: string; count: number } | null;
+  foodAttachmentRatePct: number;
+  coffeeAttachmentRatePct: number;
+  peakFoodHour: string;
+  top5Products: { name: string; revenue: number }[];
+  bottom5Products: { name: string; revenue: number }[];
+  inventoryWastage: number; // Placeholder for now
 }
 
 export interface EmployeeIntelScorecard {
@@ -120,12 +193,16 @@ export interface FinancialIntelligenceData {
   revenue: number;
   grossProfit: number;
   netProfit: number;
+  grossMarginPct: number;
   totalExpenses: number;
   rentCostDaily: number;
   expensesByCategory: Record<string, number>;
   breakevenProgressPct: number;
   monthlyGoalProgressPct: number;
   survivalTargetDaily: number;
+  revenueNeededToday: number;
+  projectedEomRevenue: number;
+  projectedEomProfit: number;
 }
 
 export interface OperationalHealthData {
@@ -143,6 +220,20 @@ export interface HealthScoreBreakdown {
   averageSpendScore: number;
   occupancyScore: number;
   employeeEfficiencyScore: number;
+}
+
+export interface OwnerBriefData {
+  revenuePctChange: number;
+  footfallPctChange: number;
+  avgSpendDifference: number;
+  highestRoiProduct: string;
+  idleHoursThisMonth: number;
+  totalPossibleHoursThisMonth: number;
+  bestWeekdayTarget: number;
+  bestWeekdayDate: string;
+  bestWeekdayRemaining: number;
+  bestWeekdayName: string;
+  recommendedPriority: string;
 }
 
 /**
@@ -173,8 +264,16 @@ export function computeOwnerPulseData(
     billsByDate.set(bDate, arr);
   });
 
-  const dailyTotal = (dateStr: string) => (billsByDate.get(dateStr) || []).reduce((s, b) => s + b.totalAmount, 0);
-  const dailyBillsList = (dateStr: string) => billsByDate.get(dateStr) || [];
+  const dailyTotal = (dateStr: string, elapsedOnly = false) => {
+    return (billsByDate.get(dateStr) || [])
+      .filter(b => !elapsedOnly || (b.timestamp && isWithinElapsedPeriodOfDay(b.timestamp, now)))
+      .reduce((s, b) => s + b.totalAmount, 0);
+  };
+  
+  const dailyBillsList = (dateStr: string, elapsedOnly = false) => {
+    return (billsByDate.get(dateStr) || [])
+      .filter(b => !elapsedOnly || (b.timestamp && isWithinElapsedPeriodOfDay(b.timestamp, now)));
+  };
 
   // Helper date calculations
   const yesterdayStr = getBusinessDate(subDays(now, 1));
@@ -190,14 +289,27 @@ export function computeOwnerPulseData(
   const customersToday = todayBills.reduce((s, b) => s + Math.max(1, b.members?.length || 1), 0);
   const avgBillToday = todayBills.length > 0 ? Math.round(revToday / todayBills.length) : 0;
 
-  // Previous day metrics
-  const revYesterday = dailyTotal(yesterdayStr);
+  // Previous day metrics (Elapsed comparison)
+  const yesterdayBills = dailyBillsList(yesterdayStr, true);
+  const revYesterday = dailyTotal(yesterdayStr, true);
   const expYesterday = expenses
-    .filter((e) => e.timestamp && getBusinessDate(new Date(e.timestamp)) === yesterdayStr)
+    .filter((e) => e.timestamp && getBusinessDate(new Date(e.timestamp)) === yesterdayStr && isWithinElapsedPeriodOfDay(e.timestamp, now))
     .reduce((s, e) => s + e.amount, 0);
   const profitYesterday = revYesterday - expYesterday;
-  const customersYesterday = dailyBillsList(yesterdayStr).reduce((s, b) => s + Math.max(1, b.members?.length || 1), 0);
-  const avgBillYesterday = dailyBillsList(yesterdayStr).length > 0 ? Math.round(revYesterday / dailyBillsList(yesterdayStr).length) : 0;
+  const customersYesterday = yesterdayBills.reduce((s, b) => s + Math.max(1, b.members?.length || 1), 0);
+  const avgBillYesterday = yesterdayBills.length > 0 ? Math.round(revYesterday / yesterdayBills.length) : 0;
+
+  // Last Month Equivalent Weekday metrics (e.g., 1st Saturday to 1st Saturday) (Elapsed comparison)
+  const equivalentLastMonthDate = getEquivalentWeekdayLastMonth(now);
+  const lastMonthSameDateStr = getBusinessDate(equivalentLastMonthDate);
+  const lastMonthSameDateBills = dailyBillsList(lastMonthSameDateStr, true);
+  const revLastMonthSameDate = dailyTotal(lastMonthSameDateStr, true);
+  const expLastMonthSameDate = expenses
+    .filter((e) => e.timestamp && getBusinessDate(new Date(e.timestamp)) === lastMonthSameDateStr && isWithinElapsedPeriodOfDay(e.timestamp, now))
+    .reduce((s, e) => s + e.amount, 0);
+  const profitLastMonthSameDate = revLastMonthSameDate - expLastMonthSameDate;
+  const customersLastMonthSameDate = lastMonthSameDateBills.reduce((s, b) => s + Math.max(1, b.members?.length || 1), 0);
+  const avgBillLastMonthSameDate = lastMonthSameDateBills.length > 0 ? Math.round(revLastMonthSameDate / lastMonthSameDateBills.length) : 0;
 
   // Last Month average daily metrics calculation
   const startLastMonth = startOfMonth(subMonths(now, 1));
@@ -242,7 +354,8 @@ export function computeOwnerPulseData(
   const buildMetric = (
     current: number,
     previous: number,
-    target?: number
+    target?: number,
+    lastMonth?: number
   ): MetricComparison => {
     const absDiff = current - previous;
     const pctDiff = previous > 0 ? Math.round(((current - previous) / previous) * 100) : current > 0 ? 100 : 0;
@@ -261,6 +374,10 @@ export function computeOwnerPulseData(
       color = 'amber';
     }
 
+    const lastMonthPctDiff = lastMonth !== undefined 
+      ? (lastMonth > 0 ? Math.round(((current - lastMonth) / lastMonth) * 100) : current > 0 ? 100 : 0)
+      : undefined;
+
     return {
       current,
       previous,
@@ -270,55 +387,61 @@ export function computeOwnerPulseData(
       status,
       color,
       target,
+      lastMonth,
+      lastMonthPctDiff,
     };
   };
 
   const executiveSummary: ExecutiveSummaryKPIs = {
-    revenueToday: buildMetric(revToday, revYesterday, survivalTargetDaily),
-    profitToday: buildMetric(profitToday, profitYesterday),
-    customersToday: buildMetric(customersToday, customersYesterday, 30),
-    averageBill: buildMetric(avgBillToday, avgBillYesterday, 350),
+    revenueToday: buildMetric(revToday, revYesterday, survivalTargetDaily, revLastMonthSameDate),
+    profitToday: buildMetric(profitToday, profitYesterday, undefined, profitLastMonthSameDate),
+    customersToday: buildMetric(customersToday, customersYesterday, 30, customersLastMonthSameDate),
+    averageBill: buildMetric(avgBillToday, avgBillYesterday, 350, avgBillLastMonthSameDate),
     gamingOccupancy: buildMetric(gamingOccupancyToday, 50, 75),
     healthScore: buildMetric(healthBreakdown.totalScore, 70, 85),
   };
 
   // 3. Growth Centre Multi-Period Benchmarks
-  const revSameWeekdayLastWk = dailyTotal(sameWeekdayLastWeekStr);
+  const revSameWeekdayLastWk = dailyTotal(sameWeekdayLastWeekStr, true);
 
   const startThisWk = startOfWeek(now, { weekStartsOn: 1 });
   const startLastWk = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-  const endLastWk = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+  const elapsedEndLastWk = subWeeks(now, 1);
 
   let thisWkRev = 0;
   let lastWkRev = 0;
   bills.forEach((b) => {
     if (!b.timestamp) return;
     const dt = new Date(b.timestamp);
-    if (dt >= startThisWk) thisWkRev += b.totalAmount;
-    if (dt >= startLastWk && dt <= endLastWk) lastWkRev += b.totalAmount;
+    if (dt >= startThisWk && dt <= now) thisWkRev += b.totalAmount;
+    if (dt >= startLastWk && dt <= elapsedEndLastWk) lastWkRev += b.totalAmount;
   });
 
   const startThisMo = startOfMonth(now);
+  const startLastMoPeriod = startOfMonth(subMonths(now, 1));
+  const elapsedEndLastMo = subMonths(now, 1);
   let thisMoRev = 0;
+  let lastMoElapsedRev = 0;
   bills.forEach((b) => {
-    if (b.timestamp && new Date(b.timestamp) >= startThisMo) {
-      thisMoRev += b.totalAmount;
-    }
+    if (!b.timestamp) return;
+    const dt = new Date(b.timestamp);
+    if (dt >= startThisMo && dt <= now) thisMoRev += b.totalAmount;
+    if (dt >= startLastMoPeriod && dt <= elapsedEndLastMo) lastMoElapsedRev += b.totalAmount;
   });
 
   const startSameMoLastYr = startOfMonth(subYears(now, 1));
-  const endSameMoLastYr = endOfMonth(subYears(now, 1));
+  const elapsedEndSameMoLastYr = subYears(now, 1);
   let sameMoLastYrRev = 0;
   bills.forEach((b) => {
     if (!b.timestamp) return;
     const dt = new Date(b.timestamp);
-    if (dt >= startSameMoLastYr && dt <= endSameMoLastYr) {
+    if (dt >= startSameMoLastYr && dt <= elapsedEndSameMoLastYr) {
       sameMoLastYrRev += b.totalAmount;
     }
   });
 
   const last30DaysTrend: number[] = [];
-  let lifetimeBest = { date: todayStr, amount: 0 };
+  let lifetimeBestRaw = { date: todayStr, amount: 0 };
   let lifetimeWorst = { date: todayStr, amount: Infinity };
 
   for (let i = 29; i >= 0; i--) {
@@ -329,12 +452,18 @@ export function computeOwnerPulseData(
 
   billsByDate.forEach((dayBills, dStr) => {
     const sum = dayBills.reduce((s, b) => s + b.totalAmount, 0);
-    if (sum > lifetimeBest.amount) lifetimeBest = { date: formatDateDDMMYYYY(dStr), amount: sum };
+    if (sum > lifetimeBestRaw.amount) lifetimeBestRaw = { date: formatDateDDMMYYYY(dStr), amount: sum };
     if (sum < lifetimeWorst.amount && sum > 0) lifetimeWorst = { date: formatDateDDMMYYYY(dStr), amount: sum };
   });
 
   if (lifetimeWorst.amount === Infinity) lifetimeWorst = { date: formatDateDDMMYYYY(todayStr), amount: 0 };
-  if (lifetimeBest.amount === 0) lifetimeBest = { date: formatDateDDMMYYYY(todayStr), amount: 0 };
+  if (lifetimeBestRaw.amount === 0) lifetimeBestRaw = { date: formatDateDDMMYYYY(todayStr), amount: 0 };
+  
+  const lifetimeBest = {
+    date: lifetimeBestRaw.date,
+    amount: lifetimeBestRaw.amount,
+    remainingToBeat: Math.max(0, lifetimeBestRaw.amount + 1 - revToday)
+  };
 
   const periodBenchmarks: PeriodBenchmarks = {
     todayVsYesterday: {
@@ -354,8 +483,8 @@ export function computeOwnerPulseData(
     },
     thisMonthVsLastMonth: {
       current: thisMoRev,
-      previous: lastMonthTotalRev,
-      pct: lastMonthTotalRev > 0 ? Math.round(((thisMoRev - lastMonthTotalRev) / lastMonthTotalRev) * 100) : 0,
+      previous: lastMoElapsedRev,
+      pct: lastMoElapsedRev > 0 ? Math.round(((thisMoRev - lastMoElapsedRev) / lastMoElapsedRev) * 100) : 0,
     },
     thisMonthVsSameMonthLastYear: {
       current: thisMoRev,
@@ -436,6 +565,25 @@ export function computeOwnerPulseData(
   const sortedCatByRev = [...categories].sort((a, b) => b.revenue - a.revenue);
   const topGrowthCategory = sortedCatByRev[0]?.category || 'Gaming';
   const worstPerformingCategory = sortedCatByRev[sortedCatByRev.length - 1]?.category || 'Delivery';
+  
+  const revenueSplit = {
+    gaming: categoryRevMap.Gaming.rev,
+    food: categoryRevMap.Food.rev + categoryRevMap.Desserts.rev,
+    coffee: categoryRevMap.Coffee.rev,
+    other: categoryRevMap.Retail.rev + categoryRevMap.Memberships.rev + categoryRevMap['Board Games'].rev + categoryRevMap.Delivery.rev
+  };
+  
+  const elapsedHours = getElapsedOperatingHours(now);
+  const revenuePerOperatingHour = elapsedHours > 0 ? Math.round(revToday / elapsedHours) : 0;
+
+  const dayTotals: Record<string, number> = {};
+  billsByDate.forEach((dayBills, dStr) => {
+     const dayOfWeek = format(new Date(dayBills[0]?.timestamp || dStr), 'EEEE');
+     dayTotals[dayOfWeek] = (dayTotals[dayOfWeek] || 0) + dayBills.reduce((s, b) => s + b.totalAmount, 0);
+  });
+  const sortedDaysByRev = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]);
+  const bestPerformingWeekday = sortedDaysByRev[0]?.[0] || 'Saturday';
+  const slowestWeekday = sortedDaysByRev[sortedDaysByRev.length - 1]?.[0] || 'Monday';
 
   const revenueIntelligence: RevenueIntelligenceData = {
     categories,
@@ -444,6 +592,10 @@ export function computeOwnerPulseData(
     totalRevenue: revToday,
     totalExpenses: expToday,
     totalProfit: profitToday,
+    revenuePerOperatingHour,
+    revenueSplit,
+    bestPerformingWeekday,
+    slowestWeekday
   };
 
   // 5. Customer Intelligence Data
@@ -451,6 +603,7 @@ export function computeOwnerPulseData(
   let returningCustCount = 0;
   let memberVisits = 0;
   let walkinVisits = 0;
+  let gamingGamersCount = 0;
 
   todayBills.forEach((b) => {
     if (b.members && b.members.length > 0) {
@@ -460,11 +613,20 @@ export function computeOwnerPulseData(
       walkinVisits += 1;
       newCustCount += 1;
     }
+    if (b.initialPackagePrice && b.initialPackagePrice > 0) {
+      gamingGamersCount += Math.max(1, b.members?.length || 1);
+    }
   });
 
   const totalCusts = Math.max(1, newCustCount + returningCustCount);
   const repeatRatePct = Math.round((returningCustCount / totalCusts) * 100);
   const avgSpendPerCustomer = todayBills.length > 0 ? Math.round(revToday / totalCusts) : 0;
+  const avgSpendSampleSize = totalCusts;
+  
+  const memberRev = todayBills.filter(b => b.members && b.members.length > 0).reduce((s,b) => s + b.totalAmount, 0);
+  const memberRevenuePct = revToday > 0 ? Math.round((memberRev / revToday) * 100) : 0;
+  
+  const avgRevenuePerGamer = gamingGamersCount > 0 ? Math.round(categoryRevMap.Gaming.rev / gamingGamersCount) : 0;
 
   // Real member CLV calculation (average total spent across members)
   const totalMemberSpentSum = members.reduce((s, m) => s + (m.totalSpent || 0), 0);
@@ -500,6 +662,9 @@ export function computeOwnerPulseData(
     walkinVisits,
     repeatRatePct,
     avgSpendPerCustomer,
+    avgSpendSampleSize,
+    avgRevenuePerGamer,
+    memberRevenuePct,
     mostPopularVisitTime: peakHr,
     mostPopularDay: peakDay,
     highestSpendingCustomer,
@@ -510,9 +675,19 @@ export function computeOwnerPulseData(
   // 6. Gaming Intelligence Data (Real calculations)
   const packageCounts: Record<string, number> = {};
   const consoleCounts: Record<string, number> = {};
+  let totalSessionMinutes = 0;
+  let totalGamingSessions = 0;
+  
   todayBills.forEach((b) => {
     if (b.stationName) {
       consoleCounts[b.stationName] = (consoleCounts[b.stationName] || 0) + 1;
+      totalGamingSessions++;
+      if (b.packageName && b.packageName.toLowerCase().includes('hour')) {
+         const hours = parseInt(b.packageName) || 1;
+         totalSessionMinutes += hours * 60;
+      } else {
+         totalSessionMinutes += 60; // fallback avg
+      }
     }
     if (b.packageName) {
       packageCounts[b.packageName] = (packageCounts[b.packageName] || 0) + 1;
@@ -522,25 +697,39 @@ export function computeOwnerPulseData(
   const topPackage = Object.entries(packageCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Standard Pass';
   const topConsole = Object.entries(consoleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'PS5 Station';
 
-  const hoursPlayedTotal = Math.round(inUseStations * 4);
-  const idleHoursTotal = Math.max(0, totalStations * 8 - hoursPlayedTotal);
-  const lostRevenueIdle = idleHoursTotal * 150;
+  const potentialGamingHours = elapsedHours * totalStations;
+  const hoursPlayedTotal = Math.round(totalSessionMinutes / 60);
+  const idleHoursTotal = Math.max(0, potentialGamingHours - hoursPlayedTotal);
+  
+  const revenuePerPs5 = totalStations > 0 ? Math.round(categoryRevMap.Gaming.rev / totalStations) : 0;
+  const avgSessionLengthMinutes = totalGamingSessions > 0 ? Math.round(totalSessionMinutes / totalGamingSessions) : 0;
+
+  // Filter bills just for gaming to find peak hour
+  const gamingHourCounts: Record<number, number> = {};
+  bills.forEach((b) => {
+    if (!b.timestamp || !b.stationName) return;
+    const hr = new Date(b.timestamp).getHours();
+    gamingHourCounts[hr] = (gamingHourCounts[hr] || 0) + 1;
+  });
+  const peakGamingHour = Object.entries(gamingHourCounts).sort((a,b) => b[1] - a[1])[0] ? `${Object.entries(gamingHourCounts).sort((a,b) => b[1] - a[1])[0][0]}:00` : peakHr;
 
   const gamingIntelligence: GamingIntelligenceData = {
-    consoleUtilizationPct: gamingOccupancyToday,
+    consoleUtilizationPct: potentialGamingHours > 0 ? Math.min(100, Math.round((hoursPlayedTotal / potentialGamingHours) * 100)) : 0,
+    potentialGamingHours,
     hoursPlayedTotal,
     idleHoursTotal,
-    lostRevenueIdle,
+    revenuePerPs5,
+    avgSessionLengthMinutes,
     mostPopularPackage: topPackage,
     mostPopularConsole: topConsole,
-    mostProfitableHour: peakHr,
+    peakGamingHour,
   };
 
   // 7. Cafe Intelligence Data (Real product sales from bills)
   const itemCountsToday: Record<string, { count: number; rev: number }> = {};
   const itemCountsPrev: Record<string, number> = {};
 
-  const yesterdayBills = dailyBillsList(yesterdayStr);
+  const yesterdayBillsFull = dailyBillsList(yesterdayStr);
 
   todayBills.forEach((b) => {
     b.items.forEach((item) => {
@@ -552,7 +741,7 @@ export function computeOwnerPulseData(
     });
   });
 
-  yesterdayBills.forEach((b) => {
+  yesterdayBillsFull.forEach((b) => {
     b.items.forEach((item) => {
       itemCountsPrev[item.name] = (itemCountsPrev[item.name] || 0) + item.quantity;
     });
@@ -574,10 +763,32 @@ export function computeOwnerPulseData(
     }
   });
 
+  const foodAttachmentRatePct = totalGamingSessions > 0 ? Math.min(100, Math.round((categoryRevMap.Food.count / totalGamingSessions) * 100)) : 0;
+  const coffeeAttachmentRatePct = totalGamingSessions > 0 ? Math.min(100, Math.round((categoryRevMap.Coffee.count / totalGamingSessions) * 100)) : 0;
+  
+  const top5Products = sortedItems.slice(0, 5).map(i => ({ name: i[0], revenue: i[1].rev }));
+  const bottom5Products = sortedItems.slice(-5).reverse().map(i => ({ name: i[0], revenue: i[1].rev }));
+
+  // Filter bills just for food to find peak hour
+  const foodHourCounts: Record<number, number> = {};
+  bills.forEach((b) => {
+    if (!b.timestamp || b.foodSubtotal === 0) return;
+    const hr = new Date(b.timestamp).getHours();
+    foodHourCounts[hr] = (foodHourCounts[hr] || 0) + 1;
+  });
+  const peakFoodHour = Object.entries(foodHourCounts).sort((a,b) => b[1] - a[1])[0] ? `${Object.entries(foodHourCounts).sort((a,b) => b[1] - a[1])[0][0]}:00` : peakHr;
+
+
   const cafeIntelligence: CafeIntelligenceData = {
     bestSeller,
     fastestGrowingProduct,
     slowestSellingProduct: slowestSelling,
+    foodAttachmentRatePct,
+    coffeeAttachmentRatePct,
+    peakFoodHour,
+    top5Products,
+    bottom5Products,
+    inventoryWastage: 0,
   };
 
   // 8. Employee Intelligence Data (Real shift & bill calculations)
@@ -616,16 +827,28 @@ export function computeOwnerPulseData(
   const breakevenProgressPct = Math.min(100, Math.round((revToday / survivalTargetDaily) * 100));
   const monthlyGoalProgressPct = Math.min(100, Math.round((thisMoRev / 150000) * 100));
 
+  const grossMarginPct = 65;
+  const revenueNeededToday = Math.max(0, survivalTargetDaily - revToday);
+  
+  const elapsedDaysThisMonth = now.getDate() - 1 + (elapsedHours / 12);
+  const daysInMo = getDaysInMonth(now);
+  const projectedEomRevenue = elapsedDaysThisMonth > 0 ? Math.round((thisMoRev / elapsedDaysThisMonth) * daysInMo) : 0;
+  const projectedEomProfit = Math.round(projectedEomRevenue * (grossMarginPct / 100));
+
   const financialIntelligence: FinancialIntelligenceData = {
     revenue: revToday,
-    grossProfit: Math.round(revToday * 0.65),
+    grossProfit: Math.round(revToday * (grossMarginPct / 100)),
     netProfit: profitToday,
+    grossMarginPct,
     totalExpenses: expToday,
     rentCostDaily,
     expensesByCategory,
     breakevenProgressPct,
     monthlyGoalProgressPct,
     survivalTargetDaily,
+    revenueNeededToday,
+    projectedEomRevenue,
+    projectedEomProfit
   };
 
   // 10. Operational Health Data (Real live numbers)
@@ -652,8 +875,103 @@ export function computeOwnerPulseData(
     survivalTargetDaily,
   });
 
+  // 12. Owner Brief Calculations
+  const startLastMo = startOfMonth(subMonths(now, 1));
+  const endLastMo = endOfMonth(subMonths(now, 1));
+  
+  let thisMoFootfall = 0;
+  let lastMoFootfall = 0;
+  let thisMoGamingRev = 0;
+  bills.forEach((b) => {
+    if (!b.timestamp) return;
+    const dt = new Date(b.timestamp);
+    if (dt >= startThisMo) {
+      thisMoFootfall += Math.max(1, b.members?.length || 1);
+      const foodRev = b.foodSubtotal || 0;
+      // sum up just gaming items for this month
+      let gameRev = 0;
+      if (b.initialPackagePrice > 0) {
+        gameRev += b.initialPackagePrice;
+      }
+      b.items.forEach(item => {
+        const nameLwr = item.name.toLowerCase();
+        if (nameLwr.includes('time:') || nameLwr.includes('recharge') || nameLwr.includes('pass') || nameLwr.includes('hour')) {
+           gameRev += (item.price * item.quantity);
+        }
+      });
+      if (gameRev > 0) thisMoGamingRev += gameRev;
+    } else if (dt >= startLastMo && dt <= subMonths(now, 1)) {
+      lastMoFootfall += Math.max(1, b.members?.length || 1);
+    }
+  });
+  
+  const footfallPctChange = lastMoFootfall > 0 
+    ? Math.round(((thisMoFootfall - lastMoFootfall) / lastMoFootfall) * 100) 
+    : thisMoFootfall > 0 ? 100 : 0;
+    
+  const thisMoBillsCount = bills.filter(b => b.timestamp && new Date(b.timestamp) >= startThisMo).length;
+  const lastMoBillsCount = bills.filter(b => b.timestamp && new Date(b.timestamp) >= startLastMo && new Date(b.timestamp) <= endLastMo).length;
+  
+  const thisMoAvgBill = thisMoBillsCount > 0 ? Math.round(thisMoRev / thisMoBillsCount) : 0;
+  const lastMoAvgBill = lastMoBillsCount > 0 ? Math.round(lastMonthTotalRev / lastMoBillsCount) : 0;
+  const avgSpendDifference = thisMoAvgBill - lastMoAvgBill;
+
+  const currentDayOfMonth = now.getDate();
+  const elapsedDaysThisMonthForGaming = (currentDayOfMonth - 1) + (getElapsedOperatingHours(now) / 12);
+  const hoursPlayedThisMonth = Math.round(thisMoGamingRev / 100); // 100/hr per controller
+  const totalPossibleHoursThisMonth = Math.round(10 * 12 * elapsedDaysThisMonthForGaming); // 10 controllers * 12 hours operational
+  const idleHoursThisMonth = Math.max(0, totalPossibleHoursThisMonth - hoursPlayedThisMonth);
+  
+  const currentWeekdayName = format(now, 'EEEE');
+  let bestWeekdayTarget = 0;
+  let bestWeekdayDate = formatDateDDMMYYYY(todayStr);
+  
+  const dailyTotalsWithWeekday: Record<string, { total: number, weekday: string }> = {};
+  bills.forEach(b => {
+     if (!b.timestamp) return;
+     const dt = new Date(b.timestamp);
+     const dStr = getBusinessDate(dt);
+     if (!dailyTotalsWithWeekday[dStr]) {
+       dailyTotalsWithWeekday[dStr] = { total: 0, weekday: format(dt, 'EEEE') };
+     }
+     dailyTotalsWithWeekday[dStr].total += b.totalAmount;
+  });
+  
+  Object.entries(dailyTotalsWithWeekday).forEach(([dStr, dayData]) => {
+     if (dayData.weekday === currentWeekdayName && dayData.total > bestWeekdayTarget) {
+        bestWeekdayTarget = dayData.total;
+        bestWeekdayDate = formatDateDDMMYYYY(dStr);
+     }
+  });
+
+  const bestWeekdayRemaining = Math.max(0, bestWeekdayTarget + 1 - revToday);
+
+  let recommendedPriority = "Maintain current operations.";
+  if (gamingOccupancyToday < 60) {
+     recommendedPriority = "Increase evening gaming occupancy after 6 PM.";
+  } else if (revToday < survivalTargetDaily) {
+     recommendedPriority = "Focus on upselling to hit the daily survival target.";
+  } else if (footfallPctChange < 0) {
+     recommendedPriority = "Run a quick promotional offer to boost footfall.";
+  }
+
+  const ownerBrief: OwnerBriefData = {
+    revenuePctChange: periodBenchmarks.thisMonthVsLastMonth.pct,
+    footfallPctChange,
+    avgSpendDifference,
+    highestRoiProduct: cafeIntelligence.bestSeller?.name || '',
+    idleHoursThisMonth,
+    totalPossibleHoursThisMonth,
+    bestWeekdayTarget,
+    bestWeekdayDate,
+    bestWeekdayRemaining,
+    bestWeekdayName: currentWeekdayName,
+    recommendedPriority,
+  };
+
   return {
     todayStr: formatDateDDMMYYYY(todayStr),
+    ownerBrief,
     healthBreakdown,
     executiveSummary,
     periodBenchmarks,
@@ -757,7 +1075,7 @@ function evaluateBusinessRules(params: {
       color: 'green',
       priority: 'Low',
       title: 'Positive Daily Velocity',
-      message: `Revenue today (₹${revToday.toLocaleString()}) exceeds yesterday's total of ₹${revYesterday.toLocaleString()}.`,
+      message: `Revenue today (₹${revToday.toLocaleString()}) exceeds yesterday's total of ₹${revYesterday.toLocaleString()} at the same time of day. This is driven by ${avgBillToday > avgBillYesterday ? 'higher average customer spend' : 'increased footfall'}.`,
     });
   }
 
@@ -769,7 +1087,7 @@ function evaluateBusinessRules(params: {
       color: 'red',
       priority: 'High',
       title: 'Revenue Trailing Monthly Baseline',
-      message: `Today's revenue is 20%+ lower than last month's daily average (₹${Math.round(revLastMonthAvg).toLocaleString()}).`,
+      message: `Today's revenue is 20%+ lower than last month's daily average (₹${Math.round(revLastMonthAvg).toLocaleString()}). ${customersToday < customersYesterday ? 'Reduced footfall is the primary cause.' : 'Lower spend per customer is the primary cause.'}`,
       actionUrl: '/analytics',
       actionText: 'View Sales Breakdown',
     });
@@ -783,7 +1101,7 @@ function evaluateBusinessRules(params: {
       color: 'blue',
       priority: 'Medium',
       title: 'Spending Pattern Shift',
-      message: 'Higher customer spending is offsetting reduced footfall today.',
+      message: `Customers are spending ₹${avgBillToday - avgBillYesterday} more today on average, which is offsetting a drop of ${customersYesterday - customersToday} customers compared to yesterday at this time.`,
     });
   }
 
@@ -795,7 +1113,7 @@ function evaluateBusinessRules(params: {
       color: 'amber',
       priority: 'Medium',
       title: 'Gaming Occupancy Below Target',
-      message: `Current gaming station occupancy is at ${gamingOccupancyToday}%, below the 60% optimal baseline.`,
+      message: `Current gaming station occupancy is at ${gamingOccupancyToday}%, below the 60% optimal baseline. Consider running a quick localized discount or combo deal to boost utilization.`,
       actionUrl: '/dashboard',
       actionText: 'Promote Gaming Passes',
     });
@@ -809,7 +1127,7 @@ function evaluateBusinessRules(params: {
       color: 'green',
       priority: 'Low',
       title: 'Daily Target Achieved',
-      message: `Daily survival goal of ₹${survivalTargetDaily.toLocaleString()} has been achieved!`,
+      message: `Daily survival goal of ₹${survivalTargetDaily.toLocaleString()} has been achieved! Any further revenue today contributes directly to net profit margins.`,
     });
   }
 

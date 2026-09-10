@@ -83,6 +83,45 @@ export function OwnerPulseCafeIntel({ data }: CafeIntelProps) {
             )}
           </div>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          {/* Top 5 Products List */}
+          <div className="p-4 rounded-xl border border-border/60 bg-muted/10">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 border-b border-border/40 pb-2 mb-3">
+              <TrendingUp className="h-4 w-4 text-emerald-400" /> Top 5 Revenue Products
+            </h4>
+            <div className="space-y-2 text-xs">
+              {data.top5Products?.length > 0 ? data.top5Products.map((p, i) => (
+                <div key={i} className="flex justify-between items-center py-1 border-b border-border/20 last:border-0">
+                  <span className="font-medium text-foreground truncate max-w-[200px]">{i+1}. {p.name}</span>
+                  <span className="font-bold text-emerald-400">₹{p.revenue.toLocaleString()}</span>
+                </div>
+              )) : (
+                <p className="text-muted-foreground italic">No products sold yet</p>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl border border-border/60 bg-muted/10 space-y-3">
+             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 border-b border-border/40 pb-2">
+               <Utensils className="h-4 w-4 text-orange-400" /> Cafe Dynamics
+             </h4>
+             <div className="space-y-3 text-xs">
+               <div className="flex justify-between items-center p-2 rounded-lg bg-background/50 border border-border/30">
+                 <span className="text-muted-foreground font-semibold">Food Attachment Rate:</span>
+                 <span className="font-bold text-orange-400 text-sm">{data.foodAttachmentRatePct}%</span>
+               </div>
+               <div className="flex justify-between items-center p-2 rounded-lg bg-background/50 border border-border/30">
+                 <span className="text-muted-foreground font-semibold">Coffee Attachment Rate:</span>
+                 <span className="font-bold text-amber-500 text-sm">{data.coffeeAttachmentRatePct}%</span>
+               </div>
+               <div className="flex justify-between items-center p-2 rounded-lg bg-background/50 border border-border/30">
+                 <span className="text-muted-foreground font-semibold">Peak Food Ordering Hour:</span>
+                 <span className="font-bold text-foreground text-sm">{data.peakFoodHour}</span>
+               </div>
+             </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

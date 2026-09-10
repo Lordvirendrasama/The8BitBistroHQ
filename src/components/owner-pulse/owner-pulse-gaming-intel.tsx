@@ -51,12 +51,29 @@ export function OwnerPulseGamingIntel({ data }: GamingIntelProps) {
             <p className="text-2xl font-extrabold font-body text-foreground mt-1">{data.idleHoursTotal} hrs</p>
           </div>
 
-          <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/10">
-            <p className="text-xs font-bold uppercase tracking-wider text-destructive flex items-center gap-1.5">
-              <DollarSign className="h-3.5 w-3.5 text-destructive" /> Idle Revenue Gap
+          <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10">
+            <p className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5 text-purple-400" /> Revenue per PS5
             </p>
-            <p className="text-2xl font-extrabold font-body text-destructive mt-1">₹{data.lostRevenueIdle.toLocaleString()}</p>
+            <p className="text-2xl font-extrabold font-body text-purple-400 mt-1">₹{data.revenuePerPs5.toLocaleString()}</p>
           </div>
+        </div>
+
+        {/* ADDITIONAL KPIS */}
+        <div className="grid grid-cols-2 gap-3">
+           <div className="p-4 rounded-xl border border-border/60 bg-muted/10">
+             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+               <Clock className="h-3.5 w-3.5 text-emerald-400" /> Avg Session Length
+             </p>
+             <p className="text-2xl font-extrabold font-body text-foreground mt-1">{data.avgSessionLengthMinutes} min</p>
+           </div>
+           
+           <div className="p-4 rounded-xl border border-border/60 bg-muted/10">
+             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+               <Zap className="h-3.5 w-3.5 text-yellow-400" /> Potential Gaming Hours
+             </p>
+             <p className="text-2xl font-extrabold font-body text-foreground mt-1">{data.potentialGamingHours} hrs</p>
+           </div>
         </div>
 
         {/* DETAILS GRID */}
@@ -74,8 +91,8 @@ export function OwnerPulseGamingIntel({ data }: GamingIntelProps) {
               <span className="font-bold text-foreground">{data.mostPopularConsole}</span>
             </div>
             <div className="flex justify-between p-2 rounded-lg bg-background/50 border border-border/30">
-              <span className="text-muted-foreground font-semibold">Peak Profitable Hour:</span>
-              <span className="font-bold text-purple-400">{data.mostProfitableHour}</span>
+              <span className="text-muted-foreground font-semibold">Peak Gaming Hour:</span>
+              <span className="font-bold text-purple-400">{data.peakGamingHour}</span>
             </div>
           </div>
         </div>
