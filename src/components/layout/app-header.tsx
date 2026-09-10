@@ -127,7 +127,7 @@ const HeaderTimer = ({ station }: { station: Station }) => {
   );
 };
 
-const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => {
+const StrategicTarget = ({ projectedRevenue, cashTotal = 0, upiTotal = 0 }: { projectedRevenue: number, cashTotal?: number, upiTotal?: number }) => {
   const { db } = useFirebase();
   const { user } = useAuth();
   const router = useRouter();
@@ -145,6 +145,7 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
   const { data: fixedBills } = useCollection<FixedBill>(fixedBillsQuery);
 
   const [liabilityState, setLiabilityState] = useState<LiabilityState | null>(null);
+  const [isPressed, setIsPressed] = useState(false);
   
   useEffect(() => {
     if (!db) return;
@@ -207,22 +208,34 @@ const StrategicTarget = ({ projectedRevenue }: { projectedRevenue: number }) => 
 
   if (!isViren) {
     return (
-      <div className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border bg-card border-primary/20 overflow-hidden relative shadow-sm">
+      <div 
+        className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border bg-card border-primary/20 overflow-hidden relative shadow-sm select-none cursor-pointer touch-none"
+        onMouseDown={() => setIsPressed(true)}
+        onMouseUp={() => setIsPressed(false)}
+        onMouseLeave={() => setIsPressed(false)}
+        onTouchStart={() => setIsPressed(true)}
+        onTouchEnd={() => setIsPressed(false)}
+      >
         <div className="flex justify-between items-center w-full mb-1">
-          <span className={cn("text-sm sm:text-sm font-bold font-mono tracking-tight", isMet ? "text-emerald-600" : "text-foreground")}>
-            ₹{Math.round(projectedRevenue).toLocaleString()}
-          </span>
-          
-          <span className={cn(
-            "text-sm font-bold font-mono",
-            isMet ? "text-emerald-600" : "text-primary"
-          )}>
-            {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
-          </span>
+          {!isPressed ? (
+            <span className="text-sm sm:text-sm font-bold tracking-tight text-foreground/70 uppercase w-full text-center">
+              TOTAL
+            </span>
+          ) : (
+            <>
+              <span className="text-sm font-bold font-mono tracking-tight text-emerald-600" title="Cash">
+                ₹{cashTotal.toLocaleString()} (C)
+              </span>
+              
+              <span className="text-sm font-bold font-mono text-primary" title="UPI">
+                ₹{upiTotal.toLocaleString()} (U)
+              </span>
 
-          <span className="text-sm font-bold font-mono opacity-30">
-            ₹{Math.round(target).toLocaleString()}
-          </span>
+              <span className="text-sm font-bold font-mono text-foreground" title="Grand Total">
+                ₹{Math.round(projectedRevenue).toLocaleString()}
+              </span>
+            </>
+          )}
         </div>
         <div className="w-full h-1 bg-muted/30 rounded-full relative overflow-hidden">
           <div 
@@ -1282,6 +1295,21 @@ export function AppHeader({
       return Math.max(0, sum);
     }, [bills, stations, packages]);
 
+    const { cashTotal, upiTotal } = useMemo(() => {
+      let cash = 0, upi = 0;
+      if (bills) {
+        bills.filter(b => b.timestamp && isBusinessToday(b.timestamp)).forEach(b => {
+          if (b.paymentMethod === 'cash') cash += (b.totalAmount || 0);
+          else if (b.paymentMethod === 'upi') upi += (b.totalAmount || 0);
+          else if (b.paymentMethod === 'split') {
+            cash += (b.cashAmount || 0);
+            upi += (b.upiAmount || 0);
+          }
+        });
+      }
+      return { cashTotal: cash, upiTotal: upi };
+    }, [bills]);
+
     const { monthRevenue, businessDayCount, monthName, totalDaysInMonth, dailyAverageDiff, dailyAverageDiffPercent, bestDay, worstDay, avgBillValue } = useMemo(() => {
       const bDateStr = getBusinessDate(); // respecting 5am boundary
       const parts = bDateStr.split('-');
@@ -1477,7 +1505,7 @@ export function AppHeader({
                             </PopoverContent>
                         </Popover>
                     )}
-                    {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} />}
+                    {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} cashTotal={cashTotal} upiTotal={upiTotal} />}
                     {!isCustomerView && <OwnerConsumptionHeader />}
                     {!isCustomerView && <TodayExpenses />}
                     {!isCustomerView && (user?.role === 'admin' || user?.username === 'Viren') && (

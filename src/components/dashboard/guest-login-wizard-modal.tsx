@@ -229,51 +229,40 @@ export function GuestLoginWizardModal({
     <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
       
       {/* Centered Popup Card */}
-      <div className="relative w-full max-w-2xl bg-zinc-950 border-2 border-primary/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl bg-zinc-950/95 border border-zinc-800/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
         
         {/* Top Header */}
-        <div className="bg-zinc-900/90 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
+        <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-800/50">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary text-primary-foreground shadow-md">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-headline text-lg sm:text-xl uppercase tracking-wider text-white">
-                Guest Check-in
-              </h2>
-              <p className="text-xs font-bold uppercase text-zinc-400 tracking-wide">
-                The 8 Bit Bistro HQ
-              </p>
-            </div>
+            <h2 className="font-semibold text-lg tracking-wide text-zinc-100 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              GUEST CHECK-IN
+            </h2>
           </div>
 
           <div className="flex items-center gap-2">
             {/* Language Switcher */}
-            <div className="flex items-center bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-              <Button
+            <div className="flex items-center bg-zinc-900/50 rounded-full p-0.5 border border-zinc-800/50">
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
                 onClick={() => setLang('en')}
                 className={cn(
-                  "h-7 px-3 font-bold uppercase text-xs rounded-md transition-all",
-                  lang === 'en' ? "bg-primary text-primary-foreground shadow-xs" : "text-zinc-400 hover:text-white"
+                  "px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all",
+                  lang === 'en' ? "bg-zinc-700 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                 )}
               >
-                🇬🇧 English
-              </Button>
-              <Button
+                EN
+              </button>
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
                 onClick={() => setLang('hi')}
                 className={cn(
-                  "h-7 px-3 font-bold uppercase text-xs rounded-md transition-all",
-                  lang === 'hi' ? "bg-primary text-primary-foreground shadow-xs" : "text-zinc-400 hover:text-white"
+                  "px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all",
+                  lang === 'hi' ? "bg-zinc-700 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                 )}
               >
-                🇮🇳 Hinglish
-              </Button>
+                HI
+              </button>
             </div>
 
             {/* Close Button */}
@@ -356,41 +345,28 @@ export function GuestLoginWizardModal({
           /* REGULAR 4-STEP WIZARD FLOW */
           <>
             {/* Stepper Progress Bar */}
-            <div className="px-6 pt-4 pb-2 bg-zinc-900/40 border-b border-zinc-800">
-              <div className="grid grid-cols-4 gap-2">
+            <div className="px-6 pt-4 pb-0">
+              <div className="flex gap-2">
                 {[1, 2, 3, 4].map((stepNum) => {
                   const isDone = currentStep > stepNum;
                   const isActive = currentStep === stepNum;
-                  const stepLabels = ["1. Guest", "2. Activity", "3. Setup", "4. Start"];
                   return (
                     <button
                       key={stepNum}
                       type="button"
                       onClick={() => setCurrentStep(stepNum as 1 | 2 | 3 | 4)}
-                      className="flex flex-col items-center gap-1 group text-left"
+                      className="flex-1 group"
                     >
                       <div
                         className={cn(
-                          "h-2 w-full rounded-full transition-all",
+                          "h-1.5 w-full rounded-full transition-all duration-300",
                           isActive
-                            ? "bg-primary shadow-sm"
+                            ? "bg-primary/80"
                             : isDone
-                            ? "bg-emerald-500"
-                            : "bg-zinc-800"
+                            ? "bg-zinc-600"
+                            : "bg-zinc-800/50 group-hover:bg-zinc-700"
                         )}
                       />
-                      <span
-                        className={cn(
-                          "text-[11px] font-bold uppercase tracking-tight",
-                          isActive
-                            ? "text-primary font-extrabold"
-                            : isDone
-                            ? "text-emerald-500"
-                            : "text-zinc-500"
-                        )}
-                      >
-                        {stepLabels[stepNum - 1]}
-                      </span>
                     </button>
                   );
                 })}
@@ -402,48 +378,41 @@ export function GuestLoginWizardModal({
               
               {/* STEP 1: Guest Name & Players */}
               {currentStep === 1 && (
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                   
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
-                        <Users className="h-3.5 w-3.5 mr-1.5" />
-                        {activeScript.step1.tag}
-                      </Badge>
-                      
-                      {/* Optional Member Directory Button */}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setDirectorySearchQuery(customerName || '');
-                          setShowSearchDirectory(true);
-                        }}
-                        className="text-xs text-primary hover:text-primary/90 font-bold uppercase tracking-wider gap-1"
-                      >
-                        <Search className="h-3.5 w-3.5" /> Regular Member Lookup
-                      </Button>
-                    </div>
-
-                    {/* Script Prompt */}
-                    <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900 border-2 border-primary/40 shadow-inner">
-                      <h3 className="text-xl sm:text-2xl font-extrabold tracking-wide text-white leading-snug">
-                        {activeScript.step1.dialogue}
-                      </h3>
-                    </div>
+                  {/* Elegant Script Typography */}
+                  <div className="px-2 pb-2">
+                    <p className="text-xl sm:text-2xl font-light tracking-wide text-zinc-200 leading-relaxed italic border-l-2 border-primary/40 pl-4">
+                      "{activeScript.step1.dialogue}"
+                    </p>
                   </div>
 
                   {/* Customer Name Input */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
-                      <span>Guest Name:</span>
-                      {selectedMember && (
-                        <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Regular Member ({selectedMember.name})
-                        </span>
-                      )}
-                    </label>
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-zinc-400 tracking-wide">
+                        Guest Name
+                      </label>
+                      <div className="flex items-center gap-4">
+                        {selectedMember && (
+                          <span className="text-emerald-400 text-xs font-medium flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Member: {selectedMember.name}
+                          </span>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDirectorySearchQuery(customerName || '');
+                            setShowSearchDirectory(true);
+                          }}
+                          className="h-6 text-xs text-zinc-500 hover:text-white px-2"
+                        >
+                          <Search className="h-3.5 w-3.5 mr-1.5" /> Lookup Member
+                        </Button>
+                      </div>
+                    </div>
                     <Input 
                       autoFocus
                       value={customerName}
@@ -458,8 +427,8 @@ export function GuestLoginWizardModal({
                           setCurrentStep(2);
                         }
                       }}
-                      placeholder="e.g. Rahul Sharma"
-                      className="h-14 text-lg font-bold bg-zinc-900 border-2 border-zinc-700 focus:border-primary text-white px-4 rounded-xl shadow-inner placeholder:text-zinc-600"
+                      placeholder="Enter guest name..."
+                      className="h-12 text-lg bg-transparent border-0 border-b border-zinc-800 focus-visible:border-primary focus-visible:ring-0 rounded-none px-0 text-white placeholder:text-zinc-700 transition-colors"
                     />
                   </div>
 
@@ -500,25 +469,26 @@ export function GuestLoginWizardModal({
                     </div>
                   )}
 
-                  {/* Group Size Selector */}
-                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-900 border border-zinc-800">
-                    <span className="text-xs font-bold uppercase text-zinc-300">Number of Players:</span>
-                    <div className="flex gap-1.5">
-                      {['1', '2', '3', '4', '5+'].map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          onClick={() => setGroupSize(num)}
-                          className={cn(
-                            "h-10 w-12 rounded-lg text-sm font-extrabold transition-all border",
-                            groupSize === num
-                              ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
-                              : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700 hover:text-white"
-                          )}
-                        >
-                          {num}
-                        </button>
-                      ))}
+                  <div className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-zinc-400 tracking-wide">Group Size</span>
+                      <div className="flex gap-2">
+                        {['1', '2', '3', '4', '5+'].map((num) => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setGroupSize(num)}
+                            className={cn(
+                              "h-10 w-12 rounded-lg text-sm font-medium transition-all duration-200",
+                              groupSize === num
+                                ? "bg-white text-black shadow-lg shadow-white/10"
+                                : "bg-zinc-900/50 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+                            )}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -527,85 +497,61 @@ export function GuestLoginWizardModal({
 
               {/* STEP 2: What are you here for? (Multi-Select) */}
               {currentStep === 2 && (
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                   
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
-                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                        {activeScript.step2.tag}
-                      </Badge>
-                      <span className="text-xs font-extrabold uppercase text-purple-400 tracking-widest flex items-center gap-1.5">
-                        <MessageSquare className="h-4 w-4" /> SAY THIS OUT LOUD TO GUEST:
-                      </span>
-                    </div>
-
-                    {/* Script Dialogue */}
-                    <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900 border-2 border-purple-500/40 shadow-inner">
-                      <h3 className="text-xl sm:text-2xl font-extrabold tracking-wide text-white leading-snug">
-                        {activeScript.step2.dialogue}
-                      </h3>
-                    </div>
+                  {/* Elegant Script Typography */}
+                  <div className="px-2 pb-2">
+                    <p className="text-xl sm:text-2xl font-light tracking-wide text-zinc-200 leading-relaxed italic border-l-2 border-primary/40 pl-4">
+                      "{activeScript.step2.dialogue}"
+                    </p>
                   </div>
 
                   {/* 3 MULTI-SELECT EXPERIENCE OPTIONS */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                     
-                    {/* OPTION 1: PS5 */}
+                    {/* OPTION 1: PS5 Gaming */}
                     <button
                       type="button"
                       onClick={() => handleToggleExperience('ps5')}
                       className={cn(
-                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group shadow-lg",
+                        "p-5 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
                         selectedExperiences.includes('ps5')
-                          ? "border-purple-500 bg-purple-500/20 ring-2 ring-purple-500 shadow-purple-500/20"
-                          : "border-zinc-800 bg-zinc-900/90 hover:border-purple-500/50 hover:bg-zinc-800"
+                          ? "border-primary bg-primary/10 shadow-lg shadow-primary/10"
+                          : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
                       )}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="font-headline text-lg uppercase tracking-wide text-purple-400 font-extrabold flex items-center gap-2">
-                          🎮 PS5
+                        <span className={cn("text-base tracking-wide font-medium", selectedExperiences.includes('ps5') ? "text-primary" : "text-white")}>
+                          PS5
                         </span>
-                        {selectedExperiences.includes('ps5') ? (
-                          <div className="bg-purple-500 text-white rounded-full p-1 shadow-sm">
-                            <Check className="h-4 w-4" />
+                        {selectedExperiences.includes('ps5') && (
+                          <div className="bg-primary text-primary-foreground rounded-full p-0.5">
+                            <Check className="h-3 w-3" />
                           </div>
-                        ) : (
-                          <Gamepad2 className="h-6 w-6 text-purple-400/60 group-hover:scale-110 transition-transform" />
                         )}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white uppercase">Console Gaming</p>
-                        <p className="text-[11px] text-zinc-400">PlayStation 5 Consoles &amp; Controller Session</p>
                       </div>
                     </button>
 
-                    {/* OPTION 2: Food & Drinks */}
+                    {/* OPTION 2: Food & Beverages */}
                     <button
                       type="button"
                       onClick={() => handleToggleExperience('fnb')}
                       className={cn(
-                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group shadow-lg",
+                        "p-5 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
                         selectedExperiences.includes('fnb')
-                          ? "border-amber-500 bg-amber-500/20 ring-2 ring-amber-500 shadow-amber-500/20"
-                          : "border-zinc-800 bg-zinc-900/90 hover:border-amber-500/50 hover:bg-zinc-800"
+                          ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10"
+                          : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
                       )}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="font-headline text-lg uppercase tracking-wide text-amber-400 font-extrabold flex items-center gap-2">
-                          ☕ Food &amp; Drinks
+                        <span className={cn("text-base tracking-wide font-medium", selectedExperiences.includes('fnb') ? "text-amber-500" : "text-white")}>
+                          Cafe
                         </span>
-                        {selectedExperiences.includes('fnb') ? (
-                          <div className="bg-amber-500 text-black rounded-full p-1 shadow-sm">
-                            <Check className="h-4 w-4 font-bold" />
+                        {selectedExperiences.includes('fnb') && (
+                          <div className="bg-amber-500 text-black rounded-full p-0.5">
+                            <Check className="h-3 w-3" />
                           </div>
-                        ) : (
-                          <Utensils className="h-6 w-6 text-amber-400/60 group-hover:scale-110 transition-transform" />
                         )}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white uppercase">Food &amp; Beverages</p>
-                        <p className="text-[11px] text-zinc-400">Cafe Orders, Coffee, Snacks &amp; Refreshments</p>
                       </div>
                     </button>
 
@@ -614,27 +560,21 @@ export function GuestLoginWizardModal({
                       type="button"
                       onClick={() => handleToggleExperience('boardgame')}
                       className={cn(
-                        "p-4 rounded-xl border-2 text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group shadow-lg",
+                        "p-5 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
                         selectedExperiences.includes('boardgame')
-                          ? "border-emerald-500 bg-emerald-500/20 ring-2 ring-emerald-500 shadow-emerald-500/20"
-                          : "border-zinc-800 bg-zinc-900/90 hover:border-emerald-500/50 hover:bg-zinc-800"
+                          ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
+                          : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
                       )}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="font-headline text-lg uppercase tracking-wide text-emerald-400 font-extrabold flex items-center gap-2">
-                          🎲 Board &amp; Retro
+                        <span className={cn("text-base tracking-wide font-medium", selectedExperiences.includes('boardgame') ? "text-emerald-500" : "text-white")}>
+                          Board
                         </span>
-                        {selectedExperiences.includes('boardgame') ? (
-                          <div className="bg-emerald-500 text-black rounded-full p-1 shadow-sm">
-                            <Check className="h-4 w-4 font-bold" />
+                        {selectedExperiences.includes('boardgame') && (
+                          <div className="bg-emerald-500 text-black rounded-full p-0.5">
+                            <Check className="h-3 w-3" />
                           </div>
-                        ) : (
-                          <Dice5 className="h-6 w-6 text-emerald-400/60 group-hover:scale-110 transition-transform" />
                         )}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white uppercase">Board &amp; Retro</p>
-                        <p className="text-[11px] text-zinc-400">Table Pass, Board Games &amp; Arcade</p>
                       </div>
                     </button>
 
@@ -645,40 +585,26 @@ export function GuestLoginWizardModal({
 
               {/* STEP 3: Setup - Select Table / Seat */}
               {currentStep === 3 && (
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                   
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs font-bold uppercase tracking-wider px-3 py-1">
-                          {activeScript.step3.tag}
-                        </Badge>
-                        <span className="text-xs font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
-                          <MessageSquare className="h-4 w-4" /> SAY OUT LOUD:
-                        </span>
-                      </div>
-
-                      <span className="text-xs font-bold text-zinc-400">
-                        Guest: <span className="text-white font-extrabold">{customerName || 'Guest'}</span> ({groupSize}p)
-                      </span>
-                    </div>
-
-                    {/* Script Prompt */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900 border-2 border-primary/40 shadow-inner">
-                      <h3 className="text-lg sm:text-xl font-extrabold tracking-wide text-white leading-snug">
-                        {activeScript.step3.dialogue}
-                      </h3>
-                    </div>
+                  {/* Elegant Script Typography */}
+                  <div className="px-2 pb-2">
+                    <p className="text-xl sm:text-2xl font-light tracking-wide text-zinc-200 leading-relaxed italic border-l-2 border-primary/40 pl-4">
+                      "{activeScript.step3.dialogue}"
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-2 pb-4">
+                    <span className="text-sm font-semibold text-zinc-400 tracking-wide">
+                      Select Station
+                    </span>
+                    <span className="text-xs font-medium text-white bg-zinc-800 px-3 py-1 rounded-full">
+                      {customerName || 'Guest'} ({groupSize}p)
+                    </span>
                   </div>
 
                   {/* Seat / Table Grid */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                        Select Available Station / Table:
-                      </label>
-                      <span className="text-[11px] text-zinc-400">Click a station to select</span>
-                    </div>
+                  <div className="space-y-4">
 
                     {filteredStations.length > 0 ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
@@ -720,12 +646,10 @@ export function GuestLoginWizardModal({
                                 </Badge>
                               </div>
 
-                              <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                                <span>{station.members?.length || 0} Players</span>
-                                {isSelected ? (
-                                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                                ) : (
-                                  <PlayCircle className="h-4 w-4 text-zinc-500 opacity-50" />
+                              <div className="flex items-center justify-between text-[10px] text-zinc-500 font-medium">
+                                <span>{station.members?.length || 0} p</span>
+                                {isSelected && (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                                 )}
                               </div>
                             </button>

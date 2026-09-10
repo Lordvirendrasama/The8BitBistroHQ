@@ -974,7 +974,6 @@ function DashboardContent() {
 
   return (
     <div className="space-y-3 sm:space-y-4 -mt-2 sm:-mt-4">
-      {isAdmin && (
         <div id="cafe-dashboard-header" className="flex flex-wrap items-center justify-end gap-2 pb-1">
             <Button 
                 id="guest-login-btn"
@@ -1009,14 +1008,15 @@ function DashboardContent() {
                 Quick Recharge
             </Button>
         </div>
-      )}
 
       <div className="space-y-3 sm:space-y-4">
         <Card className="border-none shadow-none bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-primary"/> PS5 Consoles</CardTitle>
             <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleManage('ps5')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => handleManage('ps5')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                )}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -1048,7 +1048,9 @@ function DashboardContent() {
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Users className="h-5 sm:h-6 w-5 sm:w-6 text-primary" /> Board Games</CardTitle>
             <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                )}
             </div>
           </CardHeader>
           <CardContent className="p-0">
