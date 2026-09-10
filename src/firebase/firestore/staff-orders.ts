@@ -14,7 +14,7 @@ export const addStaffOrder = async (
   
   // 1. Reference to the employee to update their balance
   const employeeRef = doc(db, 'employees', employeeId);
-  batch.update(employeeRef, { foodAllowanceBalance: newBalance });
+  batch.set(employeeRef, { foodAllowanceBalance: newBalance }, { merge: true });
 
   // 2. Reference to create a new staff order
   const orderRef = doc(collection(db, 'staffOrders'));

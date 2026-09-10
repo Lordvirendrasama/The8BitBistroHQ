@@ -622,7 +622,7 @@ const OwnerStaffFoodHeader = ({
   activeShift: Shift | null;
   currentEmployee: Employee | null;
   activeCycle: string;
-  handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number) => Promise<void>;
+  handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => Promise<void>;
 }) => {
   const { db } = useFirebase();
   const { user } = useAuth();
@@ -692,7 +692,20 @@ const OwnerStaffFoodHeader = ({
     }).sort((a, b) => b.spent - a.spent);
   }, [allEmployees, monthOrders]);
 
-  const showAllowance = currentEmployee && activeShift;
+  const showAllowance = !!(currentEmployee || user);
+  const effectiveEmployee: Employee = currentEmployee || {
+    id: user?.username || 'temp-staff',
+    username: user?.username || 'staff',
+    displayName: user?.displayName || 'Staff Member',
+    role: user?.role || 'staff',
+    pin: '0000',
+    salary: 0,
+    salaryType: 'monthly',
+    weekOffDay: 0,
+    joinDate: new Date().toISOString(),
+    isActive: true,
+    foodAllowanceBalance: 1000
+  };
 
   const handlePopoverOpenChange = (open: boolean) => {
     if (!open) {
@@ -894,9 +907,9 @@ const OwnerStaffFoodHeader = ({
         <StaffFoodModal
           isOpen={isModalOpen}
           onOpenChange={setIsModalOpen}
-          employee={currentEmployee}
+          employee={effectiveEmployee}
           activeCycle={activeCycle}
-          onSave={handleSaveStaffOrder}
+          onSave={(items, total, newBal) => handleSaveStaffOrder(items, total, newBal, effectiveEmployee)}
         />
       )}
     </>
@@ -910,30 +923,52 @@ const StaffFoodHeaderButton = ({
 }: { 
   currentEmployee: Employee | null;
   activeCycle: string;
-  handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number) => Promise<void>;
+  handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => Promise<void>;
 }) => {
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  if (!currentEmployee) return null;
+  const activeEmployee: Employee = useMemo(() => {
+    if (currentEmployee) return currentEmployee;
+    return {
+      id: user?.username || 'temp-staff',
+      username: user?.username || 'staff',
+      displayName: user?.displayName || 'Staff Member',
+      role: user?.role || 'staff',
+      pin: '0000',
+      salary: 0,
+      salaryType: 'monthly',
+      weekOffDay: 0,
+      joinDate: new Date().toISOString(),
+      isActive: true,
+      foodAllowanceBalance: 1000
+    };
+  }, [currentEmployee, user]);
+
+  const balance = activeEmployee.foodAllowanceBalance ?? 1000;
 
   return (
     <>
       <Button 
         variant="outline" 
         size="sm" 
-        className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg font-bold transition-all shrink-0 font-body shadow-sm"
+        className="h-10 sm:h-11 px-2 sm:px-4 gap-1.5 sm:gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 border border-amber-500/30 rounded-lg font-bold transition-all shrink-0 font-body shadow-sm"
         onClick={() => setIsModalOpen(true)}
+        title="Order a meal from your meal allowance"
       >
-        <Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-        <span className="text-sm sm:text-sm uppercase font-bold">Staff Food (₹{(currentEmployee.foodAllowanceBalance ?? 1000).toLocaleString()})</span>
+        <Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600" />
+        <div className="flex flex-col items-start leading-tight">
+          <span className="text-[10px] uppercase opacity-75 hidden sm:block font-extrabold tracking-wider">Meal Allowance</span>
+          <span className="font-mono text-xs sm:text-sm font-bold">₹{balance.toLocaleString()}</span>
+        </div>
       </Button>
 
       <StaffFoodModal
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
-        employee={currentEmployee}
+        employee={activeEmployee}
         activeCycle={activeCycle}
-        onSave={handleSaveStaffOrder}
+        onSave={(items, total, newBal) => handleSaveStaffOrder(items, total, newBal, activeEmployee)}
       />
     </>
   );
@@ -1227,18 +1262,30 @@ export function AppHeader({
     const appConfig = settingsDocs?.find(doc => doc.id === 'app_config');
     const activeCycle = appConfig?.activeCycle || 'Launch Live';
 
-    const handleSaveStaffOrder = async (items: BillItem[], totalAmount: number, newBalance: number) => {
-        if (!currentEmployee) return;
+    const handleSaveStaffOrder = async (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => {
+        const empToUse: Employee = targetEmployee || currentEmployee || {
+            id: user?.username || 'temp-staff',
+            username: user?.username || 'staff',
+            displayName: user?.displayName || 'Staff Member',
+            role: user?.role || 'staff',
+            pin: '0000',
+            salary: 0,
+            salaryType: 'monthly',
+            weekOffDay: 0,
+            joinDate: new Date().toISOString(),
+            isActive: true,
+            foodAllowanceBalance: 1000
+        };
         try {
-            await addStaffOrder(currentEmployee.id, newBalance, {
-                employeeUsername: currentEmployee.username,
-                employeeDisplayName: currentEmployee.displayName,
+            await addStaffOrder(empToUse.id, newBalance, {
+                employeeUsername: empToUse.username,
+                employeeDisplayName: empToUse.displayName,
                 items,
                 totalAmount,
                 timestamp: new Date().toISOString(),
                 cycle: activeCycle
             });
-            toast({ title: "Order Placed Successfully", description: `₹${totalAmount.toLocaleString()} deducted from your allowance.` });
+            toast({ title: "Order Placed Successfully", description: `₹${totalAmount.toLocaleString()} deducted from meal allowance.` });
         } catch (error) {
             console.error("Error saving staff order:", error);
             toast({ variant: "destructive", title: "Order Placement Failed", description: "Please try again later." });
@@ -1516,7 +1563,7 @@ export function AppHeader({
                             handleSaveStaffOrder={handleSaveStaffOrder}
                         />
                     )}
-                    {!isCustomerView && !(user?.role === 'admin' || user?.username === 'Viren') && (
+                    {!isCustomerView && (
                         <StaffFoodHeaderButton 
                             currentEmployee={currentEmployee}
                             activeCycle={activeCycle}
