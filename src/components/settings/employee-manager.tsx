@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Employee } from '@/lib/types';
+import type { Employee, StaffOrder } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -25,7 +25,6 @@ import { addEmployee, updateEmployee, deleteEmployee } from '@/firebase/firestor
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -63,6 +62,9 @@ export function EmployeeManager() {
 
   const empQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
   const { data: employees, loading } = useCollection<Employee>(empQuery);
+
+  const staffOrdersQuery = useMemo(() => !db ? null : collection(db, 'staffOrders'), [db]);
+  const { data: staffOrders } = useCollection<StaffOrder>(staffOrdersQuery);
 
   // Auto-seeding Kaif and Musaib if they don't exist and registry is empty
   useEffect(() => {
@@ -287,8 +289,19 @@ export function EmployeeManager() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-mono font-bold text-sm">
-                      ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()}
+                    <div className="flex flex-col">
+                      <span className="font-mono font-bold text-sm">₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()} / mo</span>
+                      <span className="text-[11px] font-bold font-mono text-emerald-600 uppercase">
+                        ₹{(() => {
+                          const uLower = emp.username?.toLowerCase();
+                          const now = new Date();
+                          const startM = new Date(now.getFullYear(), now.getMonth(), 1);
+                          const spent = (staffOrders || [])
+                            .filter(o => o.employeeUsername?.toLowerCase() === uLower && new Date(o.timestamp) >= startM)
+                            .reduce((s, o) => s + (o.totalAmount || 0), 0);
+                          return Math.max(0, (emp.foodAllowanceBalance ?? 1000) - spent).toLocaleString();
+                        })()} Rem
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -369,14 +382,15 @@ export function EmployeeManager() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Access Role</Label>
-                <Select value={formData.role} onValueChange={(v: any) => setFormData({...formData, role: v})}>
-                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                    <SelectItem value="guest">Guest</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select 
+                  value={formData.role} 
+                  onChange={e => setFormData({...formData, role: e.target.value as any})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-bold uppercase ring-offset-background outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
+                >
+                  <option value="admin">ADMIN</option>
+                  <option value="staff">STAFF</option>
+                  <option value="guest">GUEST</option>
+                </select>
               </div>
             </div>
 
@@ -398,13 +412,14 @@ export function EmployeeManager() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Salary Type</Label>
-                <Select value={formData.salaryType} onValueChange={(v: any) => setFormData({...formData, salaryType: v})}>
-                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly Fixed</SelectItem>
-                    <SelectItem value="hourly">Hourly Rate</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select 
+                  value={formData.salaryType} 
+                  onChange={e => setFormData({...formData, salaryType: e.target.value as any})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-bold uppercase ring-offset-background outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
+                >
+                  <option value="monthly">MONTHLY FIXED</option>
+                  <option value="hourly">HOURLY RATE</option>
+                </select>
               </div>
             </div>
             {formData.salaryType === 'monthly' && (
@@ -422,12 +437,13 @@ export function EmployeeManager() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Weekly Off Day</Label>
-                <Select value={String(formData.weekOffDay)} onValueChange={v => setFormData({...formData, weekOffDay: Number(v)})}>
-                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DAYS.map((d, i) => <SelectItem key={i} value={String(i)}>{d.toUpperCase()}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <select 
+                  value={String(formData.weekOffDay)} 
+                  onChange={e => setFormData({...formData, weekOffDay: Number(e.target.value)})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-bold uppercase ring-offset-background outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
+                >
+                  {DAYS.map((d, i) => <option key={i} value={String(i)}>{d.toUpperCase()}</option>)}
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Join Date</Label>
@@ -438,14 +454,15 @@ export function EmployeeManager() {
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Assigned Shift</Label>
-                <Select value={formData.assignedShift} onValueChange={v => setFormData({...formData, assignedShift: v})}>
-                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="opening">Opening</SelectItem>
-                    <SelectItem value="closing">Closing</SelectItem>
-                    <SelectItem value="both">Both</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select 
+                  value={formData.assignedShift} 
+                  onChange={e => setFormData({...formData, assignedShift: e.target.value as any})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-bold uppercase ring-offset-background outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
+                >
+                  <option value="opening">OPENING</option>
+                  <option value="closing">CLOSING</option>
+                  <option value="both">BOTH</option>
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Grace Period (Mins)</Label>
@@ -456,13 +473,14 @@ export function EmployeeManager() {
             <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Status</Label>
-                <Select value={String(formData.isActive)} onValueChange={v => setFormData({...formData, isActive: v === 'true'})}>
-                  <SelectTrigger className="font-bold uppercase text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select 
+                  value={String(formData.isActive)} 
+                  onChange={e => setFormData({...formData, isActive: e.target.value === 'true'})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-bold uppercase ring-offset-background outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
+                >
+                  <option value="true">ACTIVE</option>
+                  <option value="false">INACTIVE</option>
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-bold uppercase text-muted-foreground">Meal Allowance Quota (₹)</Label>
@@ -483,9 +501,11 @@ export function EmployeeManager() {
             <AlertDialogTitle className="font-headline text-lg flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" /> Permanently Delete Operator?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2 pt-1">
-              <p>Are you sure you want to permanently delete <strong>{empToDelete?.displayName}</strong> (<code>@{empToDelete?.username}</code>)?</p>
-              <p className="text-xs text-muted-foreground">This will remove their profile record from Firestore and wipe their login credentials from Firebase Authentication. This action cannot be undone.</p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 pt-1 text-sm text-muted-foreground">
+                <p>Are you sure you want to permanently delete <strong>{empToDelete?.displayName}</strong> (<code>@{empToDelete?.username}</code>)?</p>
+                <p className="text-xs text-muted-foreground">This will remove their profile record from Firestore and wipe their login credentials from Firebase Authentication. This action cannot be undone.</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

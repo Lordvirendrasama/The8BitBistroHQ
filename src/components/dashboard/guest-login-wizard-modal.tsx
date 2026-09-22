@@ -16,7 +16,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useToast } from '@/hooks/use-toast';
 import type { Member, Station } from '@/lib/types';
 
-export type ExperienceChoice = 'ps5' | 'fnb' | 'boardgame';
+export type ExperienceChoice = 'ps5' | 'ps4' | 'boardgame' | 'fnb';
 
 interface GuestLoginWizardModalProps {
   isOpen: boolean;
@@ -96,19 +96,14 @@ export function GuestLoginWizardModal({
   const filteredStations = useMemo(() => {
     if (!stations || stations.length === 0) return [];
     
-    // Priority 1: PS5 stations if PS5 experience selected
-    if (selectedExperiences.includes('ps5')) {
-      const ps5Only = stations.filter((s) => s.type === 'ps5');
-      if (ps5Only.length > 0) return ps5Only;
-    }
-    
-    // Priority 2: Board game stations if Board Games selected
-    if (selectedExperiences.includes('boardgame')) {
-      const bgOnly = stations.filter((s) => s.type === 'boardgame');
-      if (bgOnly.length > 0) return bgOnly;
-    }
+    const matching = stations.filter((s) => {
+      if (selectedExperiences.includes('ps5') && s.type === 'ps5') return true;
+      if (selectedExperiences.includes('ps4') && s.type === 'ps4') return true;
+      if (selectedExperiences.includes('boardgame') && s.type === 'boardgame') return true;
+      return false;
+    });
 
-    return stations;
+    return matching.length > 0 ? matching : stations;
   }, [stations, selectedExperiences]);
 
   if (!isOpen) return null;
@@ -124,7 +119,7 @@ export function GuestLoginWizardModal({
       step2: {
         tag: "STEP 2 OF 4",
         title: "What are you here for?",
-        dialogue: '"Awesome! Are you guys here for PS5 Gaming, Food & Drinks, or Board Games today?"',
+        dialogue: '"Awesome! Are you guys here for PS5, PS4, Board Games, or Cafe today?"',
         hint: "Select one or more activities to proceed to table/seat selection."
       },
       step3: {
@@ -150,7 +145,7 @@ export function GuestLoginWizardModal({
       step2: {
         tag: "STEP 2 OF 4",
         title: "Aaj kya plan hai?",
-        dialogue: '"Bahut badiya! Aaj aap log PS5 Gaming, Food & Drinks, ya Board Games ke liye aaye hain?"',
+        dialogue: '"Bahut badiya! Aaj aap log PS5, PS4, Board Games, ya Cafe ke liye aaye hain?"',
         hint: "Aap multiple activities bhi select kar sakte hain."
       },
       step3: {
@@ -219,9 +214,10 @@ export function GuestLoginWizardModal({
 
   const formatActivitySummary = () => {
     const labels: string[] = [];
-    if (selectedExperiences.includes('ps5')) labels.push('🎮 PS5 Gaming');
-    if (selectedExperiences.includes('fnb')) labels.push('☕ Food & Drinks');
-    if (selectedExperiences.includes('boardgame')) labels.push('🎲 Board & Retro');
+    if (selectedExperiences.includes('ps5')) labels.push('🎮 PS5');
+    if (selectedExperiences.includes('ps4')) labels.push('🎮 PS4');
+    if (selectedExperiences.includes('boardgame')) labels.push('🎲 Board Games');
+    if (selectedExperiences.includes('fnb')) labels.push('☕ Cafe');
     return labels.join(' + ') || 'General';
   };
 
@@ -329,9 +325,9 @@ export function GuestLoginWizardModal({
                       </div>
                     </div>
 
-                    <Button size="sm" className="h-7 text-[11px] font-bold uppercase bg-emerald-500 hover:bg-emerald-600 text-black">
+                    <span className="inline-flex items-center justify-center h-7 px-3 text-[11px] font-bold uppercase bg-emerald-500 text-black rounded-md">
                       Select Member
-                    </Button>
+                    </span>
                   </button>
                 ))
               ) : (
@@ -506,15 +502,15 @@ export function GuestLoginWizardModal({
                     </p>
                   </div>
 
-                  {/* 3 MULTI-SELECT EXPERIENCE OPTIONS */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  {/* 4 MULTI-SELECT EXPERIENCE OPTIONS */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                     
                     {/* OPTION 1: PS5 Gaming */}
                     <button
                       type="button"
                       onClick={() => handleToggleExperience('ps5')}
                       className={cn(
-                        "p-5 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
+                        "p-4 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
                         selectedExperiences.includes('ps5')
                           ? "border-primary bg-primary/10 shadow-lg shadow-primary/10"
                           : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
@@ -532,12 +528,58 @@ export function GuestLoginWizardModal({
                       </div>
                     </button>
 
-                    {/* OPTION 2: Food & Beverages */}
+                    {/* OPTION 2: PS4 Gaming */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleExperience('ps4')}
+                      className={cn(
+                        "p-4 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
+                        selectedExperiences.includes('ps4')
+                          ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10"
+                          : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
+                      )}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className={cn("text-base tracking-wide font-medium", selectedExperiences.includes('ps4') ? "text-blue-400" : "text-white")}>
+                          PS4
+                        </span>
+                        {selectedExperiences.includes('ps4') && (
+                          <div className="bg-blue-500 text-white rounded-full p-0.5">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* OPTION 3: Board Games */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleExperience('boardgame')}
+                      className={cn(
+                        "p-4 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
+                        selectedExperiences.includes('boardgame')
+                          ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
+                          : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
+                      )}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className={cn("text-base tracking-wide font-medium leading-tight", selectedExperiences.includes('boardgame') ? "text-emerald-500" : "text-white")}>
+                          Board Games
+                        </span>
+                        {selectedExperiences.includes('boardgame') && (
+                          <div className="bg-emerald-500 text-black rounded-full p-0.5">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* OPTION 4: Cafe */}
                     <button
                       type="button"
                       onClick={() => handleToggleExperience('fnb')}
                       className={cn(
-                        "p-5 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
+                        "p-4 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
                         selectedExperiences.includes('fnb')
                           ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10"
                           : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
@@ -549,29 +591,6 @@ export function GuestLoginWizardModal({
                         </span>
                         {selectedExperiences.includes('fnb') && (
                           <div className="bg-amber-500 text-black rounded-full p-0.5">
-                            <Check className="h-3 w-3" />
-                          </div>
-                        )}
-                      </div>
-                    </button>
-
-                    {/* OPTION 3: Board & Retro */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleExperience('boardgame')}
-                      className={cn(
-                        "p-5 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
-                        selectedExperiences.includes('boardgame')
-                          ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
-                          : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
-                      )}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className={cn("text-base tracking-wide font-medium", selectedExperiences.includes('boardgame') ? "text-emerald-500" : "text-white")}>
-                          Board
-                        </span>
-                        {selectedExperiences.includes('boardgame') && (
-                          <div className="bg-emerald-500 text-black rounded-full p-0.5">
                             <Check className="h-3 w-3" />
                           </div>
                         )}

@@ -39,15 +39,16 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
     const [isStaffFoodModalOpen, setIsStaffFoodModalOpen] = useState(false);
 
     // Fetch current logged-in employee record in real-time
-    const currentEmployeeQuery = useMemo(() => {
-        if (!db || !user?.username) return null;
-        return query(
-            collection(db, 'employees'),
-            where('username', '==', user.username)
-        );
-    }, [db, user]);
-    const { data: employeeDocs } = useCollection<Employee>(currentEmployeeQuery);
-    const currentEmployee = employeeDocs?.[0] || null;
+    const allEmployeesQuery = useMemo(() => {
+        if (!db) return null;
+        return collection(db, 'employees');
+    }, [db]);
+    const { data: allEmployeesDocs } = useCollection<Employee>(allEmployeesQuery);
+    const currentEmployee = useMemo(() => {
+        if (!allEmployeesDocs || !user?.username) return null;
+        const target = user.username.toLowerCase();
+        return allEmployeesDocs.find(e => e.username?.toLowerCase() === target) || null;
+    }, [allEmployeesDocs, user?.username]);
 
     // Fetch active settings/cycle in real-time
     const settingsQuery = useMemo(() => {
@@ -139,25 +140,32 @@ export function StaffOperations({ isOwnerView = false }: StaffOperationsProps) {
         });
     }, [activeShift, user, isOwnerView]);
 
-    const handleTaskToggle = async (task: ShiftTask) => {
+    const handleTaskToggle = (task: ShiftTask) => {
         if (!user || !activeShift) return;
-        await updateTask(activeShift.id, task.name, !task.completed, user);
-        
+        const newCompletedStatus = !task.completed;
+
+        // 1. INSTANT OPTIMISTIC LOCAL UPDATE (0ms delay)
         setActiveShift(prev => {
             if (!prev) return null;
             const updatedTasks = prev.tasks.map(t => 
                 t.name === task.name 
                 ? { 
                     ...t, 
-                    completed: !t.completed, 
-                    completedBy: !t.completed ? { username: user.username, displayName: user.displayName } : undefined 
+                    completed: newCompletedStatus, 
+                    completedBy: newCompletedStatus ? { username: user.username, displayName: user.displayName } : undefined 
                   } 
                 : t
             );
             return { ...prev, tasks: updatedTasks };
         });
 
-        toast({ title: "Task Updated", description: `"${task.name}" marked as ${!task.completed ? 'complete' : 'incomplete'}.` });
+        toast({ title: "Task Updated", description: `"${task.name}" marked as ${newCompletedStatus ? 'complete' : 'incomplete'}.` });
+
+        // 2. Async background Firestore sync
+        updateTask(activeShift.id, task.name, newCompletedStatus, user).catch(err => {
+            console.error("Error updating task:", err);
+            toast({ variant: "destructive", title: "Sync Error", description: "Failed to update task on server." });
+        });
     };
     
     const handleLogoutClick = async () => {

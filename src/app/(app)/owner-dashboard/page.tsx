@@ -67,8 +67,8 @@ export default function OwnerDashboardPage() {
   );
   const { data: employees } = useCollection<Employee>(employeesQuery);
 
-  const shiftsQuery = useMemo(() => (!db ? null : query(collection(db, 'shifts'), where('endTime', '==', null))), [db]);
-  const { data: activeShifts } = useCollection<Shift>(shiftsQuery);
+  const shiftsQuery = useMemo(() => (!db ? null : collection(db, 'shifts')), [db]);
+  const { data: allShifts } = useCollection<Shift>(shiftsQuery);
 
   const fixedBillsQuery = useMemo(() => (!db ? null : collection(db, 'fixedBills')), [db]);
   const { data: fixedBills } = useCollection<FixedBill>(fixedBillsQuery);
@@ -106,14 +106,14 @@ export default function OwnerDashboardPage() {
       phaseExpenses,
       stations,
       employees,
-      activeShifts || [],
+      allShifts || [],
       members,
       fixedBills,
       liabilityState,
       appSettings,
       selectedDate
     );
-  }, [bills, expenses, stations, employees, activeShifts, members, fixedBills, liabilityState, appSettings, selectedPhase, selectedDate]);
+  }, [bills, expenses, stations, employees, allShifts, members, fixedBills, liabilityState, appSettings, selectedPhase, selectedDate]);
 
   if (!pulseData) {
     return (
@@ -276,9 +276,9 @@ export default function OwnerDashboardPage() {
           size="sm"
           variant={activeTab === 'employee' ? 'default' : 'outline'}
           onClick={() => scrollToSection('employee')}
-          className="h-8 text-xs font-bold gap-1.5 shrink-0"
+          className="h-8 text-xs font-bold gap-1.5 shrink-0 border-indigo-500/30"
         >
-          <ShieldCheck className="h-3.5 w-3.5" /> Staff Intel
+          <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" /> Staff &amp; Payroll Controls
         </Button>
         <Button
           size="sm"

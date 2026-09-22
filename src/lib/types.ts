@@ -262,7 +262,7 @@ export type StationStatus = 'available' | 'in-use' | 'paused' | 'finishing';
 export interface Station {
   id: string;
   name: string;
-  type: 'ps5' | 'boardgame';
+  type: 'ps5' | 'ps4' | 'boardgame';
   status: StationStatus;
   startTime: string | null;
   endTime: string | null;

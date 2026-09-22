@@ -651,7 +651,8 @@ const OwnerStaffFoodHeader = ({
 
   const filteredOrders = useMemo(() => {
     if (selectedEmployeeUsername === 'all') return monthOrders;
-    return monthOrders.filter(o => o.employeeUsername === selectedEmployeeUsername);
+    const target = selectedEmployeeUsername.toLowerCase();
+    return monthOrders.filter(o => o.employeeUsername?.toLowerCase() === target);
   }, [monthOrders, selectedEmployeeUsername]);
 
   const stats = useMemo(() => {
@@ -659,7 +660,7 @@ const OwnerStaffFoodHeader = ({
     const totalSpent = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
     const avgSpent = totalOrders > 0 ? Math.round(totalSpent / totalOrders) : 0;
     
-    const selectedEmp = allEmployees?.find(emp => emp.username === selectedEmployeeUsername);
+    const selectedEmp = allEmployees?.find(emp => emp.username?.toLowerCase() === selectedEmployeeUsername.toLowerCase());
     const allowance = selectedEmp ? (selectedEmp.foodAllowanceBalance ?? 1000) : null;
     
     return {
@@ -676,26 +677,55 @@ const OwnerStaffFoodHeader = ({
 
   const employeeSummaries = useMemo(() => {
     if (!allEmployees) return [];
-    return allEmployees.map(emp => {
-      const empOrders = monthOrders.filter(o => o.employeeUsername === emp.username);
+    
+    const empMap = new Map<string, Employee>();
+    allEmployees.forEach(emp => {
+      if (emp.username) empMap.set(emp.username.toLowerCase(), emp);
+    });
+
+    const allUsernames = new Set<string>();
+    allEmployees.forEach(emp => emp.username && allUsernames.add(emp.username.toLowerCase()));
+    monthOrders.forEach(o => o.employeeUsername && allUsernames.add(o.employeeUsername.toLowerCase()));
+
+    const summaries: Array<{ emp: Employee; spent: number; count: number; pendingCount: number; isFormer?: boolean }> = [];
+
+    allUsernames.forEach(uname => {
+      const knownEmp = empMap.get(uname);
+      const empOrders = monthOrders.filter(o => o.employeeUsername?.toLowerCase() === uname);
       const spent = empOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
       const count = empOrders.length;
       const approvedCount = empOrders.filter(o => o.approved).length;
       const pendingCount = count - approvedCount;
-      
-      return {
-        emp,
-        spent,
-        count,
-        pendingCount
-      };
-    }).sort((a, b) => b.spent - a.spent);
+
+      if (knownEmp) {
+        summaries.push({ emp: knownEmp, spent, count, pendingCount });
+      } else if (empOrders.length > 0) {
+        const rawName = empOrders[0]?.employeeDisplayName || (uname.charAt(0).toUpperCase() + uname.slice(1));
+        const formerEmp: Employee = {
+          id: `former-${uname}`,
+          username: uname,
+          displayName: `${rawName} (Ex-Staff)`,
+          role: 'staff',
+          pin: '0000',
+          salary: 0,
+          salaryType: 'monthly',
+          weekOffDay: 0,
+          joinDate: new Date().toISOString(),
+          isActive: false,
+          foodAllowanceBalance: 0
+        };
+        summaries.push({ emp: formerEmp, spent, count, pendingCount, isFormer: true });
+      }
+    });
+
+    return summaries.sort((a, b) => b.spent - a.spent);
   }, [allEmployees, monthOrders]);
 
   const showAllowance = !!(currentEmployee || user);
-  const effectiveEmployee: Employee = currentEmployee || {
+  const selectedEmp = selectedEmployeeUsername !== 'all' ? allEmployees?.find(emp => emp.username?.toLowerCase() === selectedEmployeeUsername.toLowerCase()) : null;
+  const effectiveEmployee: Employee = selectedEmp || currentEmployee || {
     id: user?.username || 'temp-staff',
-    username: user?.username || 'staff',
+    username: user?.username?.toLowerCase() || 'staff',
     displayName: user?.displayName || 'Staff Member',
     role: user?.role || 'staff',
     pin: '0000',
@@ -769,7 +799,7 @@ const OwnerStaffFoodHeader = ({
               className="bg-background border-2 border-amber-500/20 rounded-md px-2 py-1 text-xs font-bold uppercase outline-none focus:border-amber-500 text-foreground cursor-pointer transition-colors shadow-sm w-full"
             >
               <option value="all">-- ALL EMPLOYEES --</option>
-              {allEmployees?.map(emp => (
+              {employeeSummaries.map(({ emp }) => (
                 <option key={emp.id} value={emp.username}>
                   {emp.displayName}
                 </option>
@@ -925,14 +955,36 @@ const StaffFoodHeaderButton = ({
   activeCycle: string;
   handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => Promise<void>;
 }) => {
+  const { db } = useFirebase();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const staffOrdersQuery = useMemo(() => !db ? null : collection(db, 'staffOrders'), [db]);
+  const { data: staffOrders } = useCollection<StaffOrder>(staffOrdersQuery);
+
+  const balance = useMemo(() => {
+    const targetUsername = (currentEmployee?.username || user?.username || '').toLowerCase();
+    if (!targetUsername) return 1000;
+    
+    const now = new Date();
+    const startM = startOfMonth(now);
+    const endM = endOfMonth(now);
+    
+    const monthSpent = (staffOrders || [])
+      .filter(o => {
+        const uMatch = o.employeeUsername?.toLowerCase() === targetUsername;
+        const d = new Date(o.timestamp);
+        return uMatch && d >= startM && d <= endM;
+      })
+      .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+      
+    return Math.max(0, 1000 - monthSpent);
+  }, [currentEmployee, user, staffOrders]);
+
   const activeEmployee: Employee = useMemo(() => {
-    if (currentEmployee) return currentEmployee;
-    return {
+    const baseEmp = currentEmployee || {
       id: user?.username || 'temp-staff',
-      username: user?.username || 'staff',
+      username: user?.username?.toLowerCase() || 'staff',
       displayName: user?.displayName || 'Staff Member',
       role: user?.role || 'staff',
       pin: '0000',
@@ -943,9 +995,11 @@ const StaffFoodHeaderButton = ({
       isActive: true,
       foodAllowanceBalance: 1000
     };
-  }, [currentEmployee, user]);
-
-  const balance = activeEmployee.foodAllowanceBalance ?? 1000;
+    return {
+      ...baseEmp,
+      foodAllowanceBalance: balance
+    };
+  }, [currentEmployee, user, balance]);
 
   return (
     <>
@@ -1243,15 +1297,16 @@ export function AppHeader({
     const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
 
     // Fetch current logged-in employee record in real-time
-    const currentEmployeeQuery = useMemo(() => {
-        if (!db || !user?.username) return null;
-        return query(
-            collection(db, 'employees'),
-            where('username', '==', user.username)
-        );
-    }, [db, user]);
-    const { data: employeeDocs } = useCollection<Employee>(currentEmployeeQuery);
-    const currentEmployee = employeeDocs?.[0] || null;
+    const allEmployeesQuery = useMemo(() => {
+        if (!db) return null;
+        return collection(db, 'employees');
+    }, [db]);
+    const { data: allEmployeesDocs } = useCollection<Employee>(allEmployeesQuery);
+    const currentEmployee = useMemo(() => {
+        if (!allEmployeesDocs || !user?.username) return null;
+        const target = user.username.toLowerCase();
+        return allEmployeesDocs.find(e => e.username?.toLowerCase() === target) || null;
+    }, [allEmployeesDocs, user?.username]);
 
     // Fetch active settings/cycle in real-time
     const settingsQuery = useMemo(() => {
@@ -1263,9 +1318,9 @@ export function AppHeader({
     const activeCycle = appConfig?.activeCycle || 'Launch Live';
 
     const handleSaveStaffOrder = async (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => {
-        const empToUse: Employee = targetEmployee || currentEmployee || {
+        const rawEmp: Employee = targetEmployee || currentEmployee || {
             id: user?.username || 'temp-staff',
-            username: user?.username || 'staff',
+            username: user?.username?.toLowerCase() || 'staff',
             displayName: user?.displayName || 'Staff Member',
             role: user?.role || 'staff',
             pin: '0000',
@@ -1276,6 +1331,9 @@ export function AppHeader({
             isActive: true,
             foodAllowanceBalance: 1000
         };
+        const realEmpDoc = allEmployeesDocs?.find(e => e.username?.toLowerCase() === rawEmp.username?.toLowerCase() || e.id === rawEmp.id);
+        const empToUse = realEmpDoc || rawEmp;
+
         try {
             await addStaffOrder(empToUse.id, newBalance, {
                 employeeUsername: empToUse.username,

@@ -38,19 +38,34 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
   const { data: foodItems, loading: loadingItems } = useCollection<FoodItem>(itemsCollection);
 
   // Fetch staff orders
-  const myOrdersQuery = useMemo(() => {
-    if (!db || !employee.username) return null;
-    return query(
-      collection(db, 'staffOrders'),
-      where('employeeUsername', '==', employee.username)
-    );
-  }, [db, employee.username]);
-  const { data: myOrders, loading: loadingOrders } = useCollection<StaffOrder>(myOrdersQuery);
+  const allOrdersQuery = useMemo(() => {
+    if (!db) return null;
+    return collection(db, 'staffOrders');
+  }, [db]);
+  const { data: allOrders, loading: loadingOrders } = useCollection<StaffOrder>(allOrdersQuery);
 
   const sortedOrders = useMemo(() => {
-    if (!myOrders) return [];
-    return [...myOrders].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [myOrders]);
+    if (!allOrders || !employee.username) return [];
+    const targetUser = employee.username.toLowerCase();
+    return [...allOrders]
+      .filter(o => o.employeeUsername?.toLowerCase() === targetUser)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [allOrders, employee.username]);
+
+  const itemSummary = useMemo(() => {
+    const map: Record<string, { name: string; quantity: number; totalValue: number }> = {};
+    sortedOrders.forEach(o => {
+      (o.items || []).forEach(item => {
+        const key = item.name.trim().toUpperCase();
+        if (!map[key]) {
+          map[key] = { name: item.name, quantity: 0, totalValue: 0 };
+        }
+        map[key].quantity += item.quantity;
+        map[key].totalValue += item.price * item.quantity;
+      });
+    });
+    return Object.values(map).sort((a, b) => b.quantity - a.quantity);
+  }, [sortedOrders]);
 
   useEffect(() => {
     if (isOpen) {
@@ -197,6 +212,27 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
                   <div className="py-20 text-center font-headline text-sm animate-pulse opacity-50">Syncing History...</div>
                 ) : sortedOrders.length > 0 ? (
                   <div className="space-y-3">
+                    {itemSummary.length > 0 && (
+                      <div className="p-3 bg-background border-2 border-primary/20 rounded-xl space-y-2 shadow-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                            <Utensils className="h-3.5 w-3.5" /> Consumed Items Summary
+                          </span>
+                          <span className="text-xs font-bold font-mono text-muted-foreground">
+                            {itemSummary.reduce((s, i) => s + i.quantity, 0)} Items Total
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                          {itemSummary.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-xs p-1.5 bg-muted/30 rounded-md border border-border/30">
+                              <span className="font-bold uppercase truncate pr-1 text-foreground">{item.name}</span>
+                              <span className="font-mono font-bold shrink-0 text-primary">x{item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {sortedOrders.map((order, idx) => (
                       <div key={order.id || idx} className="p-3.5 bg-background border-2 border-foreground/5 rounded-xl space-y-2">
                         <div className="flex justify-between items-center">

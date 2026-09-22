@@ -180,13 +180,29 @@ export interface CafeIntelligenceData {
 }
 
 export interface EmployeeIntelScorecard {
+  id?: string;
   username: string;
   displayName: string;
+  role?: 'admin' | 'staff' | 'guest';
+  joinDate?: string;
+  salary?: number;
+  salaryType?: 'monthly' | 'hourly';
+  foodAllowanceBalance?: number;
+  pin?: string;
+  workStartTime?: string;
+  workEndTime?: string;
+  workingDaysPerWeek?: number;
+  overtimeMultiplier?: number;
+  weekOffDay?: number;
+  assignedShift?: string;
+  gracePeriod?: number;
+  isActive?: boolean;
   revenueGenerated: number;
   ordersServed: number;
   shiftsWorked: number;
   attendancePct: number;
   lateArrivalsCount: number;
+  employeeRaw?: Employee;
 }
 
 export interface FinancialIntelligenceData {
@@ -239,6 +255,23 @@ export interface OwnerBriefData {
 /**
  * Main Deterministic Pulse Analytics Processing Engine using ONLY Real Data
  */
+export function parseBusinessDateStrToNoonDate(dateStr: string): Date {
+  if (!dateStr || !dateStr.includes('-')) return new Date();
+  const [y, m, d] = dateStr.split('T')[0].split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
+export function formatHourTo12H(hr: number | string): string {
+  const h = typeof hr === 'string' ? parseInt(hr, 10) : hr;
+  if (isNaN(h)) return 'N/A';
+  if (h === 0) return '12 AM';
+  if (h === 12) return '12 PM';
+  return h > 12 ? `${h - 12} PM` : `${h} AM`;
+}
+
+/**
+ * Main Deterministic Pulse Analytics Processing Engine using ONLY Real Data
+ */
 export function computeOwnerPulseData(
   bills: Bill[],
   expenses: Expense[],
@@ -251,8 +284,10 @@ export function computeOwnerPulseData(
   appSettings: Settings | null,
   targetDate?: Date | string
 ) {
-  const now = targetDate ? (typeof targetDate === 'string' ? new Date(targetDate) : targetDate) : new Date();
-  const todayStr = getBusinessDate(now);
+  const refDate = targetDate
+    ? (typeof targetDate === 'string' ? parseBusinessDateStrToNoonDate(targetDate) : targetDate)
+    : new Date();
+  const todayStr = getBusinessDate(refDate, true);
 
   // Group bills by business date
   const billsByDate = new Map<string, Bill[]>();
@@ -264,61 +299,85 @@ export function computeOwnerPulseData(
     billsByDate.set(bDate, arr);
   });
 
-  const dailyTotal = (dateStr: string, elapsedOnly = false) => {
-    return (billsByDate.get(dateStr) || [])
-      .filter(b => !elapsedOnly || (b.timestamp && isWithinElapsedPeriodOfDay(b.timestamp, now)))
-      .reduce((s, b) => s + b.totalAmount, 0);
+  // Group expenses by business date
+  const expensesByDate = new Map<string, Expense[]>();
+  expenses.forEach((e) => {
+    if (!e.timestamp) return;
+    const eDate = getBusinessDate(new Date(e.timestamp));
+    const arr = expensesByDate.get(eDate) || [];
+    arr.push(e);
+    expensesByDate.set(eDate, arr);
+  });
+
+  const dailyTotal = (dateStr: string) => {
+    return (billsByDate.get(dateStr) || []).reduce((s, b) => s + (b.totalAmount || 0), 0);
   };
   
-  const dailyBillsList = (dateStr: string, elapsedOnly = false) => {
-    return (billsByDate.get(dateStr) || [])
-      .filter(b => !elapsedOnly || (b.timestamp && isWithinElapsedPeriodOfDay(b.timestamp, now)));
+  const dailyBillsList = (dateStr: string) => {
+    return billsByDate.get(dateStr) || [];
   };
 
-  // Helper date calculations
-  const yesterdayStr = getBusinessDate(subDays(now, 1));
-  const sameWeekdayLastWeekStr = getBusinessDate(subWeeks(now, 1));
+  const dailyExpenseTotal = (dateStr: string) => {
+    return (expensesByDate.get(dateStr) || []).reduce((s, e) => s + (e.amount || 0), 0);
+  };
+
+  // Helper date calculations based on Business Dates
+  const yesterdayStr = getBusinessDate(subDays(refDate, 1), true);
+  const sameWeekdayLastWeekStr = getBusinessDate(subWeeks(refDate, 1), true);
+  const equivalentLastMonthDate = getEquivalentWeekdayLastMonth(refDate);
+  const lastMonthSameDateStr = getBusinessDate(equivalentLastMonthDate, true);
 
   // Current day metrics
   const todayBills = dailyBillsList(todayStr);
   const revToday = dailyTotal(todayStr);
-  const expToday = expenses
-    .filter((e) => e.timestamp && getBusinessDate(new Date(e.timestamp)) === todayStr)
-    .reduce((s, e) => s + e.amount, 0);
+  const expToday = dailyExpenseTotal(todayStr);
   const profitToday = revToday - expToday;
   const customersToday = todayBills.reduce((s, b) => s + Math.max(1, b.members?.length || 1), 0);
   const avgBillToday = todayBills.length > 0 ? Math.round(revToday / todayBills.length) : 0;
 
-  // Previous day metrics (Elapsed comparison)
-  const yesterdayBills = dailyBillsList(yesterdayStr, true);
-  const revYesterday = dailyTotal(yesterdayStr, true);
-  const expYesterday = expenses
-    .filter((e) => e.timestamp && getBusinessDate(new Date(e.timestamp)) === yesterdayStr && isWithinElapsedPeriodOfDay(e.timestamp, now))
-    .reduce((s, e) => s + e.amount, 0);
+  // Previous day metrics (Full actual business day comparison)
+  const yesterdayBills = dailyBillsList(yesterdayStr);
+  const revYesterday = dailyTotal(yesterdayStr);
+  const expYesterday = dailyExpenseTotal(yesterdayStr);
   const profitYesterday = revYesterday - expYesterday;
   const customersYesterday = yesterdayBills.reduce((s, b) => s + Math.max(1, b.members?.length || 1), 0);
   const avgBillYesterday = yesterdayBills.length > 0 ? Math.round(revYesterday / yesterdayBills.length) : 0;
 
-  // Last Month Equivalent Weekday metrics (e.g., 1st Saturday to 1st Saturday) (Elapsed comparison)
-  const equivalentLastMonthDate = getEquivalentWeekdayLastMonth(now);
-  const lastMonthSameDateStr = getBusinessDate(equivalentLastMonthDate);
-  const lastMonthSameDateBills = dailyBillsList(lastMonthSameDateStr, true);
-  const revLastMonthSameDate = dailyTotal(lastMonthSameDateStr, true);
-  const expLastMonthSameDate = expenses
-    .filter((e) => e.timestamp && getBusinessDate(new Date(e.timestamp)) === lastMonthSameDateStr && isWithinElapsedPeriodOfDay(e.timestamp, now))
-    .reduce((s, e) => s + e.amount, 0);
+  // Yesterday gaming occupancy calculation from real bills
+  let yesterdayGamingMinutes = 0;
+  yesterdayBills.forEach((b) => {
+    if (b.stationName) {
+      if (b.packageName && b.packageName.toLowerCase().includes('hour')) {
+        const hours = parseInt(b.packageName, 10) || 1;
+        yesterdayGamingMinutes += hours * 60;
+      } else {
+        yesterdayGamingMinutes += 60;
+      }
+    }
+  });
+  const yesterdayGamingHours = Math.round(yesterdayGamingMinutes / 60);
+  const totalStations = Math.max(1, stations.length);
+  const potentialGamingHoursYesterday = 12 * totalStations;
+  const gamingOccupancyYesterday = potentialGamingHoursYesterday > 0
+    ? Math.min(100, Math.round((yesterdayGamingHours / potentialGamingHoursYesterday) * 100))
+    : 0;
+
+  // Last Month Equivalent Weekday metrics
+  const lastMonthSameDateBills = dailyBillsList(lastMonthSameDateStr);
+  const revLastMonthSameDate = dailyTotal(lastMonthSameDateStr);
+  const expLastMonthSameDate = dailyExpenseTotal(lastMonthSameDateStr);
   const profitLastMonthSameDate = revLastMonthSameDate - expLastMonthSameDate;
   const customersLastMonthSameDate = lastMonthSameDateBills.reduce((s, b) => s + Math.max(1, b.members?.length || 1), 0);
   const avgBillLastMonthSameDate = lastMonthSameDateBills.length > 0 ? Math.round(revLastMonthSameDate / lastMonthSameDateBills.length) : 0;
 
   // Last Month average daily metrics calculation
-  const startLastMonth = startOfMonth(subMonths(now, 1));
-  const endLastMonth = endOfMonth(subMonths(now, 1));
+  const startLastMonth = startOfMonth(subMonths(refDate, 1));
+  const endLastMonth = endOfMonth(subMonths(refDate, 1));
   let lastMonthTotalRev = 0;
   let lastMonthDaysCount = 0;
   let cursor = new Date(startLastMonth);
   while (cursor <= endLastMonth) {
-    const dStr = getBusinessDate(cursor);
+    const dStr = getBusinessDate(cursor, true);
     lastMonthTotalRev += dailyTotal(dStr);
     lastMonthDaysCount++;
     cursor = subDays(cursor, -1);
@@ -327,7 +386,6 @@ export function computeOwnerPulseData(
 
   // Occupancy calculations
   const inUseStations = stations.filter((s) => s.status === 'in-use' || s.status === 'finishing').length;
-  const totalStations = Math.max(1, stations.length);
   const gamingOccupancyToday = Math.round((inUseStations / totalStations) * 100);
 
   // Survival Goal calculation
@@ -358,7 +416,7 @@ export function computeOwnerPulseData(
     lastMonth?: number
   ): MetricComparison => {
     const absDiff = current - previous;
-    const pctDiff = previous > 0 ? Math.round(((current - previous) / previous) * 100) : current > 0 ? 100 : 0;
+    const pctDiff = previous > 0 ? Math.round(((current - previous) / previous) * 100) : (current > 0 ? 100 : 0);
     const trend = absDiff > 0 ? 'up' : absDiff < 0 ? 'down' : 'neutral';
     let status: StatusLevel = 'Healthy';
     let color: StatusColor = 'green';
@@ -375,7 +433,7 @@ export function computeOwnerPulseData(
     }
 
     const lastMonthPctDiff = lastMonth !== undefined 
-      ? (lastMonth > 0 ? Math.round(((current - lastMonth) / lastMonth) * 100) : current > 0 ? 100 : 0)
+      ? (lastMonth > 0 ? Math.round(((current - lastMonth) / lastMonth) * 100) : (current > 0 ? 100 : 0))
       : undefined;
 
     return {
@@ -397,55 +455,80 @@ export function computeOwnerPulseData(
     profitToday: buildMetric(profitToday, profitYesterday, undefined, profitLastMonthSameDate),
     customersToday: buildMetric(customersToday, customersYesterday, 30, customersLastMonthSameDate),
     averageBill: buildMetric(avgBillToday, avgBillYesterday, 350, avgBillLastMonthSameDate),
-    gamingOccupancy: buildMetric(gamingOccupancyToday, 50, 75),
+    gamingOccupancy: buildMetric(gamingOccupancyToday, gamingOccupancyYesterday, 75),
     healthScore: buildMetric(healthBreakdown.totalScore, 70, 85),
   };
 
   // 3. Growth Centre Multi-Period Benchmarks
-  const revSameWeekdayLastWk = dailyTotal(sameWeekdayLastWeekStr, true);
+  const revSameWeekdayLastWk = dailyTotal(sameWeekdayLastWeekStr);
 
-  const startThisWk = startOfWeek(now, { weekStartsOn: 1 });
-  const startLastWk = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-  const elapsedEndLastWk = subWeeks(now, 1);
+  const startThisWkNoon = startOfWeek(refDate, { weekStartsOn: 1 });
+  const startLastWkNoon = startOfWeek(subWeeks(refDate, 1), { weekStartsOn: 1 });
+  const sameWeekdayLastWkNoon = subWeeks(refDate, 1);
 
   let thisWkRev = 0;
+  let curr = new Date(startThisWkNoon);
+  while (curr <= refDate) {
+    thisWkRev += dailyTotal(getBusinessDate(curr, true));
+    curr = subDays(curr, -1);
+  }
+
   let lastWkRev = 0;
-  bills.forEach((b) => {
-    if (!b.timestamp) return;
-    const dt = new Date(b.timestamp);
-    if (dt >= startThisWk && dt <= now) thisWkRev += b.totalAmount;
-    if (dt >= startLastWk && dt <= elapsedEndLastWk) lastWkRev += b.totalAmount;
-  });
-
-  const startThisMo = startOfMonth(now);
-  const startLastMoPeriod = startOfMonth(subMonths(now, 1));
-  const elapsedEndLastMo = subMonths(now, 1);
-  let thisMoRev = 0;
-  let lastMoElapsedRev = 0;
-  bills.forEach((b) => {
-    if (!b.timestamp) return;
-    const dt = new Date(b.timestamp);
-    if (dt >= startThisMo && dt <= now) thisMoRev += b.totalAmount;
-    if (dt >= startLastMoPeriod && dt <= elapsedEndLastMo) lastMoElapsedRev += b.totalAmount;
-  });
-
-  const startSameMoLastYr = startOfMonth(subYears(now, 1));
-  const elapsedEndSameMoLastYr = subYears(now, 1);
-  let sameMoLastYrRev = 0;
-  bills.forEach((b) => {
-    if (!b.timestamp) return;
-    const dt = new Date(b.timestamp);
-    if (dt >= startSameMoLastYr && dt <= elapsedEndSameMoLastYr) {
-      sameMoLastYrRev += b.totalAmount;
+  curr = new Date(startLastWkNoon);
+  while (curr <= sameWeekdayLastWkNoon) {
+    lastWkRev += dailyTotal(getBusinessDate(curr, true));
+    curr = subDays(curr, -1);
+  }
+  if (lastWkRev === 0) {
+    const endLastWkNoon = endOfWeek(subWeeks(refDate, 1), { weekStartsOn: 1 });
+    curr = new Date(startLastWkNoon);
+    while (curr <= endLastWkNoon) {
+      lastWkRev += dailyTotal(getBusinessDate(curr, true));
+      curr = subDays(curr, -1);
     }
-  });
+  }
+
+  const startThisMoNoon = startOfMonth(refDate);
+  const startLastMoNoon = startOfMonth(subMonths(refDate, 1));
+  const sameDayLastMoNoon = subMonths(refDate, 1);
+
+  let thisMoRev = 0;
+  curr = new Date(startThisMoNoon);
+  while (curr <= refDate) {
+    thisMoRev += dailyTotal(getBusinessDate(curr, true));
+    curr = subDays(curr, -1);
+  }
+
+  let lastMoElapsedRev = 0;
+  curr = new Date(startLastMoNoon);
+  while (curr <= sameDayLastMoNoon) {
+    lastMoElapsedRev += dailyTotal(getBusinessDate(curr, true));
+    curr = subDays(curr, -1);
+  }
+  if (lastMoElapsedRev === 0) {
+    const endLastMoNoon = endOfMonth(subMonths(refDate, 1));
+    curr = new Date(startLastMoNoon);
+    while (curr <= endLastMoNoon) {
+      lastMoElapsedRev += dailyTotal(getBusinessDate(curr, true));
+      curr = subDays(curr, -1);
+    }
+  }
+
+  const startSameMoLastYrNoon = startOfMonth(subYears(refDate, 1));
+  const endSameMoLastYrNoon = endOfMonth(subYears(refDate, 1));
+  let sameMoLastYrRev = 0;
+  curr = new Date(startSameMoLastYrNoon);
+  while (curr <= endSameMoLastYrNoon) {
+    sameMoLastYrRev += dailyTotal(getBusinessDate(curr, true));
+    curr = subDays(curr, -1);
+  }
 
   const last30DaysTrend: number[] = [];
   let lifetimeBestRaw = { date: todayStr, amount: 0 };
   let lifetimeWorst = { date: todayStr, amount: Infinity };
 
   for (let i = 29; i >= 0; i--) {
-    const dStr = getBusinessDate(subDays(now, i));
+    const dStr = getBusinessDate(subDays(refDate, i), true);
     const val = dailyTotal(dStr);
     last30DaysTrend.push(val);
   }
@@ -573,12 +656,12 @@ export function computeOwnerPulseData(
     other: categoryRevMap.Retail.rev + categoryRevMap.Memberships.rev + categoryRevMap['Board Games'].rev + categoryRevMap.Delivery.rev
   };
   
-  const elapsedHours = getElapsedOperatingHours(now);
+  const elapsedHours = getElapsedOperatingHours(refDate);
   const revenuePerOperatingHour = elapsedHours > 0 ? Math.round(revToday / elapsedHours) : 0;
 
   const dayTotals: Record<string, number> = {};
   billsByDate.forEach((dayBills, dStr) => {
-     const dayOfWeek = format(new Date(dayBills[0]?.timestamp || dStr), 'EEEE');
+     const dayOfWeek = format(parseBusinessDateStrToNoonDate(dStr), 'EEEE');
      dayTotals[dayOfWeek] = (dayTotals[dayOfWeek] || 0) + dayBills.reduce((s, b) => s + b.totalAmount, 0);
   });
   const sortedDaysByRev = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]);
@@ -599,31 +682,54 @@ export function computeOwnerPulseData(
   };
 
   // 5. Customer Intelligence Data
+  const memberIdsSet = new Set(members.map((m) => m.id));
   let newCustCount = 0;
   let returningCustCount = 0;
   let memberVisits = 0;
   let walkinVisits = 0;
   let gamingGamersCount = 0;
+  let memberRev = 0;
 
   todayBills.forEach((b) => {
+    let billMemberCount = 0;
+    let billGuestCount = 0;
+
     if (b.members && b.members.length > 0) {
-      memberVisits += b.members.length;
-      returningCustCount += b.members.length;
+      b.members.forEach((m) => {
+        const isGuest = !m.id || 
+                        m.id.startsWith('guest') || 
+                        (m.name && m.name.toLowerCase().includes('guest')) || 
+                        !memberIdsSet.has(m.id);
+        if (isGuest) {
+          billGuestCount++;
+        } else {
+          billMemberCount++;
+        }
+      });
     } else {
-      walkinVisits += 1;
-      newCustCount += 1;
+      billGuestCount = 1;
     }
+
+    memberVisits += billMemberCount;
+    returningCustCount += billMemberCount;
+    walkinVisits += billGuestCount;
+    newCustCount += billGuestCount;
+
     if (b.initialPackagePrice && b.initialPackagePrice > 0) {
-      gamingGamersCount += Math.max(1, b.members?.length || 1);
+      gamingGamersCount += (billMemberCount + billGuestCount);
+    }
+
+    const totalBillCusts = billMemberCount + billGuestCount;
+    if (totalBillCusts > 0) {
+      memberRev += b.totalAmount * (billMemberCount / totalBillCusts);
     }
   });
 
-  const totalCusts = Math.max(1, newCustCount + returningCustCount);
-  const repeatRatePct = Math.round((returningCustCount / totalCusts) * 100);
-  const avgSpendPerCustomer = todayBills.length > 0 ? Math.round(revToday / totalCusts) : 0;
+  const totalCusts = newCustCount + returningCustCount;
+  const repeatRatePct = totalCusts > 0 ? Math.round((returningCustCount / totalCusts) * 100) : 0;
+  const avgSpendPerCustomer = totalCusts > 0 ? Math.round(revToday / totalCusts) : 0;
   const avgSpendSampleSize = totalCusts;
   
-  const memberRev = todayBills.filter(b => b.members && b.members.length > 0).reduce((s,b) => s + b.totalAmount, 0);
   const memberRevenuePct = revToday > 0 ? Math.round((memberRev / revToday) * 100) : 0;
   
   const avgRevenuePerGamer = gamingGamersCount > 0 ? Math.round(categoryRevMap.Gaming.rev / gamingGamersCount) : 0;
@@ -647,7 +753,7 @@ export function computeOwnerPulseData(
   const sortedHours = Object.entries(hourCounts).sort((a, b) => b[1] - a[1]);
   const sortedDays = Object.entries(dayCounts).sort((a, b) => b[1] - a[1]);
 
-  const peakHr = sortedHours[0] ? `${sortedHours[0][0]}:00` : 'N/A';
+  const peakHr = sortedHours[0] ? formatHourTo12H(sortedHours[0][0]) : 'N/A';
   const peakDay = sortedDays[0] ? sortedDays[0][0] : 'N/A';
 
   const sortedMembersBySpend = [...members].sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0));
@@ -683,7 +789,7 @@ export function computeOwnerPulseData(
       consoleCounts[b.stationName] = (consoleCounts[b.stationName] || 0) + 1;
       totalGamingSessions++;
       if (b.packageName && b.packageName.toLowerCase().includes('hour')) {
-         const hours = parseInt(b.packageName) || 1;
+         const hours = parseInt(b.packageName, 10) || 1;
          totalSessionMinutes += hours * 60;
       } else {
          totalSessionMinutes += 60; // fallback avg
@@ -711,7 +817,9 @@ export function computeOwnerPulseData(
     const hr = new Date(b.timestamp).getHours();
     gamingHourCounts[hr] = (gamingHourCounts[hr] || 0) + 1;
   });
-  const peakGamingHour = Object.entries(gamingHourCounts).sort((a,b) => b[1] - a[1])[0] ? `${Object.entries(gamingHourCounts).sort((a,b) => b[1] - a[1])[0][0]}:00` : peakHr;
+  const peakGamingHour = Object.entries(gamingHourCounts).sort((a,b) => b[1] - a[1])[0] 
+    ? formatHourTo12H(Object.entries(gamingHourCounts).sort((a,b) => b[1] - a[1])[0][0]) 
+    : peakHr;
 
   const gamingIntelligence: GamingIntelligenceData = {
     consoleUtilizationPct: potentialGamingHours > 0 ? Math.min(100, Math.round((hoursPlayedTotal / potentialGamingHours) * 100)) : 0,
@@ -732,7 +840,7 @@ export function computeOwnerPulseData(
   const yesterdayBillsFull = dailyBillsList(yesterdayStr);
 
   todayBills.forEach((b) => {
-    b.items.forEach((item) => {
+    b.items?.forEach((item) => {
       const existing = itemCountsToday[item.name] || { count: 0, rev: 0 };
       itemCountsToday[item.name] = {
         count: existing.count + item.quantity,
@@ -742,14 +850,32 @@ export function computeOwnerPulseData(
   });
 
   yesterdayBillsFull.forEach((b) => {
-    b.items.forEach((item) => {
+    b.items?.forEach((item) => {
       itemCountsPrev[item.name] = (itemCountsPrev[item.name] || 0) + item.quantity;
     });
   });
 
   const sortedItems = Object.entries(itemCountsToday).sort((a, b) => b[1].count - a[1].count);
-  const bestSeller = sortedItems[0] ? { name: sortedItems[0][0], count: sortedItems[0][1].count, revenue: sortedItems[0][1].rev } : null;
+  let bestSeller = sortedItems[0] ? { name: sortedItems[0][0], count: sortedItems[0][1].count, revenue: sortedItems[0][1].rev } : null;
   const slowestSelling = sortedItems.length > 1 ? { name: sortedItems[sortedItems.length - 1][0], count: sortedItems[sortedItems.length - 1][1].count } : null;
+
+  // Fallback to overall best seller across all bills if today's sales list is empty
+  if (!bestSeller && bills.length > 0) {
+    const itemCountsAll: Record<string, { count: number; rev: number }> = {};
+    bills.forEach((b) => {
+      b.items?.forEach((item) => {
+        const existing = itemCountsAll[item.name] || { count: 0, rev: 0 };
+        itemCountsAll[item.name] = {
+          count: existing.count + item.quantity,
+          rev: existing.rev + item.price * item.quantity,
+        };
+      });
+    });
+    const sortedAll = Object.entries(itemCountsAll).sort((a, b) => b[1].count - a[1].count);
+    if (sortedAll[0]) {
+      bestSeller = { name: sortedAll[0][0], count: sortedAll[0][1].count, revenue: sortedAll[0][1].rev };
+    }
+  }
 
   let fastestGrowingProduct: CafeIntelligenceData['fastestGrowingProduct'] = null;
   let maxGrowth = -Infinity;
@@ -776,7 +902,9 @@ export function computeOwnerPulseData(
     const hr = new Date(b.timestamp).getHours();
     foodHourCounts[hr] = (foodHourCounts[hr] || 0) + 1;
   });
-  const peakFoodHour = Object.entries(foodHourCounts).sort((a,b) => b[1] - a[1])[0] ? `${Object.entries(foodHourCounts).sort((a,b) => b[1] - a[1])[0][0]}:00` : peakHr;
+  const peakFoodHour = Object.entries(foodHourCounts).sort((a,b) => b[1] - a[1])[0] 
+    ? formatHourTo12H(Object.entries(foodHourCounts).sort((a,b) => b[1] - a[1])[0][0]) 
+    : peakHr;
 
 
   const cafeIntelligence: CafeIntelligenceData = {
@@ -793,24 +921,70 @@ export function computeOwnerPulseData(
 
   // 8. Employee Intelligence Data (Real shift & bill calculations)
   const employeeIntelList: EmployeeIntelScorecard[] = employees.map((emp) => {
-    const empShifts = shifts.filter((s) => s.staffId === emp.username || s.employees?.some((e) => e.username === emp.username));
-    const lateCount = empShifts.reduce((s, sh) => s + (sh.lateMinutes && sh.lateMinutes > 0 ? 1 : 0), 0);
-    const totalWorkingDaysInMonth = 26;
-    const attendancePct = Math.min(100, Math.round((empShifts.length / totalWorkingDaysInMonth) * 100));
+    const uname = (emp.username || '').toLowerCase();
 
-    // Real bills generated by employee during shifts or by staffId
-    const empBills = todayBills.filter((b) => b.shiftId && empShifts.some((s) => s.id === b.shiftId));
-    const revenueGenerated = empBills.reduce((s, b) => s + b.totalAmount, 0);
+    // Match all shifts for this employee by staffId, employeeId, or employees array
+    const empShifts = shifts.filter((s) => {
+      const sId = (s.staffId || s.employeeId || '').toLowerCase();
+      const inEmps = s.employees?.some((e) => (e.username || '').toLowerCase() === uname);
+      return sId === uname || inEmps;
+    });
+
+    // Filter shifts for the current month / active period
+    const currentMonthShifts = empShifts.filter((s) => {
+      if (!s.startTime) return false;
+      const d = new Date(s.startTime);
+      return d.getMonth() === refDate.getMonth() && d.getFullYear() === refDate.getFullYear();
+    });
+
+    const relevantShifts = currentMonthShifts.length > 0 ? currentMonthShifts : empShifts;
+    const lateCount = relevantShifts.reduce((s, sh) => s + ((sh.lateMinutes && sh.lateMinutes > 0) ? 1 : 0), 0);
+
+    const attendancePct = relevantShifts.length > 0 
+      ? Math.min(100, Math.round(((relevantShifts.length - lateCount) / relevantShifts.length) * 100))
+      : 100;
+
+    // Match bills linked to this employee's shifts (by shiftId or by shift time boundary)
+    const empShiftIds = new Set(empShifts.map((s) => s.id));
+    const empBills = bills.filter((b) => {
+      if (b.shiftId && empShiftIds.has(b.shiftId)) return true;
+      if (!b.timestamp) return false;
+      const bTime = new Date(b.timestamp).getTime();
+      return empShifts.some((s) => {
+        if (!s.startTime) return false;
+        const start = new Date(s.startTime).getTime();
+        const end = s.endTime ? new Date(s.endTime).getTime() : Date.now();
+        return bTime >= start && bTime <= end;
+      });
+    });
+
+    const revenueGenerated = empBills.reduce((s, b) => s + (b.totalAmount || 0), 0);
     const ordersServed = empBills.length;
 
     return {
+      id: emp.id,
       username: emp.username,
       displayName: emp.displayName,
+      role: emp.role,
+      joinDate: emp.joinDate,
+      salary: emp.salary,
+      salaryType: emp.salaryType,
+      foodAllowanceBalance: emp.foodAllowanceBalance ?? 1000,
+      pin: emp.pin,
+      workStartTime: emp.workStartTime,
+      workEndTime: emp.workEndTime,
+      workingDaysPerWeek: emp.workingDaysPerWeek,
+      overtimeMultiplier: emp.overtimeMultiplier,
+      weekOffDay: emp.weekOffDay,
+      assignedShift: emp.assignedShift,
+      gracePeriod: emp.gracePeriod,
+      isActive: emp.isActive,
       revenueGenerated,
       ordersServed,
       shiftsWorked: empShifts.length,
       attendancePct,
       lateArrivalsCount: lateCount,
+      employeeRaw: emp,
     };
   });
 
@@ -830,8 +1004,8 @@ export function computeOwnerPulseData(
   const grossMarginPct = 65;
   const revenueNeededToday = Math.max(0, survivalTargetDaily - revToday);
   
-  const elapsedDaysThisMonth = now.getDate() - 1 + (elapsedHours / 12);
-  const daysInMo = getDaysInMonth(now);
+  const elapsedDaysThisMonth = refDate.getDate() - 1 + (elapsedHours / 12);
+  const daysInMo = getDaysInMonth(refDate);
   const projectedEomRevenue = elapsedDaysThisMonth > 0 ? Math.round((thisMoRev / elapsedDaysThisMonth) * daysInMo) : 0;
   const projectedEomProfit = Math.round(projectedEomRevenue * (grossMarginPct / 100));
 
@@ -876,8 +1050,9 @@ export function computeOwnerPulseData(
   });
 
   // 12. Owner Brief Calculations
-  const startLastMo = startOfMonth(subMonths(now, 1));
-  const endLastMo = endOfMonth(subMonths(now, 1));
+  const startThisMo = startOfMonth(refDate);
+  const startLastMo = startOfMonth(subMonths(refDate, 1));
+  const endLastMo = endOfMonth(subMonths(refDate, 1));
   
   let thisMoFootfall = 0;
   let lastMoFootfall = 0;
@@ -893,14 +1068,14 @@ export function computeOwnerPulseData(
       if (b.initialPackagePrice > 0) {
         gameRev += b.initialPackagePrice;
       }
-      b.items.forEach(item => {
+      b.items?.forEach(item => {
         const nameLwr = item.name.toLowerCase();
         if (nameLwr.includes('time:') || nameLwr.includes('recharge') || nameLwr.includes('pass') || nameLwr.includes('hour')) {
            gameRev += (item.price * item.quantity);
         }
       });
       if (gameRev > 0) thisMoGamingRev += gameRev;
-    } else if (dt >= startLastMo && dt <= subMonths(now, 1)) {
+    } else if (dt >= startLastMo && dt <= subMonths(refDate, 1)) {
       lastMoFootfall += Math.max(1, b.members?.length || 1);
     }
   });
@@ -916,13 +1091,13 @@ export function computeOwnerPulseData(
   const lastMoAvgBill = lastMoBillsCount > 0 ? Math.round(lastMonthTotalRev / lastMoBillsCount) : 0;
   const avgSpendDifference = thisMoAvgBill - lastMoAvgBill;
 
-  const currentDayOfMonth = now.getDate();
-  const elapsedDaysThisMonthForGaming = (currentDayOfMonth - 1) + (getElapsedOperatingHours(now) / 12);
+  const currentDayOfMonth = refDate.getDate();
+  const elapsedDaysThisMonthForGaming = (currentDayOfMonth - 1) + (getElapsedOperatingHours(refDate) / 12);
   const hoursPlayedThisMonth = Math.round(thisMoGamingRev / 100); // 100/hr per controller
   const totalPossibleHoursThisMonth = Math.round(10 * 12 * elapsedDaysThisMonthForGaming); // 10 controllers * 12 hours operational
   const idleHoursThisMonth = Math.max(0, totalPossibleHoursThisMonth - hoursPlayedThisMonth);
   
-  const currentWeekdayName = format(now, 'EEEE');
+  const currentWeekdayName = format(refDate, 'EEEE');
   let bestWeekdayTarget = 0;
   let bestWeekdayDate = formatDateDDMMYYYY(todayStr);
   

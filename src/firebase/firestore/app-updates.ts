@@ -1,4 +1,4 @@
-'use server';
+'use client';
 import { getFirestore, collection, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import type { AppUpdate } from '@/lib/types';
 import type { CustomUser } from '../auth/use-user';

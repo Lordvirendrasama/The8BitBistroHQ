@@ -75,8 +75,8 @@ export function ShiftTaskWizardModal({ isOpen, onClose, tasks, onTaskToggle }: S
 
   const currentTask = pendingTasks[currentIndex] || pendingTasks[0];
 
-  const handleMarkCompleteAndNext = async (task: ShiftTask) => {
-    await onTaskToggle(task);
+  const handleMarkCompleteAndNext = (task: ShiftTask) => {
+    onTaskToggle(task);
     // Index will automatically update as currentTask is removed from pendingTasks
   };
 

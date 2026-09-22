@@ -64,14 +64,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => { isMounted = false; unsubscribe(); };
   }, [user, db]);
 
-  const handleTaskToggle = async (task: ShiftTask, result?: 'yes' | 'no') => {
+  const handleTaskToggle = (task: ShiftTask, result?: 'yes' | 'no') => {
     if (!user || !activeShift) return;
     const newCompletedStatus = result ? true : !task.completed;
-    await updateTask(activeShift.id, task.name, newCompletedStatus, user, result);
+
+    // 1. INSTANT OPTIMISTIC LOCAL UPDATE (0ms delay)
+    setActiveShift(prev => {
+      if (!prev) return null;
+      const updatedTasks = prev.tasks.map(t => {
+        if (t.name === task.name) {
+          return {
+            ...t,
+            completed: newCompletedStatus,
+            completedAt: newCompletedStatus ? new Date().toISOString() : undefined,
+            completedBy: newCompletedStatus ? { username: user.username, displayName: user.displayName } : undefined,
+            verificationResult: result
+          };
+        }
+        return t;
+      });
+      return { ...prev, tasks: updatedTasks };
+    });
+
     if (!newCompletedStatus && (task.shiftType !== undefined || task.type === 'strategic')) {
       setTasksVisible(true);
     }
     toast({ title: "Audit Updated" });
+
+    // 2. Async background Firestore sync
+    updateTask(activeShift.id, task.name, newCompletedStatus, user, result).catch(err => {
+      console.error("Failed to update task in Firestore:", err);
+      toast({ variant: "destructive", title: "Sync Error", description: "Failed to persist task update." });
+    });
   };
 
   // Determine path restrictions dynamically

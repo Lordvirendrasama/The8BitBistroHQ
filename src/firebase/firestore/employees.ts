@@ -174,23 +174,29 @@ export const updateEmployee = async (
   const db = getFirestore();
   const ref = doc(db, 'employees', employeeId);
   try {
-    // Sync to userRoles and Firebase Auth if username, pin, or role has changed
+    // 1. Always update Firestore employee document first to guarantee saving changes
+    await updateDoc(ref, updates);
+
+    // 2. Best-effort sync to userRoles and Firebase Auth credentials
     const effectiveUsername = updates.username ?? previousState?.username ?? '';
     const effectivePin = updates.pin ?? previousState?.pin ?? '';
     const effectiveRole = updates.role ?? 'staff';
 
     if (effectiveUsername && effectivePin) {
-      await createOrUpdateAuthAccount({
-        oldUsername: previousState?.username,
-        oldPin: previousState?.pin,
-        newUsername: effectiveUsername,
-        newPin: effectivePin,
-        role: effectiveRole,
-        employeeId: employeeId
-      });
+      try {
+        await createOrUpdateAuthAccount({
+          oldUsername: previousState?.username,
+          oldPin: previousState?.pin,
+          newUsername: effectiveUsername,
+          newPin: effectivePin,
+          role: effectiveRole,
+          employeeId: employeeId
+        });
+      } catch (authErr: any) {
+        console.warn("Auth account sync warning (Firestore profile updated successfully):", authErr.message);
+      }
     }
 
-    await updateDoc(ref, updates);
     return true;
   } catch (e) {
     console.error("Error updating employee:", e);

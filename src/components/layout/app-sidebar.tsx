@@ -57,7 +57,10 @@ import {
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
+import { Crown } from 'lucide-react';
+
 const allNavItems = [
+  { href: '/owner', icon: Crown, label: 'Owner Hub', ownerOnly: true },
   { href: '/owner-dashboard', icon: LayoutDashboard, label: 'Owner Pulse', ownerOnly: true },
   { href: '/dashboard', icon: UsersIcon, label: 'Dashboard' },
   { href: '/profile', icon: User, label: 'My Profile' },

@@ -1,6 +1,6 @@
 'use client';
 
-import { getFirestore, collection, doc, writeBatch } from 'firebase/firestore';
+import { getFirestore, collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
 import type { StaffOrder } from '@/lib/types';
 import type { LogEntry } from '@/lib/types';
 
@@ -12,13 +12,14 @@ export const addStaffOrder = async (
   const db = getFirestore();
   const batch = writeBatch(db);
   
-  // 1. Reference to the employee to update their balance
-  const employeeRef = doc(db, 'employees', employeeId);
-  batch.set(employeeRef, { foodAllowanceBalance: newBalance }, { merge: true });
+  const normalizedOrderData = {
+    ...orderData,
+    employeeUsername: orderData.employeeUsername.toLowerCase()
+  };
 
-  // 2. Reference to create a new staff order
+  // 1. Reference to create a new staff order
   const orderRef = doc(collection(db, 'staffOrders'));
-  batch.set(orderRef, orderData);
+  batch.set(orderRef, normalizedOrderData);
 
   // 3. Create a log entry
   const logRef = doc(collection(db, 'logs'));
@@ -28,7 +29,7 @@ export const addStaffOrder = async (
     timestamp: new Date().toISOString(),
     cycle: orderData.cycle,
     user: {
-      uid: orderData.employeeUsername,
+      uid: normalizedOrderData.employeeUsername,
       displayName: orderData.employeeDisplayName
     },
     details: {
