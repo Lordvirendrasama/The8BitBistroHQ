@@ -18,7 +18,7 @@ import { announceGlobally } from '@/components/notifications/global-timer-notifi
 import { StaffNotepad } from '@/components/staff/staff-notepad';
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, getDoc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { cn, isBusinessToday, getBusinessDate } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -41,6 +41,7 @@ import { LogOut, Volume2, VolumeX, Clock, ShoppingCart, ShieldCheck, Bell, Trend
 import { useCustomerView } from '@/context/customer-view-context';
 import { getSyncedNow } from '@/lib/synced-time';
 import { isSoundEnabled, toggleSound } from '@/lib/audio/chiptune';
+import { getCycleInfo } from '@/components/owner-pulse/owner-pulse-employee-intel';
 
 const ChiptuneSoundToggle = () => {
   const [enabled, setEnabled] = useState(true);
@@ -636,6 +637,36 @@ const OwnerStaffFoodHeader = ({
   const employeesQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
   const { data: allEmployees } = useCollection<Employee>(employeesQuery);
 
+  // Automatically check and reset 1,000 quota whenever an employee's salary cycle resets!
+  useEffect(() => {
+    if (!allEmployees || !db) return;
+
+    allEmployees.forEach(async (emp) => {
+      if (!emp.id || !emp.username || emp.username.toLowerCase() === 'viren') return;
+      const cycle = getCycleInfo(emp.joinDate);
+      // If employee has not been refreshed for this salary cycle, reset their quota to 1,000!
+      if (emp.lastQuotaResetCycle !== cycle.currentCycleKey) {
+        try {
+          const empRef = doc(db, 'employees', emp.id);
+          await updateDoc(empRef, {
+            foodAllowanceBalance: 1000,
+            lastQuotaResetCycle: cycle.currentCycleKey,
+          });
+
+          await addDoc(collection(db, 'logs'), {
+            type: 'STAFF_FOOD_ORDER',
+            description: `Auto-refreshed monthly meal quota to <strong>₹1,000</strong> for <strong>${emp.displayName}</strong> linked to salary cycle (${cycle.currentCycleKey}).`,
+            timestamp: new Date().toISOString(),
+            user: { uid: 'system', displayName: 'System Auto-Cycle' }
+          });
+        } catch (e) {
+          console.warn("Could not auto-refresh employee meal quota cycle:", e);
+        }
+      }
+    });
+  }, [allEmployees, db]);
+
+  // Overall month orders for fallback display
   const monthOrders = useMemo(() => {
     if (!staffOrders) return [];
     const now = new Date();
@@ -647,13 +678,24 @@ const OwnerStaffFoodHeader = ({
     }).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   }, [staffOrders]);
 
-  const monthTotal = useMemo(() => monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0), [monthOrders]);
+  // Employee-specific cycle orders
+  const getOrdersForEmpCycle = (empUsername: string, joinDate?: string) => {
+    if (!staffOrders) return [];
+    const cycle = getCycleInfo(joinDate);
+    const target = empUsername.toLowerCase();
+    return staffOrders.filter(o => {
+      if (o.employeeUsername?.toLowerCase() !== target) return false;
+      const d = new Date(o.timestamp);
+      return d >= cycle.cycleStartDate && d <= cycle.cycleEndDate;
+    }).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  };
 
   const filteredOrders = useMemo(() => {
+    if (!staffOrders) return [];
     if (selectedEmployeeUsername === 'all') return monthOrders;
-    const target = selectedEmployeeUsername.toLowerCase();
-    return monthOrders.filter(o => o.employeeUsername?.toLowerCase() === target);
-  }, [monthOrders, selectedEmployeeUsername]);
+    const selectedEmp = allEmployees?.find(emp => emp.username?.toLowerCase() === selectedEmployeeUsername.toLowerCase());
+    return getOrdersForEmpCycle(selectedEmployeeUsername, selectedEmp?.joinDate);
+  }, [monthOrders, selectedEmployeeUsername, staffOrders, allEmployees]);
 
   const stats = useMemo(() => {
     const totalOrders = filteredOrders.length;
@@ -672,8 +714,12 @@ const OwnerStaffFoodHeader = ({
   }, [filteredOrders, selectedEmployeeUsername, allEmployees]);
 
   const overallPendingCount = useMemo(() => {
-    return monthOrders.filter(o => !o.approved).length;
-  }, [monthOrders]);
+    if (!staffOrders || !allEmployees) return 0;
+    const activeUsernames = new Set(
+      allEmployees.filter(e => e.isActive !== false).map(e => e.username?.toLowerCase())
+    );
+    return staffOrders.filter(o => !o.approved && o.employeeUsername && activeUsernames.has(o.employeeUsername.toLowerCase())).length;
+  }, [staffOrders, allEmployees]);
 
   const employeeSummaries = useMemo(() => {
     if (!allEmployees) return [];
@@ -685,20 +731,21 @@ const OwnerStaffFoodHeader = ({
 
     const allUsernames = new Set<string>();
     allEmployees.forEach(emp => emp.username && allUsernames.add(emp.username.toLowerCase()));
-    monthOrders.forEach(o => o.employeeUsername && allUsernames.add(o.employeeUsername.toLowerCase()));
+    (staffOrders || []).forEach(o => o.employeeUsername && allUsernames.add(o.employeeUsername.toLowerCase()));
 
     const summaries: Array<{ emp: Employee; spent: number; count: number; pendingCount: number; isFormer?: boolean }> = [];
 
     allUsernames.forEach(uname => {
       const knownEmp = empMap.get(uname);
-      const empOrders = monthOrders.filter(o => o.employeeUsername?.toLowerCase() === uname);
+      const empOrders = knownEmp ? getOrdersForEmpCycle(uname, knownEmp.joinDate) : (staffOrders || []).filter(o => o.employeeUsername?.toLowerCase() === uname);
       const spent = empOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
       const count = empOrders.length;
       const approvedCount = empOrders.filter(o => o.approved).length;
       const pendingCount = count - approvedCount;
 
       if (knownEmp) {
-        summaries.push({ emp: knownEmp, spent, count, pendingCount });
+        const isFormer = knownEmp.isActive === false;
+        summaries.push({ emp: knownEmp, spent, count, pendingCount, isFormer });
       } else if (empOrders.length > 0) {
         const rawName = empOrders[0]?.employeeDisplayName || (uname.charAt(0).toUpperCase() + uname.slice(1));
         const formerEmp: Employee = {
@@ -718,8 +765,17 @@ const OwnerStaffFoodHeader = ({
       }
     });
 
-    return summaries.sort((a, b) => b.spent - a.spent);
-  }, [allEmployees, monthOrders]);
+    // Sort: Active employees first (sorted by spent descending), then Ex-employees (sorted by spent descending)
+    return summaries.sort((a, b) => {
+      const aActive = a.emp.isActive !== false && !a.isFormer;
+      const bActive = b.emp.isActive !== false && !b.isFormer;
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      return b.spent - a.spent;
+    });
+  }, [allEmployees, staffOrders]);
+
+  const monthTotal = useMemo(() => employeeSummaries.reduce((sum, s) => sum + s.spent, 0), [employeeSummaries]);
 
   const showAllowance = !!(currentEmployee || user);
   const selectedEmp = selectedEmployeeUsername !== 'all' ? allEmployees?.find(emp => emp.username?.toLowerCase() === selectedEmployeeUsername.toLowerCase()) : null;
@@ -838,33 +894,36 @@ const OwnerStaffFoodHeader = ({
 
           {selectedEmployeeUsername === 'all' ? (
             <div className="max-h-[350px] overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
-                {employeeSummaries.map(({ emp, spent, count, pendingCount }) => (
-                  <div 
-                    key={emp.id} 
-                    onClick={() => setSelectedEmployeeUsername(emp.username)}
-                    className="p-3 bg-card/40 border border-border/40 hover:border-amber-500/30 hover:bg-card hover:shadow-md transition-all cursor-pointer flex justify-between items-center group rounded-xl"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold uppercase text-foreground group-hover:text-amber-600 transition-colors tracking-wide">
-                        {emp.displayName}
-                      </p>
-                      <p className="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest">
-                        Quota: ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()} • {count} Orders
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                      <div className="text-right flex items-center gap-2">
-                        {pendingCount > 0 && (
-                          <span className="bg-amber-500 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shadow-sm shadow-amber-500/20 animate-pulse">
-                            {pendingCount} Pending
-                          </span>
-                        )}
-                        <p className="font-mono font-bold text-sm text-foreground group-hover:text-amber-600 transition-colors">₹{spent.toLocaleString()}</p>
+                {employeeSummaries.map(({ emp, spent, count, pendingCount, isFormer }) => {
+                  const isExEmployee = isFormer || emp.isActive === false;
+                  return (
+                    <div 
+                      key={emp.id} 
+                      onClick={() => setSelectedEmployeeUsername(emp.username)}
+                      className="p-3 bg-card/40 border border-border/40 hover:border-amber-500/30 hover:bg-card hover:shadow-md transition-all cursor-pointer flex justify-between items-center group rounded-xl"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold uppercase text-foreground group-hover:text-amber-600 transition-colors tracking-wide">
+                          {emp.displayName}
+                        </p>
+                        <p className="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest">
+                          Quota: ₹{(emp.foodAllowanceBalance ?? 1000).toLocaleString()} • {count} Orders
+                        </p>
                       </div>
-                      <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-widest">This Month</p>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <div className="text-right flex items-center gap-2">
+                          {!isExEmployee && pendingCount > 0 && (
+                            <span className="bg-amber-500 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shadow-sm shadow-amber-500/20 animate-pulse">
+                              {pendingCount} Pending
+                            </span>
+                          )}
+                          <p className="font-mono font-bold text-sm text-foreground group-hover:text-amber-600 transition-colors">₹{spent.toLocaleString()}</p>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-widest">This Cycle</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           ) : (
             <div className="max-h-[350px] overflow-y-auto p-2 space-y-2 custom-scrollbar">
@@ -963,22 +1022,23 @@ const StaffFoodHeaderButton = ({
   const { data: staffOrders } = useCollection<StaffOrder>(staffOrdersQuery);
 
   const balance = useMemo(() => {
+    if (currentEmployee?.foodAllowanceBalance !== undefined) {
+      return currentEmployee.foodAllowanceBalance;
+    }
     const targetUsername = (currentEmployee?.username || user?.username || '').toLowerCase();
     if (!targetUsername) return 1000;
     
-    const now = new Date();
-    const startM = startOfMonth(now);
-    const endM = endOfMonth(now);
+    const cycle = getCycleInfo(currentEmployee?.joinDate);
     
-    const monthSpent = (staffOrders || [])
+    const cycleSpent = (staffOrders || [])
       .filter(o => {
         const uMatch = o.employeeUsername?.toLowerCase() === targetUsername;
         const d = new Date(o.timestamp);
-        return uMatch && d >= startM && d <= endM;
+        return uMatch && d >= cycle.cycleStartDate && d <= cycle.cycleEndDate;
       })
       .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
       
-    return Math.max(0, 1000 - monthSpent);
+    return Math.max(0, 1000 - cycleSpent);
   }, [currentEmployee, user, staffOrders]);
 
   const activeEmployee: Employee = useMemo(() => {

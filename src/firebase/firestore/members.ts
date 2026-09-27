@@ -58,6 +58,7 @@ export const addMember = async (memberData: Omit<Member, 'id'>, referrerId?: str
 
   if (dataToAdd.email === undefined) delete dataToAdd.email;
   if (dataToAdd.phone === undefined) delete dataToAdd.phone;
+  if (dataToAdd.birthday === undefined) delete dataToAdd.birthday;
   
   const newMemberRef = doc(collection(db, 'members'));
 

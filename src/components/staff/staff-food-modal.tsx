@@ -113,10 +113,10 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
   const isOverQuota = newBalance < 0;
 
   const handlePlaceOrder = async () => {
-    if (orderItems.length === 0 || isOverQuota) return;
+    if (orderItems.length === 0) return;
     setIsSaving(true);
     try {
-      await onSave(orderItems, totalAmount, newBalance);
+      await onSave(orderItems, totalAmount, Math.max(0, newBalance));
       onOpenChange(false);
     } finally {
       setIsSaving(false);
@@ -355,9 +355,9 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
               </div>
 
               {isOverQuota && (
-                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm font-bold uppercase tracking-tight animate-shake">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>Deduction exceeds available quota by ₹{Math.abs(newBalance).toLocaleString()}!</span>
+                <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-bold uppercase tracking-tight">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                  <span>Quota finished! ₹{Math.abs(newBalance).toLocaleString()} extra will be automatically deducted from monthly salary.</span>
                 </div>
               )}
 
@@ -369,11 +369,14 @@ export function StaffFoodModal({ isOpen, onOpenChange, employee, activeCycle, on
               )}
 
               <Button
-                disabled={orderItems.length === 0 || isOverQuota || isSaving}
+                disabled={orderItems.length === 0 || isSaving}
                 onClick={handlePlaceOrder}
-                className="w-full h-12 font-bold uppercase tracking-normal text-sm shadow-lg"
+                className={cn(
+                  "w-full h-12 font-bold uppercase tracking-normal text-sm shadow-lg",
+                  isOverQuota ? "bg-amber-600 hover:bg-amber-700 text-white" : ""
+                )}
               >
-                {isSaving ? "Placing Order..." : "Confirm Staff Order"}
+                {isSaving ? "Placing Order..." : isOverQuota ? `Order (Deduct ₹${Math.abs(newBalance).toLocaleString()} From Salary)` : "Confirm Staff Order"}
               </Button>
             </div>
           </div>

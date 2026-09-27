@@ -18,6 +18,9 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 
 export function getCycleInfo(joinDateStr?: string) {
   if (!joinDateStr) {
+    const now = new Date();
+    const cycleStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const cycleEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     return {
       joinDay: 1,
       ordinalDay: '1st',
@@ -25,6 +28,9 @@ export function getCycleInfo(joinDateStr?: string) {
       nextResetFormatted: '1st of next month',
       daysLeft: 0,
       isToday: false,
+      currentCycleKey: `${cycleStart.toISOString().slice(0, 10)}_to_${cycleEnd.toISOString().slice(0, 10)}`,
+      cycleStartDate: cycleStart,
+      cycleEndDate: cycleEnd,
     };
   }
 
@@ -70,6 +76,32 @@ export function getCycleInfo(joinDateStr?: string) {
   const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
   const isToday = resetThisMonth.getTime() === todayStart.getTime();
 
+  // Determine current salary/quota cycle window:
+  // If nextReset > todayStart, the current cycle started exactly 1 month prior to nextReset.
+  // If today is salary day (daysLeft === 0 / isToday), a new cycle starts today!
+  const cycleEnd = new Date(nextReset);
+  cycleEnd.setHours(23, 59, 59, 999);
+
+  const cycleStart = new Date(nextReset);
+  cycleStart.setMonth(cycleStart.getMonth() - 1);
+  // Guard day bounds for previous month length
+  const daysInPrevMonth = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 0).getDate();
+  cycleStart.setDate(Math.min(joinDay, daysInPrevMonth));
+  cycleStart.setHours(0, 0, 0, 0);
+
+  // If today is the reset day, current cycle started today and ends next month!
+  let effectiveCycleStart = cycleStart;
+  let effectiveCycleEnd = cycleEnd;
+  let currentCycleKey = `${effectiveCycleStart.toISOString().slice(0, 10)}_to_${effectiveCycleEnd.toISOString().slice(0, 10)}`;
+
+  if (isToday) {
+    effectiveCycleStart = new Date(todayStart);
+    const followingMonth = new Date(now.getFullYear(), now.getMonth() + 1, Math.min(joinDay, new Date(now.getFullYear(), now.getMonth() + 2, 0).getDate()));
+    followingMonth.setHours(23, 59, 59, 999);
+    effectiveCycleEnd = followingMonth;
+    currentCycleKey = `${effectiveCycleStart.toISOString().slice(0, 10)}_to_${effectiveCycleEnd.toISOString().slice(0, 10)}`;
+  }
+
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const joinDateFormatted = isNaN(d.getTime()) ? joinDateStr : `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
   const nextResetFormatted = `${String(nextReset.getDate()).padStart(2, '0')}-${months[nextReset.getMonth()]}-${nextReset.getFullYear()}`;
@@ -81,6 +113,9 @@ export function getCycleInfo(joinDateStr?: string) {
     nextResetFormatted,
     daysLeft,
     isToday,
+    currentCycleKey,
+    cycleStartDate: effectiveCycleStart,
+    cycleEndDate: effectiveCycleEnd,
   };
 }
 

@@ -17,6 +17,7 @@ export interface Member {
   username: string;
   phone?: string;
   email?: string;
+  birthday?: string;
   tier: MemberTier;
   level: number;
   xp: number;
@@ -484,6 +485,18 @@ export interface OwnerConsumption {
   cycle?: string;
 }
 
+export interface SalaryAdjustment {
+  id: string;
+  type: 'advance' | 'deduction' | 'meal_overage' | 'bonus';
+  amount: number;
+  reason: string;
+  date: string;
+  status: 'active' | 'settled';
+  addedBy?: string;
+  settledAt?: string;
+  updatedAt?: string;
+}
+
 export interface Employee {
   id: string;
   username: string;
@@ -503,6 +516,8 @@ export interface Employee {
   gracePeriod?: number;   // default 5 minutes
   assignedShift?: 'opening' | 'closing' | 'both' | string;
   foodAllowanceBalance?: number;
+  lastQuotaResetCycle?: string;
+  salaryAdjustments?: SalaryAdjustment[];
 }
 
 export interface Leave {

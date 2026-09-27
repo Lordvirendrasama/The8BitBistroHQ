@@ -229,29 +229,34 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
                     <div className="space-y-3">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="SEARCH MEMBERS..." className="pl-10 h-11 border-2 font-bold uppercase text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                            <Input placeholder="SEARCH CUSTOMERS..." className="pl-10 h-11 border-2 font-bold uppercase text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        {searchTerm.trim().length > 0 && (
                             <Button 
                                 variant="outline" 
-                                onClick={handleAddGuest} 
-                                className="h-11 border-2 uppercase font-bold text-sm gap-2 bg-emerald-500/5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                onClick={async () => {
+                                    const cleanName = searchTerm.trim();
+                                    const baseUsername = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'customer';
+                                    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+                                    const generatedUsername = `${baseUsername}_${randomSuffix}`;
+                                    const newId = await addMember({
+                                        name: cleanName,
+                                        username: generatedUsername,
+                                        tier: 'Red',
+                                        level: 1,
+                                        xp: 0,
+                                        points: 0,
+                                        totalSpent: 0,
+                                        joinDate: new Date().toISOString(),
+                                        avatarUrl: GUEST_AVATAR
+                                    });
+                                    handlePickMember({ id: newId || `cust-${Date.now()}`, name: cleanName, avatarUrl: GUEST_AVATAR } as any);
+                                }} 
+                                className="w-full h-11 border-2 uppercase font-bold text-sm gap-2 bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition-all shadow-sm"
                             >
-                                <UserPlus className="h-4 w-4"/> GUEST
+                                <UserPlus className="h-4 w-4"/> + ADD CUSTOMER "{searchTerm.trim()}"
                             </Button>
-                            <AddMemberModal onAddMember={(data) => {
-                                addMember({ ...data.memberData, level: 1, xp: 0, points: 0, totalSpent: 0, joinDate: new Date().toISOString(), avatarUrl: data.avatarUrl }, data.referrerId).then(id => {
-                                    if (id) handlePickMember({ id, name: data.memberData.name, avatarUrl: data.avatarUrl } as any);
-                                });
-                            }} triggerButton={
-                                <Button 
-                                    variant="outline" 
-                                    className="h-11 border-2 uppercase font-bold text-sm gap-2 bg-emerald-500/5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                                >
-                                    <UserPlus2 className="h-4 w-4"/> MEMBER
-                                </Button>
-                            } />
-                        </div>
+                        )}
                     </div>
                     <ScrollArea className="flex-1 border-2 rounded-xl bg-muted/5">
                         <div className="p-2 space-y-1">
