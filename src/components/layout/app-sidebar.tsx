@@ -15,6 +15,7 @@ import {
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 import { useAuth } from '@/firebase/auth/use-user';
 import { UsersIcon } from '@/components/icons/users-icon';
@@ -53,8 +54,11 @@ import {
   CalendarRange,
   QrCode,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  ChevronDown,
+  X
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { APP_VERSION } from '@/lib/version';
 
 import { Crown } from 'lucide-react';
@@ -189,13 +193,25 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border font-sans">
-      <SidebarHeader className="border-b border-border bg-background">
+      <SidebarHeader className="border-b border-border bg-background relative">
         <div className="flex flex-col items-center justify-center p-4">
           <Image src="/logo.png" alt="The 8 Bit Bistro" width={80} height={80} className="drop-shadow-md" />
           {!isCollapsed && (
             <span className="text-sm font-medium mt-4 text-muted-foreground bg-white/5 px-3 py-1 rounded-full">v{APP_VERSION}</span>
           )}
         </div>
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-3 right-3 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/30"
+            onClick={() => setOpenMobile(false)}
+            title="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close sidebar</span>
+          </Button>
+        )}
       </SidebarHeader>
       <SidebarContent className="p-6">
         <SidebarMenu className="gap-2">
@@ -211,7 +227,8 @@ export function AppSidebar() {
                         className="py-5 text-base font-medium text-muted-foreground px-4 hover:bg-white/5 hover:text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground transition-all rounded-xl overflow-hidden"
                     >
                         <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="truncate">{item.label}</span>
+                        <span className="truncate flex-1">{item.label}</span>
+                        <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200", openSubMenus[item.href] && "rotate-180")} />
                     </SidebarMenuButton>
                     {openSubMenus[item.href] && (
                         <SidebarMenuSub className="ml-6 mt-2 border-l border-border pl-4 gap-2">
