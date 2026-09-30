@@ -167,7 +167,7 @@ export function AppSidebar() {
     }
     
     // Restricted routes for staff and guest roles
-    const restrictedHrefs = ['/users', '/analytics', '/settings', '/attendance', '/leaves', '/staff', '/marketing', '/profile'];
+    const restrictedHrefs = ['/analytics', '/settings', '/attendance', '/leaves', '/staff', '/marketing', '/profile'];
     
     if (user.role === 'staff' || user.role === 'guest') {
       return filtered.filter(item => !restrictedHrefs.includes(item.href));

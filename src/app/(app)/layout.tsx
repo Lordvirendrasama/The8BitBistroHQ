@@ -111,7 +111,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (isOwnerRoute && !isOwner) return false;
 
     // 2. Admin-only routes
-    const adminOnlyPrefixes = ['/settings', '/users', '/analytics', '/attendance', '/leaves', '/staff', '/marketing', '/profile'];
+    const adminOnlyPrefixes = ['/settings', '/analytics', '/attendance', '/leaves', '/staff', '/marketing', '/profile'];
     const isAdminRoute = adminOnlyPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
     if (isAdminRoute && !isAdmin) return false;
 

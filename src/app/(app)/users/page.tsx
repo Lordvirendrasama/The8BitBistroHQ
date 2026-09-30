@@ -96,6 +96,32 @@ export default function UserManagementPage() {
   const { data: stations } = useCollection<Station>(stationsQuery);
 
   
+  const getSortValue = (member: Member, key: SortableKeys) => {
+    if (key === 'bitsBalance') {
+      return member.bitsBalance ?? member.points ?? 0;
+    }
+    if (key === 'level') {
+      return member.level ?? 1;
+    }
+    if (key === 'totalSpent') {
+      return member.totalSpent ?? 0;
+    }
+    if (key === 'joinDate') {
+      return member.joinDate ? new Date(member.joinDate).getTime() : 0;
+    }
+    if (key === 'tier') {
+      const tierRank: Record<MemberTier, number> = { Gold: 3, Green: 2, Red: 1 };
+      return tierRank[member.tier] ?? 0;
+    }
+    if (key === 'name') {
+      return (member.name || '').toLowerCase();
+    }
+    const val = member[key as keyof Member];
+    if (typeof val === 'string') return val.toLowerCase();
+    if (typeof val === 'number') return val;
+    return val ?? '';
+  };
+
   const filteredMembers = useMemo(() => {
     if (!members) return [];
     
@@ -103,16 +129,19 @@ export default function UserManagementPage() {
     
     if (sortConfig !== null) {
       sortableMembers.sort((a, b) => {
-        const aValue = a[sortConfig.key as keyof Member];
-        const bValue = b[sortConfig.key as keyof Member];
+        const aVal = getSortValue(a, sortConfig.key);
+        const bVal = getSortValue(b, sortConfig.key);
 
-        if (aValue! < bValue!) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
+        let result = 0;
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          result = aVal - bVal;
+        } else if (typeof aVal === 'string' && typeof bVal === 'string') {
+          result = aVal.localeCompare(bVal);
+        } else {
+          result = (aVal < bVal ? -1 : aVal > bVal ? 1 : 0);
         }
-        if (aValue! > bValue!) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        return 0;
+
+        return sortConfig.direction === 'ascending' ? result : -result;
       });
     }
 
@@ -126,7 +155,9 @@ export default function UserManagementPage() {
 
   const requestSort = (key: SortableKeys) => {
     let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+    if (sortConfig && sortConfig.key === key) {
+      direction = sortConfig.direction === 'ascending' ? 'descending' : 'ascending';
+    } else if (['bitsBalance', 'totalSpent', 'level', 'joinDate', 'tier'].includes(key)) {
       direction = 'descending';
     }
     setSortConfig({ key, direction });
