@@ -55,7 +55,9 @@ export default function DashboardPage() {
   const { data: gamingPackages } = useCollection<GamingPackage>(packagesQuery);
 
   const ps5Stations = useMemo(() => stations?.filter(s => s.type === 'ps5') || [], [stations]);
+  const ps4Stations = useMemo(() => stations?.filter(s => s.type === 'ps4') || [], [stations]);
   const boardGameStations = useMemo(() => stations?.filter(s => s.type === 'boardgame') || [], [stations]);
+  const retroGamingStations = useMemo(() => stations?.filter(s => s.type === 'retrogaming') || [], [stations]);
 
   const onGrantXp = (memberId: string, baseXp: number, billAmount: number, billId?: string) => {
     if (!db) return;
@@ -114,11 +116,16 @@ export default function DashboardPage() {
     });
   };
 
-  const handleAddStation = async (type: 'ps5' | 'boardgame') => {
-    const stationList = type === 'ps5' ? ps5Stations : boardGameStations;
+  const handleAddStation = async (type: 'ps5' | 'ps4' | 'boardgame' | 'retrogaming') => {
+    let stationList = ps5Stations;
+    let prefix = 'PS5 ';
+    if (type === 'ps4') { stationList = ps4Stations; prefix = 'PS4 '; }
+    else if (type === 'boardgame') { stationList = boardGameStations; prefix = 'Table '; }
+    else if (type === 'retrogaming') { stationList = retroGamingStations; prefix = 'Retro '; }
+
     const existingNumbers = stationList.map(s => parseInt(s.name.match(/\d+$/)?.[0] || '0', 10)).filter(n => !isNaN(n));
     const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-    const newName = type === 'ps5' ? `PS5 ${maxNumber + 1}` : `Table ${maxNumber + 1}`;
+    const newName = `${prefix}${maxNumber + 1}`;
 
     await addStation({ name: newName, type, status: 'available', startTime: null, endTime: null, packageName: null, members: [], currentBill: [], discount: 0 });
   };
@@ -390,9 +397,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="space-y-8">
+        {/* PS5 Consoles */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl flex items-center gap-2"><Gamepad2 className="h-6 w-6"/> PS5 Consoles</CardTitle>
+            <CardTitle className="text-2xl flex items-center gap-2"><Gamepad2 className="h-6 w-6 text-primary"/> PS5 Consoles</CardTitle>
             <Button onClick={() => handleAddStation('ps5')}><PlusCircle className="mr-2 h-4 w-4" /> Add PS5</Button>
           </CardHeader>
           <CardContent>
@@ -411,9 +419,32 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* PS4 Consoles */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl flex items-center gap-2"><Users className="h-6 w-6" /> Board Game Tables</CardTitle>
+            <CardTitle className="text-2xl flex items-center gap-2"><Gamepad2 className="h-6 w-6 text-blue-400"/> PS4 Consoles</CardTitle>
+            <Button onClick={() => handleAddStation('ps4')}><PlusCircle className="mr-2 h-4 w-4" /> Add PS4</Button>
+          </CardHeader>
+          <CardContent>
+            {ps4Stations.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {ps4Stations.map(station => (
+                  <TimerCard key={station.id} station={station} onToggleTimer={() => handleToggleTimer(station)} onStopSession={() => handleStopSession(station)} onOpenBillModal={() => handleOpenBillModal(station)} onOpenEditTimeModal={() => handleOpenAddTimeModal(station)} gamingPackages={gamingPackages || []} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-12">
+                <p>No PS4 consoles added yet.</p>
+                <p className="text-sm">Click "Add PS4" to get started.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Board Game Tables */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-2xl flex items-center gap-2"><Users className="h-6 w-6 text-emerald-500" /> Board Game Tables</CardTitle>
             <Button onClick={() => handleAddStation('boardgame')}><PlusCircle className="mr-2 h-4 w-4" /> Add Table</Button>
           </CardHeader>
           <CardContent>
@@ -427,6 +458,28 @@ export default function DashboardPage() {
               <div className="text-center text-muted-foreground py-12">
                 <p>No board game tables added yet.</p>
                 <p className="text-sm">Click "Add Table" to get started.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Retro Gaming */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-2xl flex items-center gap-2"><Users className="h-6 w-6 text-purple-400" /> Retro Gaming</CardTitle>
+            <Button onClick={() => handleAddStation('retrogaming')}><PlusCircle className="mr-2 h-4 w-4" /> Add Retro Unit</Button>
+          </CardHeader>
+          <CardContent>
+            {retroGamingStations.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {retroGamingStations.map(station => (
+                  <TimerCard key={station.id} station={station} onToggleTimer={() => handleToggleTimer(station)} onStopSession={() => handleStopSession(station)} onOpenBillModal={() => handleOpenBillModal(station)} onOpenEditTimeModal={() => handleOpenAddTimeModal(station)} gamingPackages={gamingPackages || []} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-12">
+                <p>No retro gaming units added yet.</p>
+                <p className="text-sm">Click "Add Retro Unit" to get started.</p>
               </div>
             )}
           </CardContent>

@@ -267,6 +267,25 @@ const SidebarTrigger = React.forwardRef<
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
   const { toggleSidebar, isMobile } = useSidebar()
+  const justTouchedRef = React.useRef(false)
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLButtonElement>) => {
+    justTouchedRef.current = true
+    setTimeout(() => {
+      justTouchedRef.current = false
+    }, 400)
+    onClick?.(event as unknown as React.MouseEvent<HTMLButtonElement>)
+    toggleSidebar()
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (justTouchedRef.current) {
+      justTouchedRef.current = false
+      return
+    }
+    onClick?.(event)
+    toggleSidebar()
+  }
 
   return (
     <Button
@@ -274,11 +293,9 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-9 w-9 sm:h-8 sm:w-8 shrink-0", className)}
-      onClick={(event) => {
-        onClick?.(event)
-        toggleSidebar()
-      }}
+      className={cn("h-10 w-10 sm:h-8 sm:w-8 shrink-0 touch-manipulation select-none cursor-pointer active:scale-95 transition-transform", className)}
+      onClick={handleClick}
+      onTouchEnd={handleTouchEnd}
       {...props}
     >
       {isMobile ? <Menu className="h-5 w-5" /> : <PanelLeft className="h-4 w-4" />}

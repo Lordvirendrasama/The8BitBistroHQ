@@ -204,8 +204,12 @@ export function AppSidebar() {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-3 right-3 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/30"
+            className="absolute top-3 right-3 h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/30 touch-manipulation select-none active:scale-95"
             onClick={() => setOpenMobile(false)}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setOpenMobile(false);
+            }}
             title="Close sidebar"
           >
             <X className="h-5 w-5" />

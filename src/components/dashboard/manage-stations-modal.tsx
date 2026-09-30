@@ -18,7 +18,7 @@ interface ManageStationsModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   stations: Station[];
-  type: 'ps5' | 'boardgame';
+  type: 'ps5' | 'ps4' | 'boardgame' | 'retrogaming';
   onAdd: () => void;
 }
 
@@ -71,7 +71,8 @@ export function ManageStationsModal({ isOpen, onOpenChange, stations, type, onAd
     setIsSubmitting(false);
   };
 
-  const Icon = type === 'ps5' ? Gamepad2 : Users;
+  const Icon = (type === 'ps5' || type === 'ps4') ? Gamepad2 : Users;
+  const sectionLabel = type === 'ps5' ? 'PS5 Consoles' : type === 'ps4' ? 'PS4 Consoles' : type === 'boardgame' ? 'Board Game Tables' : 'Retro Gaming Units';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -82,7 +83,7 @@ export function ManageStationsModal({ isOpen, onOpenChange, stations, type, onAd
               <Icon className="text-primary h-6 w-6" />
               <div className="min-w-0">
                 <DialogTitle className="text-xl font-display uppercase tracking-tight truncate">
-                  Manage {type === 'ps5' ? 'Consoles' : 'Tables'}
+                  Manage {sectionLabel}
                 </DialogTitle>
                 <DialogDescription className="font-bold text-sm uppercase text-muted-foreground mt-0.5">
                   Rename or reorder units. Drag to rearrange.

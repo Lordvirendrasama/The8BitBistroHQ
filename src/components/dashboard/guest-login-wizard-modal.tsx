@@ -16,7 +16,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useToast } from '@/hooks/use-toast';
 import type { Member, Station } from '@/lib/types';
 
-export type ExperienceChoice = 'ps5' | 'ps4' | 'boardgame' | 'fnb';
+export type ExperienceChoice = 'ps5' | 'ps4' | 'boardgame' | 'retrogaming' | 'fnb';
 
 interface GuestLoginWizardModalProps {
   isOpen: boolean;
@@ -100,6 +100,7 @@ export function GuestLoginWizardModal({
       if (selectedExperiences.includes('ps5') && s.type === 'ps5') return true;
       if (selectedExperiences.includes('ps4') && s.type === 'ps4') return true;
       if (selectedExperiences.includes('boardgame') && s.type === 'boardgame') return true;
+      if (selectedExperiences.includes('retrogaming') && s.type === 'retrogaming') return true;
       return false;
     });
 
@@ -119,7 +120,7 @@ export function GuestLoginWizardModal({
       step2: {
         tag: "STEP 2 OF 4",
         title: "What are you here for?",
-        dialogue: '"Awesome! Are you guys here for PS5, PS4, Board Games, or Cafe today?"',
+        dialogue: '"Awesome! Are you guys here for PS5, PS4, Board Games, Retro Gaming, or Cafe today?"',
         hint: "Select one or more activities to proceed to table/seat selection."
       },
       step3: {
@@ -217,6 +218,7 @@ export function GuestLoginWizardModal({
     if (selectedExperiences.includes('ps5')) labels.push('🎮 PS5');
     if (selectedExperiences.includes('ps4')) labels.push('🎮 PS4');
     if (selectedExperiences.includes('boardgame')) labels.push('🎲 Board Games');
+    if (selectedExperiences.includes('retrogaming')) labels.push('🕹️ Retro Gaming');
     if (selectedExperiences.includes('fnb')) labels.push('☕ Cafe');
     return labels.join(' + ') || 'General';
   };
@@ -502,8 +504,8 @@ export function GuestLoginWizardModal({
                     </p>
                   </div>
 
-                  {/* 4 MULTI-SELECT EXPERIENCE OPTIONS */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                  {/* 5 MULTI-SELECT EXPERIENCE OPTIONS */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
                     
                     {/* OPTION 1: PS5 Gaming */}
                     <button
@@ -574,7 +576,30 @@ export function GuestLoginWizardModal({
                       </div>
                     </button>
 
-                    {/* OPTION 4: Cafe */}
+                    {/* OPTION 4: Retro Gaming */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleExperience('retrogaming')}
+                      className={cn(
+                        "p-4 rounded-2xl text-left flex flex-col justify-between h-32 transition-all relative overflow-hidden group border",
+                        selectedExperiences.includes('retrogaming')
+                          ? "border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/10"
+                          : "border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900"
+                      )}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className={cn("text-base tracking-wide font-medium leading-tight", selectedExperiences.includes('retrogaming') ? "text-purple-400" : "text-white")}>
+                          Retro Gaming
+                        </span>
+                        {selectedExperiences.includes('retrogaming') && (
+                          <div className="bg-purple-500 text-white rounded-full p-0.5">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* OPTION 5: Cafe */}
                     <button
                       type="button"
                       onClick={() => handleToggleExperience('fnb')}

@@ -61,7 +61,7 @@ function DashboardContent() {
   const [isRewardsModalOpen, setIsRewardsModalOpen] = useState(false);
   const [isGuestWizardOpen, setIsGuestWizardOpen] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
-  const [manageType, setManageType] = useState<'ps5' | 'boardgame'>('ps5');
+  const [manageType, setManageType] = useState<'ps5' | 'ps4' | 'boardgame' | 'retrogaming'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [initialPlayers, setInitialPlayers] = useState<AssignedMember[] | undefined>(undefined);
 
@@ -224,7 +224,9 @@ function DashboardContent() {
   }, [rawStations]);
 
   const ps5Stations = useMemo(() => stations?.filter(s => s.type === 'ps5') || [], [stations]);
+  const ps4Stations = useMemo(() => stations?.filter(s => s.type === 'ps4') || [], [stations]);
   const boardGameStations = useMemo(() => stations?.filter(s => s.type === 'boardgame') || [], [stations]);
+  const retroGamingStations = useMemo(() => stations?.filter(s => s.type === 'retrogaming') || [], [stations]);
   const availableStations = useMemo(() => stations?.filter(s => s.status === 'available') || [], [stations]);
 
   useEffect(() => {
@@ -304,11 +306,16 @@ function DashboardContent() {
     });
   };
 
-  const handleAddStation = async (type: 'ps5' | 'boardgame') => {
-    const stationList = type === 'ps5' ? ps5Stations : boardGameStations;
+  const handleAddStation = async (type: 'ps5' | 'ps4' | 'boardgame' | 'retrogaming') => {
+    let stationList = ps5Stations;
+    let prefix = 'PS5 ';
+    if (type === 'ps4') { stationList = ps4Stations; prefix = 'PS4 '; }
+    else if (type === 'boardgame') { stationList = boardGameStations; prefix = 'Table '; }
+    else if (type === 'retrogaming') { stationList = retroGamingStations; prefix = 'Retro '; }
+
     const existingNumbers = stationList.map(s => parseInt(s.name.match(/\d+$/)?.[0] || '0', 10)).filter(n => !isNaN(n));
     const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-    const newName = type === 'ps5' ? `PS5 ${maxNumber + 1}` : `Table ${maxNumber + 1}`;
+    const newName = `${prefix}${maxNumber + 1}`;
     
     const maxOrder = stationList.reduce((max, s) => Math.max(max, s.order || 0), 0);
 
@@ -960,7 +967,7 @@ function DashboardContent() {
     setSelectedStation(null);
   };
 
-  const handleManage = (type: 'ps5' | 'boardgame') => {
+  const handleManage = (type: 'ps5' | 'ps4' | 'boardgame' | 'retrogaming') => {
     setManageType(type);
     setIsManageModalOpen(true);
   };
@@ -1017,6 +1024,7 @@ function DashboardContent() {
         </div>
 
       <div className="space-y-3 sm:space-y-4">
+        {/* PS5 CONSOLES */}
         <Card className="border-none shadow-none bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
             <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-primary"/> PS5 Consoles</CardTitle>
@@ -1047,13 +1055,48 @@ function DashboardContent() {
 
                 ))}
               </div>
-            ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active units.</div>}
+            ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active PS5 units.</div>}
           </CardContent>
         </Card>
 
+        {/* PS4 CONSOLES */}
         <Card className="border-none shadow-none bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
-            <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Users className="h-5 sm:h-6 w-5 sm:w-6 text-primary" /> Board Games</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-blue-400"/> PS4 Consoles</CardTitle>
+            <div className="flex gap-2">
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => handleManage('ps4')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {ps4Stations.length > 0 ? (
+              <div id="ps4-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                {ps4Stations.map(station => (
+                  <TimerCard 
+                    key={station.id} 
+                    station={station} 
+                    onToggleTimer={() => handleToggleTimer(station)} 
+                    onStopSession={() => handleStopSession(station)} 
+                    onOpenBillModal={() => handleOpenBillModal(station)} 
+                    onOpenEditTimeModal={() => handleOpenEditTimeModal(station)} 
+                    onOpenMoveModal={() => handleOpenMoveModal(station)} 
+                    onStopPlayer={handleStopPlayer}
+                    onOpenJoinModal={handleOpenJoinModal}
+                    onTogglePlayerTimer={handleTogglePlayerTimer}
+                    allMembers={members || []}
+                    compactMode={isCompactMode}
+                  />
+                ))}
+              </div>
+            ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active PS4 units.</div>}
+          </CardContent>
+        </Card>
+
+        {/* BOARD GAMES */}
+        <Card className="border-none shadow-none bg-transparent">
+          <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
+            <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Users className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-500" /> Board Games</CardTitle>
             <div className="flex gap-2">
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={() => handleManage('boardgame')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
@@ -1083,6 +1126,40 @@ function DashboardContent() {
             ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active tables.</div>}
           </CardContent>
         </Card>
+
+        {/* RETRO GAMING */}
+        <Card className="border-none shadow-none bg-transparent">
+          <CardHeader className="flex flex-row items-center justify-between px-0 pb-2 pt-0">
+            <CardTitle className="text-xl sm:text-2xl flex items-center gap-2"><Sparkles className="h-5 sm:h-6 w-5 sm:w-6 text-purple-400" /> Retro Gaming</CardTitle>
+            <div className="flex gap-2">
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => handleManage('retrogaming')} className="h-9 px-3 text-sm sm:text-sm font-bold uppercase tracking-tight border-2"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Manage</Button>
+                )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {retroGamingStations.length > 0 ? (
+              <div id="retro-gaming-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                {retroGamingStations.map(station => (
+                  <TimerCard 
+                    key={station.id} 
+                    station={station} 
+                    onToggleTimer={() => handleToggleTimer(station)} 
+                    onStopSession={() => handleStopSession(station)} 
+                    onOpenBillModal={() => handleOpenBillModal(station)} 
+                    onOpenEditTimeModal={() => handleOpenEditTimeModal(station)} 
+                    onOpenMoveModal={() => handleOpenMoveModal(station)} 
+                    onStopPlayer={handleStopPlayer}
+                    onOpenJoinModal={handleOpenJoinModal}
+                    onTogglePlayerTimer={handleTogglePlayerTimer}
+                    gamingPackages={gamingPackages || []}
+                    compactMode={isCompactMode}
+                  />
+                ))}
+              </div>
+            ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active retro units.</div>}
+          </CardContent>
+        </Card>
       </div>
 
       {selectedStation && (
@@ -1099,7 +1176,15 @@ function DashboardContent() {
       <ManageStationsModal 
         isOpen={isManageModalOpen} 
         onOpenChange={setIsManageModalOpen} 
-        stations={manageType === 'ps5' ? ps5Stations : boardGameStations} 
+        stations={
+          manageType === 'ps5'
+            ? ps5Stations
+            : manageType === 'ps4'
+            ? ps4Stations
+            : manageType === 'boardgame'
+            ? boardGameStations
+            : retroGamingStations
+        } 
         type={manageType}
         onAdd={() => handleAddStation(manageType)}
       />

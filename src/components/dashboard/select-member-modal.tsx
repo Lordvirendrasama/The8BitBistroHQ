@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Search, UserPlus, X, Clock, Zap, ChevronRight, ArrowLeft, CheckCircle2, Gamepad2, Users, Sparkles, RotateCcw, Timer, Play, Crown, User, Plus, Lock, AlertTriangle } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow } from '@/lib/synced-time';
+import { generateDynamicQuickPlayPackages } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
@@ -197,7 +198,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
     setClientTime(new Date().toTimeString().slice(0, 5));
   }, []);
 
-  const playerLimit = station?.type === 'ps5' ? 4 : 8;
+  const playerLimit = (station?.type === 'ps5' || station?.type === 'ps4') ? 4 : 8;
 
   const packagesCollection = useMemo(() => {
     if (!db) return null;
@@ -210,15 +211,23 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
   }, [allPackages]);
 
   const walkInPackages = useMemo(() => {
-    if (!allPackages || !clientTime || !station) return [];
+    if (!station) return [];
+    const playerCount = Math.max(1, selectedPlayers.filter(Boolean).length);
+    const dynamicPkgs = generateDynamicQuickPlayPackages(station.type, playerCount);
+
+    if (!allPackages || allPackages.length === 0) {
+      return dynamicPkgs;
+    }
+
     const now = new Date();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }); 
     
-    const filtered = allPackages.filter(pkg => {
+    const dbFiltered = allPackages.filter(pkg => {
         if (pkg.isAddTimePackage || pkg.isRechargePack) return false;
         
         if (station.type === 'boardgame' && !pkg.isBoardGamePass) return false;
-        if (station.type === 'ps5' && pkg.isBoardGamePass) return false;
+        if (station.type === 'retrogaming' && !pkg.isRetroGamePass) return false;
+        if ((station.type === 'ps5' || station.type === 'ps4') && (pkg.isBoardGamePass || pkg.isRetroGamePass)) return false;
 
         let isAvailable = true;
         if (pkg.availableDays && pkg.availableDays.length > 0 && !pkg.availableDays.includes(currentDay)) isAvailable = false;
@@ -227,12 +236,13 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
         return isAvailable;
     });
 
-    return filtered.sort((a, b) => {
+    const combined = [...dynamicPkgs, ...dbFiltered];
+    return combined.sort((a, b) => {
         if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
         if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
         return 0;
     });
-  }, [allPackages, clientTime, station]);
+  }, [allPackages, clientTime, station, selectedPlayers]);
 
   const getMemberActiveRecharges = (memberId: string) => {
     const member = loadedMembers[memberId];

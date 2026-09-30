@@ -76,6 +76,8 @@ export interface GamingPackage {
   playerCapacity?: number; // 1 or 2
   isPriorityOffer?: boolean;
   isBoardGamePass?: boolean;
+  isRetroGamePass?: boolean;
+  stationType?: 'ps5' | 'ps4' | 'boardgame' | 'retrogaming';
 }
 
 export type GamingPackageFormData = Omit<GamingPackage, 'id'>;
@@ -275,7 +277,7 @@ export type StationStatus = 'available' | 'in-use' | 'paused' | 'finishing';
 export interface Station {
   id: string;
   name: string;
-  type: 'ps5' | 'ps4' | 'boardgame';
+  type: 'ps5' | 'ps4' | 'boardgame' | 'retrogaming';
   status: StationStatus;
   startTime: string | null;
   endTime: string | null;

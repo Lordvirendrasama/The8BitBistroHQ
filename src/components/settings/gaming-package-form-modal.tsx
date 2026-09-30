@@ -45,6 +45,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
   const [playerCapacity, setPlayerCapacity] = useState('1');
   const [isPriorityOffer, setIsPriorityOffer] = useState(false);
   const [isBoardGamePass, setIsBoardGamePass] = useState(false);
+  const [isRetroGamePass, setIsRetroGamePass] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -70,6 +71,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         setPlayerCapacity(String(pkg.playerCapacity || 1));
         setIsPriorityOffer(pkg.isPriorityOffer || false);
         setIsBoardGamePass(pkg.isBoardGamePass || false);
+        setIsRetroGamePass(pkg.isRetroGamePass || false);
 
       } else {
         setName('');
@@ -86,6 +88,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         setPlayerCapacity('1');
         setIsPriorityOffer(false);
         setIsBoardGamePass(false);
+        setIsRetroGamePass(false);
       }
     }
   }, [pkg, isOpen]);
@@ -120,7 +123,8 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         isRechargePack,
         playerCapacity: numCapacity,
         isPriorityOffer,
-        isBoardGamePass
+        isBoardGamePass,
+        isRetroGamePass
     };
 
     onSave(formData);
@@ -250,25 +254,35 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                             </div>
                         </Label>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                         <Label htmlFor="add-time-pkg" className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer",
+                            "flex items-center gap-2.5 p-3 rounded-lg border-2 transition-all cursor-pointer",
                             isAddTimePackage ? "bg-primary/10 border-primary" : "hover:bg-muted"
                         )}>
                             <Checkbox id="add-time-pkg" checked={isAddTimePackage} onCheckedChange={(v) => setIsAddTimePackage(!!v)} />
                             <div>
-                                <p className="text-sm font-bold uppercase tracking-tight">Add Time Only</p>
-                                <p className="text-sm font-bold opacity-60">Session extensions</p>
+                                <p className="text-xs font-bold uppercase tracking-tight">Add Time</p>
+                                <p className="text-[10px] font-bold opacity-60">Extensions</p>
                             </div>
                         </Label>
                         <Label htmlFor="board-game-pass" className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer",
+                            "flex items-center gap-2.5 p-3 rounded-lg border-2 transition-all cursor-pointer",
                             isBoardGamePass ? "bg-blue-500/10 border-blue-500" : "hover:bg-muted"
                         )}>
                             <Checkbox id="board-game-pass" checked={isBoardGamePass} onCheckedChange={(v) => setIsBoardGamePass(!!v)} />
                             <div>
-                                <p className="text-sm font-bold uppercase tracking-tight">Board Game Pass</p>
-                                <p className="text-sm font-bold opacity-60">Table stations only</p>
+                                <p className="text-xs font-bold uppercase tracking-tight">Board Pass</p>
+                                <p className="text-[10px] font-bold opacity-60">Tables only</p>
+                            </div>
+                        </Label>
+                        <Label htmlFor="retro-game-pass" className={cn(
+                            "flex items-center gap-2.5 p-3 rounded-lg border-2 transition-all cursor-pointer",
+                            isRetroGamePass ? "bg-purple-500/10 border-purple-500" : "hover:bg-muted"
+                        )}>
+                            <Checkbox id="retro-game-pass" checked={isRetroGamePass} onCheckedChange={(v) => setIsRetroGamePass(!!v)} />
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-tight">Retro Pass</p>
+                                <p className="text-[10px] font-bold opacity-60">Retro only</p>
                             </div>
                         </Label>
                     </div>

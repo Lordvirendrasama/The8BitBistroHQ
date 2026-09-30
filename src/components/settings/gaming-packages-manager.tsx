@@ -218,9 +218,10 @@ export function GamingPackagesManager() {
                         <div className="flex gap-1.5">
                             {pkg.isPriorityOffer && <Badge variant="outline" className="text-sm h-4 uppercase bg-amber-500/10 text-amber-600 border-amber-500/20">PRIORITY</Badge>}
                             {pkg.isBoardGamePass && <Badge variant="outline" className="text-sm h-4 uppercase bg-blue-500/10 text-blue-600 border-blue-500/20">BOARD GAME</Badge>}
+                            {pkg.isRetroGamePass && <Badge variant="outline" className="text-sm h-4 uppercase bg-purple-500/10 text-purple-600 border-purple-500/20">RETRO GAME</Badge>}
                             {pkg.isRechargePack && <Badge variant="outline" className="text-sm h-4 uppercase bg-yellow-500/10 text-yellow-600 border-yellow-500/20">RECHARGE</Badge>}
                             {pkg.isAddTimePackage && <Badge variant="outline" className="text-sm h-4 uppercase bg-primary/10 text-primary border-primary/20">ADD TIME</Badge>}
-                            {!pkg.isBoardGamePass && !pkg.isRechargePack && !pkg.isAddTimePackage && <Badge variant="outline" className="text-sm h-4 uppercase bg-green-500/10 text-green-600 border-green-500/20">WALK-IN</Badge>}
+                            {!pkg.isBoardGamePass && !pkg.isRetroGamePass && !pkg.isRechargePack && !pkg.isAddTimePackage && <Badge variant="outline" className="text-sm h-4 uppercase bg-green-500/10 text-green-600 border-green-500/20">WALK-IN</Badge>}
                         </div>
                     </TableCell>
                     <TableCell className="text-center">

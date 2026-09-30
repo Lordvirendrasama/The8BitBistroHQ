@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Search, UserPlus, X, Clock, UserPlus2, Zap, ChevronRight, ArrowLeft, CheckCircle2, Gamepad2, Star } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { generateDynamicQuickPlayPackages } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
@@ -58,16 +59,23 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
   const { data: allPackages } = useCollection<GamingPackage>(packagesCollection);
 
   const walkInPackages = useMemo(() => {
-    if (!allPackages || !clientTime || !station) return [];
+    if (!station) return [];
+    const activePlayerCount = (station.members?.length || 0) + 1;
+    const dynamicPkgs = generateDynamicQuickPlayPackages(station.type, activePlayerCount);
+
+    if (!allPackages || allPackages.length === 0) {
+      return dynamicPkgs;
+    }
+
     const now = new Date();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }); 
     
-    const filtered = allPackages.filter(pkg => {
+    const dbFiltered = allPackages.filter(pkg => {
         if (pkg.isAddTimePackage || pkg.isRechargePack) return false;
         
-        // Station Type check: Board game stations only see Board Game Passes
         if (station.type === 'boardgame' && !pkg.isBoardGamePass) return false;
-        if (station.type === 'ps5' && pkg.isBoardGamePass) return false;
+        if (station.type === 'retrogaming' && !pkg.isRetroGamePass) return false;
+        if ((station.type === 'ps5' || station.type === 'ps4') && (pkg.isBoardGamePass || pkg.isRetroGamePass)) return false;
 
         let isAvailable = true;
         if (pkg.availableDays && pkg.availableDays.length > 0 && !pkg.availableDays.includes(currentDay)) isAvailable = false;
@@ -76,8 +84,8 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
         return isAvailable;
     });
 
-    // Sort priority offers to the top
-    return filtered.sort((a, b) => {
+    const combined = [...dynamicPkgs, ...dbFiltered];
+    return combined.sort((a, b) => {
         if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
         if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
         return 0;
