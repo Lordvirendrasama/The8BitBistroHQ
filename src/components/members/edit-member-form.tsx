@@ -48,26 +48,23 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
   const [email, setEmail] = useState(member.email || '');
   const [tier, setTier] = useState<MemberTier>(member.tier);
   const [level, setLevel] = useState(String(member.level));
-  const [xp, setXp] = useState(String(member.xp));
-  const [points, setPoints] = useState(String(member.points));
+  const [bitsBalance, setBitsBalance] = useState(String(member.bitsBalance ?? member.points ?? 0));
+  const [lifetimeBitsEarned, setLifetimeBitsEarned] = useState(String(member.lifetimeBitsEarned ?? member.points ?? 0));
   const initialTotalSeconds = (member.recharges || []).reduce((acc, r) => acc + r.remainingDuration, 0);
   const [rechargeHours, setRechargeHours] = useState(String(Math.floor(initialTotalSeconds / 3600)));
   const [rechargeMinutes, setRechargeMinutes] = useState(String(Math.floor((initialTotalSeconds % 3600) / 60)));
   const { toast } = useToast();
 
-
-
   const handleUpdate = () => {
     const levelNum = parseInt(level, 10);
-    const xpNum = parseInt(xp, 10);
-    const pointsNum = parseInt(points, 10);
+    const bitsNum = parseInt(bitsBalance, 10);
+    const lifetimeBitsNum = parseInt(lifetimeBitsEarned, 10);
     
     const h = parseInt(rechargeHours, 10) || 0;
     const m = parseInt(rechargeMinutes, 10) || 0;
     const newTotalSeconds = (h * 3600) + (m * 60);
 
-    if (!name || !username || isNaN(levelNum) || isNaN(xpNum) || isNaN(pointsNum) || isNaN(newTotalSeconds)) {
-
+    if (!name || !username || isNaN(levelNum) || isNaN(bitsNum) || isNaN(lifetimeBitsNum) || isNaN(newTotalSeconds)) {
       toast({
         variant: 'destructive',
         title: 'Invalid Information',
@@ -76,13 +73,11 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
       return;
     }
 
-    // Handle Recharge duration adjustments
     let updatedRecharges = (member.recharges || []).map(r => ({ ...r }));
     const currentTotalSeconds = updatedRecharges.reduce((acc, r) => acc + r.remainingDuration, 0);
     const diff = newTotalSeconds - currentTotalSeconds;
 
     if (diff > 0) {
-      // Add a manual adjustment pack
       updatedRecharges.push({
           id: `manual-${Date.now()}`,
           packageId: 'manual',
@@ -94,7 +89,6 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
           pricePaid: 0
       });
     } else if (diff < 0) {
-      // Subtract from recharges starting from last
       let toSubtract = Math.abs(diff);
       for (let i = updatedRecharges.length - 1; i >= 0 && toSubtract > 0; i--) {
           const deduct = Math.min(updatedRecharges[i].remainingDuration, toSubtract);
@@ -106,7 +100,7 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
       }
     }
 
-    const updatedMember = { 
+    const updatedMember: Member = { 
         ...member, 
         name, 
         username, 
@@ -114,9 +108,10 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
         email, 
         tier,
         level: levelNum,
-        xp: xpNum,
-        points: pointsNum,
+        bitsBalance: bitsNum,
+        lifetimeBitsEarned: lifetimeBitsNum,
         recharges: updatedRecharges,
+        isBitsMigrated: true,
     };
 
     onUpdate(updatedMember);
@@ -168,12 +163,12 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
                 <Input id="level" type="number" value={level} onChange={(e) => setLevel(e.target.value)} />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="xp">Experience Points (XP)</Label>
-                <Input id="xp" type="number" value={xp} onChange={(e) => setXp(e.target.value)} />
+                <Label htmlFor="bitsBalance">Bits Balance (Spendable)</Label>
+                <Input id="bitsBalance" type="number" value={bitsBalance} onChange={(e) => setBitsBalance(e.target.value)} />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="points">Loyalty Points</Label>
-                <Input id="points" type="number" value={points} onChange={(e) => setPoints(e.target.value)} />
+                <Label htmlFor="lifetimeBitsEarned">Lifetime Bits Earned</Label>
+                <Input id="lifetimeBitsEarned" type="number" value={lifetimeBitsEarned} onChange={(e) => setLifetimeBitsEarned(e.target.value)} />
             </div>
             <div className="space-y-2">
                 <Label>Gaming Balance</Label>
@@ -201,7 +196,6 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
                 </div>
             </div>
 
-
             <div className="space-y-2">
                 <Label htmlFor="tier">Membership Tier</Label>
                 <Select value={tier} onValueChange={(value) => setTier(value as MemberTier)}>
@@ -209,9 +203,9 @@ export function EditMemberForm({ member, onUpdate, onDelete }: EditMemberFormPro
                         <SelectValue placeholder="Select tier" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="Red">Red (1x XP)</SelectItem>
-                        <SelectItem value="Green">Green (1.5x XP)</SelectItem>
-                        <SelectItem value="Gold">Gold (2x XP)</SelectItem>
+                        <SelectItem value="Red">Red (1x Bits)</SelectItem>
+                        <SelectItem value="Green">Green (1.5x Bits)</SelectItem>
+                        <SelectItem value="Gold">Gold (2x Bits)</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

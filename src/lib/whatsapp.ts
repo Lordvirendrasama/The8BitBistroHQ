@@ -64,7 +64,7 @@ export function formatWhatsAppBillMessage(bill: Bill, customerName?: string): st
   }
 
   message += `------------------------------------\n`;
-  message += `*Member XP & Rewards Updated!*\n`;
+  message += `*Bits & Rewards Updated!*\n`;
   message += `Thank you for visiting The 8 Bit Bistro HQ!\n\n`;
   message += `Support / Helpline: +91 8830325714\n`;
   message += `====================================`;

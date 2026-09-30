@@ -269,32 +269,38 @@ function DashboardContent() {
 
       const member = memberDoc.data() as Member;
       const multiplier = tierMultipliers[member.tier] || 1;
-      const finalXpToGrant = Math.floor(baseXp * multiplier);
+      // Formula: bitsEarned = floor(amountSpent / 10 * tierMultiplier)
+      const bitsEarned = Math.floor((billAmount / 10) * multiplier);
       
-      const newXp = (member.xp || 0) + finalXpToGrant;
+      const currentBitsBalance = member.bitsBalance ?? member.points ?? 0;
+      const currentLifetimeBits = member.lifetimeBitsEarned ?? currentBitsBalance;
+
+      const newBitsBalance = currentBitsBalance + bitsEarned;
+      const newLifetimeBits = currentLifetimeBits + bitsEarned;
       const newTotalSpent = (member.totalSpent || 0) + billAmount;
 
-      let newLevel = member.level || 1;
-      let newPoints = member.points || 0;
-      
-      const xpForNextLevel = newLevel * settings.xpPerLevel;
-      if (newXp >= xpForNextLevel) {
-          newLevel += 1;
-          newPoints += settings.pointsPerLevelUp;
-      }
-      
-      transaction.update(memberRef, { xp: newXp, level: newLevel, points: newPoints, totalSpent: newTotalSpent });
+      const bitsPerLevelThreshold = 100;
+      const calculatedLevel = Math.floor(newLifetimeBits / bitsPerLevelThreshold) + 1;
+      const newLevel = Math.max(member.level || 1, calculatedLevel);
+
+      transaction.update(memberRef, { 
+        bitsBalance: newBitsBalance, 
+        lifetimeBitsEarned: newLifetimeBits, 
+        level: newLevel, 
+        totalSpent: newTotalSpent,
+        isBitsMigrated: true
+      });
       
       const transactionRef = doc(collection(db, `members/${memberId}/transactions`));
       transaction.set(transactionRef, {
         date: new Date().toISOString(),
         amount: billAmount,
-        xpGained: finalXpToGrant,
+        bitsGained: bitsEarned,
         billId: billId || null
       });
 
     }).catch(e => {
-        console.error("XP Transaction failed: ", e);
+        console.error("Bits Transaction failed: ", e);
     });
   };
 
@@ -778,7 +784,8 @@ function DashboardContent() {
 
     if (billPerMember > 0) {
         realMembers.forEach(assignedMember => {
-            const baseXp = Math.floor(billPerMember * settings.xpPerRupee);
+            const rate = settings.bitsPerRupeeRate ?? settings.xpPerRupee ?? 0.1;
+            const baseXp = Math.floor(billPerMember * rate);
             onGrantXp(assignedMember.id, baseXp, billPerMember, newBillId);
         });
     }

@@ -123,7 +123,14 @@ const allNavItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
+
+  // Auto-close mobile sidebar when navigating to a new route
+  React.useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [pathname, isMobile, setOpenMobile]);
 
   const navItems = React.useMemo(() => {
     if (!user) return [];
@@ -178,7 +185,7 @@ export function AppSidebar() {
     setOpenSubMenus(prev => ({ ...prev, [href]: !prev[href] }));
   };
 
-  const isCollapsed = state === 'collapsed';
+  const isCollapsed = state === 'collapsed' && !isMobile;
 
   return (
     <Sidebar className="border-r border-border font-sans">
@@ -206,12 +213,18 @@ export function AppSidebar() {
                         <item.icon className="h-5 w-5 shrink-0" />
                         <span className="truncate">{item.label}</span>
                     </SidebarMenuButton>
-                    {openSubMenus[item.href] && !isCollapsed && (
+                    {openSubMenus[item.href] && (
                         <SidebarMenuSub className="ml-6 mt-2 border-l border-border pl-4 gap-2">
                             {item.subItems.map(subItem => (
                                 <li key={subItem.href}>
                                   <SidebarMenuSubButton asChild isActive={pathname === subItem.href} className="py-4 h-auto px-4 rounded-xl transition-all font-medium text-[15px] text-muted-foreground hover:bg-white/5 hover:text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground overflow-hidden">
-                                    <Link href={subItem.href} className="flex items-center gap-3 w-full">
+                                    <Link 
+                                      href={subItem.href} 
+                                      className="flex items-center gap-3 w-full"
+                                      onClick={() => {
+                                        if (isMobile) setOpenMobile(false);
+                                      }}
+                                    >
                                       <subItem.icon className="h-4 w-4 opacity-80 shrink-0" />
                                       <span className="truncate">{subItem.label}</span>
                                     </Link>
@@ -222,16 +235,24 @@ export function AppSidebar() {
                     )}
                  </>
               ) : (
-                <Link href={item.href} target={item.href === '/scan' ? '_blank' : undefined} rel={item.href === '/scan' ? 'noopener noreferrer' : undefined}>
-                    <SidebarMenuButton
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                    className="py-5 text-base font-medium text-muted-foreground px-4 hover:bg-white/5 hover:text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground transition-all rounded-xl overflow-hidden"
-                    >
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                  tooltip={item.label}
+                  className="py-5 text-base font-medium text-muted-foreground px-4 hover:bg-white/5 hover:text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground transition-all rounded-xl overflow-hidden"
+                >
+                  <Link 
+                    href={item.href} 
+                    target={item.href === '/scan' ? '_blank' : undefined} 
+                    rel={item.href === '/scan' ? 'noopener noreferrer' : undefined}
+                    onClick={() => {
+                      if (isMobile) setOpenMobile(false);
+                    }}
+                  >
                     <item.icon className="h-5 w-5 shrink-0" />
                     <span className="truncate">{item.label}</span>
-                    </SidebarMenuButton>
-                </Link>
+                  </Link>
+                </SidebarMenuButton>
               )}
             </SidebarMenuItem>
           ))}

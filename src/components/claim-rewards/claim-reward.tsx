@@ -69,7 +69,10 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
   const selectedMember = members?.find(m => m.id === selectedMemberId);
   const selectedReward = rewards?.find(r => r.id === selectedRewardId);
 
-  const canClaim = selectedMember && selectedReward && selectedMember.points >= selectedReward.pointsCost;
+  const memberBits = selectedMember ? (selectedMember.bitsBalance ?? selectedMember.points ?? 0) : 0;
+  const rewardCost = selectedReward ? (selectedReward.bitsCost ?? selectedReward.pointsCost ?? 0) : 0;
+
+  const canClaim = selectedMember && selectedReward && memberBits >= rewardCost;
 
   const handleClaim = () => {
     if (!selectedMember || !selectedReward) return;
@@ -83,8 +86,8 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
       return;
     }
     
-    const updatedPoints = selectedMember.points - selectedReward.pointsCost;
-    updateMember(selectedMember.id, { points: updatedPoints });
+    const updatedBits = memberBits - rewardCost;
+    updateMember(selectedMember.id, { bitsBalance: updatedBits });
     recordClaimedReward(selectedMember, selectedReward);
 
     logUserAction(`Claimed reward '${selectedReward.name}' for ${selectedMember.name}.`, {
@@ -92,12 +95,12 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
         memberName: selectedMember.name,
         rewardId: selectedReward.id,
         rewardName: selectedReward.name,
-        pointsCost: selectedReward.pointsCost
+        bitsCost: rewardCost
     });
 
     toast({
       title: 'Reward Claimed!',
-      description: `${selectedMember.name} has redeemed ${selectedReward.name} for ${selectedReward.pointsCost} points.`,
+      description: `${selectedMember.name} has redeemed ${selectedReward.name} for ${rewardCost} Bits.`,
     });
     
     setSelectedRewardId(null);
@@ -132,7 +135,7 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
                             <span>{member.name}</span>
                             <span className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Coins className="h-3 w-3 text-yellow-500" />
-                                {member.points.toLocaleString()}
+                                {(member.bitsBalance ?? member.points ?? 0).toLocaleString()} BITS
                             </span>
                         </div>
                         </SelectItem>
@@ -163,7 +166,7 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
                   </CardDescription>
                   <div className="flex items-center justify-center sm:justify-start gap-2 text-2xl font-bold text-yellow-500 pt-2">
                       <Coins className="h-7 w-7" />
-                      <span>{selectedMember.points.toLocaleString()} Points Available</span>
+                      <span>{memberBits.toLocaleString()} Bits Available</span>
                   </div>
               </div>
           </div>
@@ -171,8 +174,9 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
         <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(rewards || []).map(reward => {
+                    const cost = reward.bitsCost ?? reward.pointsCost ?? 0;
                     const isSelected = reward.id === selectedRewardId;
-                    const canAfford = selectedMember.points >= reward.pointsCost;
+                    const canAfford = memberBits >= cost;
                     const levelMet = selectedMember.level >= reward.levelRequired;
                     const alreadyClaimed = reward.limitOnePerUser && claimedRewards?.some(cr => cr.rewardId === reward.id);
                     const isAvailable = canAfford && levelMet && !alreadyClaimed;
@@ -202,7 +206,7 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
                                 <CardContent className="flex-grow flex items-end justify-between">
                                     <div className="flex items-center gap-2 text-lg font-bold text-yellow-500">
                                         <Coins className="h-5 w-5" />
-                                        <span>{reward.pointsCost.toLocaleString()}</span>
+                                        <span>{cost.toLocaleString()} Bits</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-lg font-bold text-primary">
                                         <Star className="h-5 w-5" />
@@ -218,7 +222,7 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
                                     <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                                         <div className="text-center font-bold text-destructive p-2">
                                             {alreadyClaimed && <p>Already Claimed</p>}
-                                            {!alreadyClaimed && !canAfford && <p>Not Enough Points</p>}
+                                            {!alreadyClaimed && !canAfford && <p>Not Enough Bits</p>}
                                             {!alreadyClaimed && !levelMet && <p>Level {reward.levelRequired} Required</p>}
                                         </div>
                                     </div>
@@ -232,7 +236,7 @@ export function ClaimReward({ initialMemberId }: ClaimRewardProps) {
         {selectedReward && (
             <CardFooter className="flex-col items-stretch gap-4 p-4 mt-4 bg-muted/50 rounded-b-lg">
                 <p className="text-center text-lg">
-                    Confirm claiming <span className="font-bold text-primary">{selectedReward.name}</span> for <span className="font-bold text-yellow-500">{selectedReward.pointsCost}</span> points?
+                    Confirm claiming <span className="font-bold text-primary">{selectedReward.name}</span> for <span className="font-bold text-yellow-500">{rewardCost}</span> Bits?
                 </p>
                 <Button onClick={handleClaim} disabled={!canClaim} className="w-full font-bold text-lg p-6">
                     <Gift className="mr-2 h-5 w-5" />

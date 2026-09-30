@@ -12,11 +12,14 @@ import { logUserAction } from '@/firebase/firestore/logs';
 import { getSettings, updateSettings } from '@/firebase/firestore/settings';
 import type { Settings } from '@/lib/types';
 
+import { migrateMembersToBits } from '@/firebase/firestore/members';
+
 export function SettingsForm() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSubmitting] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   useEffect(() => {
     getSettings().then(data => {
@@ -24,6 +27,34 @@ export function SettingsForm() {
       setLoading(false);
     });
   }, []);
+
+  const handleRunMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const res = await migrateMembersToBits();
+      if (res.success) {
+        toast({
+          title: 'Bits Migration Complete!',
+          description: `Successfully converted points to Bits 1:1 for ${res.count} members.`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Migration Error',
+          description: 'Failed to complete migration to Bits.',
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: 'destructive',
+        title: 'Migration Error',
+        description: 'An unexpected error occurred.',
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -33,10 +64,8 @@ export function SettingsForm() {
     const formData = new FormData(e.currentTarget);
     
     const updates: Partial<Settings> = {
-        xpPerRupee: Number(formData.get('xpPerRupee')),
-        xpPerLevel: Number(formData.get('xpPerLevel')),
-        pointsPerLevelUp: Number(formData.get('pointsPerLevelUp')),
-        maxLevels: Number(formData.get('maxLevels')),
+        bitsPerRupeeRate: Number(formData.get('bitsPerRupeeRate')) || 0.1,
+        bitsPerLevel: Number(formData.get('bitsPerLevel')) || 100,
         activeCycle: String(formData.get('activeCycle')),
         hourlySalaryRate: Number(formData.get('hourlySalaryRate')),
     };
@@ -66,8 +95,22 @@ export function SettingsForm() {
     <Card>
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle className="font-headline tracking-wide text-2xl">System Configuration</CardTitle>
-          <CardDescription>Adjust the core mechanics and set the current active data phase.</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="font-headline tracking-wide text-2xl">System Configuration</CardTitle>
+              <CardDescription>Adjust core Bits loyalty mechanics and active data phase.</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleRunMigration}
+              disabled={isMigrating}
+              className="font-bold border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10"
+            >
+              {isMigrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Run Migration to Bits (1:1)
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -88,20 +131,14 @@ export function SettingsForm() {
                     </p>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="xpPerRupee">XP per Rupee (₹)</Label>
-                    <Input name="xpPerRupee" id="xpPerRupee" type="number" defaultValue={settings?.xpPerRupee} />
+                    <Label htmlFor="bitsPerRupeeRate">Base Earning Rate (Bits per ₹10)</Label>
+                    <Input name="bitsPerRupeeRate" id="bitsPerRupeeRate" type="number" step="0.01" defaultValue={settings?.bitsPerRupeeRate || 0.1} />
+                    <p className="text-xs text-muted-foreground">Default: 0.1 (₹1,000 spent = 100 Bits at 1× RED Tier)</p>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="xpPerLevel">XP per Level</Label>
-                    <Input name="xpPerLevel" id="xpPerLevel" type="number" defaultValue={settings?.xpPerLevel} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="pointsPerLevelUp">Points per Level Up</Label>
-                    <Input name="pointsPerLevelUp" id="pointsPerLevelUp" type="number" defaultValue={settings?.pointsPerLevelUp} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="maxLevels">Maximum Levels</Label>
-                    <Input name="maxLevels" id="maxLevels" type="number" defaultValue={settings?.maxLevels} />
+                    <Label htmlFor="bitsPerLevel">Bits per Level Progression</Label>
+                    <Input name="bitsPerLevel" id="bitsPerLevel" type="number" defaultValue={settings?.bitsPerLevel || 100} />
+                    <p className="text-xs text-muted-foreground">Default: 100 cumulative Bits per level up (Unlimited levels)</p>
                 </div>
             </div>
             <div className="flex justify-end pt-4">

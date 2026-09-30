@@ -47,12 +47,75 @@ const createLogEntry = (
   }));
 };
 
+export const migrateMembersToBits = async (): Promise<{ count: number; success: boolean }> => {
+  const db = getFirestore();
+  const membersRef = collection(db, 'members');
+  try {
+    const snapshot = await getDocs(membersRef);
+    let migratedCount = 0;
+    
+    const docs = snapshot.docs;
+    for (let i = 0; i < docs.length; i += 400) {
+      const chunk = docs.slice(i, i + 400);
+      const batch = writeBatch(db);
+      let batchCount = 0;
+      
+      chunk.forEach((docSnap) => {
+        const data = docSnap.data() as any;
+        if (data.isBitsMigrated === true) {
+          return;
+        }
+
+        const legacyPoints = typeof data.points === 'number' ? data.points : 0;
+        const currentBitsBalance = typeof data.bitsBalance === 'number' ? data.bitsBalance : legacyPoints;
+        const currentLifetimeBits = typeof data.lifetimeBitsEarned === 'number' ? data.lifetimeBitsEarned : legacyPoints;
+
+        batch.update(docSnap.ref, {
+          bitsBalance: currentBitsBalance,
+          lifetimeBitsEarned: currentLifetimeBits,
+          isBitsMigrated: true
+        });
+        batchCount++;
+      });
+
+      if (batchCount > 0) {
+        await batch.commit();
+        migratedCount += batchCount;
+      }
+    }
+
+    const rewardsRef = collection(db, 'rewards');
+    const rewardsSnap = await getDocs(rewardsRef);
+    const rewardBatch = writeBatch(db);
+    let rewardBatchCount = 0;
+    rewardsSnap.docs.forEach((rSnap) => {
+      const rData = rSnap.data() as any;
+      if (rData.bitsCost === undefined) {
+        const cost = rData.pointsCost ?? 0;
+        rewardBatch.update(rSnap.ref, { bitsCost: cost });
+        rewardBatchCount++;
+      }
+    });
+    if (rewardBatchCount > 0) {
+      await rewardBatch.commit();
+    }
+
+    return { count: migratedCount, success: true };
+  } catch (error) {
+    console.error("Migration to Bits failed:", error);
+    return { count: 0, success: false };
+  }
+};
+
 export const addMember = async (memberData: Omit<Member, 'id'>, referrerId?: string) => {
   const db = getFirestore();
   const settings = await getSettings();
   
   const dataToAdd: Partial<Omit<Member, 'id'>> = { 
     ...memberData,
+    bitsBalance: memberData.bitsBalance ?? (memberData as any).points ?? 0,
+    lifetimeBitsEarned: memberData.lifetimeBitsEarned ?? (memberData as any).points ?? 0,
+    isBitsMigrated: true,
     cycle: settings.activeCycle || 'Testing Data 1'
   };
 
@@ -84,14 +147,19 @@ export const addMember = async (memberData: Omit<Member, 'id'>, referrerId?: str
             if (referrerDoc.exists()) {
                 const referrerData = referrerDoc.data() as Member;
                 const referralBonus = 500;
-                transaction.update(referrerRef, { xp: (referrerData.xp || 0) + referralBonus });
+                const currentBits = referrerData.bitsBalance ?? (referrerData.points || 0);
+                const currentLifetime = referrerData.lifetimeBitsEarned ?? currentBits;
+                transaction.update(referrerRef, { 
+                  bitsBalance: currentBits + referralBonus,
+                  lifetimeBitsEarned: currentLifetime + referralBonus
+                });
                 
                 const referralLogRef = doc(collection(db, 'logs'));
                 transaction.set(referralLogRef, sanitize({
-                    type: 'XP_GAINED',
-                    description: `<strong>${referrerData.name}</strong> earned <strong>${referralBonus} XP</strong> for referral.`,
+                    type: 'BITS_EARNED',
+                    description: `<strong>${referrerData.name}</strong> earned <strong>${referralBonus} Bits</strong> for referral.`,
                     memberId: referrerId,
-                    details: { bonusXP: referralBonus },
+                    details: { bonusBits: referralBonus },
                     timestamp: new Date().toISOString(),
                     user: { uid: currentUser.uid, displayName: currentUser.displayName },
                     cycle: dataToAdd.cycle
@@ -156,11 +224,13 @@ export const recordTransaction = async (member: Member, updates: Partial<Member>
     cycle: settings.activeCycle || 'Live Cycle'
   }));
 
+  const bitsEarned = transactionData.bitsGained ?? transactionData.xpGained ?? 0;
+
   createLogEntry(db, batch, {
-    type: 'XP_GAINED',
-    description: `<strong>${member.name}</strong> gained <strong>${transactionData.xpGained} XP</strong>.`,
+    type: 'BITS_EARNED',
+    description: `<strong>${member.name}</strong> earned <strong>${bitsEarned} Bits</strong>.`,
     memberId: member.id,
-    details: { amount: transactionData.amount, xpGained: transactionData.xpGained },
+    details: { amount: transactionData.amount, bitsGained: bitsEarned },
     cycle: settings.activeCycle || 'Live Cycle'
   });
 
@@ -175,21 +245,23 @@ export const recordClaimedReward = async (member: Member, reward: Reward) => {
     const db = getFirestore();
     const batch = writeBatch(db);
     const settings = await getSettings();
+    const cost = reward.bitsCost ?? reward.pointsCost ?? 0;
 
     const claimedRewardsRef = doc(collection(db, 'members', member.id, 'claimedRewards'));
     batch.set(claimedRewardsRef, sanitize({
         rewardId: reward.id,
         rewardName: reward.name,
-        pointsCost: reward.pointsCost,
+        bitsCost: cost,
+        pointsCost: cost,
         date: new Date().toISOString(),
         cycle: settings.activeCycle || 'Live Cycle'
     }));
 
     createLogEntry(db, batch, {
       type: 'REWARD_CLAIMED',
-      description: `<strong>${member.name}</strong> claimed "<strong>${reward.name}</strong>".`,
+      description: `<strong>${member.name}</strong> claimed "<strong>${reward.name}</strong>" for ${cost} Bits.`,
       memberId: member.id,
-      details: { rewardId: reward.id, rewardName: reward.name },
+      details: { rewardId: reward.id, rewardName: reward.name, bitsCost: cost },
       cycle: settings.activeCycle || 'Live Cycle'
     });
 
@@ -199,7 +271,8 @@ export const recordClaimedReward = async (member: Member, reward: Reward) => {
         memberName: member.name,
         memberAvatarUrl: member.avatarUrl,
         rewardName: reward.name,
-        pointsCost: reward.pointsCost,
+        bitsCost: cost,
+        pointsCost: cost,
         timestamp: new Date().toISOString()
     }));
 

@@ -100,7 +100,7 @@ export function RewardsTable() {
                 <TableHead>Reward Name</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-center">Level Required</TableHead>
-                <TableHead className="text-center">Points Cost</TableHead>
+                <TableHead className="text-center">Bits Cost</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -113,7 +113,7 @@ export function RewardsTable() {
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-2 font-bold text-lg text-yellow-500">
                       <Coins className="h-5 w-5" />
-                      <span>{reward.pointsCost}</span>
+                      <span>{reward.bitsCost ?? reward.pointsCost}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">

@@ -23,7 +23,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface AddMemberModalProps {
-  onAddMember: (formData: { memberData: Omit<Member, 'id' | 'level' | 'xp' | 'points' | 'totalSpent' | 'joinDate' | 'avatarUrl'>, avatarUrl: string, referrerId?: string }) => void;
+  onAddMember: (formData: { memberData: Omit<Member, 'id' | 'level' | 'xp' | 'points' | 'bitsBalance' | 'lifetimeBitsEarned' | 'totalSpent' | 'joinDate' | 'avatarUrl'>, avatarUrl: string, referrerId?: string }) => void;
   buttonClassName?: string;
   triggerButton?: React.ReactNode;
   referrerId?: string;

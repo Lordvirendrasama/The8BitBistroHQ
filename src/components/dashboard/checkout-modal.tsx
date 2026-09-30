@@ -300,7 +300,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
             <DialogHeader className="px-6 pt-5 shrink-0 bg-background border-b pb-3">
                 <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-base sm:text-xl">
                     {step === 'review-bill' && <><Receipt className="h-4 w-4 text-primary" /> BILL REVIEW: {station.name}</>}
-                    {step === 'member-xp' && <><Star className="h-4 w-4 text-yellow-500" /> REWARD POINTS</>}
+                    {step === 'member-xp' && <><Star className="h-4 w-4 text-yellow-500" /> BITS EARNED</>}
                     {step === 'payment-method' && <><Banknote className="h-4 w-4 text-primary" /> CHECKOUT</>}
                     {step === 'split-details' && <><Layers className="h-4 w-4 text-amber-500" /> SPLIT PAYMENT</>}
                     {step === 'pending-details' && <><FileWarning className="h-4 w-4 text-destructive" /> RECORD PENDING</>}
@@ -373,7 +373,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                                 <Avatar className="h-10 w-10 border-2 border-primary/20"><AvatarImage src={member.avatarUrl} /><AvatarFallback>{member.name[0]}</AvatarFallback></Avatar>
                                                 <div className="text-left"><p className="font-bold text-sm uppercase">{member.name}</p><Badge variant="outline" className={cn("text-sm h-3.5 uppercase font-bold", tierColors[member.tier])}>{member.tier} Tier</Badge></div>
                                             </div>
-                                            <div className="text-right"><p className="text-sm font-mono opacity-50 font-bold">₹{billPerMember.toFixed(0)} SHARE</p><div className="flex items-center gap-1 text-green-600 font-bold text-sm"><Star className="h-2.5 w-2.5 fill-current" /><span>+{Math.floor(billPerMember * settings.xpPerRupee * (tierMultipliers[member.tier] || 1))} XP</span></div></div>
+                                            <div className="text-right"><p className="text-sm font-mono opacity-50 font-bold">₹{billPerMember.toFixed(0)} SHARE</p><div className="flex items-center gap-1 text-green-600 font-bold text-sm"><Star className="h-2.5 w-2.5 fill-current" /><span>+{Math.floor((billPerMember / 10) * (tierMultipliers[member.tier] || 1))} BITS</span></div></div>
                                         </div>
                                         {hasAnyBalanceContext && <div className="flex items-center justify-between pt-2 border-t-2 border-dashed border-muted"><span className="text-sm font-bold uppercase text-muted-foreground tracking-normal flex items-center gap-1"><Zap className="h-2.5 w-2.5 text-yellow-500 fill-current" />Balance</span><span className="text-sm font-bold text-primary font-mono">{formatBalance(previewBalance)}</span></div>}
                                     </div>

@@ -65,14 +65,16 @@ export const seedInitialLogs = async () => {
 
         if (member) {
             const rewardLogRef = doc(collection(db, 'logs'));
+            const cost = claimedReward.bitsCost ?? claimedReward.pointsCost ?? 0;
             batch.set(rewardLogRef, {
                 type: 'REWARD_CLAIMED',
-                description: `<strong>${member.name}</strong> claimed the reward "<strong>${claimedReward.rewardName}</strong>" for ${claimedReward.pointsCost.toLocaleString()} points.`,
+                description: `<strong>${member.name}</strong> claimed the reward "<strong>${claimedReward.rewardName}</strong>" for ${cost.toLocaleString()} Bits.`,
                 memberId: member.id,
                 details: {
                     rewardId: claimedReward.rewardId,
                     rewardName: claimedReward.rewardName,
-                    pointsCost: claimedReward.pointsCost,
+                    bitsCost: cost,
+                    pointsCost: cost,
                 },
                 timestamp: new Date(claimedReward.date).toISOString(),
                 user: { uid: currentUser.uid, displayName: currentUser.displayName },

@@ -20,8 +20,10 @@ export interface Member {
   birthday?: string;
   tier: MemberTier;
   level: number;
-  xp: number;
-  points: number;
+  bitsBalance: number; // spendable Bits balance
+  lifetimeBitsEarned: number; // cumulative Bits earned over lifetime
+  xp?: number; // legacy field preserved
+  points?: number; // legacy field preserved
   totalSpent: number;
   avatarUrl: string;
   joinDate: string;
@@ -29,13 +31,15 @@ export interface Member {
   digitalIdUrl?: string;
   cycle?: string; // Data Cycle tag
   recharges?: MemberRecharge[];
+  isBitsMigrated?: boolean; // Idempotency tracking flag
 }
 
 export interface Reward {
-  id:string;
-  name:string;
+  id: string;
+  name: string;
   levelRequired: number;
-  pointsCost: number;
+  bitsCost: number; // Primary cost in Bits
+  pointsCost?: number; // Legacy cost fallback
   description: string;
   limitOnePerUser?: boolean;
 }
@@ -77,10 +81,12 @@ export interface GamingPackage {
 export type GamingPackageFormData = Omit<GamingPackage, 'id'>;
 
 export interface Settings {
-  xpPerRupee: number;
-  xpPerLevel: number;
-  maxLevels: number;
-  pointsPerLevelUp: number;
+  bitsPerRupeeRate?: number; // Spend rate (1 Bit per ₹10 spent)
+  bitsPerLevel?: number; // Bits threshold for Level progression
+  xpPerRupee?: number; // Legacy
+  xpPerLevel?: number; // Legacy
+  maxLevels?: number; // Cap removed (unlimited levels)
+  pointsPerLevelUp?: number; // Legacy
   activeCycle: string; // The currently active data cycle
   cycleStartDate?: string; // When the current cycle officially began
   lastCycleStartDate?: string; // When the previous cycle began (for "Last Cycle to Now" logic)
@@ -103,24 +109,28 @@ export interface Transaction {
   id: string;
   date: string;
   amount: number;
-  xpGained: number;
+  bitsGained: number;
+  xpGained?: number;
   billId?: string;
   cycle?: string;
 }
 
 export interface ClaimedReward {
-    id: string;
-    rewardId: string;
-    rewardName: string;
-    date: string;
-    pointsCost: number;
-    cycle?: string;
+  id: string;
+  rewardId: string;
+  rewardName: string;
+  date: string;
+  bitsCost: number;
+  pointsCost?: number;
+  cycle?: string;
 }
 
 export type LogEntryType = 
     | 'MEMBER_JOINED' 
+    | 'BITS_EARNED'
     | 'XP_GAINED' 
     | 'REWARD_CLAIMED'
+    | 'MIGRATED_TO_BITS'
     | 'USER_LOGIN'
     | 'SHIFT_START'
     | 'SHIFT_END'
@@ -170,7 +180,6 @@ export type LogEntryType =
     | 'STAFF_FOOD_ORDER'
     | 'ADMIN_LOGIN';
 
-
 export interface LogEntry {
   id: string;
   type: LogEntryType;
@@ -190,9 +199,11 @@ export interface PendingXpClaim {
     memberId: string;
     memberName: string;
     amount: number;
-    baseXp: number;
+    baseBits?: number;
+    baseXp?: number;
     tierMultiplier: number;
-    xpToGrant: number;
+    bitsToGrant?: number;
+    xpToGrant?: number;
     timestamp: string; // ISO 8601 string
     status: 'pending';
 }
@@ -203,7 +214,8 @@ export interface RecentRewardClaim {
   memberName: string;
   memberAvatarUrl: string;
   rewardName: string;
-  pointsCost: number;
+  bitsCost?: number;
+  pointsCost?: number;
   timestamp: string; // ISO 8601 string
 }
 

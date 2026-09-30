@@ -217,7 +217,7 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-md h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent showClose={false} className="w-[95vw] sm:max-w-md h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0 bg-muted/5 border-b">
           <DialogTitle className="font-display text-xl text-emerald-600 uppercase tracking-tight">JOIN SESSION: {station?.name}</DialogTitle>
           <DialogDescription className="text-sm font-bold uppercase text-muted-foreground">Add another player to the active timer.</DialogDescription>
@@ -244,6 +244,8 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
                                         username: generatedUsername,
                                         tier: 'Red',
                                         level: 1,
+                                        bitsBalance: 0,
+                                        lifetimeBitsEarned: 0,
                                         xp: 0,
                                         points: 0,
                                         totalSpent: 0,
@@ -284,57 +286,61 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
                     </div>
                     <ScrollArea className="flex-1 p-4">
                         <div className="space-y-6 pb-8">
-                            {!selectedMember?.id.startsWith('guest-') && (
-                                <div className="space-y-3">
-                                    <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">USE PREPAID PACK</h4>
-                                    <div className="space-y-2">
-                                        {getMemberActiveRecharges(selectedMember!.id).map(r => (
-                                            <div key={r.id} onClick={() => handleSelectPlan(r, 'recharge')} className={cn("p-4 rounded-xl border-2 bg-card transition-all flex justify-between items-center group", isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer")}>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-bold uppercase truncate opacity-80">{r.packageName}</p>
-                                                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 uppercase mt-1"><Zap className="h-3 w-3 fill-current" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
-                                                </div>
-                                                <Badge variant="outline" className="h-6 px-3 text-sm font-bold border-emerald-200 text-emerald-700 uppercase group-hover:bg-emerald-500 group-hover:text-white">USE</Badge>
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">QUICK PLAY PLANS</h4>
+                                <div className="space-y-2">
+                                    {walkInPackages.map(pkg => (
+                                        <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'walkin')} className={cn(
+                                            "p-4 rounded-xl border-2 hover:border-emerald-500 bg-card transition-all cursor-pointer flex justify-between items-center group shadow-sm",
+                                            isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer",
+                                            pkg.isPriorityOffer && "border-amber-500/30 bg-amber-500/[0.02]"
+                                        )}>
+                                            <div className="min-w-0">
+                                                <p className={cn("text-sm font-bold uppercase truncate transition-colors", pkg.isPriorityOffer ? "text-amber-600 group-hover:text-emerald-600" : "opacity-80 group-hover:text-emerald-600")}>
+                                                    {pkg.name}
+                                                    {pkg.isPriorityOffer && <Star className="inline h-3 w-3 ml-1.5 fill-amber-500 text-amber-500" />}
+                                                </p>
+                                                <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase mt-1"><Clock className="h-3 w-3" /> {formatPackageDuration(pkg.duration)}</div>
                                             </div>
-                                        ))}
-                                        {getMemberActiveRecharges(selectedMember!.id).length === 0 && <p className="text-sm text-center italic text-muted-foreground py-4">No active time packs.</p>}
-                                    </div>
-                                    <Separator className="my-4" />
-                                    <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">BUY RECHARGE</h4>
-                                    <div className="space-y-2">
-                                        {rechargePackages.map(pkg => (
-                                            <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'buy-recharge')} className={cn("p-4 rounded-xl border-2 border-dashed bg-card transition-all flex justify-between items-center group", isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer")}>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-bold uppercase truncate opacity-80">{pkg.name}</p>
-                                                    <p className="text-sm font-bold text-muted-foreground uppercase mt-1">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
-                                                </div>
-                                                <span className="font-mono font-bold text-emerald-600">₹{pkg.price}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <Separator className="my-4" />
-                            <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">QUICK PLAY PLANS</h4>
-                            <div className="space-y-2">
-                                {walkInPackages.map(pkg => (
-                                    <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'walkin')} className={cn(
-                                        "p-4 rounded-xl border-2 hover:border-emerald-500 bg-card transition-all cursor-pointer flex justify-between items-center group shadow-sm",
-                                        isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer",
-                                        pkg.isPriorityOffer && "border-amber-500/30 bg-amber-500/[0.02]"
-                                    )}>
-                                        <div className="min-w-0">
-                                            <p className={cn("text-sm font-bold uppercase truncate transition-colors", pkg.isPriorityOffer ? "text-amber-600 group-hover:text-emerald-600" : "opacity-80 group-hover:text-emerald-600")}>
-                                                {pkg.name}
-                                                {pkg.isPriorityOffer && <Star className="inline h-3 w-3 ml-1.5 fill-amber-500 text-amber-500" />}
-                                            </p>
-                                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase mt-1"><Clock className="h-3 w-3" /> {formatPackageDuration(pkg.duration)}</div>
+                                            <span className="font-mono font-bold text-lg">₹{pkg.price}</span>
                                         </div>
-                                        <span className="font-mono font-bold text-lg">₹{pkg.price}</span>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
+
+                            {!selectedMember?.id.startsWith('guest-') && (
+                                <>
+                                    <Separator className="my-4" />
+                                    <div className="space-y-3">
+                                        <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">USE PREPAID PACK</h4>
+                                        <div className="space-y-2">
+                                            {getMemberActiveRecharges(selectedMember!.id).map(r => (
+                                                <div key={r.id} onClick={() => handleSelectPlan(r, 'recharge')} className={cn("p-4 rounded-xl border-2 bg-card transition-all flex justify-between items-center group", isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer")}>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold uppercase truncate opacity-80">{r.packageName}</p>
+                                                        <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 uppercase mt-1"><Zap className="h-3 w-3 fill-current" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
+                                                    </div>
+                                                    <Badge variant="outline" className="h-6 px-3 text-sm font-bold border-emerald-200 text-emerald-700 uppercase group-hover:bg-emerald-500 group-hover:text-white">USE</Badge>
+                                                </div>
+                                            ))}
+                                            {getMemberActiveRecharges(selectedMember!.id).length === 0 && <p className="text-sm text-center italic text-muted-foreground py-4">No active time packs.</p>}
+                                        </div>
+                                        <Separator className="my-4" />
+                                        <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-normal pl-1">BUY RECHARGE</h4>
+                                        <div className="space-y-2">
+                                            {rechargePackages.map(pkg => (
+                                                <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'buy-recharge')} className={cn("p-4 rounded-xl border-2 border-dashed bg-card transition-all flex justify-between items-center group", isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer")}>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold uppercase truncate opacity-80">{pkg.name}</p>
+                                                        <p className="text-sm font-bold text-muted-foreground uppercase mt-1">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
+                                                    </div>
+                                                    <span className="font-mono font-bold text-emerald-600">₹{pkg.price}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </ScrollArea>
                 </div>

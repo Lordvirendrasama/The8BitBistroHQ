@@ -54,7 +54,7 @@ export function RecentClaims() {
                     Reward Claimed!
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  <strong>{claim.memberName}</strong> redeemed "<strong>{claim.rewardName}</strong>" for {claim.pointsCost.toLocaleString()} points.
+                  <strong>{claim.memberName}</strong> redeemed "<strong>{claim.rewardName}</strong>" for {(claim.bitsCost ?? claim.pointsCost ?? 0).toLocaleString()} Bits.
                 </CardDescription>
             </div>
           </CardHeader>

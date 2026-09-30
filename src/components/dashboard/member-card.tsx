@@ -39,9 +39,9 @@ export function MemberCard({
   const { toast } = useToast();
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
 
-  const xpPerLevel = settings.xpPerLevel;
-  const currentLevelXp = member.xp - ((member.level - 1) * xpPerLevel);
-  const progressPercentage = (currentLevelXp / xpPerLevel) * 100;
+  const xpPerLevel = settings.bitsPerLevel ?? settings.xpPerLevel ?? 100;
+  const currentLevelXp = (member.lifetimeBitsEarned ?? member.xp ?? 0) - ((member.level - 1) * xpPerLevel);
+  const progressPercentage = Math.min(100, Math.max(0, (currentLevelXp / xpPerLevel) * 100));
 
   const handleCopy = (text: string, type: string) => {
     if (!text) {
@@ -117,10 +117,9 @@ export function MemberCard({
             </Badge>
         </div>
         <CardDescription className={cn('text-sm font-medium', isGold && 'text-foreground/80')}>@{member.username} &bull; Level {member.level}</CardDescription>
-        <div className="flex items-center gap-4 mt-1">
             <div className={cn("flex items-center gap-1", isGold ? "text-yellow-600 dark:text-yellow-400" : "text-yellow-500")}>
                 <Coins className="h-4 w-4" />
-                <span className="font-bold text-lg">{member.points.toLocaleString()}</span>
+                <span className="font-bold text-lg">{(member.bitsBalance ?? member.points ?? 0).toLocaleString()} Bits</span>
             </div>
             {totalBalanceSeconds > 0 && (
                 <div className="flex items-center gap-1 text-primary">
@@ -128,7 +127,6 @@ export function MemberCard({
                     <span className="font-bold text-lg">{formatBalance(totalBalanceSeconds)}</span>
                 </div>
             )}
-        </div>
       </CardHeader>
       <CardContent className={cn("px-3 pb-2 pt-0")}>
         {hasPending && (

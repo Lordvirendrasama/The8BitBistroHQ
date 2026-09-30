@@ -387,6 +387,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
         birthday: cleanBirthday || undefined,
         tier: grantedTier,
         level: 1,
+        bitsBalance: 0,
+        lifetimeBitsEarned: 0,
         xp: 0,
         points: 0,
         totalSpent: 0,
@@ -411,6 +413,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
           birthday: cleanBirthday || undefined,
           tier: grantedTier,
           level: 1,
+          bitsBalance: 0,
+          lifetimeBitsEarned: 0,
           xp: 0,
           points: 0,
           totalSpent: 0,
@@ -707,7 +711,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-2xl max-h-[88vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl font-body rounded-xl">
+      <DialogContent showClose={false} className="w-[98vw] max-w-[98vw] sm:max-w-2xl max-h-[88vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl font-body rounded-xl">
         <DialogTitle className="sr-only">Assign Players Modal</DialogTitle>
         <DialogDescription className="sr-only">Assign customer players to gaming station and configure session time</DialogDescription>
 

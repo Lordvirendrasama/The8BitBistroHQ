@@ -89,13 +89,13 @@ const generateSvgIdCard = (member: Member) => {
   <text x="20" y="180" class="label">LEVEL</text>
   <text x="20" y="198" class="value">${member.level}</text>
   
-  <!-- Points -->
-  <text x="110" y="180" class="label">LOYALTY POINTS</text>
-  <text x="110" y="198" class="value">${member.points.toLocaleString()} pts</text>
+  <!-- Bits Balance -->
+  <text x="110" y="180" class="label">BITS BALANCE</text>
+  <text x="110" y="198" class="value">${(member.bitsBalance ?? member.points ?? 0).toLocaleString()} bits</text>
 
-  <!-- XP -->
-  <text x="260" y="180" class="label">XP</text>
-  <text x="260" y="198" class="value">${member.xp.toLocaleString()} xp</text>
+  <!-- Lifetime Bits -->
+  <text x="260" y="180" class="label">LIFETIME BITS</text>
+  <text x="260" y="198" class="value">${(member.lifetimeBitsEarned ?? member.xp ?? 0).toLocaleString()} bits</text>
 
   <!-- Scanner line decoration -->
   <line x1="20" y1="222" x2="380" y2="222" stroke="#ff007f" stroke-width="1" stroke-dasharray="4,4" opacity="0.4" />
@@ -177,9 +177,12 @@ export default function MemberProfilePage() {
     }
   };
 
-  const xpPerLevel = settings.xpPerLevel;
-  const currentLevelXp = member.xp - ((member.level - 1) * xpPerLevel);
-  const progressPercentage = (currentLevelXp / xpPerLevel) * 100;
+  const tierMultiplier = member.tier === 'Gold' ? 2 : member.tier === 'Green' ? 1.5 : 1;
+  const bitsBalance = member.bitsBalance ?? member.points ?? 0;
+  const lifetimeBits = member.lifetimeBitsEarned ?? bitsBalance;
+  const bitsPerLevel = 100;
+  const currentLevelBits = lifetimeBits % bitsPerLevel;
+  const progressPercentage = Math.min(100, (currentLevelBits / bitsPerLevel) * 100);
   const scanUrl = typeof window !== 'undefined' ? `${window.location.origin}/scan?memberId=${member.id}` : '';
 
   const formatDuration = (sec: number) => {
@@ -214,27 +217,23 @@ export default function MemberProfilePage() {
                         <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <Badge variant="outline" className={cn("text-lg font-bold my-2", tierColors[member.tier])}>
-                        {member.tier} Tier
+                        {member.tier} Tier ({tierMultiplier}× Bits)
                     </Badge>
                     <div className="flex items-center gap-4 text-muted-foreground text-lg">
                         <span>Level {member.level}</span>
                     </div>
                      <div className="flex items-center gap-2 text-2xl font-bold text-yellow-500 pt-2">
                         <Coins className="h-7 w-7" />
-                        <span>{member.points.toLocaleString()} Points</span>
-                    </div>
-                     <div className="flex items-center gap-2 text-2xl font-bold text-green-500 pt-2">
-                        <Star className="h-7 w-7" />
-                        <span>{member.xp.toLocaleString()} XP</span>
+                        <span>{bitsBalance.toLocaleString()} Bits</span>
                     </div>
                 </CardContent>
                  <CardFooter className="flex-col gap-2">
-                    <div>
+                    <div className="w-full">
                         <div className="mb-1 flex justify-between text-sm text-muted-foreground">
                             <span>Progress to Level {member.level + 1}</span>
-                            <span>{currentLevelXp.toLocaleString()} / {xpPerLevel.toLocaleString()}</span>
+                            <span>{currentLevelBits.toLocaleString()} / {bitsPerLevel} Bits</span>
                         </div>
-                        <Progress value={progressPercentage} className="h-4" indicatorClassName="bg-green-500" />
+                        <Progress value={progressPercentage} className="h-4" indicatorClassName="bg-yellow-500" />
                     </div>
                     <Button asChild variant="secondary" className="w-full font-bold mt-4">
                         <Link href={`/members/${member.id}/edit`}>
@@ -376,8 +375,8 @@ export default function MemberProfilePage() {
         <div className="lg:col-span-2 space-y-8">
             <Card>
                 <CardHeader>
-                    <CardTitle className="font-headline tracking-wide text-2xl flex items-center gap-2"><Star /> XP History</CardTitle>
-                    <CardDescription>Recent transactions and XP earned.</CardDescription>
+                    <CardTitle className="font-headline tracking-wide text-2xl flex items-center gap-2"><Star /> Bits History</CardTitle>
+                    <CardDescription>Recent transactions and Bits earned.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -385,7 +384,7 @@ export default function MemberProfilePage() {
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Bill Amount</TableHead>
-                                <TableHead className="text-right">XP Gained</TableHead>
+                                <TableHead className="text-right">Bits Earned</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -394,7 +393,7 @@ export default function MemberProfilePage() {
                                     <TableRow key={tx.id}>
                                         <TableCell>{new Date(tx.date).toLocaleDateString()}</TableCell>
                                         <TableCell>₹{tx.amount.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right text-green-500 font-bold">+{tx.xpGained.toLocaleString()} XP</TableCell>
+                                        <TableCell className="text-right text-yellow-500 font-bold">+{(tx.bitsGained ?? tx.xpGained ?? 0).toLocaleString()} Bits</TableCell>
                                     </TableRow>
                                 ))
                             ) : (
@@ -410,7 +409,7 @@ export default function MemberProfilePage() {
              <Card>
                 <CardHeader>
                     <CardTitle className="font-headline tracking-wide text-2xl flex items-center gap-2"><Gift /> Claimed Rewards</CardTitle>
-                    <CardDescription>Rewards redeemed using loyalty points.</CardDescription>
+                    <CardDescription>Rewards redeemed using Bits.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <Table>
@@ -418,7 +417,7 @@ export default function MemberProfilePage() {
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Reward</TableHead>
-                                <TableHead className="text-right">Points Cost</TableHead>
+                                <TableHead className="text-right">Bits Cost</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -427,7 +426,7 @@ export default function MemberProfilePage() {
                                     <TableRow key={cr.id}>
                                         <TableCell>{new Date(cr.date).toLocaleDateString()}</TableCell>
                                         <TableCell>{cr.rewardName}</TableCell>
-                                        <TableCell className="text-right text-yellow-500 font-bold">-{cr.pointsCost.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right text-yellow-500 font-bold">-{(cr.bitsCost ?? cr.pointsCost ?? 0).toLocaleString()} Bits</TableCell>
                                     </TableRow>
                                 ))
                              ) : (

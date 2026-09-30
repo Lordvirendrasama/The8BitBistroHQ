@@ -66,28 +66,36 @@ export default function DashboardPage() {
 
       const member = memberDoc.data() as Member;
       const multiplier = tierMultipliers[member.tier] || 1;
-      const finalXpToGrant = Math.floor(baseXp * multiplier);
+      // Formula: bitsEarned = floor(amountSpent / 10 * tierMultiplier)
+      const bitsEarned = Math.floor((billAmount / 10) * multiplier);
       
-      const newXp = member.xp + finalXpToGrant;
-      const newTotalSpent = member.totalSpent + billAmount;
+      const currentBitsBalance = member.bitsBalance ?? member.points ?? 0;
+      const currentLifetimeBits = member.lifetimeBitsEarned ?? currentBitsBalance;
+      
+      const newBitsBalance = currentBitsBalance + bitsEarned;
+      const newLifetimeBits = currentLifetimeBits + bitsEarned;
+      const newTotalSpent = (member.totalSpent || 0) + billAmount;
 
-      let newLevel = member.level;
-      let newPoints = member.points;
+      // Level progression without maxLevels cap: 1 level per 100 Bits threshold, grandfathering existing level
+      const bitsPerLevelThreshold = 100;
+      const calculatedLevel = Math.floor(newLifetimeBits / bitsPerLevelThreshold) + 1;
+      const newLevel = Math.max(member.level || 1, calculatedLevel);
+
+      const memberUpdates: Partial<Member> = {
+        bitsBalance: newBitsBalance,
+        lifetimeBitsEarned: newLifetimeBits,
+        level: newLevel,
+        totalSpent: newTotalSpent,
+        isBitsMigrated: true
+      };
       
-      const xpForNextLevel = newLevel * settings.xpPerLevel;
-      if (newXp >= xpForNextLevel) {
-          newLevel += 1;
-          newPoints += settings.pointsPerLevelUp;
-      }
-      
-      const memberUpdates = { xp: newXp, level: newLevel, points: newPoints, totalSpent: newTotalSpent };
       transaction.update(memberRef, memberUpdates);
       
       const transactionRef = doc(collection(db, `members/${memberId}/transactions`));
       const txPayload: any = {
         date: new Date().toISOString(),
         amount: billAmount,
-        xpGained: finalXpToGrant,
+        bitsGained: bitsEarned,
       };
 
       if (billId) {
@@ -101,7 +109,7 @@ export default function DashboardPage() {
         toast({
             variant: "destructive",
             title: "Checkout Error",
-            description: "Could not grant XP or update member details."
+            description: "Could not grant Bits or update member details."
         });
     });
   };
@@ -237,7 +245,8 @@ export default function DashboardPage() {
 
     if (billPerMember > 0) {
         realMembers.forEach(assignedMember => {
-            const baseXp = Math.floor(billPerMember * settings.xpPerRupee);
+            const rate = settings.bitsPerRupeeRate ?? settings.xpPerRupee ?? 0.1;
+            const baseXp = Math.floor(billPerMember * rate);
             onGrantXp(assignedMember.id, baseXp, billPerMember, newBillId);
         });
     }

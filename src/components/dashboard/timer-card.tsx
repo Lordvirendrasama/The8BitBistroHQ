@@ -496,33 +496,7 @@ export function TimerCard({
         cardBorderColor,
         cardBgColor
     )}>
-      {user?.role === 'admin' && station.status !== 'available' && (
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-50 rounded-full shadow-md"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm("Are you sure you want to silently close this session without recording any billing or logs?")) {
-                 updateStation(station.id, {
-                   status: 'available',
-                   startTime: null,
-                   endTime: null,
-                   members: [],
-                   currentBill: [],
-                   packageName: null,
-                   pauseStartTime: null,
-                   remainingTimeOnPause: null,
-                   finishingStartTime: null
-                 });
-                 toast({ title: 'Session Cleared', description: 'Session was closed silently.' });
-              }
-            }}
-            title="Silently Close Session"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-      )}
+
       <CardHeader className="flex-row items-start justify-between space-y-0 pb-2 p-4">
         <div className="flex flex-col gap-1">
             <CardTitle className="text-lg font-display tracking-tight uppercase flex items-center gap-2">

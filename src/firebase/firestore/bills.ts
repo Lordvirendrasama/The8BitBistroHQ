@@ -171,8 +171,10 @@ export const deleteBill = async (billId: string, user: CustomUser): Promise<{suc
                 if (memberDoc.exists()) {
                     const memberData = memberDoc.data() as Member;
                     const newTotalSpent = Math.max(0, (memberData.totalSpent || 0) - txData.amount);
-                    const newXp = Math.max(0, (memberData.xp || 0) - txData.xpGained);
-                    memberUpdates.push({ memberRef, updates: { totalSpent: newTotalSpent, xp: newXp } });
+                    const bitsGained = txData.bitsGained ?? txData.xpGained ?? 0;
+                    const newBits = Math.max(0, (memberData.bitsBalance || 0) - bitsGained);
+                    const newXp = Math.max(0, (memberData.xp || 0) - (txData.xpGained ?? 0));
+                    memberUpdates.push({ memberRef, updates: { totalSpent: newTotalSpent, bitsBalance: newBits, xp: newXp } });
                 }
             }
         }

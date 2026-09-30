@@ -29,8 +29,9 @@ export function PendingClaims({ onGrantXp }: PendingClaimsProps) {
   const handleAccept = async (claim: PendingXpClaim) => {
     if (!db) return;
     
+    const baseXpToGrant = claim.baseBits ?? claim.baseXp ?? 0;
     // Use the onGrantXp function passed from the dashboard
-    onGrantXp(claim.memberId, claim.baseXp, claim.amount);
+    onGrantXp(claim.memberId, baseXpToGrant, claim.amount);
 
     // Delete the pending claim
     const claimRef = doc(db, 'pendingXpClaims', claim.id);
@@ -38,8 +39,8 @@ export function PendingClaims({ onGrantXp }: PendingClaimsProps) {
 
     logDataAction('Accepted XP claim', { claimId: claim.id, memberId: claim.memberId });
     toast({
-      title: 'XP Claim Accepted',
-      description: `${claim.xpToGrant} XP granted to ${claim.memberName}.`,
+      title: 'Bits Claim Accepted',
+      description: `${claim.bitsToGrant ?? claim.xpToGrant ?? 0} Bits granted to ${claim.memberName}.`,
     });
   };
 
@@ -52,7 +53,7 @@ export function PendingClaims({ onGrantXp }: PendingClaimsProps) {
     logDataAction('Rejected XP claim', { claimId: claim.id, memberId: claim.memberId });
     toast({
       variant: 'destructive',
-      title: 'XP Claim Rejected',
+      title: 'Bits Claim Rejected',
       description: `Claim for ${claim.memberName} has been rejected.`,
     });
   };
@@ -66,15 +67,15 @@ export function PendingClaims({ onGrantXp }: PendingClaimsProps) {
       {claims.map((claim) => (
         <Card key={claim.id} className="shadow-lg animate-in fade-in-0 slide-in-from-right-8">
           <CardHeader>
-            <CardTitle className="text-lg">Pending XP Claim</CardTitle>
+            <CardTitle className="text-lg">Pending Bits Claim</CardTitle>
             <CardDescription>
-              <strong>{claim.memberName}</strong> requested XP for a bill of <strong>₹{claim.amount.toLocaleString()}</strong>.
+              <strong>{claim.memberName}</strong> requested Bits for a bill of <strong>₹{claim.amount.toLocaleString()}</strong>.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p>XP to grant: <span className="font-bold text-primary">{claim.xpToGrant.toLocaleString()} XP</span></p>
+            <p>Bits to grant: <span className="font-bold text-primary">{(claim.bitsToGrant ?? claim.xpToGrant ?? 0).toLocaleString()} Bits</span></p>
             <p className="text-sm text-muted-foreground">
-                ({claim.baseXp} base XP &times; {claim.tierMultiplier}x multiplier)
+                ({claim.baseBits ?? claim.baseXp ?? 0} base Bits &times; {claim.tierMultiplier}x multiplier)
             </p>
           </CardContent>
           <CardFooter className="flex justify-end gap-2">

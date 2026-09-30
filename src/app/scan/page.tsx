@@ -67,16 +67,12 @@ const generateSvgIdCard = (member: Member) => {
 
   <!-- Stats Grid -->
   <!-- Level -->
-  <text x="20" y="180" class="label">LEVEL</text>
-  <text x="20" y="198" class="value">${member.level}</text>
+  <text x="40" y="180" class="label">LEVEL</text>
+  <text x="40" y="198" class="value">${member.level}</text>
   
-  <!-- Points -->
-  <text x="110" y="180" class="label">LOYALTY POINTS</text>
-  <text x="110" y="198" class="value">${member.points.toLocaleString()} pts</text>
-
-  <!-- XP -->
-  <text x="260" y="180" class="label">XP</text>
-  <text x="260" y="198" class="value">${member.xp.toLocaleString()} xp</text>
+  <!-- Bits -->
+  <text x="180" y="180" class="label">BITS BALANCE</text>
+  <text x="180" y="198" class="value">${(member.bitsBalance ?? member.points ?? 0).toLocaleString()} BITS</text>
 
   <!-- Scanner line decoration -->
   <line x1="20" y1="222" x2="380" y2="222" stroke="#ff007f" stroke-width="1" stroke-dasharray="4,4" opacity="0.4" />

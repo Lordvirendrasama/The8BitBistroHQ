@@ -21,7 +21,11 @@ export function Leaderboard() {
 
   const sortedMembers = useMemo(() => {
     if (!members) return [];
-    return [...members].sort((a, b) => b.xp - a.xp).slice(0, 10);
+    return [...members].sort((a, b) => {
+      const bBits = b.lifetimeBitsEarned ?? b.xp ?? 0;
+      const aBits = a.lifetimeBitsEarned ?? a.xp ?? 0;
+      return bBits - aBits;
+    }).slice(0, 10);
   }, [members]);
 
   const getRankColor = (rank: number) => {
@@ -70,7 +74,7 @@ export function Leaderboard() {
                     <span className="font-medium text-sm">{member.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-bold text-sm p-2">{member.xp.toLocaleString()}</TableCell>
+                <TableCell className="text-right font-bold text-sm p-2">{(member.lifetimeBitsEarned ?? member.xp ?? 0).toLocaleString()} Bits</TableCell>
               </TableRow>
             ))}
           </TableBody>

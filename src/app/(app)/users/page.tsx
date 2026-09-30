@@ -179,40 +179,41 @@ export default function UserManagementPage() {
       }
 
       try {
+          const currentBits = selectedMemberForPoints.bitsBalance ?? selectedMemberForPoints.points ?? 0;
+          const currentLifetime = selectedMemberForPoints.lifetimeBitsEarned ?? currentBits;
+
           if (pointsAction === 'add_bill') {
               const multiplier = tierMultipliers[selectedMemberForPoints.tier] || 1;
-              const finalXpToGrant = Math.floor(amount * settings.xpPerRupee * multiplier);
+              const bitsEarned = Math.floor((amount / 10) * multiplier);
               
-              const newXp = (selectedMemberForPoints.xp || 0) + finalXpToGrant;
+              const newBitsBalance = currentBits + bitsEarned;
+              const newLifetimeBits = currentLifetime + bitsEarned;
               const newTotalSpent = (selectedMemberForPoints.totalSpent || 0) + amount;
 
-              let newLevel = selectedMemberForPoints.level || 1;
-              let newPoints = selectedMemberForPoints.points || 0;
-              
-              const xpForNextLevel = newLevel * settings.xpPerLevel;
-              if (newXp >= xpForNextLevel) {
-                  newLevel += 1;
-                  newPoints += settings.pointsPerLevelUp;
-              }
+              const bitsPerLevelThreshold = 100;
+              const calculatedLevel = Math.floor(newLifetimeBits / bitsPerLevelThreshold) + 1;
+              const newLevel = Math.max(selectedMemberForPoints.level || 1, calculatedLevel);
 
               await recordTransaction(
                   selectedMemberForPoints, 
-                  { xp: newXp, level: newLevel, points: newPoints, totalSpent: newTotalSpent }, 
-                  { amount, xpGained: finalXpToGrant }
+                  { bitsBalance: newBitsBalance, lifetimeBitsEarned: newLifetimeBits, level: newLevel, totalSpent: newTotalSpent, isBitsMigrated: true }, 
+                  { amount, bitsGained: bitsEarned }
               );
               
-              toast({ title: 'Bill Logged', description: `Added ₹${amount} and granted ${finalXpToGrant} XP.` });
+              toast({ title: 'Bill Logged', description: `Added ₹${amount} and granted ${bitsEarned} Bits.` });
 
           } else {
-              let newPoints = selectedMemberForPoints.points || 0;
+              let newBits = currentBits;
+              let newLifetime = currentLifetime;
               if (pointsAction === 'add_points') {
-                  newPoints += amount;
+                  newBits += amount;
+                  newLifetime += amount;
               } else if (pointsAction === 'remove_points') {
-                  newPoints = Math.max(0, newPoints - amount);
+                  newBits = Math.max(0, newBits - amount);
               }
 
-              await updateMember(selectedMemberForPoints.id, { points: newPoints });
-              toast({ title: 'Points Updated', description: `${selectedMemberForPoints.name} now has ${newPoints} points.` });
+              await updateMember(selectedMemberForPoints.id, { bitsBalance: newBits, lifetimeBitsEarned: newLifetime, isBitsMigrated: true });
+              toast({ title: 'Bits Updated', description: `${selectedMemberForPoints.name} now has ${newBits} Bits.` });
           }
 
           setIsPointsModalOpen(false);
@@ -508,7 +509,7 @@ export default function UserManagementPage() {
                 <SortableHeader sortKey="tier">Tier</SortableHeader>
                 <TableHead className="font-bold uppercase text-sm tracking-normal">Balance</TableHead>
                 <SortableHeader sortKey="level">LVL</SortableHeader>
-                <SortableHeader sortKey="points">PTS</SortableHeader>
+                <SortableHeader sortKey="bitsBalance">BITS</SortableHeader>
                 <SortableHeader sortKey="totalSpent">Total Spent</SortableHeader>
                 <SortableHeader sortKey="joinDate">Joined</SortableHeader>
                 <TableHead className="text-right pr-6 font-bold uppercase text-sm tracking-normal">Actions</TableHead>
@@ -548,7 +549,7 @@ export default function UserManagementPage() {
                     </TableCell>
 
                     <TableCell className="font-bold text-sm">{member.level}</TableCell>
-                    <TableCell className="font-bold text-sm text-yellow-500">{member.points.toLocaleString()}</TableCell>
+                    <TableCell className="font-bold text-sm text-yellow-500">{(member.bitsBalance ?? member.points ?? 0).toLocaleString()}</TableCell>
                     <TableCell className="font-mono font-bold text-sm">₹{member.totalSpent.toLocaleString()}</TableCell>
                     <TableCell className="text-sm font-bold text-muted-foreground uppercase whitespace-nowrap">
                         {new Date(member.joinDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

@@ -7,9 +7,10 @@ export const rewards: Reward[] = [
 ];
 
 export const settings: Settings = {
+  bitsPerRupeeRate: 0.1, // 1 Bit per ₹10 spent
+  bitsPerLevel: 100,     // 100 Bits per level progression
   xpPerRupee: 1,
   xpPerLevel: 1000,
-  maxLevels: 10,
   pointsPerLevelUp: 100,
   activeCycle: 'Launch Live',
 };

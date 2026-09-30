@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import type { Member, MemberTier } from '@/lib/types';
-import { settings } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -45,10 +44,8 @@ export function GrantXpModal({ member, onGrantXp }: GrantXpModalProps) {
   const { toast } = useToast();
 
   const parsedBillAmount = parseFloat(billAmount);
-  const baseXp = parsedBillAmount > 0 ? Math.floor(parsedBillAmount * settings.xpPerRupee) : 0;
   const multiplier = tierMultipliers[member.tier] || 1;
-  const finalXpToGrant = Math.floor(baseXp * multiplier);
-
+  const finalBitsToGrant = parsedBillAmount > 0 ? Math.floor((parsedBillAmount / 10) * multiplier) : 0;
 
   const handleGrantXp = () => {
     if (!parsedBillAmount || parsedBillAmount <= 0) {
@@ -61,19 +58,18 @@ export function GrantXpModal({ member, onGrantXp }: GrantXpModalProps) {
     }
     
     playLevelUpSound();
-    onGrantXp(member.id, baseXp, parsedBillAmount);
+    onGrantXp(member.id, finalBitsToGrant, parsedBillAmount);
     
-    logUserAction(`Granted ${finalXpToGrant} XP to ${member.name} for a bill of ₹${parsedBillAmount}.`, {
+    logUserAction(`Granted ${finalBitsToGrant} Bits to ${member.name} for a bill of ₹${parsedBillAmount}.`, {
         memberId: member.id,
         memberName: member.name,
         billAmount: parsedBillAmount,
-        baseXp,
-        finalXpToGrant
+        finalBitsToGrant
     });
 
     toast({
-      title: 'XP Granted!',
-      description: `${finalXpToGrant} XP has been awarded to ${member.name}.`,
+      title: 'Bits Granted!',
+      description: `${finalBitsToGrant} Bits have been awarded to ${member.name}.`,
     });
     setBillAmount('');
     setIsOpen(false);
@@ -84,17 +80,17 @@ export function GrantXpModal({ member, onGrantXp }: GrantXpModalProps) {
       <DialogTrigger asChild>
         <Button 
             className="w-full font-bold tracking-wider"
-            onClick={() => logUserAction(`Opened Grant XP modal for ${member.name}.`)}
+            onClick={() => logUserAction(`Opened Grant Bits modal for ${member.name}.`)}
         >
           <GiftIcon className="mr-2 h-4 w-4" />
-          Grant XP
+          Grant Bits
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline tracking-wide text-2xl">Grant XP to {member.name}</DialogTitle>
+          <DialogTitle className="font-headline tracking-wide text-2xl">Grant Bits to {member.name}</DialogTitle>
           <DialogDescription>
-            Enter the bill amount to automatically calculate and award XP based on their tier.
+            Enter the bill amount to automatically calculate and award Bits based on their tier.
             <Badge className={`${tierColors[member.tier]} text-white ml-2`}>{member.tier} Tier ({multiplier}x)</Badge>
           </DialogDescription>
         </DialogHeader>
@@ -109,16 +105,16 @@ export function GrantXpModal({ member, onGrantXp }: GrantXpModalProps) {
               value={billAmount}
               onChange={(e) => setBillAmount(e.target.value)}
               className="col-span-3"
-              placeholder="e.g., 500"
+              placeholder="e.g., 1000"
             />
           </div>
           <div className="mt-4 rounded-md border bg-muted p-4 text-center">
-            <p className="text-sm text-muted-foreground">XP to be Awarded</p>
+            <p className="text-sm text-muted-foreground">Bits to be Awarded</p>
             <p className="text-3xl font-bold text-primary">
-              {finalXpToGrant} XP
+              {finalBitsToGrant} Bits
             </p>
             <p className="text-sm text-muted-foreground">
-              ({baseXp} base XP x {multiplier} multiplier)
+              (₹{parsedBillAmount || 0} / 10 x {multiplier}x tier multiplier)
             </p>
           </div>
         </div>

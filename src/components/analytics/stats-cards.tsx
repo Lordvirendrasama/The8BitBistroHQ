@@ -79,7 +79,7 @@ export function StatsCards({ period, customRange, selectedDays = [], timeRange =
         return true;
     });
     
-    const periodXp = filteredTransactions.reduce((sum, tx) => sum + tx.xpGained, 0);
+    const periodXp = filteredTransactions.reduce((sum, tx) => sum + (tx.bitsGained ?? tx.xpGained ?? 0), 0);
     const periodSpent = filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0);
 
     return { periodXp, periodSpent };

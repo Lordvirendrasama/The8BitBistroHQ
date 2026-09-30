@@ -29,7 +29,7 @@ export function RewardFormModal({ isOpen, onOpenChange, onSave, reward }: Reward
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [levelRequired, setLevelRequired] = useState('');
-  const [pointsCost, setPointsCost] = useState('');
+  const [bitsCost, setBitsCost] = useState('');
   const [limitOnePerUser, setLimitOnePerUser] = useState(false);
   const { toast } = useToast();
   
@@ -38,20 +38,20 @@ export function RewardFormModal({ isOpen, onOpenChange, onSave, reward }: Reward
       setName(reward.name);
       setDescription(reward.description);
       setLevelRequired(String(reward.levelRequired));
-      setPointsCost(String(reward.pointsCost));
+      setBitsCost(String(reward.bitsCost ?? reward.pointsCost ?? 100));
       setLimitOnePerUser(reward.limitOnePerUser || false);
     } else {
       setName('');
       setDescription('');
       setLevelRequired('1');
-      setPointsCost('100');
+      setBitsCost('100');
       setLimitOnePerUser(false);
     }
   }, [reward, isOpen]);
 
   const handleSave = () => {
     const level = parseInt(levelRequired, 10);
-    const cost = parseInt(pointsCost, 10);
+    const cost = parseInt(bitsCost, 10);
 
     if (!name || !description || isNaN(level) || isNaN(cost)) {
       toast({
@@ -66,6 +66,7 @@ export function RewardFormModal({ isOpen, onOpenChange, onSave, reward }: Reward
         name,
         description,
         levelRequired: level,
+        bitsCost: cost,
         pointsCost: cost,
         limitOnePerUser,
     };
@@ -116,13 +117,13 @@ export function RewardFormModal({ isOpen, onOpenChange, onSave, reward }: Reward
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="pointsCost">Points Cost</Label>
+                <Label htmlFor="bitsCost">Bits Cost</Label>
                 <Input 
-                id="pointsCost" 
+                id="bitsCost" 
                 type="number" 
                 placeholder="e.g., 500" 
-                value={pointsCost}
-                onChange={(e) => setPointsCost(e.target.value)}
+                value={bitsCost}
+                onChange={(e) => setBitsCost(e.target.value)}
                 />
             </div>
           </div>

@@ -66,7 +66,7 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
             Member Rewards
           </DialogTitle>
           <DialogDescription className="text-white/70 font-bold text-sm uppercase tracking-normal mt-1">
-            Redeem points for perks. Pick a member to view eligibility.
+            Redeem Bits for perks. Pick a member to view eligibility.
           </DialogDescription>
         </DialogHeader>
 
@@ -103,7 +103,7 @@ export function GlobalRewardsModal({ isOpen, onOpenChange, members }: GlobalRewa
                         <p className="text-sm font-bold text-muted-foreground uppercase tracking-normal truncate">@{member.username}</p>
                         <div className="flex items-center gap-3 mt-1 uppercase text-sm font-bold">
                           <span className="flex items-center gap-1 text-yellow-600">
-                            <Coins className="h-3 w-3" /> {member.points.toLocaleString()} PTS
+                            <Coins className="h-3 w-3" /> {(member.bitsBalance ?? member.points ?? 0).toLocaleString()} BITS
                           </span>
                           <span className="flex items-center gap-1 text-primary">
                             <Star className="h-3 w-3" /> LVL {member.level}
