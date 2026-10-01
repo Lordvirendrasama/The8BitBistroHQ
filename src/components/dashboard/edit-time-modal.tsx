@@ -34,6 +34,8 @@ const formatPackageDuration = (totalSeconds: number) => {
     return parts.length > 0 ? parts.join(' ') : '0m';
 };
 
+import { generateDynamicQuickPlayPackages } from '@/lib/pricing';
+
 export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, gamingPackages, station }: EditTimeModalProps) {
   const { toast } = useToast();
   const [tab, setTab] = useState<'add' | 'reduce'>('add');
@@ -84,23 +86,28 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
   };
 
   const addTimePackages = useMemo(() => {
-    if (!gamingPackages || !station) return [];
+    if (!station) return [];
+
+    const targetPlayerCount = Math.max(1, selectedPlayerIds.length);
+    const dynamicPkgs = generateDynamicQuickPlayPackages(station.type, targetPlayerCount);
+
+    if (!gamingPackages) return dynamicPkgs;
     
     const now = new Date();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' });
 
-    return gamingPackages.filter(p => {
-        // 1. Explicit Add Time packages
+    const customOffers = gamingPackages.filter(p => {
+        if (p.id.startsWith('qp-')) return false;
         if (p.isAddTimePackage) return true;
 
-        // 2. Available Priority Offers matching station type
         if (p.isPriorityOffer) {
-            // Recharges shouldn't show up here generally as they are for the balance pool
             if (p.isRechargePack) return false;
 
-            // Station Type check: Board game stations only see Board Game Passes
-            if (station.type === 'boardgame' && !p.isBoardGamePass) return false;
-            if (station.type === 'ps5' && p.isBoardGamePass) return false;
+            const stName = p.name.toUpperCase();
+            if (station.type === 'ps5' && (p.isBoardGamePass || p.isRetroGamePass || p.stationType === 'ps4' || stName.includes('PS4') || stName.includes('RETRO'))) return false;
+            if (station.type === 'ps4' && (p.isBoardGamePass || p.isRetroGamePass || p.stationType === 'ps5' || stName.includes('PS5') || stName.includes('RETRO'))) return false;
+            if (station.type === 'boardgame' && !p.isBoardGamePass && p.stationType !== 'boardgame') return false;
+            if (station.type === 'retrogaming' && !p.isRetroGamePass && p.stationType !== 'retrogaming') return false;
 
             let isAvailable = true;
             if (p.availableDays && p.availableDays.length > 0 && !p.availableDays.includes(currentDay)) isAvailable = false;
@@ -111,13 +118,10 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
         }
 
         return false;
-    }).sort((a, b) => {
-        // Priority offers first
-        if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
-        if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
-        return 0;
     });
-  }, [gamingPackages, station, clientTime]);
+
+    return [...dynamicPkgs, ...customOffers];
+  }, [gamingPackages, station, clientTime, selectedPlayerIds.length]);
 
   const selectedPackage = useMemo(() => {
     return addTimePackages.find(p => p.id === selectedPackageId);
@@ -253,29 +257,40 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
                 <TabsContent value="add" className="space-y-4 pt-4 animate-in fade-in slide-in-from-left-2 duration-300">
                     <RadioGroup value={selectedPackageId || ''} onValueChange={setSelectedPackageId} className="space-y-2">
                         <ScrollArea className="h-56 pr-3">
-                            {addTimePackages.map(pkg => (
-                                <Label 
-                                    key={pkg.id}
-                                    className={cn(
-                                        "flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer bg-card mb-2",
-                                        selectedPackageId === pkg.id ? "border-primary ring-2 ring-primary/10 shadow-md" : "hover:border-primary/20 border-muted"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <RadioGroupItem value={pkg.id} id={pkg.id} />
-                                        <div className="space-y-0.5">
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-bold text-sm uppercase tracking-tight">{pkg.name}</p>
-                                                {pkg.isPriorityOffer && <Star className="h-3 w-3 text-amber-500 fill-current" />}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-normal">
-                                                <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatPackageDuration(pkg.duration)}</span>
+                            {addTimePackages.map(pkg => {
+                                const targetCount = Math.max(1, selectedPlayerIds.length);
+                                const perPlayerPrice = pkg.price;
+                                const totalPrice = perPlayerPrice * targetCount;
+                                const isMulti = targetCount > 1;
+
+                                return (
+                                    <Label 
+                                        key={pkg.id}
+                                        className={cn(
+                                            "flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer bg-card mb-2",
+                                            selectedPackageId === pkg.id ? "border-primary ring-2 ring-primary/10 shadow-md" : "hover:border-primary/20 border-muted"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <RadioGroupItem value={pkg.id} id={pkg.id} />
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-sm uppercase tracking-tight">{pkg.name}</p>
+                                                    {pkg.isPriorityOffer && <Star className="h-3 w-3 text-amber-500 fill-current" />}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-normal">
+                                                    <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatPackageDuration(pkg.duration)}</span>
+                                                    {isMulti && <span className="text-xs text-muted-foreground font-normal">(₹{perPlayerPrice}/player)</span>}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <span className="font-mono font-bold text-sm text-primary">₹{pkg.price}</span>
-                                </Label>
-                            ))}
+                                        <div className="text-right font-mono">
+                                            <span className="font-bold text-sm text-primary">₹{totalPrice}</span>
+                                            {isMulti && <p className="text-[10px] text-muted-foreground font-sans">FOR {targetCount} PLAYERS</p>}
+                                        </div>
+                                    </Label>
+                                );
+                            })}
 
                             <Label 
                                 className={cn(

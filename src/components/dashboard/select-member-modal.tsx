@@ -213,36 +213,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
   const walkInPackages = useMemo(() => {
     if (!station) return [];
     const playerCount = Math.max(1, selectedPlayers.filter(Boolean).length);
-    const dynamicPkgs = generateDynamicQuickPlayPackages(station.type, playerCount);
-
-    if (!allPackages || allPackages.length === 0) {
-      return dynamicPkgs;
-    }
-
-    const now = new Date();
-    const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }); 
-    
-    const dbFiltered = allPackages.filter(pkg => {
-        if (pkg.isAddTimePackage || pkg.isRechargePack) return false;
-        
-        if (station.type === 'boardgame' && !pkg.isBoardGamePass) return false;
-        if (station.type === 'retrogaming' && !pkg.isRetroGamePass) return false;
-        if ((station.type === 'ps5' || station.type === 'ps4') && (pkg.isBoardGamePass || pkg.isRetroGamePass)) return false;
-
-        let isAvailable = true;
-        if (pkg.availableDays && pkg.availableDays.length > 0 && !pkg.availableDays.includes(currentDay)) isAvailable = false;
-        if (isAvailable && pkg.startTime && clientTime < pkg.startTime) isAvailable = false;
-        if (isAvailable && pkg.endTime && clientTime > pkg.endTime) isAvailable = false;
-        return isAvailable;
-    });
-
-    const combined = [...dynamicPkgs, ...dbFiltered];
-    return combined.sort((a, b) => {
-        if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
-        if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
-        return 0;
-    });
-  }, [allPackages, clientTime, station, selectedPlayers]);
+    return generateDynamicQuickPlayPackages(station.type, playerCount);
+  }, [station, selectedPlayers]);
 
   const getMemberActiveRecharges = (memberId: string) => {
     const member = loadedMembers[memberId];
@@ -1704,7 +1676,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                     "font-mono font-bold text-base transition-colors",
                                                                     isSelected ? "text-primary font-bold" : "text-white"
                                                                 )}>
-                                                                    ₹{pkg.price}
+                                                                    ₹{pkg.price}{validPlayers.length > 1 ? <span className="text-[11px] text-zinc-400 font-semibold block text-right">₹{Math.round(pkg.price / validPlayers.length)} / player</span> : null}
                                                                 </span>
                                                             </div>
                                                         );

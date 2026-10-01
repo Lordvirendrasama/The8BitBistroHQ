@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Search, UserPlus, X, Clock, UserPlus2, Zap, ChevronRight, ArrowLeft, CheckCircle2, Gamepad2, Star } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { generateDynamicQuickPlayPackages } from '@/lib/pricing';
+import { generateDynamicQuickPlayPackages, calculatePlayerPrice } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
@@ -61,36 +61,8 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
   const walkInPackages = useMemo(() => {
     if (!station) return [];
     const activePlayerCount = (station.members?.length || 0) + 1;
-    const dynamicPkgs = generateDynamicQuickPlayPackages(station.type, activePlayerCount);
-
-    if (!allPackages || allPackages.length === 0) {
-      return dynamicPkgs;
-    }
-
-    const now = new Date();
-    const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }); 
-    
-    const dbFiltered = allPackages.filter(pkg => {
-        if (pkg.isAddTimePackage || pkg.isRechargePack) return false;
-        
-        if (station.type === 'boardgame' && !pkg.isBoardGamePass) return false;
-        if (station.type === 'retrogaming' && !pkg.isRetroGamePass) return false;
-        if ((station.type === 'ps5' || station.type === 'ps4') && (pkg.isBoardGamePass || pkg.isRetroGamePass)) return false;
-
-        let isAvailable = true;
-        if (pkg.availableDays && pkg.availableDays.length > 0 && !pkg.availableDays.includes(currentDay)) isAvailable = false;
-        if (isAvailable && pkg.startTime && clientTime < pkg.startTime) isAvailable = false;
-        if (isAvailable && pkg.endTime && clientTime > pkg.endTime) isAvailable = false;
-        return isAvailable;
-    });
-
-    const combined = [...dynamicPkgs, ...dbFiltered];
-    return combined.sort((a, b) => {
-        if (a.isPriorityOffer && !b.isPriorityOffer) return -1;
-        if (!a.isPriorityOffer && b.isPriorityOffer) return 1;
-        return 0;
-    });
-  }, [allPackages, clientTime, station]);
+    return generateDynamicQuickPlayPackages(station.type, activePlayerCount);
+  }, [station]);
 
   const rechargePackages = useMemo(() => allPackages?.filter(p => p.isRechargePack) || [], [allPackages]);
 
@@ -198,10 +170,16 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
             duration = pkg.duration;
             name = type === 'buy-recharge' ? `Buy Recharge: ${pkg.name}` : `Time: ${pkg.name}`;
             isNewRecharge = type === 'buy-recharge';
+
+            const activePlayerCount = (station?.members?.length || 0) + 1;
+            const itemPrice = type === 'walkin'
+              ? calculatePlayerPrice(station?.type || 'ps5', activePlayerCount, duration / 60)
+              : pkg.price;
+
             billItem = {
                 itemId: pkg.id,
                 name: `${name} (${selectedMember.name})`,
-                price: pkg.price,
+                price: itemPrice,
                 quantity: 1,
                 addedAt: now.toISOString()
             };

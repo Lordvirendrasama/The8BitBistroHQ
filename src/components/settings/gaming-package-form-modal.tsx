@@ -46,6 +46,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
   const [isPriorityOffer, setIsPriorityOffer] = useState(false);
   const [isBoardGamePass, setIsBoardGamePass] = useState(false);
   const [isRetroGamePass, setIsRetroGamePass] = useState(false);
+  const [stationType, setStationType] = useState<'all' | 'ps5' | 'ps4' | 'boardgame' | 'retrogaming'>('all');
   const { toast } = useToast();
   
   useEffect(() => {
@@ -72,6 +73,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         setIsPriorityOffer(pkg.isPriorityOffer || false);
         setIsBoardGamePass(pkg.isBoardGamePass || false);
         setIsRetroGamePass(pkg.isRetroGamePass || false);
+        setStationType(pkg.stationType || (pkg.isBoardGamePass ? 'boardgame' : pkg.isRetroGamePass ? 'retrogaming' : 'all'));
 
       } else {
         setName('');
@@ -89,6 +91,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         setIsPriorityOffer(false);
         setIsBoardGamePass(false);
         setIsRetroGamePass(false);
+        setStationType('all');
       }
     }
   }, [pkg, isOpen]);
@@ -123,8 +126,9 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         isRechargePack,
         playerCapacity: numCapacity,
         isPriorityOffer,
-        isBoardGamePass,
-        isRetroGamePass
+        isBoardGamePass: stationType === 'boardgame' || isBoardGamePass,
+        isRetroGamePass: stationType === 'retrogaming' || isRetroGamePass,
+        stationType: stationType === 'all' ? undefined : stationType,
     };
 
     onSave(formData);
@@ -144,11 +148,43 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] px-6 py-4">
             <div className="grid gap-6">
+                {/* Category Target Selector */}
+                <div className="space-y-2">
+                    <Label className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Target Gaming Category</Label>
+                    <div className="grid grid-cols-5 gap-1.5 p-1.5 rounded-xl bg-muted/20 border-2">
+                        {[
+                          { id: 'all', label: 'ANY' },
+                          { id: 'ps5', label: 'PS5' },
+                          { id: 'ps4', label: 'PS4' },
+                          { id: 'retrogaming', label: 'RETRO' },
+                          { id: 'boardgame', label: 'BOARD' },
+                        ].map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setStationType(cat.id as any);
+                              if (cat.id === 'boardgame') setIsBoardGamePass(true);
+                              if (cat.id === 'retrogaming') setIsRetroGamePass(true);
+                            }}
+                            className={cn(
+                              "py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all",
+                              stationType === cat.id
+                                ? "bg-primary text-primary-foreground shadow-md"
+                                : "text-muted-foreground hover:bg-muted/50"
+                            )}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="space-y-2">
                     <Label htmlFor="name" className="text-sm font-bold uppercase tracking-normal text-muted-foreground">Package Title</Label>
                     <Input 
                         id="name" 
-                        placeholder="e.g. 10 HOUR RECHARGE"
+                        placeholder="e.g. 1 HOUR SOLO SESSION"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="font-bold h-12 uppercase"

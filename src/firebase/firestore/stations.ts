@@ -3,6 +3,7 @@
 
 import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, runTransaction, writeBatch, deleteField } from 'firebase/firestore';
 import type { Station, AssignedMember, BillItem } from '@/lib/types';
+import { calculatePlayerPrice } from '@/lib/pricing';
 
 /**
  * Robustly sanitizes data for Firestore by removing any 'undefined' values.
@@ -268,7 +269,41 @@ export const addPlayerToSession = async (stationId: string, newPlayer: AssignedM
                 ? new Date(Math.max(...activeEndTimes)).toISOString() 
                 : station.endTime;
 
-            const updatedBill = [...(station.currentBill || [])];
+            let updatedBill = [...(station.currentBill || [])];
+
+            const existingActiveMembers = station.members.filter(m => m.status !== 'finished');
+            const newActiveMemberCount = updatedMembers.filter(m => m.status !== 'finished').length;
+
+            // Auto-adjust existing solo pricing to multiplayer if transitioning from 1 to 2+ active players
+            if (existingActiveMembers.length === 1 && newActiveMemberCount >= 2) {
+                updatedBill = updatedBill.map(item => {
+                    const isTimeItem = item.itemId.startsWith('time-') || item.itemId.startsWith('qp-') || item.name.toLowerCase().includes('time:') || item.name.toLowerCase().includes('session');
+                    if (isTimeItem && !item.name.toLowerCase().includes('recharge')) {
+                        let durationMins = 60;
+                        if (item.name.includes('30 Min') || item.name.includes('30 MIN') || item.name.includes('30m')) {
+                            durationMins = 30;
+                        } else if (item.name.includes('2 Hour') || item.name.includes('2 HOUR') || item.name.includes('2h') || item.name.includes('2H')) {
+                            durationMins = 120;
+                        } else if (item.name.includes('1 Hour') || item.name.includes('1 HOUR') || item.name.includes('1h') || item.name.includes('1H')) {
+                            durationMins = 60;
+                        } else {
+                            const p1 = existingActiveMembers[0];
+                            if (p1.startTime && p1.endTime) {
+                                const diff = new Date(p1.endTime).getTime() - new Date(p1.startTime).getTime();
+                                durationMins = Math.max(1, Math.round(diff / 60000));
+                            }
+                        }
+
+                        const adjustedPrice = calculatePlayerPrice(station.type, newActiveMemberCount, durationMins);
+                        return {
+                            ...item,
+                            price: adjustedPrice
+                        };
+                    }
+                    return item;
+                });
+            }
+
             if (billItem) {
                 updatedBill.push(billItem);
             }

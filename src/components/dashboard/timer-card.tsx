@@ -16,6 +16,7 @@ import { updateStation } from '@/firebase/firestore/stations';
 import { useCustomerView } from '@/context/customer-view-context';
 import { useAuth } from '@/firebase/auth/use-user';
 import { getSyncedNow } from '@/lib/synced-time';
+import { calculateGroupPrice } from '@/lib/pricing';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 
@@ -33,6 +34,7 @@ interface TimerCardProps {
   gamingPackages?: GamingPackage[];
   compactMode?: boolean;
 }
+
 
 
 
@@ -273,25 +275,13 @@ export function TimerCard({
   const activeWithTimers = useMemo(() => activeMembers.filter(m => !!m.endTime), [activeMembers]);
   const activeMembersCount = useMemo(() => Math.max(1, activeMembers.length), [activeMembers.length]);
 
-  const unitPrice30 = useMemo(() => {
-    if (!gamingPackages) return 75;
-    const pkg = gamingPackages.find(p => p.duration === 1800 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages.find(p => p.duration === 1800);
-    return pkg ? pkg.price : 75;
-  }, [gamingPackages, station.type]);
-
-  const unitPrice60 = useMemo(() => {
-    if (!gamingPackages) return 100;
-    const pkg = gamingPackages.find(p => p.duration === 3600 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages.find(p => p.duration === 3600);
-    return pkg ? pkg.price : 100;
-  }, [gamingPackages, station.type]);
-
   const price30 = useMemo(() => {
-    return unitPrice30 * activeMembersCount;
-  }, [unitPrice30, activeMembersCount]);
+    return calculateGroupPrice(station.type, activeMembersCount, 30);
+  }, [station.type, activeMembersCount]);
 
   const price60 = useMemo(() => {
-    return unitPrice60 * activeMembersCount;
-  }, [unitPrice60, activeMembersCount]);
+    return calculateGroupPrice(station.type, activeMembersCount, 60);
+  }, [station.type, activeMembersCount]);
 
   const handleQuickAdjust = async (minutes: number) => {
     if (!activeMembers || activeMembers.length === 0) {
@@ -304,14 +294,10 @@ export function TimerCard({
     const now = getSyncedNow();
 
     if (minutes > 0) {
-      const pkg30 = gamingPackages?.find(p => p.duration === 1800 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages?.find(p => p.duration === 1800);
-      const pkg60 = gamingPackages?.find(p => p.duration === 3600 && (station.type === 'ps5' ? !p.isBoardGamePass : p.isBoardGamePass)) || gamingPackages?.find(p => p.duration === 3600);
-      const matchedPkg = minutes === 30 ? pkg30 : pkg60;
-
-      const baseUnitPrice = matchedPkg ? matchedPkg.price : (minutes === 30 ? 75 : 100);
       const playerCount = activeMembers.length;
-      const totalCost = baseUnitPrice * playerCount;
+      const totalCost = calculateGroupPrice(station.type, playerCount, minutes);
       const playerNames = activeMembers.map(m => m.name).join(', ');
+
 
       const updatedMembers = station.members.map(m => {
         if (!activeTids.includes(m.id)) return m;

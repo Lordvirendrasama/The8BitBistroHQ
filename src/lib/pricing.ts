@@ -94,6 +94,20 @@ export function calculatePlayerPrice(
 }
 
 /**
+ * Calculates total session group charge (per-player price * playerCount).
+ */
+export function calculateGroupPrice(
+  stationType: StationType,
+  playerCount: number,
+  durationMinutes: number,
+  date: Date = new Date()
+): number {
+  const count = Math.max(1, playerCount);
+  const perPlayerPrice = calculatePlayerPrice(stationType, count, durationMinutes, date);
+  return perPlayerPrice * count;
+}
+
+/**
  * Generates quick play packages dynamically based on station type and current time (Happy Hour vs Normal Rate).
  */
 export function generateDynamicQuickPlayPackages(
@@ -102,46 +116,46 @@ export function generateDynamicQuickPlayPackages(
   date: Date = new Date()
 ): GamingPackage[] {
   const rates = getRateDetails(stationType, date);
-  const isMulti = playerCount > 1;
+  const count = Math.max(1, playerCount);
+  const isMulti = count > 1;
   const happyTag = rates.isHappyHour ? ' (Happy Hour)' : '';
 
-  const halfHourPrice = isMulti ? rates.halfHourMulti : rates.halfHourSolo;
-  const oneHourPrice = isMulti ? rates.hourlyMulti : rates.hourlySolo;
-  const twoHourPrice = oneHourPrice * 2;
+  const halfHourPerPlayer = isMulti ? rates.halfHourMulti : rates.halfHourSolo;
+  const oneHourPerPlayer = isMulti ? rates.hourlyMulti : rates.hourlySolo;
 
-  const typeLabel =
-    stationType === 'ps5'
-      ? 'PS5'
-      : stationType === 'ps4'
-      ? 'PS4'
-      : stationType === 'boardgame'
-      ? 'Board Games'
-      : 'Retro Gaming';
+  const stationLabels: Record<StationType, string> = {
+    ps5: 'PS5',
+    ps4: 'PS4',
+    retrogaming: 'RETRO PASS',
+    boardgame: 'BOARD GAME',
+  };
+  const label = stationLabels[stationType] || stationType.toUpperCase();
 
   return [
     {
       id: `qp-30m-${stationType}-${rates.isHappyHour ? 'hh' : 'norm'}`,
-      name: `30 Min Session${happyTag}`,
+      name: `${label} 30 MIN SESSION${happyTag}`,
       duration: 1800,
-      price: halfHourPrice,
+      price: halfHourPerPlayer,
       validity: 1,
       isPriorityOffer: false,
     },
     {
       id: `qp-1h-${stationType}-${rates.isHappyHour ? 'hh' : 'norm'}`,
-      name: `1 Hour Session${happyTag}`,
+      name: `${label} 1 HOUR SESSION${happyTag}`,
       duration: 3600,
-      price: oneHourPrice,
+      price: oneHourPerPlayer,
       validity: 1,
       isPriorityOffer: true,
     },
     {
       id: `qp-2h-${stationType}-${rates.isHappyHour ? 'hh' : 'norm'}`,
-      name: `2 Hour Session${happyTag}`,
+      name: `${label} 2 HOUR SESSION${happyTag}`,
       duration: 7200,
-      price: twoHourPrice,
+      price: oneHourPerPlayer * 2,
       validity: 1,
       isPriorityOffer: false,
     },
   ];
 }
+

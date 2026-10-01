@@ -19,6 +19,7 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { getSyncedNow } from '@/lib/synced-time';
 import { playCoinSound } from '@/lib/audio/chiptune';
 import { openWhatsAppBillLink } from '@/lib/whatsapp';
+import { calculateGroupPrice, calculatePlayerPrice } from '@/lib/pricing';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -65,7 +66,38 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
   useEffect(() => {
     if (isOpen && station) {
-        setBillItems(station.currentBill || []);
+        let items = station.currentBill ? [...station.currentBill] : [];
+        const hasSessionItems = items.some(i => 
+            i.name.startsWith('Time:') || 
+            i.name.startsWith('Recharge:') || 
+            i.name.startsWith('Buy Recharge:')
+        );
+
+        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0) {
+            const isRecharge = station.packageName?.startsWith('Recharge: ');
+            if (!isRecharge) {
+                let durMins = 60;
+                if (station.startTime && station.endTime) {
+                    const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
+                    durMins = Math.max(1, Math.round(diff / 60000));
+                }
+                const count = station.members.length;
+                const perPlayerPrice = calculatePlayerPrice(station.type || 'ps5', count, durMins);
+                const durText = durMins >= 60 ? `${durMins / 60} Hour` : `${durMins} Min`;
+
+                const synthesizedItems: BillItem[] = station.members.map(m => ({
+                    itemId: `time-${m.id}`,
+                    name: `Time: ${durText} Session (${m.name})`,
+                    price: perPlayerPrice,
+                    quantity: 1,
+                    addedAt: station.startTime || new Date().toISOString()
+                }));
+
+                items = [...synthesizedItems, ...items];
+            }
+        }
+
+        setBillItems(items);
         setDiscount(station.discount || 0);
         setDiscountInput(String(station.discount || 0));
         setStep('review-bill');
@@ -131,17 +163,33 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     const isRechargeBought = station.packageName.toLowerCase().startsWith('buy recharge: ');
     const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
     const pkg = gamingPackages.find(p => p.name.toLowerCase().trim() === pureName.toLowerCase());
-    const price = (isRechargeUsed || autoUsePool) ? 0 : (pkg?.price || 0);
     const playerCount = members.length > 0 ? members.length : 1;
+
+    let total = 0;
+    if (isRechargeUsed || autoUsePool) {
+      total = 0;
+    } else if (pkg) {
+      const capacity = pkg.playerCapacity || 1;
+      total = pkg.price * Math.ceil(playerCount / capacity);
+    } else {
+      let durMins = 60;
+      if (station.startTime && station.endTime) {
+        const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
+        durMins = Math.max(1, Math.round(diff / 60000));
+      }
+      total = calculateGroupPrice(station.type || 'ps5', playerCount, durMins);
+    }
+
     return { 
         name: station.packageName, 
         purePackage: pkg, 
-        total: price * playerCount, 
+        total, 
         isExistingRecharge: isRechargeUsed || autoUsePool, 
         isNewRechargePurchase: isRechargeBought 
     };
 
-  }, [station, gamingPackages, billItems]);
+  }, [station, gamingPackages, billItems, allMembers]);
+
 
   const playedSecondsPerPlayer = useMemo(() => {
     if (!station || !station.startTime || !station.endTime) return 0;

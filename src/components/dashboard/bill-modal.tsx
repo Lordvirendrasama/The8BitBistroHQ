@@ -18,6 +18,8 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
+import { calculateGroupPrice, calculatePlayerPrice } from '@/lib/pricing';
+
 
 interface BillModalProps {
   isOpen: boolean;
@@ -57,7 +59,38 @@ export function BillModal({
 
   useEffect(() => {
     if (isOpen && station) {
-        setBillItems(station.currentBill || []);
+        let items = station.currentBill ? [...station.currentBill] : [];
+        const hasSessionItems = items.some(i => 
+            i.name.startsWith('Time:') || 
+            i.name.startsWith('Recharge:') || 
+            i.name.startsWith('Buy Recharge:')
+        );
+
+        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0) {
+            const isRecharge = station.packageName?.startsWith('Recharge: ');
+            if (!isRecharge) {
+                let durMins = 60;
+                if (station.startTime && station.endTime) {
+                    const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
+                    durMins = Math.max(1, Math.round(diff / 60000));
+                }
+                const count = station.members.length;
+                const perPlayerPrice = calculatePlayerPrice(station.type || 'ps5', count, durMins);
+                const durText = durMins >= 60 ? `${durMins / 60} Hour` : `${durMins} Min`;
+
+                const synthesizedItems: BillItem[] = station.members.map(m => ({
+                    itemId: `time-${m.id}`,
+                    name: `Time: ${durText} Session (${m.name})`,
+                    price: perPlayerPrice,
+                    quantity: 1,
+                    addedAt: station.startTime || new Date().toISOString()
+                }));
+
+                items = [...synthesizedItems, ...items];
+            }
+        }
+
+        setBillItems(items);
         setDiscount(station.discount || 0);
         setSearchTerm('');
         setActiveCategory('MOST SOLD');
@@ -211,7 +244,7 @@ export function BillModal({
   const timePackageTotal = useMemo(() => {
     return billItems.filter(item => item.name.startsWith('Time:') || item.name.startsWith('Buy Recharge:') || item.name.startsWith('Recharge:')).reduce((total, item) => total + (item.price * item.quantity), 0);
   }, [billItems]);
-  
+
   const initialPackagePrice = useMemo(() => {
     if (!station || !station.packageName || station.packageName === 'Walk-in Order') return 0;
     
@@ -240,11 +273,20 @@ export function BillModal({
 
     const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
     const pkg = gamingPackages.find(p => p.name.toLowerCase() === pureName.toLowerCase());
-    if (!pkg) return 0;
-
     const numberOfPlayers = (station.members || []).length > 0 ? station.members.length : 1;
-    const capacity = pkg.playerCapacity || 1;
-    return pkg.price * Math.ceil(numberOfPlayers / capacity);
+
+    if (pkg) {
+      const capacity = pkg.playerCapacity || 1;
+      return pkg.price * Math.ceil(numberOfPlayers / capacity);
+    }
+
+    // Dynamic rate card fallback if package is not in Firestore collection
+    let durMins = 60;
+    if (station.startTime && station.endTime) {
+      const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
+      durMins = Math.max(1, Math.round(diff / 60000));
+    }
+    return calculateGroupPrice(station.type || 'ps5', numberOfPlayers, durMins);
   }, [station, gamingPackages, billItems]);
 
   const totalBeforeDiscount = foodSubtotal + initialPackagePrice + timePackageTotal;

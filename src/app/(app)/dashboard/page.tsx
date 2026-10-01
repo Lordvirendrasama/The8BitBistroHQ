@@ -34,7 +34,9 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow, getSyncedDate } from '@/lib/synced-time';
+import { calculateGroupPrice, calculatePlayerPrice } from '@/lib/pricing';
 import { GuestLoginWizardModal } from '@/components/dashboard/guest-login-wizard-modal';
+
 
 const tierMultipliers: Record<MemberTier, number> = {
   Red: 1,
@@ -533,36 +535,33 @@ function DashboardContent() {
     if (!selectedStation) return;
     const now = getSyncedDate();
     const initialBill: BillItem[] = [];
-    const walkinGroups: Record<string, AssignedMember[]> = {};
-    
-    assignedPlayers.forEach(p => {
-        if (!p.rechargeId && p.packageId) {
-            if (!walkinGroups[p.packageId]) walkinGroups[p.packageId] = [];
-            walkinGroups[p.packageId].push(p);
-        }
-    });
+    const walkinPlayers = assignedPlayers.filter(p => !p.rechargeId);
 
-    Object.entries(walkinGroups).forEach(([pkgId, players]) => {
-        const pkg = gamingPackages?.find(gp => gp.id === pkgId);
-        if (pkg) {
-            const capacity = pkg.playerCapacity || 1;
-            const numInstances = Math.ceil(players.length / capacity);
-            for (let i = 0; i < numInstances; i++) {
-                const start = i * capacity;
-                const end = Math.min(start + capacity, players.length);
-                const subGroup = players.slice(start, end);
-                const playerNames = subGroup.map(p => p.name).join(', ');
-                const label = subGroup[0].isNewRecharge ? `Buy Recharge: ${pkg.name}` : `Time: ${pkg.name}`;
-                initialBill.push({
-                    itemId: pkg.id,
-                    name: `${label} (${playerNames})`,
-                    price: pkg.price,
-                    quantity: 1,
-                    addedAt: now.toISOString()
-                });
+    if (walkinPlayers.length > 0) {
+        const count = walkinPlayers.length;
+        walkinPlayers.forEach(p => {
+            let durationMins = 60;
+            if (p.packageId?.includes('-30m')) durationMins = 30;
+            else if (p.packageId?.includes('-1h')) durationMins = 60;
+            else if (p.packageId?.includes('-2h')) durationMins = 120;
+            else if (p.startTime && p.endTime) {
+                const diff = new Date(p.endTime).getTime() - new Date(p.startTime).getTime();
+                durationMins = Math.max(1, Math.round(diff / 60000));
             }
-        }
-    });
+
+            const perPlayerPrice = calculatePlayerPrice(selectedStation.type, count, durationMins);
+            const durText = durationMins >= 60 ? `${durationMins / 60} Hour` : `${durationMins} Min`;
+            const label = p.isNewRecharge ? `Buy Recharge: ${selectedPackage?.name || 'Recharge'}` : `Time: ${durText} Session`;
+
+            initialBill.push({
+                itemId: `time-${p.id}-${now.getTime()}`,
+                name: `${label} (${p.name})`,
+                price: perPlayerPrice,
+                quantity: 1,
+                addedAt: now.toISOString()
+            });
+        });
+    }
 
     const endTimes = assignedPlayers.map(p => p.endTime ? new Date(p.endTime).getTime() : 0).filter(t => t > 0);
     const latestEndTime = endTimes.length > 0 ? new Date(Math.max(...endTimes)).toISOString() : null;
@@ -758,9 +757,20 @@ function DashboardContent() {
         );
     });
 
-    const initialPackagePrice = (initialPackage && !isExistingRecharge && !hasItemizedSessionItems && !billItems.some(item => item.name === station.packageName)) 
-        ? initialPackage.price * Math.ceil(station.members.length / (initialPackage.playerCapacity || 1))
-        : 0;
+    let initialPackagePrice = 0;
+    if (!isExistingRecharge && !hasItemizedSessionItems && station.packageName && station.packageName !== 'Walk-in Order' && !billItems.some(item => item.name === station.packageName)) {
+        if (initialPackage) {
+            initialPackagePrice = initialPackage.price * Math.ceil(station.members.length / (initialPackage.playerCapacity || 1));
+        } else {
+            let durMins = 60;
+            if (station.startTime && station.endTime) {
+                const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
+                durMins = Math.max(1, Math.round(diff / 60000));
+            }
+            initialPackagePrice = calculateGroupPrice(station.type || 'ps5', Math.max(1, station.members.length), durMins);
+        }
+    }
+
     
     const foodSubtotal = billItems.filter(item => !item.name.startsWith('Time:') && !item.name.startsWith('Walk-in:')).reduce((total, item) => total + (item.price * item.quantity), 0);
     

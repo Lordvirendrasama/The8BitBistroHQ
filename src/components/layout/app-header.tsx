@@ -1571,7 +1571,7 @@ export function AppHeader({
     return (
         <>
             <header className="flex h-20 items-center gap-1.5 sm:gap-2 border-b glass-panel px-2 sm:px-6 sticky top-0 z-40 w-full overflow-hidden font-body">
-                <SidebarTrigger className="shrink-0 h-10 w-10 sm:h-8 sm:w-8 p-0 flex items-center justify-center rounded-lg border border-border/40 hover:bg-muted/30 touch-manipulation select-none active:scale-95 transition-transform" />
+                <SidebarTrigger className="shrink-0 h-10 w-10 sm:h-9 sm:w-9 p-0 flex items-center justify-center rounded-xl border border-border/60 hover:bg-muted/30 touch-manipulation select-none active:scale-95 transition-all shadow-sm" />
                 
                 <div className="flex-1 flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth pr-1 sm:pr-4">
                     {activeTimers.map(station => (
