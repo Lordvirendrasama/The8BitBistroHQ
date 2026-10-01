@@ -16,6 +16,7 @@ import {
   UserX, Check
 } from 'lucide-react';
 import { AppUpdatesDropdown } from '@/components/owner/app-updates-dropdown';
+import { ExecutiveExpensesHub } from '@/components/owner/executive-expenses-hub';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -798,6 +799,9 @@ export default function OwnerMainPage() {
 
       {/* MINIMAL EXECUTIVE GRID */}
       <div className="space-y-8">
+        {/* 0. EXECUTIVE EXPENSES & UPCOMING DUE DATES HUB */}
+        <ExecutiveExpensesHub />
+
         {/* 1. EMPLOYEE & WORKFORCE CYCLE HUB (STAFF TEAM) */}
         <section className="space-y-4">
           <div className="flex items-center justify-between border-b border-border/40 pb-2">
@@ -833,7 +837,7 @@ export default function OwnerMainPage() {
               const hasAdjustments = (activeAdvances > 0 || totalDeductions > 0 || activeBonuses > 0);
 
               return (
-                <Card key={emp.id} className="border-2 border-border/60 bg-card/80 backdrop-blur-sm shadow-md hover:border-primary/40 transition-all flex flex-col justify-between p-4 space-y-4">
+                <Card id={`emp-card-${emp.id}`} key={emp.id} className="border-2 border-border/60 bg-card/80 backdrop-blur-sm shadow-md hover:border-primary/40 transition-all flex flex-col justify-between p-4 space-y-4">
                   {/* Top Bar: Name, Username, Role, Edit Button, Join Date */}
                   <div className="flex items-start justify-between gap-2">
                     <div>

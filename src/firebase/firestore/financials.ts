@@ -45,7 +45,12 @@ export const updateFixedBill = async (billId: string, updates: Partial<FixedBill
   }
 };
 
-export const markBillAsPaid = async (billId: string, user: CustomUser) => {
+export const markBillAsPaid = async (
+  billId: string, 
+  user: CustomUser, 
+  actualPaidAmount?: number, 
+  nextCycleAmount?: number
+) => {
   const db = getFirestore();
   const billRef = doc(db, 'fixedBills', billId);
   
@@ -64,16 +69,33 @@ export const markBillAsPaid = async (billId: string, user: CustomUser) => {
       case 'yearly': nextDate = addYears(nextDate, 1); break;
     }
 
+    const finalPaidAmount = actualPaidAmount !== undefined ? actualPaidAmount : bill.amount;
+
     await updateDoc(billRef, {
       nextDueDate: nextDate.toISOString(),
-      lastPaidDate: now.toISOString()
+      lastPaidDate: now.toISOString(),
+      ...(nextCycleAmount !== undefined ? { amount: nextCycleAmount } : {})
+    });
+
+    // Record entry to paidBills collection for Paid Bills History
+    await addDoc(collection(db, 'paidBills'), {
+      billId,
+      name: bill.name,
+      amountPaid: finalPaidAmount,
+      repeatCycle: bill.repeatCycle,
+      paymentMethod: bill.paymentMethod || 'UPI',
+      isVariable: !!bill.isVariable,
+      paidAt: now.toISOString(),
+      nextDueDate: nextDate.toISOString(),
+      paidBy: { uid: user.username, displayName: user.displayName }
     });
 
     await addDoc(collection(db, 'logs'), {
       type: 'FIXED_BILL_PAID',
-      description: `Fixed bill <strong>${bill.name}</strong> marked as PAID. Next due: ${nextDate.toLocaleDateString()}.`,
+      description: `Fixed bill <strong>${bill.name}</strong> marked as PAID (Paid Amount: <strong>₹${finalPaidAmount.toLocaleString()}</strong>). Next due: ${nextDate.toLocaleDateString()}.`,
       timestamp: now.toISOString(),
-      user: { uid: user.username, displayName: user.displayName }
+      user: { uid: user.username, displayName: user.displayName },
+      details: { billId, name: bill.name, amountPaid: finalPaidAmount, nextDueDate: nextDate.toISOString() }
     });
 
     return true;
@@ -86,6 +108,63 @@ export const markBillAsPaid = async (billId: string, user: CustomUser) => {
 export const deleteFixedBill = async (billId: string) => {
   const db = getFirestore();
   await deleteDoc(doc(db, 'fixedBills', billId));
+};
+
+export const undoBillPayment = async (paidBillRecordId?: string, billId?: string, user?: CustomUser) => {
+  const db = getFirestore();
+  try {
+    let targetBillId = billId;
+
+    if (paidBillRecordId) {
+      const paidDocRef = doc(db, 'paidBills', paidBillRecordId);
+      const paidDocSnap = await getDoc(paidDocRef);
+      if (paidDocSnap.exists()) {
+        const data = paidDocSnap.data();
+        if (data.billId) targetBillId = data.billId;
+      }
+      await deleteDoc(paidDocRef);
+    }
+    
+    if (targetBillId) {
+      const q = query(collection(db, 'paidBills'), where('billId', '==', targetBillId));
+      const snap = await getDocs(q);
+      const deletePromises: Promise<void>[] = [];
+      snap.forEach((dDoc) => {
+        deletePromises.push(deleteDoc(doc(db, 'paidBills', dDoc.id)));
+      });
+      await Promise.all(deletePromises);
+
+      const billRef = doc(db, 'fixedBills', targetBillId);
+      const billSnap = await getDoc(billRef);
+      if (billSnap.exists()) {
+        const bill = billSnap.data() as FixedBill;
+        const now = new Date();
+        const cycleDay = bill.dueDayOfMonth || 1;
+        const maxDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const validDay = Math.min(Math.max(1, cycleDay), maxDays);
+        const currentCycleDate = new Date(now.getFullYear(), now.getMonth(), validDay);
+
+        await updateDoc(billRef, {
+          lastPaidDate: null,
+          nextDueDate: currentCycleDate.toISOString()
+        });
+      }
+    }
+
+    if (user) {
+      await addDoc(collection(db, 'logs'), {
+        type: 'SETTINGS_UPDATED',
+        description: `Undid bill payment and restored unpaid status.`,
+        timestamp: new Date().toISOString(),
+        user: { uid: user.username, displayName: user.displayName }
+      });
+    }
+
+    return true;
+  } catch (e) {
+    console.error("Error undoing bill payment:", e);
+    return false;
+  }
 };
 
 // --- INVENTORY ---

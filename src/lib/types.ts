@@ -467,6 +467,23 @@ export interface FixedBill {
   paymentMethod: string;
   notes?: string;
   lastPaidDate?: string;
+  isVariable?: boolean;
+  dueDayOfMonth?: number;
+}
+
+export interface PaidBill {
+  id: string;
+  billId?: string;
+  name: string;
+  amountPaid: number;
+  repeatCycle?: RepeatCycle;
+  paymentMethod?: string;
+  paidAt: string;
+  nextDueDate?: string;
+  paidBy: {
+    uid: string;
+    displayName: string;
+  };
 }
 
 export interface InventoryPurchase {
