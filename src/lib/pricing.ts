@@ -108,6 +108,27 @@ export function calculateGroupPrice(
 }
 
 /**
+ * Calculates incremental cost when extending an existing session.
+ * For example: extending from 30m to 60m on PS5 solo charges 150 - 80 = ₹70, instead of full 30m rate ₹80.
+ */
+export function calculateExtensionPrice(
+  stationType: StationType,
+  playerCount: number,
+  currentMinutes: number,
+  additionalMinutes: number,
+  date: Date = new Date()
+): number {
+  if (additionalMinutes <= 0) return 0;
+  const count = Math.max(1, playerCount);
+  const currentTotalCost = currentMinutes > 0 
+    ? calculateGroupPrice(stationType, count, currentMinutes, date) 
+    : 0;
+  const newTotalCost = calculateGroupPrice(stationType, count, currentMinutes + additionalMinutes, date);
+  return Math.max(0, newTotalCost - currentTotalCost);
+}
+
+
+/**
  * Generates quick play packages dynamically based on station type and current time (Happy Hour vs Normal Rate).
  */
 export function generateDynamicQuickPlayPackages(
