@@ -1672,12 +1672,19 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                                     </div>
                                                                     <p className="text-xs font-bold text-primary mt-1 uppercase flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatPackageDuration(pkg.duration)}</p>
                                                                 </div>
-                                                                <span className={cn(
-                                                                    "font-mono font-bold text-base transition-colors",
-                                                                    isSelected ? "text-primary font-bold" : "text-white"
-                                                                )}>
-                                                                    ₹{pkg.price}{validPlayers.length > 1 ? <span className="text-[11px] text-zinc-400 font-semibold block text-right">₹{Math.round(pkg.price / validPlayers.length)} / player</span> : null}
-                                                                </span>
+                                                                <div className="text-right font-mono">
+                                                                    <span className={cn(
+                                                                        "font-bold text-base transition-colors block",
+                                                                        isSelected ? "text-primary font-bold" : "text-white"
+                                                                    )}>
+                                                                        ₹{pkg.price * validPlayers.length}
+                                                                    </span>
+                                                                    {validPlayers.length > 1 && (
+                                                                        <span className="text-[11px] text-zinc-400 font-semibold block">
+                                                                            ₹{pkg.price} / player
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}

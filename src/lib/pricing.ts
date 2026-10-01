@@ -29,8 +29,8 @@ export function getRateDetails(stationType: StationType, date: Date = new Date()
       return {
         hourlySolo: happy ? 80 : 150,
         hourlyMulti: happy ? 60 : 120,
-        halfHourSolo: 80,
-        halfHourMulti: 60,
+        halfHourSolo: happy ? 80 : 80,
+        halfHourMulti: happy ? 60 : 60,
         isHappyHour: happy,
       };
 
@@ -38,26 +38,26 @@ export function getRateDetails(stationType: StationType, date: Date = new Date()
       return {
         hourlySolo: happy ? 60 : 100,
         hourlyMulti: happy ? 50 : 70,
-        halfHourSolo: 60,
-        halfHourMulti: 50,
+        halfHourSolo: happy ? 60 : 60,
+        halfHourMulti: happy ? 50 : 50,
         isHappyHour: happy,
       };
 
     case 'boardgame':
       return {
-        hourlySolo: happy ? 20 : 50,
-        hourlyMulti: happy ? 20 : 50,
-        halfHourSolo: 30,
-        halfHourMulti: 30,
+        hourlySolo: happy ? 30 : 50,
+        hourlyMulti: happy ? 30 : 50,
+        halfHourSolo: happy ? 30 : 30,
+        halfHourMulti: happy ? 30 : 30,
         isHappyHour: happy,
       };
 
     case 'retrogaming':
       return {
-        hourlySolo: happy ? 20 : 50,
-        hourlyMulti: happy ? 20 : 50,
-        halfHourSolo: 30,
-        halfHourMulti: 30,
+        hourlySolo: happy ? 30 : 50,
+        hourlyMulti: happy ? 30 : 50,
+        halfHourSolo: happy ? 30 : 30,
+        halfHourMulti: happy ? 30 : 30,
         isHappyHour: happy,
       };
 
@@ -65,8 +65,8 @@ export function getRateDetails(stationType: StationType, date: Date = new Date()
       return {
         hourlySolo: happy ? 80 : 150,
         hourlyMulti: happy ? 60 : 120,
-        halfHourSolo: 80,
-        halfHourMulti: 60,
+        halfHourSolo: happy ? 80 : 80,
+        halfHourMulti: happy ? 60 : 60,
         isHappyHour: happy,
       };
   }
