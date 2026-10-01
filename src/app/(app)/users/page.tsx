@@ -6,6 +6,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Member, Station } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
+import { useUser } from '@/firebase/auth/use-user';
 
 import { deleteMember, updateMember, recordTransaction, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { settings } from '@/lib/data';
@@ -64,6 +65,8 @@ type SortableKeys = keyof Member | 'name';
 export default function UserManagementPage() {
   const router = useRouter();
   const { db } = useFirebase();
+  const { user } = useUser();
+  const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'joinDate', direction: 'descending' });
@@ -541,7 +544,7 @@ export default function UserManagementPage() {
                 <TableHead className="font-bold uppercase text-sm tracking-normal">Balance</TableHead>
                 <SortableHeader sortKey="level">LVL</SortableHeader>
                 <SortableHeader sortKey="bitsBalance">BITS</SortableHeader>
-                <SortableHeader sortKey="totalSpent">Total Spent</SortableHeader>
+                {isAdmin && <SortableHeader sortKey="totalSpent">Total Spent</SortableHeader>}
                 <SortableHeader sortKey="joinDate">Joined</SortableHeader>
                 <TableHead className="text-right pr-6 font-bold uppercase text-sm tracking-normal">Actions</TableHead>
               </TableRow>
@@ -581,7 +584,7 @@ export default function UserManagementPage() {
 
                     <TableCell className="font-bold text-sm">{member.level}</TableCell>
                     <TableCell className="font-bold text-sm text-yellow-500">{(member.bitsBalance ?? member.points ?? 0).toLocaleString()}</TableCell>
-                    <TableCell className="font-mono font-bold text-sm">₹{member.totalSpent.toLocaleString()}</TableCell>
+                    {isAdmin && <TableCell className="font-mono font-bold text-sm">₹{member.totalSpent.toLocaleString()}</TableCell>}
                     <TableCell className="text-sm font-bold text-muted-foreground uppercase whitespace-nowrap">
                         {new Date(member.joinDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </TableCell>
@@ -678,10 +681,12 @@ export default function UserManagementPage() {
                           <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">XP</span>
                           <span className="font-bold text-primary text-sm">{selectedMemberForPoints.xp?.toLocaleString() || 0}</span>
                       </div>
-                      <div className="flex flex-col text-right">
-                          <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Total Spent</span>
-                          <span className="font-bold font-mono text-sm">₹{selectedMemberForPoints.totalSpent?.toLocaleString() || 0}</span>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex flex-col text-right">
+                            <span className="text-sm font-bold text-muted-foreground uppercase tracking-normal">Total Spent</span>
+                            <span className="font-bold font-mono text-sm">₹{selectedMemberForPoints.totalSpent?.toLocaleString() || 0}</span>
+                        </div>
+                      )}
                   </div>
                   <div className="space-y-4 py-4">
                       <div className="flex gap-2">

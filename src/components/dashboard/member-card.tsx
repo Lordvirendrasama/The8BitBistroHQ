@@ -15,6 +15,7 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase/auth/use-user';
 import { logUserAction } from '@/firebase/firestore/logs';
 import { AddPendingModal } from './add-pending-modal';
 import { updateMember } from '@/firebase/firestore/members';
@@ -37,6 +38,8 @@ export function MemberCard({
   onGrantXp, 
 }: MemberCardProps) {
   const { toast } = useToast();
+  const { user } = useUser();
+  const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
 
   const xpPerLevel = settings.bitsPerLevel ?? settings.xpPerLevel ?? 100;
@@ -149,7 +152,7 @@ export function MemberCard({
         <CardFooter className="flex-col gap-2 p-2 pt-0">
           <div className="w-full flex text-sm font-bold text-muted-foreground justify-between px-1 mb-1 uppercase tracking-tight">
             <span>Joined {new Date(member.joinDate).toLocaleDateString()}</span>
-            <span>Spent ₹{member.totalSpent.toLocaleString()}</span>
+            {isAdmin && <span>Spent ₹{member.totalSpent.toLocaleString()}</span>}
           </div>
           <div className="w-full grid grid-cols-2 gap-2">
             <Button 

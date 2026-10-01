@@ -102,11 +102,15 @@ const generateSvgIdCard = (member: Member) => {
 </svg>`;
 };
 
+import { useUser } from '@/firebase/auth/use-user';
+
 export default function MemberProfilePage() {
   const router = useRouter();
   const params = useParams();
   const memberId = params.memberId as string;
   const { db, storage } = useFirebase();
+  const { user } = useUser();
+  const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
   const { toast } = useToast();
   const [generating, setGenerating] = useState(false);
 
@@ -361,15 +365,17 @@ export default function MemberProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline tracking-wide text-2xl flex items-center gap-2"><Utensils /> Bills Paid</CardTitle>
-                </CardHeader>
-                <CardContent>
-                     <p className="text-4xl font-bold text-primary">₹{member.totalSpent.toLocaleString()}</p>
-                     <p className="text-sm text-muted-foreground">Total amount spent at the bistro.</p>
-                </CardContent>
-            </Card>
+            {isAdmin && (
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="font-headline tracking-wide text-2xl flex items-center gap-2"><Utensils /> Bills Paid</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                       <p className="text-4xl font-bold text-primary">₹{member.totalSpent.toLocaleString()}</p>
+                       <p className="text-sm text-muted-foreground">Total amount spent at the bistro.</p>
+                  </CardContent>
+              </Card>
+            )}
         </div>
 
         <div className="lg:col-span-2 space-y-8">
