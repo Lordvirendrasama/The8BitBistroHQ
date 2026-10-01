@@ -6,7 +6,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Member, Station } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
-import { useUser } from '@/firebase/auth/use-user';
+import { useAuth } from '@/firebase/auth/use-user';
 
 import { deleteMember, updateMember, recordTransaction, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { settings } from '@/lib/data';
@@ -65,7 +65,7 @@ type SortableKeys = keyof Member | 'name';
 export default function UserManagementPage() {
   const router = useRouter();
   const { db } = useFirebase();
-  const { user } = useUser();
+  const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');

@@ -131,3 +131,5 @@ export const useAuth = () => {
   if (context === null) throw new Error('useAuth missing provider');
   return context;
 };
+
+export const useUser = useAuth;

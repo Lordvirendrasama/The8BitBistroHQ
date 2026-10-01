@@ -102,14 +102,14 @@ const generateSvgIdCard = (member: Member) => {
 </svg>`;
 };
 
-import { useUser } from '@/firebase/auth/use-user';
+import { useAuth } from '@/firebase/auth/use-user';
 
 export default function MemberProfilePage() {
   const router = useRouter();
   const params = useParams();
   const memberId = params.memberId as string;
   const { db, storage } = useFirebase();
-  const { user } = useUser();
+  const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
   const { toast } = useToast();
   const [generating, setGenerating] = useState(false);

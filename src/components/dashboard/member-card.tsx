@@ -15,7 +15,7 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase/auth/use-user';
+import { useAuth } from '@/firebase/auth/use-user';
 import { logUserAction } from '@/firebase/firestore/logs';
 import { AddPendingModal } from './add-pending-modal';
 import { updateMember } from '@/firebase/firestore/members';
@@ -38,7 +38,7 @@ export function MemberCard({
   onGrantXp, 
 }: MemberCardProps) {
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.username === 'Viren';
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
 
