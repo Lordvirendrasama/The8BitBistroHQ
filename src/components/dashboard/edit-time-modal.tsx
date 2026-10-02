@@ -34,7 +34,7 @@ const formatPackageDuration = (totalSeconds: number) => {
     return parts.length > 0 ? parts.join(' ') : '0m';
 };
 
-import { generateDynamicQuickPlayPackages } from '@/lib/pricing';
+import { generateDynamicQuickPlayPackages, calculateExtensionPrice } from '@/lib/pricing';
 
 export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, gamingPackages, station }: EditTimeModalProps) {
   const { toast } = useToast();
@@ -57,6 +57,13 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
   const allStationMembers = useMemo(() => 
     station?.members || [], 
   [station]);
+
+  const currentSessionMinutes = useMemo(() => {
+    if (!station || !station.startTime) return 0;
+    const startTs = new Date(station.startTime).getTime();
+    const endTs = station.endTime ? new Date(station.endTime).getTime() : Date.now();
+    return Math.max(0, Math.round((endTs - startTs) / 60000));
+  }, [station?.startTime, station?.endTime]);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,7 +96,17 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
     if (!station) return [];
 
     const targetPlayerCount = Math.max(1, selectedPlayerIds.length);
-    const dynamicPkgs = generateDynamicQuickPlayPackages(station.type, targetPlayerCount);
+    const rawDynamicPkgs = generateDynamicQuickPlayPackages(station.type, targetPlayerCount);
+
+    const dynamicPkgs = rawDynamicPkgs.map(pkg => {
+      const durationMins = Math.round(pkg.duration / 60);
+      const extensionPrice = calculateExtensionPrice(station.type, targetPlayerCount, currentSessionMinutes, durationMins);
+      const perPlayerPrice = targetPlayerCount > 0 ? Math.round(extensionPrice / targetPlayerCount) : extensionPrice;
+      return {
+        ...pkg,
+        price: perPlayerPrice
+      };
+    });
 
     if (!gamingPackages) return dynamicPkgs;
     
@@ -121,7 +138,7 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
     });
 
     return [...dynamicPkgs, ...customOffers];
-  }, [gamingPackages, station, clientTime, selectedPlayerIds.length]);
+  }, [gamingPackages, station, clientTime, selectedPlayerIds.length, currentSessionMinutes]);
 
   const selectedPackage = useMemo(() => {
     return addTimePackages.find(p => p.id === selectedPackageId);

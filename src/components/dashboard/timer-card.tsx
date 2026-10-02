@@ -290,55 +290,6 @@ export function TimerCard({
     return calculateExtensionPrice(station.type, activeMembersCount, currentSessionMinutes, 60);
   }, [station.type, activeMembersCount, currentSessionMinutes]);
 
-  const handleComplete30Mins = async () => {
-    if (!activeMembers || activeMembers.length === 0) {
-      toast({ variant: 'destructive', title: 'No Active Players', description: 'Cannot complete session on idle station.' });
-      return;
-    }
-
-    const now = getSyncedNow();
-    const startTs = station.startTime ? new Date(station.startTime).getTime() : now;
-    const targetEndTime = new Date(startTs + 30 * 60 * 1000).toISOString();
-    const cost30 = calculateGroupPrice(station.type, activeMembersCount, 30);
-    const playerNames = activeMembers.map(m => m.name).join(', ');
-
-    const updatedMembers = station.members.map(m => ({
-      ...m,
-      status: 'active' as const,
-      endTime: targetEndTime,
-      remainingTimeOnPause: null,
-      startTime: m.startTime || new Date(startTs).toISOString()
-    }));
-
-    const currentBill = station.currentBill || [];
-    const hasTimeItem = currentBill.some(i => i.name.toLowerCase().startsWith('time:'));
-
-    let newBillItems = [...currentBill];
-    if (!hasTimeItem) {
-      newBillItems.push({
-        itemId: `complete-30m-${Date.now()}`,
-        name: `Time: 30 Min Session (${playerNames})`,
-        price: cost30,
-        quantity: 1,
-        addedAt: new Date(now).toISOString()
-      });
-    }
-
-    const updates: Partial<Station> = {
-      status: 'finishing',
-      finishingStartTime: targetEndTime,
-      members: updatedMembers,
-      endTime: targetEndTime,
-      currentBill: newBillItems
-    };
-
-    await updateStation(station.id, updates);
-    toast({
-      title: "30-Min Session Completed",
-      description: `${station.name} capped at 30 mins (₹${cost30}). Grace period active.`,
-    });
-  };
-
   const handleQuickAdjust = async (minutes: number) => {
     if (!activeMembers || activeMembers.length === 0) {
       toast({ variant: 'destructive', title: 'No Active Players', description: 'Cannot adjust time on idle session.' });
@@ -685,66 +636,52 @@ export function TimerCard({
 
         {/* QUICK TIME ADJUSTMENT BAR */}
         {(isRunning || isPaused || isFinishing) && (
-          <div className="w-full mt-2 bg-muted/20 border border-border/50 rounded-xl p-2 flex flex-col gap-1.5 shadow-sm">
-            <div className="flex items-center justify-between gap-1 w-full">
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleQuickAdjust(-60)}
-                  className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  title={`Reduce 1 Hour for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
-                >
-                  -1h
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleQuickAdjust(-30)}
-                  className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  title={`Reduce 30 Mins for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
-                >
-                  -30m
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => handleQuickAdjust(30)}
-                  className="h-7 text-xs font-bold font-mono px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1"
-                  title={`Add 30 Mins (+₹${price30}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>30m</span>
-                  <span className="text-[10px] font-sans font-semibold text-emerald-100">(+₹{price30})</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => handleQuickAdjust(60)}
-                  className="h-7 text-xs font-bold font-mono px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1"
-                  title={`Add 1 Hour (+₹${price60}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>1h</span>
-                  <span className="text-[10px] font-sans font-semibold text-indigo-100">(+₹{price60})</span>
-                </Button>
-              </div>
+          <div className="w-full mt-2 bg-muted/20 border border-border/50 rounded-xl p-1.5 flex items-center justify-center gap-4 shadow-sm">
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleQuickAdjust(-60)}
+                className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                title={`Reduce 1 Hour for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
+              >
+                -1h
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleQuickAdjust(-30)}
+                className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                title={`Reduce 30 Mins for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
+              >
+                -30m
+              </Button>
             </div>
 
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleComplete30Mins}
-              className="w-full h-7.5 text-xs font-bold uppercase tracking-tight bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/30 gap-1.5 shadow-sm"
-              title={`Cap ${station.name} session at 30 mins (₹${calculateGroupPrice(station.type, activeMembersCount, 30)})`}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5 text-amber-500" />
-              <span>Complete 30 Minutes</span>
-              <span className="text-[10px] font-mono text-amber-400 opacity-90">(₹{calculateGroupPrice(station.type, activeMembersCount, 30)})</span>
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleQuickAdjust(30)}
+                className="h-7 text-xs font-bold font-mono px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1"
+                title={`Add 30 Mins (+₹${price30}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
+              >
+                <Plus className="h-3 w-3" />
+                <span>30m</span>
+                <span className="text-[10px] font-sans font-semibold text-emerald-100">(+₹{price30})</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleQuickAdjust(60)}
+                className="h-7 text-xs font-bold font-mono px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1"
+                title={`Add 1 Hour (+₹${price60}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
+              >
+                <Plus className="h-3 w-3" />
+                <span>1h</span>
+                <span className="text-[10px] font-sans font-semibold text-indigo-100">(+₹{price60})</span>
+              </Button>
+            </div>
           </div>
         )}
 

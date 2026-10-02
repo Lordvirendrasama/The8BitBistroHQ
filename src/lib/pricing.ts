@@ -74,6 +74,9 @@ export function getRateDetails(stationType: StationType, date: Date = new Date()
 
 /**
  * Calculates per-player walk-in charge for a session duration.
+ * Charges follow 30-minute block cycles within each hour:
+ * - 1st 30 mins of an hour: 30-min rate (halfHourSolo/Multi)
+ * - 2nd 30 mins of an hour: completes the full hour rate (hourlySolo/Multi)
  */
 export function calculatePlayerPrice(
   stationType: StationType,
@@ -81,16 +84,27 @@ export function calculatePlayerPrice(
   durationMinutes: number,
   date: Date = new Date()
 ): number {
+  if (durationMinutes <= 0) return 0;
   const rates = getRateDetails(stationType, date);
   const isMulti = playerCount > 1;
 
-  if (durationMinutes <= 30) {
-    return isMulti ? rates.halfHourMulti : rates.halfHourSolo;
+  const halfHourRate = isMulti ? rates.halfHourMulti : rates.halfHourSolo;
+  const hourlyRate = isMulti ? rates.hourlyMulti : rates.hourlySolo;
+
+  const fullHours = Math.floor(durationMinutes / 60);
+  const remainingMins = durationMinutes % 60;
+
+  let basePrice = fullHours * hourlyRate;
+
+  if (remainingMins > 0) {
+    if (remainingMins <= 30) {
+      basePrice += halfHourRate;
+    } else {
+      basePrice += hourlyRate;
+    }
   }
 
-  const hours = durationMinutes / 60;
-  const ratePerHour = isMulti ? rates.hourlyMulti : rates.hourlySolo;
-  return Math.round(hours * ratePerHour);
+  return Math.round(basePrice);
 }
 
 /**
