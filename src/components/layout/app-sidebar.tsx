@@ -45,13 +45,10 @@ import {
   Tag,
   CalendarDays,
   LayoutDashboard,
-  CreditCard,
   Target,
   Calendar,
   Activity,
   Files,
-  ClipboardCheck,
-  CalendarRange,
   QrCode,
   HelpCircle,
   MessageSquare,
@@ -83,7 +80,6 @@ const allNavItems = [
         { href: '/financials/rent', label: 'Rent Backlog', icon: Calendar, ownerOnly: true },
         { href: '/financials/burden-selector', label: 'Burden Selection', icon: Target, ownerOnly: true },
         { href: '/financials/bills', label: 'Fixed Bills', icon: ReceiptIndianRupee },
-        { href: '/financials/payroll', label: 'Staff Payroll', icon: CreditCard },
     ]
   },
 
@@ -91,15 +87,6 @@ const allNavItems = [
   { href: '/financials/spending', label: 'Spending & Stock', icon: ShoppingBag },
   
   { href: '/staff', icon: ListChecks, label: 'Daily Checklist' },
-  { 
-    label: 'Attendance Hub', 
-    icon: ClipboardCheck, 
-    href: '/attendance', 
-    subItems: [
-        { href: '/attendance', label: 'Attendance Registry', icon: ClipboardCheck },
-        { href: '/leaves', label: 'Leaves Tracker', icon: CalendarRange },
-    ]
-  },
   { href: '/policies', icon: Files, label: 'Employee Policies' },
   { href: '/users', icon: Users, label: 'User Registry' },
   { href: '/billing-history', icon: Receipt, label: 'Billing Audit' },
@@ -171,7 +158,7 @@ export function AppSidebar() {
     }
     
     // Restricted routes for staff and guest roles
-    const restrictedHrefs = ['/analytics', '/settings', '/attendance', '/leaves', '/staff', '/marketing', '/profile'];
+    const restrictedHrefs = ['/analytics', '/settings', '/staff', '/marketing', '/profile'];
     
     if (user.role === 'staff' || user.role === 'guest') {
       return filtered.filter(item => !restrictedHrefs.includes(item.href));

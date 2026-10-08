@@ -5,7 +5,7 @@ import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, orderBy, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import type { FixedBill, Expense, Debt, Employee, RepeatCycle, PaidBill } from '@/lib/types';
+import type { FixedBill, Expense, Debt, Employee, RepeatCycle, PaidBill, SalaryPayment } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,11 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { addFixedBill, markBillAsPaid, deleteFixedBill, updateFixedBill, undoBillPayment } from '@/firebase/firestore/financials';
+import { addFixedBill, markBillAsPaid, deleteFixedBill, updateFixedBill, undoBillPayment, undoSalaryPayment, recordManualSalaryPayment, updateSalaryPayment, recordSalaryPayment } from '@/firebase/firestore/financials';
 import { getCycleInfo } from '@/components/owner-pulse/owner-pulse-employee-intel';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -44,7 +43,8 @@ export function ExecutiveExpensesHub() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'bills' | 'salaries' | 'expenses' | 'paid'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'bills' | 'salaries'>('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'payable' | 'paid' | 'all'>('payable');
   const [searchFilter, setSearchFilter] = useState('');
   const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'urgent' | 'week' | 'overdue' | 'unpaid'>('all');
   
@@ -65,6 +65,15 @@ export function ExecutiveExpensesHub() {
   const [payBillNextAmount, setPayBillNextAmount] = useState('');
   const [isPayBillModalOpen, setIsPayBillModalOpen] = useState(false);
 
+  // Pay Salary Modal state (1-Click Mark Paid for Staff in Payable system)
+  const [paySalaryTarget, setPaySalaryTarget] = useState<Employee | null>(null);
+  const [paySalaryAmount, setPaySalaryAmount] = useState('');
+  const [paySalaryMethod, setPaySalaryMethod] = useState('UPI');
+  const [paySalaryCycleKey, setPaySalaryCycleKey] = useState('');
+  const [paySalaryNote, setPaySalaryNote] = useState('');
+  const [paySalarySettleAdjustments, setPaySalarySettleAdjustments] = useState(true);
+  const [isPaySalaryModalOpen, setIsPaySalaryModalOpen] = useState(false);
+
   // Expense form state
   const [expenseForm, setExpenseForm] = useState({
     amount: '',
@@ -72,6 +81,25 @@ export function ExecutiveExpensesHub() {
     category: 'Food & Beverages',
     paymentMethod: 'upi' as 'cash' | 'upi',
     notes: ''
+  });
+
+  // Salary Payment Log & Edit state
+  const [isLogSalaryOpen, setIsLogSalaryOpen] = useState(false);
+  const [editingSalaryPayment, setEditingSalaryPayment] = useState<SalaryPayment | null>(null);
+  const [salaryForm, setSalaryForm] = useState<{
+    employeeId: string;
+    amountPaid: string;
+    cycleKey: string;
+    paidAt: string;
+    paymentMethod: string;
+    note: string;
+  }>({
+    employeeId: '',
+    amountPaid: '',
+    cycleKey: currentMonthKey,
+    paidAt: new Date().toISOString().slice(0, 16),
+    paymentMethod: 'UPI',
+    note: ''
   });
 
   // Fixed Bill form state
@@ -112,6 +140,9 @@ export function ExecutiveExpensesHub() {
 
   const paidBillsQuery = useMemo(() => (!db ? null : query(collection(db, 'paidBills'), orderBy('paidAt', 'desc'))), [db]);
   const { data: paidBills } = useCollection<PaidBill>(paidBillsQuery);
+
+  const salaryPaymentsQuery = useMemo(() => (!db ? null : query(collection(db, 'salaryPayments'), orderBy('paidAt', 'desc'))), [db]);
+  const { data: salaryPayments } = useCollection<SalaryPayment>(salaryPaymentsQuery);
 
   // Auto-sync past mock dates to the current monthly cycle
   useEffect(() => {
@@ -215,12 +246,10 @@ export function ExecutiveExpensesHub() {
 
     // 2. Staff Salaries (Monthly Cycled)
     (employees || []).filter(e => e.username?.toLowerCase() !== 'viren').forEach(emp => {
-      const cycle = getCycleInfo(emp.joinDate);
-      const cycleDay = (cycle && typeof cycle.resetDay === 'number' && !isNaN(cycle.resetDay)) 
-        ? cycle.resetDay 
-        : (cycle && typeof cycle.joinDay === 'number' && !isNaN(cycle.joinDay))
-          ? cycle.joinDay 
-          : 1;
+      const cycle = getCycleInfo(emp.joinDate, emp.lastSalaryPaidDate, emp.lastSalaryPaidCycle);
+      const cycleDay = (cycle && typeof cycle.joinDay === 'number' && !isNaN(cycle.joinDay))
+        ? cycle.joinDay
+        : 1;
 
       const maxDaysInTargetMonth = new Date(targetYear, targetMonthIndex + 1, 0).getDate();
       const validDay = Math.min(Math.max(1, cycleDay), maxDaysInTargetMonth);
@@ -228,14 +257,42 @@ export function ExecutiveExpensesHub() {
 
       if (isNaN(nextSalDate.getTime())) return;
 
+      const targetMonthString = `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`;
+
+      // Check if salary was paid for this employee in selected month
+      const matchingSalaryPayment = (salaryPayments || []).find(sp => {
+        if (sp.employeeId === emp.id || sp.employeeUsername?.toLowerCase() === emp.username?.toLowerCase()) {
+          const pDate = new Date(sp.paidAt);
+          if (isNaN(pDate.getTime())) return false;
+          return (pDate.getFullYear() === targetYear && pDate.getMonth() === targetMonthIndex) || (sp.cycleKey && sp.cycleKey.includes(targetMonthString));
+        }
+        return false;
+      });
+
+      const hasPaidDateInMonth = emp.lastSalaryPaidDate && !isNaN(new Date(emp.lastSalaryPaidDate).getTime()) && (() => {
+        const lp = new Date(emp.lastSalaryPaidDate);
+        return lp.getFullYear() === targetYear && lp.getMonth() === targetMonthIndex;
+      })();
+
+      const hasCycleKeyMatch = emp.lastSalaryPaidCycle && emp.lastSalaryPaidCycle.includes(targetMonthString);
+
+      const isPaid = !!matchingSalaryPayment || !!hasPaidDateInMonth || !!hasCycleKeyMatch;
+
       const adjustments = emp.salaryAdjustments || [];
       const activeAdvances = adjustments.filter(a => a.status === 'active' && a.type === 'advance').reduce((s, a) => s + (a.amount || 0), 0);
       const activeMealOverages = adjustments.filter(a => a.status === 'active' && a.type === 'meal_overage').reduce((s, a) => s + (a.amount || 0), 0);
       const activeDeductions = adjustments.filter(a => a.status === 'active' && a.type === 'deduction').reduce((s, a) => s + (a.amount || 0), 0);
       const activeBonuses = adjustments.filter(a => a.status === 'active' && a.type === 'bonus').reduce((s, a) => s + (a.amount || 0), 0);
       
-      const netSalary = Math.max(0, (emp.salary || 0) + activeBonuses - activeAdvances - activeMealOverages - activeDeductions);
+      const netSalary = isPaid && matchingSalaryPayment
+        ? matchingSalaryPayment.amountPaid
+        : (isPaid && emp.lastSalaryAmount)
+        ? emp.lastSalaryAmount
+        : Math.max(0, (emp.salary || 0) + activeBonuses - activeAdvances - activeMealOverages - activeDeductions);
+
       const days = differenceInDays(nextSalDate, now);
+      const overdue = isPast(nextSalDate) && !isToday(nextSalDate) && !isPaid;
+      const dueToday = isToday(nextSalDate) && !isPaid;
 
       items.push({
         id: `salary-${emp.id}`,
@@ -245,13 +302,16 @@ export function ExecutiveExpensesHub() {
         dueDate: nextSalDate,
         dueDateFormatted: safeFormatDate(nextSalDate, 'dd MMM yyyy'),
         daysLeft: days,
-        isOverdue: days < 0,
-        isDueToday: isToday(nextSalDate),
-        isPaidInSelectedMonth: false,
+        isOverdue: overdue,
+        isDueToday: dueToday,
+        isPaidInSelectedMonth: !!isPaid,
         paymentMethod: 'UPI / Cash',
         isVariable: false,
         cycleDay,
-        raw: emp,
+        raw: {
+          ...emp,
+          matchingSalaryPayment
+        },
         type: 'salary'
       });
     });
@@ -294,7 +354,7 @@ export function ExecutiveExpensesHub() {
       if (!a.isDueToday && b.isDueToday) return 1;
       return a.daysLeft - b.daysLeft;
     });
-  }, [fixedBills, employees, debts, paidBills, selectedCycleMonth]);
+  }, [fixedBills, employees, debts, paidBills, salaryPayments, selectedCycleMonth]);
 
   // Overall Financial Overview Summary for Selected Month
   const financialSummary = useMemo(() => {
@@ -311,13 +371,34 @@ export function ExecutiveExpensesHub() {
     const [selYear, selMonth] = selectedCycleMonth.split('-').map(Number);
     const targetMonthIndex = (isNaN(selMonth) ? new Date().getMonth() + 1 : selMonth) - 1;
     const targetYear = isNaN(selYear) ? new Date().getFullYear() : selYear;
+    const targetMonthString = `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`;
 
+    // 1. Paid Bills for selected month
     const monthPaidBills = (paidBills || []).filter(pb => {
       const pDate = new Date(pb.paidAt);
       if (isNaN(pDate.getTime())) return false;
       return pDate.getFullYear() === targetYear && pDate.getMonth() === targetMonthIndex;
     });
     const totalPaidBillsAmount = monthPaidBills.reduce((s, p) => s + (p.amountPaid || 0), 0);
+
+    // 2. Paid Salaries for selected month
+    const monthSalaryPayments = (salaryPayments || []).filter(sp => {
+      const pDate = new Date(sp.paidAt);
+      if (isNaN(pDate.getTime())) return false;
+      return (pDate.getFullYear() === targetYear && pDate.getMonth() === targetMonthIndex) || (sp.cycleKey && sp.cycleKey.includes(targetMonthString));
+    });
+    const totalPaidSalariesAmount = monthSalaryPayments.reduce((s, p) => s + (p.amountPaid || 0), 0);
+
+    // 3. Logged Expenses for selected month
+    const monthExpenses = (expenses || []).filter(exp => {
+      const eDate = new Date(exp.timestamp);
+      if (isNaN(eDate.getTime())) return false;
+      return eDate.getFullYear() === targetYear && eDate.getMonth() === targetMonthIndex;
+    });
+    const totalExpensesAmount = monthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+    const totalOverallPaidAmount = totalPaidBillsAmount + totalPaidSalariesAmount + totalExpensesAmount;
+    const totalOverallPaidCount = monthPaidBills.length + monthSalaryPayments.length + monthExpenses.length;
 
     return {
       totalMoneyToSpendStill,
@@ -328,9 +409,15 @@ export function ExecutiveExpensesHub() {
       fixedBillsTotal,
       totalStaffSalaryNet,
       totalPaidBillsAmount,
-      paidBillsCount: monthPaidBills.length
+      paidBillsCount: monthPaidBills.length,
+      totalPaidSalariesAmount,
+      paidSalariesCount: monthSalaryPayments.length,
+      totalExpensesAmount,
+      expensesCount: monthExpenses.length,
+      totalOverallPaidAmount,
+      totalOverallPaidCount
     };
-  }, [dueItems, paidBills, selectedCycleMonth]);
+  }, [dueItems, paidBills, salaryPayments, expenses, selectedCycleMonth]);
 
   // Dynamic Urgency Classifier for Enhanced UX Contrast
   const getUrgencyConfig = (item: (typeof dueItems)[0]) => {
@@ -516,6 +603,200 @@ export function ExecutiveExpensesHub() {
     }
   };
 
+  // Undo Specific Salary Payment Record
+  const handleUndoSalaryPayment = async (salaryPaymentId?: string, empId?: string, empName?: string) => {
+    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      const success = await undoSalaryPayment(salaryPaymentId, empId, user);
+      if (success) {
+        toast({
+          title: "Salary Payment Undone",
+          description: `Restored ${empName || 'staff'} salary as UNPAID for ${selectedMonthLabel}.`,
+        });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: "Undo Failed", description: e.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Open Edit Salary Payment Modal
+  const handleOpenEditSalaryPayment = (payment: SalaryPayment) => {
+    setEditingSalaryPayment(payment);
+    const pDate = new Date(payment.paidAt);
+    const dateFormatted = !isNaN(pDate.getTime())
+      ? `${pDate.toISOString().slice(0, 10)}T${pDate.toTimeString().slice(0, 5)}`
+      : new Date().toISOString().slice(0, 16);
+
+    setSalaryForm({
+      employeeId: payment.employeeId,
+      amountPaid: payment.amountPaid?.toString() || '0',
+      cycleKey: payment.cycleKey || selectedCycleMonth,
+      paidAt: dateFormatted,
+      paymentMethod: payment.paymentMethod || 'UPI',
+      note: payment.note || ''
+    });
+    setIsLogSalaryOpen(true);
+  };
+
+  // Open Direct Pay Staff Salary Modal (1-Click Mark Paid from Accounts Payable)
+  const handleOpenPaySalaryModal = (emp: Employee, netAmount: number, cycleKey: string) => {
+    setPaySalaryTarget(emp);
+    setPaySalaryAmount(netAmount > 0 ? netAmount.toString() : (emp.salary || 0).toString());
+    setPaySalaryMethod('UPI');
+    setPaySalaryCycleKey(cycleKey || selectedCycleMonth);
+    setPaySalaryNote(`Monthly salary payout for ${emp.displayName}`);
+    setPaySalarySettleAdjustments(true);
+    setIsPaySalaryModalOpen(true);
+  };
+
+  // Confirm Direct Salary Payout from Accounts Payable
+  const handleConfirmPaySalary = async () => {
+    if (!paySalaryTarget || !user) return;
+    const amountNum = parseFloat(paySalaryAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast({ variant: 'destructive', title: "Invalid Amount", description: "Please enter a valid salary amount." });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const cycle = getCycleInfo(paySalaryTarget.joinDate, paySalaryTarget.lastSalaryPaidDate, paySalaryTarget.lastSalaryPaidCycle);
+      const adjustments = paySalaryTarget.salaryAdjustments || [];
+      const activeAdvances = adjustments.filter(a => a.status === 'active' && a.type === 'advance').reduce((s, a) => s + a.amount, 0);
+      const activeDeductions = adjustments.filter(a => a.status === 'active' && (a.type === 'deduction' || a.type === 'meal_overage')).reduce((s, a) => s + a.amount, 0);
+      const activeBonuses = adjustments.filter(a => a.status === 'active' && a.type === 'bonus').reduce((s, a) => s + a.amount, 0);
+      const baseSalary = paySalaryTarget.salary || amountNum;
+
+      const settledTimestamp = new Date().toISOString();
+      const updatedAdjustments = paySalarySettleAdjustments && adjustments.length > 0
+        ? adjustments.map(a => a.status === 'active' ? { ...a, status: 'settled' as const, settledAt: settledTimestamp } : a)
+        : adjustments;
+
+      const employeeWithAdjustments: Employee = {
+        ...paySalaryTarget,
+        salaryAdjustments: updatedAdjustments
+      };
+
+      const paymentId = await recordSalaryPayment(
+        employeeWithAdjustments,
+        {
+          amountPaid: amountNum,
+          baseSalary,
+          advancesSettled: activeAdvances,
+          deductionsSettled: activeDeductions,
+          bonusesAdded: activeBonuses,
+          cycleKey: paySalaryCycleKey || cycle.scheduledCycleKey || cycle.currentCycleKey,
+          paymentMethod: paySalaryMethod || 'UPI',
+          note: paySalaryNote || 'Monthly salary cleared via Accounts Payable'
+        },
+        user
+      );
+
+      if (paymentId) {
+        toast({
+          title: "Salary Paid & Settled",
+          description: `Successfully logged ₹${amountNum.toLocaleString()} payout for ${paySalaryTarget.displayName}. Moved to Accounts Paid.`
+        });
+        setIsPaySalaryModalOpen(false);
+        setPaySalaryTarget(null);
+      } else {
+        toast({ variant: 'destructive', title: "Payment Failed", description: "Could not record salary payout." });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: "Action Failed", description: e.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Open Create Manual Salary Payment Modal
+  const handleOpenAddSalaryPayment = (defaultEmpId?: string) => {
+    setEditingSalaryPayment(null);
+    const defaultEmp = (employees || []).find(e => e.id === defaultEmpId) || (employees || [])[0];
+    const initialAmount = defaultEmp?.salary ? defaultEmp.salary.toString() : '';
+
+    setSalaryForm({
+      employeeId: defaultEmp?.id || '',
+      amountPaid: initialAmount,
+      cycleKey: selectedCycleMonth,
+      paidAt: new Date().toISOString().slice(0, 16),
+      paymentMethod: 'UPI',
+      note: 'Salary paid via Owner Hub'
+    });
+    setIsLogSalaryOpen(true);
+  };
+
+  // Save (Create or Update) Salary Payment
+  const handleSaveSalaryPayment = async () => {
+    if (!user) return;
+    const amountNum = parseFloat(salaryForm.amountPaid);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast({ variant: 'destructive', title: "Invalid Amount", description: "Please enter a valid salary amount." });
+      return;
+    }
+
+    const emp = (employees || []).find(e => e.id === salaryForm.employeeId);
+    if (!emp && !editingSalaryPayment) {
+      toast({ variant: 'destructive', title: "Select Staff Member", description: "Please select an employee." });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const paidDateISO = salaryForm.paidAt ? new Date(salaryForm.paidAt).toISOString() : new Date().toISOString();
+
+      if (editingSalaryPayment) {
+        const success = await updateSalaryPayment(editingSalaryPayment.id, {
+          amountPaid: amountNum,
+          cycleKey: salaryForm.cycleKey || selectedCycleMonth,
+          paidAt: paidDateISO,
+          paymentMethod: salaryForm.paymentMethod || 'UPI',
+          note: salaryForm.note || ''
+        }, user);
+
+        if (success) {
+          toast({
+            title: "Salary Record Updated",
+            description: `Updated salary payout record for ${editingSalaryPayment.employeeDisplayName}.`
+          });
+          setIsLogSalaryOpen(false);
+          setEditingSalaryPayment(null);
+        } else {
+          toast({ variant: 'destructive', title: "Update Failed", description: "Could not update salary record." });
+        }
+      } else if (emp) {
+        const paymentId = await recordManualSalaryPayment({
+          employeeId: emp.id,
+          employeeUsername: emp.username,
+          employeeDisplayName: emp.displayName,
+          amountPaid: amountNum,
+          baseSalary: emp.salary || amountNum,
+          cycleKey: salaryForm.cycleKey || selectedCycleMonth,
+          paidAt: paidDateISO,
+          paymentMethod: salaryForm.paymentMethod || 'UPI',
+          note: salaryForm.note || 'Manual salary payment logged'
+        }, user);
+
+        if (paymentId) {
+          toast({
+            title: "Salary Payment Logged",
+            description: `Recorded ₹${amountNum.toLocaleString()} salary for ${emp.displayName} (${salaryForm.cycleKey}).`
+          });
+          setIsLogSalaryOpen(false);
+        } else {
+          toast({ variant: 'destructive', title: "Save Failed", description: "Could not record salary payment." });
+        }
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: "Action Failed", description: e.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteBill = async (billId: string) => {
     try {
       await deleteFixedBill(billId);
@@ -662,7 +943,7 @@ export function ExecutiveExpensesHub() {
     }
   };
 
-  // Filtered due items by activeTab, urgencyFilter & searchFilter
+  // Filtered due items by activeTab, paymentStatusFilter, urgencyFilter & searchFilter
   const filteredDueItems = useMemo(() => {
     return dueItems.filter(item => {
       if (searchFilter) {
@@ -672,9 +953,15 @@ export function ExecutiveExpensesHub() {
         if (!matchesName && !matchesCat) return false;
       }
 
+      // 1. Category Tab Filter
       if (activeTab === 'bills' && item.type !== 'bill') return false;
       if (activeTab === 'salaries' && item.type !== 'salary') return false;
 
+      // 2. Payable vs Paid System Status Filter
+      if (paymentStatusFilter === 'payable' && item.isPaidInSelectedMonth) return false;
+      if (paymentStatusFilter === 'paid' && !item.isPaidInSelectedMonth) return false;
+
+      // 3. Urgency Filter
       if (urgencyFilter === 'urgent') return !item.isPaidInSelectedMonth && (item.isOverdue || item.isDueToday || item.daysLeft <= 3);
       if (urgencyFilter === 'week') return !item.isPaidInSelectedMonth && (item.isOverdue || item.isDueToday || item.daysLeft <= 7);
       if (urgencyFilter === 'overdue') return !item.isPaidInSelectedMonth && (item.isOverdue || item.isDueToday);
@@ -682,7 +969,7 @@ export function ExecutiveExpensesHub() {
 
       return true;
     });
-  }, [dueItems, activeTab, urgencyFilter, searchFilter]);
+  }, [dueItems, activeTab, paymentStatusFilter, urgencyFilter, searchFilter]);
 
   // Filtered logged expenses for selected month
   const filteredLoggedExpenses = useMemo(() => {
@@ -718,6 +1005,100 @@ export function ExecutiveExpensesHub() {
     });
   }, [paidBills, searchFilter, selectedCycleMonth]);
 
+  // Filtered salary payments history for selected month
+  const filteredSalaryPayments = useMemo(() => {
+    const [selYear, selMonth] = selectedCycleMonth.split('-').map(Number);
+    const targetMonthIndex = (isNaN(selMonth) ? new Date().getMonth() + 1 : selMonth) - 1;
+    const targetYear = isNaN(selYear) ? new Date().getFullYear() : selYear;
+    const targetMonthString = `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`;
+
+    return (salaryPayments || []).filter(sp => {
+      const pDate = new Date(sp.paidAt);
+      if (isNaN(pDate.getTime())) return false;
+      const matchesMonth = (pDate.getFullYear() === targetYear && pDate.getMonth() === targetMonthIndex) || (sp.cycleKey && sp.cycleKey.includes(targetMonthString));
+      if (!matchesMonth) return false;
+
+      if (!searchFilter) return true;
+      const q = searchFilter.toLowerCase();
+      return (
+        sp.employeeDisplayName.toLowerCase().includes(q) ||
+        sp.employeeUsername.toLowerCase().includes(q) ||
+        (sp.note || '').toLowerCase().includes(q) ||
+        (sp.paymentMethod || '').toLowerCase().includes(q)
+      );
+    });
+  }, [salaryPayments, searchFilter, selectedCycleMonth]);
+
+  // Unified overall payments history across Paid Bills, Staff Salaries & Logged Expenses
+  const unifiedPayments = useMemo(() => {
+    const list: Array<{
+      id: string;
+      type: 'salary' | 'bill' | 'expense';
+      title: string;
+      category: string;
+      amount: number;
+      paidAt: string;
+      paidAtDate: Date;
+      paidBy: string;
+      paymentMethod: string;
+      note?: string;
+      raw: any;
+    }> = [];
+
+    // 1. Add Paid Recurring Bills
+    filteredPaidBills.forEach(pb => {
+      list.push({
+        id: `pb-${pb.id}`,
+        type: 'bill',
+        title: pb.name,
+        category: `${pb.repeatCycle || 'Monthly'} Bill`,
+        amount: pb.amountPaid || 0,
+        paidAt: pb.paidAt,
+        paidAtDate: new Date(pb.paidAt),
+        paidBy: pb.paidBy?.displayName || 'Viren',
+        paymentMethod: pb.paymentMethod || 'UPI',
+        note: pb.isVariable ? 'Variable Rate' : undefined,
+        raw: pb
+      });
+    });
+
+    // 2. Add Staff Salaries Paid
+    filteredSalaryPayments.forEach(sp => {
+      list.push({
+        id: `sp-${sp.id}`,
+        type: 'salary',
+        title: `${sp.employeeDisplayName}'s Salary`,
+        category: 'Staff Salary Payout',
+        amount: sp.amountPaid || 0,
+        paidAt: sp.paidAt,
+        paidAtDate: new Date(sp.paidAt),
+        paidBy: sp.paidBy?.displayName || 'Viren',
+        paymentMethod: sp.paymentMethod || 'UPI / Cash',
+        note: sp.note || `Cycle: ${sp.cycleKey}`,
+        raw: sp
+      });
+    });
+
+    // 3. Add Logged Expenses
+    filteredLoggedExpenses.forEach(exp => {
+      list.push({
+        id: `exp-${exp.id}`,
+        type: 'expense',
+        title: exp.description,
+        category: exp.category || 'Operational Expense',
+        amount: exp.amount || 0,
+        paidAt: exp.timestamp,
+        paidAtDate: new Date(exp.timestamp),
+        paidBy: exp.addedBy?.displayName || 'Viren',
+        paymentMethod: exp.paymentMethod || 'UPI',
+        note: exp.notes,
+        raw: exp
+      });
+    });
+
+    return list.sort((a, b) => b.paidAtDate.getTime() - a.paidAtDate.getTime());
+  }, [filteredPaidBills, filteredSalaryPayments, filteredLoggedExpenses]);
+
   // Available Month Cycle Selector options
   const monthOptions = useMemo(() => {
     const options: Array<{ key: string; label: string }> = [];
@@ -742,10 +1123,10 @@ export function ExecutiveExpensesHub() {
             </div>
             <div>
               <h2 className="text-xl font-headline uppercase tracking-wider text-foreground flex items-center gap-2">
-                EXPENSES &amp; MONTHLY CYCLE DUE DATES
+                ACCOUNTS PAYABLE &bull; UPCOMING DUE OBLIGATIONS
               </h2>
               <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-                MONTHLY CYCLED OVERHEADS &bull; RECURRING BILLS &bull; STAFF SALARIES
+                PAYABLE SYSTEM &bull; RECURRING BILLS &bull; STAFF SALARIES &bull; DISBURSEMENTS DUE
               </p>
             </div>
           </div>
@@ -798,16 +1179,24 @@ export function ExecutiveExpensesHub() {
           >
             <Calendar className="h-4 w-4" /> + New Recurring Bill
           </Button>
+
+          <Button
+            onClick={() => handleOpenAddSalaryPayment()}
+            variant="outline"
+            className="h-10 px-4 border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10 font-bold text-xs uppercase tracking-wider gap-2 rounded-xl"
+          >
+            <Building className="h-4 w-4 text-indigo-400" /> + Log Salary Payout
+          </Button>
         </div>
       </div>
 
       {/* 2. EXECUTIVE METRICS CARDS FOR SELECTED MONTH */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* CARD 1: TOTAL MONEY TO SPEND STILL */}
+        {/* CARD 1: TOTAL ACCOUNTS PAYABLE */}
         <Card className="border-2 border-emerald-500/60 bg-emerald-950/20 shadow-emerald-950/20 p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-              <Wallet className="h-4 w-4 text-emerald-400" /> Money To Spend Still
+              <Wallet className="h-4 w-4 text-emerald-400" /> Total Accounts Payable
             </span>
             <Badge className="bg-emerald-500 text-white font-extrabold text-[10px]">
               {financialSummary.dueItemsCount} DUES PENDING
@@ -818,7 +1207,7 @@ export function ExecutiveExpensesHub() {
               ₹{financialSummary.totalMoneyToSpendStill.toLocaleString()}
             </p>
             <p className="text-[11px] text-muted-foreground font-bold uppercase mt-0.5">
-              {selectedMonthLabel} Cycle Commitments
+              {selectedMonthLabel} Payable Commitments
             </p>
           </div>
           <div className="text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/40">
@@ -835,7 +1224,7 @@ export function ExecutiveExpensesHub() {
         )}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-              <ShieldAlert className="h-4 w-4 text-rose-400" /> Overdue &amp; Due Today
+              <ShieldAlert className="h-4 w-4 text-rose-400" /> Urgent &amp; Overdue Payables
             </span>
             {(financialSummary.overdueCount > 0 || financialSummary.dueTodayCount > 0) ? (
               <Badge className="bg-rose-500 text-white font-extrabold text-[10px] animate-pulse">
@@ -856,7 +1245,7 @@ export function ExecutiveExpensesHub() {
             </p>
           </div>
           <div className="text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/40">
-            Current Month Urgent Status
+            Immediate Attention Required
           </div>
         </Card>
 
@@ -864,7 +1253,7 @@ export function ExecutiveExpensesHub() {
         <Card className="border-2 border-border/60 bg-card/80 backdrop-blur-sm shadow-md p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-              <Receipt className="h-4 w-4 text-amber-400" /> {selectedMonthLabel} Bills
+              <Receipt className="h-4 w-4 text-amber-400" /> Bills Payable
             </span>
             <Badge variant="outline" className="text-[10px] font-mono border-amber-500/30 text-amber-400">
               {(fixedBills || []).length} BILLS
@@ -875,7 +1264,7 @@ export function ExecutiveExpensesHub() {
               ₹{financialSummary.fixedBillsTotal.toLocaleString()}
             </p>
             <p className="text-[11px] text-muted-foreground font-bold uppercase mt-0.5">
-              Light Bill, Internet &amp; Utilities
+              Light Bill, Internet &amp; Utilities Due
             </p>
           </div>
           <div className="text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/40">
@@ -883,90 +1272,177 @@ export function ExecutiveExpensesHub() {
           </div>
         </Card>
 
-        {/* CARD 4: PAID BILLS SUMMARY */}
+        {/* CARD 4: STAFF SALARIES PAYABLE */}
         <Card className="border-2 border-border/60 bg-card/80 backdrop-blur-sm shadow-md p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-              <CheckCheck className="h-4 w-4 text-indigo-400" /> Settled Paid Bills
+              <Building className="h-4 w-4 text-indigo-400" /> Salaries Payable
             </span>
             <Badge variant="outline" className="text-[10px] font-mono border-indigo-500/30 text-indigo-400">
-              {financialSummary.paidBillsCount} PAID
+              {(employees || []).filter(e => e.username?.toLowerCase() !== 'viren').length} STAFF
             </Badge>
           </div>
           <div>
             <p className="text-2xl font-extrabold font-mono text-indigo-400">
-              ₹{financialSummary.totalPaidBillsAmount.toLocaleString()}
+              ₹{financialSummary.totalStaffSalaryNet.toLocaleString()}
             </p>
-            <p className="text-[11px] text-muted-foreground font-bold uppercase mt-0.5">
-              Settled in {selectedMonthLabel}
+            <p className="text-[11px] text-muted-foreground font-bold uppercase mt-0.5 truncate">
+              Net Staff Payroll Outstanding
             </p>
           </div>
           <div className="text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/40">
-            Recorded Paid History for {selectedMonthLabel}
+            Pending Salaries for {selectedMonthLabel}
           </div>
         </Card>
       </div>
 
       {/* 3. DUE DATES MANAGEMENT COMMAND CENTER */}
       <Card className="border-2 border-border/60 bg-card/80 backdrop-blur-sm shadow-lg overflow-hidden">
-        <div className="bg-muted/20 border-b border-border/40 p-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full md:w-auto">
-                <TabsList className="bg-muted/40 p-1 border border-border/50 flex flex-wrap gap-1">
-                  <TabsTrigger value="all" className="text-xs font-bold uppercase gap-1.5">
-                    <Layers className="h-3.5 w-3.5" /> All Due Dates ({dueItems.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="bills" className="text-xs font-bold uppercase gap-1.5">
-                    <Receipt className="h-3.5 w-3.5" /> Fixed &amp; Variable Bills ({(fixedBills || []).length})
-                  </TabsTrigger>
-                  <TabsTrigger value="salaries" className="text-xs font-bold uppercase gap-1.5">
-                    <Building className="h-3.5 w-3.5" /> Staff Salaries
-                  </TabsTrigger>
-                  <TabsTrigger value="paid" className="text-xs font-bold uppercase gap-1.5">
-                    <CheckCheck className="h-3.5 w-3.5 text-emerald-400" /> Paid Bills ({filteredPaidBills.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="expenses" className="text-xs font-bold uppercase gap-1.5">
-                    <Clock className="h-3.5 w-3.5" /> Logged Expenses ({filteredLoggedExpenses.length})
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+        <div className="bg-muted/20 border-b border-border/40 p-4 space-y-3.5">
+          {/* TOP BAR: HEADER & SEARCH */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Layers className="h-4 w-4 text-primary" /> Command Center Navigation:
+              </span>
             </div>
 
             {/* SEARCH INPUT */}
-            <div className="relative w-full md:w-64">
+            <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={searchFilter}
                 onChange={e => setSearchFilter(e.target.value)}
-                placeholder="Search bills, salaries..."
-                className="pl-9 h-9 text-xs font-bold uppercase bg-background/50 border-border/60"
+                placeholder="Search bills, salaries, expenses..."
+                className="pl-9 h-9 text-xs font-bold uppercase bg-background/70 border-border/70 shadow-sm"
               />
+            </div>
+          </div>
+
+          {/* PROMINENT NAVIGATION & STATUS CONTROLS - PAYABLE / PAID ARCHITECTURE */}
+          <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3 bg-muted/40 p-2 border border-border/60 rounded-xl">
+            {/* 1. PRIMARY SYSTEM STATUS SWITCHER: PAYABLE VS PAID */}
+            <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-lg border border-border/60">
+              <button
+                type="button"
+                onClick={() => setPaymentStatusFilter('payable')}
+                className={cn(
+                  "h-8 px-3.5 text-xs font-black uppercase tracking-wider gap-1.5 rounded-md border transition-all inline-flex items-center justify-center cursor-pointer select-none",
+                  paymentStatusFilter === 'payable'
+                    ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20 font-black ring-1 ring-amber-300"
+                    : "bg-transparent text-muted-foreground border-transparent hover:text-white"
+                )}
+              >
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span>⏳ Payable / Due ({dueItems.filter(i => !i.isPaidInSelectedMonth).length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentStatusFilter('paid')}
+                className={cn(
+                  "h-8 px-3.5 text-xs font-black uppercase tracking-wider gap-1.5 rounded-md border transition-all inline-flex items-center justify-center cursor-pointer select-none",
+                  paymentStatusFilter === 'paid'
+                    ? "bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-600/30 font-black ring-1 ring-emerald-300"
+                    : "bg-transparent text-muted-foreground border-transparent hover:text-white"
+                )}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                <span>✅ Paid This Cycle ({dueItems.filter(i => i.isPaidInSelectedMonth).length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentStatusFilter('all')}
+                className={cn(
+                  "h-8 px-3 text-xs font-black uppercase tracking-wider gap-1.5 rounded-md border transition-all inline-flex items-center justify-center cursor-pointer select-none",
+                  paymentStatusFilter === 'all'
+                    ? "bg-white text-zinc-950 border-white shadow-md font-black"
+                    : "bg-transparent text-muted-foreground border-transparent hover:text-white"
+                )}
+              >
+                <Layers className="h-3.5 w-3.5 shrink-0" />
+                <span>All ({dueItems.length})</span>
+              </button>
+            </div>
+
+            {/* 2. CATEGORY TABS */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveTab('all')}
+                className={cn(
+                  "h-8 px-3 text-xs font-black uppercase tracking-wider gap-1.5 rounded-lg border transition-all inline-flex items-center justify-center cursor-pointer select-none",
+                  activeTab === 'all'
+                    ? "bg-zinc-800 text-white border-zinc-600 shadow-sm font-black"
+                    : "bg-background/60 text-muted-foreground border-border/50 hover:bg-muted hover:text-white"
+                )}
+              >
+                <Layers className="h-3.5 w-3.5 text-amber-400" />
+                <span>All Categories</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('bills')}
+                className={cn(
+                  "h-8 px-3 text-xs font-black uppercase tracking-wider gap-1.5 rounded-lg border transition-all inline-flex items-center justify-center cursor-pointer select-none",
+                  activeTab === 'bills'
+                    ? "bg-sky-500 text-white border-sky-400 shadow-md ring-1 ring-sky-300/50 font-black"
+                    : "bg-background/60 text-muted-foreground border-border/50 hover:bg-muted hover:text-white"
+                )}
+              >
+                <Receipt className="h-3.5 w-3.5 text-sky-400" />
+                <span>Bills</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('salaries')}
+                className={cn(
+                  "h-8 px-3 text-xs font-black uppercase tracking-wider gap-1.5 rounded-lg border transition-all inline-flex items-center justify-center cursor-pointer select-none",
+                  activeTab === 'salaries'
+                    ? "bg-indigo-600 text-white border-indigo-400 shadow-md ring-1 ring-indigo-300/50 font-black"
+                    : "bg-background/60 text-muted-foreground border-border/50 hover:bg-muted hover:text-white"
+                )}
+              >
+                <Building className="h-3.5 w-3.5 text-indigo-400" />
+                <span>Salaries</span>
+              </button>
             </div>
           </div>
         </div>
 
         {/* QUICK URGENCY FILTER BAR FOR DUE ITEMS */}
-        {activeTab !== 'expenses' && activeTab !== 'paid' && (
-          <div className="flex items-center gap-2 p-3 bg-muted/15 border-b border-border/40 overflow-x-auto">
-            <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider shrink-0 flex items-center gap-1">
-              <Filter className="h-3 w-3 text-rose-400" /> Urgency Filter:
+        <div className="flex items-center gap-2 p-3 bg-muted/15 border-b border-border/40 overflow-x-auto">
+            <span className="text-xs font-black uppercase text-muted-foreground tracking-wider shrink-0 flex items-center gap-1 mr-1">
+              <Filter className="h-3.5 w-3.5 text-rose-400" /> Urgency Filter:
             </span>
 
             <Button
               size="sm"
               variant={urgencyFilter === 'all' ? 'default' : 'outline'}
               onClick={() => setUrgencyFilter('all')}
-              className={cn("h-7 px-2.5 text-[10px] font-extrabold uppercase rounded-lg", urgencyFilter === 'all' && 'bg-rose-600 text-white')}
+              className={cn(
+                "h-8 px-3 text-xs font-black uppercase rounded-lg transition-all",
+                urgencyFilter === 'all'
+                  ? "bg-rose-600 text-white shadow-md shadow-rose-900/30 ring-1 ring-rose-400"
+                  : "bg-background/80 text-foreground border-border/70 hover:bg-muted"
+              )}
             >
-              All ({dueItems.length})
+              All Urgencies
             </Button>
 
             <Button
               size="sm"
               variant={urgencyFilter === 'urgent' ? 'default' : 'outline'}
               onClick={() => setUrgencyFilter('urgent')}
-              className={cn("h-7 px-2.5 text-[10px] font-extrabold uppercase rounded-lg gap-1", urgencyFilter === 'urgent' && 'bg-amber-500 text-black font-black')}
+              className={cn(
+                "h-8 px-3 text-xs font-black uppercase rounded-lg gap-1.5 transition-all",
+                urgencyFilter === 'urgent'
+                  ? "bg-amber-500 text-black font-black shadow-md ring-1 ring-amber-300"
+                  : "bg-background/80 text-foreground border-border/70 hover:bg-muted"
+              )}
             >
               🔥 Urgent ≤3 Days ({dueItems.filter(i => !i.isPaidInSelectedMonth && (i.isOverdue || i.isDueToday || i.daysLeft <= 3)).length})
             </Button>
@@ -975,7 +1451,12 @@ export function ExecutiveExpensesHub() {
               size="sm"
               variant={urgencyFilter === 'week' ? 'default' : 'outline'}
               onClick={() => setUrgencyFilter('week')}
-              className={cn("h-7 px-2.5 text-[10px] font-extrabold uppercase rounded-lg gap-1", urgencyFilter === 'week' && 'bg-yellow-500 text-black')}
+              className={cn(
+                "h-8 px-3 text-xs font-black uppercase rounded-lg gap-1.5 transition-all",
+                urgencyFilter === 'week'
+                  ? "bg-yellow-500 text-black font-black shadow-md ring-1 ring-yellow-300"
+                  : "bg-background/80 text-foreground border-border/70 hover:bg-muted"
+              )}
             >
               ⏳ This Week ≤7 Days ({dueItems.filter(i => !i.isPaidInSelectedMonth && (i.isOverdue || i.isDueToday || i.daysLeft <= 7)).length})
             </Button>
@@ -985,7 +1466,12 @@ export function ExecutiveExpensesHub() {
                 size="sm"
                 variant={urgencyFilter === 'overdue' ? 'default' : 'outline'}
                 onClick={() => setUrgencyFilter('overdue')}
-                className={cn("h-7 px-2.5 text-[10px] font-extrabold uppercase rounded-lg gap-1 animate-pulse", urgencyFilter === 'overdue' ? 'bg-rose-600 text-white' : 'border-rose-500/50 text-rose-400')}
+                className={cn(
+                  "h-8 px-3 text-xs font-black uppercase rounded-lg gap-1.5 animate-pulse transition-all",
+                  urgencyFilter === 'overdue'
+                    ? "bg-rose-600 text-white shadow-md ring-1 ring-rose-300"
+                    : "border-rose-500/50 text-rose-400 bg-rose-950/20 hover:bg-rose-950/40"
+                )}
               >
                 🚨 Overdue / Today ({dueItems.filter(i => !i.isPaidInSelectedMonth && (i.isOverdue || i.isDueToday)).length})
               </Button>
@@ -995,20 +1481,30 @@ export function ExecutiveExpensesHub() {
               size="sm"
               variant={urgencyFilter === 'unpaid' ? 'default' : 'outline'}
               onClick={() => setUrgencyFilter('unpaid')}
-              className={cn("h-7 px-2.5 text-[10px] font-extrabold uppercase rounded-lg", urgencyFilter === 'unpaid' && 'bg-emerald-600 text-white')}
+              className={cn(
+                "h-8 px-3 text-xs font-black uppercase rounded-lg transition-all",
+                urgencyFilter === 'unpaid'
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-900/30 ring-1 ring-emerald-400"
+                  : "bg-background/80 text-foreground border-border/70 hover:bg-muted"
+              )}
             >
               Unpaid Only ({financialSummary.dueItemsCount})
             </Button>
           </div>
-        )}
 
         <div>
           {/* TAB CONTENT: DUE ITEMS (ALL / BILLS / SALARIES) */}
-          {activeTab !== 'expenses' && activeTab !== 'paid' && (
-            <div className="p-4 space-y-3">
+          <div className="p-4 space-y-3">
               {filteredDueItems.length === 0 ? (
-                <div className="p-12 text-center text-muted-foreground font-bold uppercase text-xs">
-                  No upcoming due items match your filter for {selectedMonthLabel}.
+                <div className="p-12 text-center text-muted-foreground font-bold uppercase text-xs space-y-2">
+                  <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-400/60" />
+                  <p>
+                    {paymentStatusFilter === 'payable'
+                      ? `All obligations settled for ${selectedMonthLabel}! No payable items remaining.`
+                      : paymentStatusFilter === 'paid'
+                      ? `No payments settled yet for ${selectedMonthLabel}.`
+                      : `No items match your filter for ${selectedMonthLabel}.`}
+                  </p>
                 </div>
               ) : (
                 filteredDueItems.map((item) => {
@@ -1137,19 +1633,64 @@ export function ExecutiveExpensesHub() {
                           )}
 
                           {item.type === 'salary' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const empElement = document.getElementById(`emp-card-${item.raw.id}`);
-                                if (empElement) {
-                                  empElement.scrollIntoView({ behavior: 'smooth' });
-                                }
-                              }}
-                              className="h-9 px-3.5 text-xs font-bold uppercase border-indigo-500/40 text-indigo-300 bg-indigo-950/20 hover:bg-indigo-600/30 gap-1.5 rounded-lg shadow-sm"
-                            >
-                              <Building className="h-4 w-4" /> Manage Salary
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              {item.isPaidInSelectedMonth ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    disabled={isSubmitting}
+                                    onClick={() => handleUndoSalaryPayment(item.raw?.matchingSalaryPayment?.id, item.raw?.id, item.title)}
+                                    className="h-9 px-3.5 text-xs font-bold uppercase bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 gap-1.5 rounded-lg shadow-sm active:scale-95 transition-all"
+                                    title="Undo Salary Settlement for this Cycle"
+                                  >
+                                    <RotateCcw className="h-4 w-4" /> Undo Payment
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const empElement = document.getElementById(`emp-card-${item.raw.id}`);
+                                      if (empElement) {
+                                        empElement.scrollIntoView({ behavior: 'smooth' });
+                                      }
+                                    }}
+                                    className="h-9 px-3 text-xs font-bold uppercase border-indigo-500/40 text-indigo-300 bg-indigo-950/20 hover:bg-indigo-600/30 gap-1 rounded-lg shadow-sm"
+                                    title="View Staff Profile Card"
+                                  >
+                                    <Building className="h-3.5 w-3.5" /> Staff Card
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    disabled={isSubmitting}
+                                    onClick={() => {
+                                      const cycle = getCycleInfo(item.raw.joinDate, item.raw.lastSalaryPaidDate, item.raw.lastSalaryPaidCycle);
+                                      handleOpenPaySalaryModal(item.raw, item.amount, cycle.scheduledCycleKey || cycle.currentCycleKey);
+                                    }}
+                                    className="h-9 px-4 text-xs font-black uppercase bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 rounded-lg shadow-md shadow-emerald-900/40 active:scale-95 transition-all"
+                                    title="Mark Salary Paid"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" /> Mark Paid
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const empElement = document.getElementById(`emp-card-${item.raw.id}`);
+                                      if (empElement) {
+                                        empElement.scrollIntoView({ behavior: 'smooth' });
+                                      }
+                                    }}
+                                    className="h-9 px-3 text-xs font-bold uppercase border-indigo-500/40 text-indigo-300 bg-indigo-950/20 hover:bg-indigo-600/30 gap-1 rounded-lg shadow-sm"
+                                    title="View Staff Profile Card"
+                                  >
+                                    <Building className="h-3.5 w-3.5" /> Staff Card
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           )}
 
                           {item.type === 'debt' && (
@@ -1169,153 +1710,6 @@ export function ExecutiveExpensesHub() {
                 })
               )}
             </div>
-          )}
-
-          {/* TAB CONTENT: PAID BILLS HISTORY */}
-          {activeTab === 'paid' && (
-            <Table>
-              <TableHead>
-                <TableRow className="border-b border-border/40 text-[10px] uppercase font-bold text-muted-foreground">
-                  <TableHeader>Date Paid &amp; Bill Name</TableHeader>
-                  <TableHeader>Bill Type</TableHeader>
-                  <TableHeader>Payment Method</TableHeader>
-                  <TableHeader>Recorded By</TableHeader>
-                  <TableHeader>Next Recycled Due Date</TableHeader>
-                  <TableHeader className="text-right">Amount Paid</TableHeader>
-                  <TableHeader className="text-right">Action</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredPaidBills.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground font-bold text-xs uppercase">
-                      No paid bill records found for {selectedMonthLabel}.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredPaidBills.map((pb) => (
-                    <TableRow key={pb.id} className="border-b border-border/30 hover:bg-muted/10 font-mono text-xs">
-                      <TableCell className="py-3">
-                        <div>
-                          <p className="font-extrabold uppercase text-foreground flex items-center gap-2">
-                            {pb.name}
-                            {pb.isVariable && (
-                              <Badge className="text-[8px] font-mono font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                VARIABLE
-                              </Badge>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Paid: {safeFormatDate(pb.paidAt, 'dd MMM yyyy, HH:mm')}
-                          </p>
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="py-3">
-                        <Badge variant="outline" className="text-[10px] font-bold uppercase border-border/60">
-                          {pb.repeatCycle || 'Monthly'} Bill
-                        </Badge>
-                      </TableCell>
-
-                      <TableCell className="py-3 uppercase text-[10px] font-bold text-muted-foreground">
-                        {pb.paymentMethod || 'UPI'}
-                      </TableCell>
-
-                      <TableCell className="py-3 text-[10px] font-bold text-muted-foreground">
-                        {pb.paidBy?.displayName || 'Viren'}
-                      </TableCell>
-
-                      <TableCell className="py-3 text-[10px] font-bold text-emerald-400">
-                        {safeFormatDate(pb.nextDueDate, 'dd MMM yyyy')}
-                      </TableCell>
-
-                      <TableCell className="py-3 text-right font-extrabold text-emerald-400">
-                        ₹{(pb.amountPaid || 0).toLocaleString()}
-                      </TableCell>
-
-                      <TableCell className="py-3 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUndoPaidRecord(pb.id, pb.billId, pb.name)}
-                          className="h-7 px-2 text-[10px] font-bold uppercase border-amber-500/30 text-amber-400 hover:bg-amber-500/10 gap-1 rounded-md"
-                          title="Undo Payment Record"
-                        >
-                          <RotateCcw className="h-3 w-3" /> Undo
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-
-          {/* TAB CONTENT: LOGGED EXPENSES HISTORY AUDIT TABLE */}
-          {activeTab === 'expenses' && (
-            <Table>
-              <TableHead>
-                <TableRow className="border-b border-border/40 text-[10px] uppercase font-bold text-muted-foreground">
-                  <TableHeader>Date &amp; Description</TableHeader>
-                  <TableHeader>Category</TableHeader>
-                  <TableHeader>Payment</TableHeader>
-                  <TableHeader>Logged By</TableHeader>
-                  <TableHeader className="text-right">Amount</TableHeader>
-                  <TableHeader className="text-right">Action</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredLoggedExpenses.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground font-bold text-xs uppercase">
-                      No logged expenses recorded for {selectedMonthLabel}.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLoggedExpenses.map((exp) => (
-                    <TableRow key={exp.id} className="border-b border-border/30 hover:bg-muted/10 font-mono text-xs">
-                      <TableCell className="py-3">
-                        <div>
-                          <p className="font-extrabold uppercase text-foreground">{exp.description}</p>
-                          <p className="text-[10px] text-muted-foreground">{safeFormatDate(exp.timestamp, 'dd MMM yyyy, HH:mm')}</p>
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="py-3">
-                        <Badge variant="outline" className="text-[10px] font-bold uppercase border-border/60">
-                          {exp.category || 'General'}
-                        </Badge>
-                      </TableCell>
-
-                      <TableCell className="py-3 uppercase text-[10px] font-bold text-muted-foreground">
-                        {exp.paymentMethod || 'UPI'}
-                      </TableCell>
-
-                      <TableCell className="py-3 text-[10px] font-bold text-muted-foreground">
-                        {exp.addedBy?.displayName || 'Viren'}
-                      </TableCell>
-
-                      <TableCell className="py-3 text-right font-extrabold text-rose-400">
-                        ₹{(exp.amount || 0).toLocaleString()}
-                      </TableCell>
-
-                      <TableCell className="py-3 text-right">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDeleteExpense(exp.id, exp.description)}
-                          className="h-7 w-7 text-muted-foreground hover:text-rose-400 rounded-md"
-                          title="Delete Expense"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
         </div>
       </Card>
 
@@ -1381,6 +1775,129 @@ export function ExecutiveExpensesHub() {
               className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-xs tracking-wider shadow-lg flex-1"
             >
               {isSubmitting ? 'Recording Payment...' : 'Confirm Paid & Recycle Date'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 0.5: MARK SALARY PAID (ACCOUNTS PAYABLE SYSTEM) */}
+      <Dialog open={isPaySalaryModalOpen} onOpenChange={setIsPaySalaryModalOpen}>
+        <DialogContent className="sm:max-w-md font-body">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-500" /> Confirm Staff Salary Payout
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase text-muted-foreground">
+              {paySalaryTarget?.displayName} &bull; Settle payroll and record to Accounts Paid.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            {/* Staff info & Base Salary */}
+            <div className="p-3.5 rounded-xl bg-muted/20 border border-border/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold uppercase text-sm text-foreground">{paySalaryTarget?.displayName}</h4>
+                  <p className="text-[10px] text-muted-foreground font-mono">@{paySalaryTarget?.username} &bull; {paySalaryTarget?.role}</p>
+                </div>
+                <Badge variant="outline" className="border-indigo-500/30 text-indigo-400 font-mono text-[10px]">
+                  Cycle: {paySalaryCycleKey}
+                </Badge>
+              </div>
+
+              {/* Adjustments Breakdown */}
+              {paySalaryTarget && (() => {
+                const adjustments = paySalaryTarget.salaryAdjustments || [];
+                const activeAdvances = adjustments.filter(a => a.status === 'active' && a.type === 'advance').reduce((s, a) => s + a.amount, 0);
+                const activeDeductions = adjustments.filter(a => a.status === 'active' && (a.type === 'deduction' || a.type === 'meal_overage')).reduce((s, a) => s + a.amount, 0);
+                const activeBonuses = adjustments.filter(a => a.status === 'active' && a.type === 'bonus').reduce((s, a) => s + a.amount, 0);
+                return (
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/30 text-[10px] font-mono">
+                    <div>
+                      <span className="text-muted-foreground block">Base Salary:</span>
+                      <strong className="text-foreground">₹{(paySalaryTarget.salary || 0).toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block">Deductions/Adv:</span>
+                      <strong className="text-rose-400">-₹{(activeAdvances + activeDeductions).toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block">Bonuses:</span>
+                      <strong className="text-emerald-400">+₹{activeBonuses.toLocaleString()}</strong>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Payout Amount Field */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">
+                Net Salary Payout Amount (₹)
+              </Label>
+              <Input
+                type="number"
+                value={paySalaryAmount}
+                onChange={e => setPaySalaryAmount(e.target.value)}
+                placeholder="Enter payout amount"
+                className="font-mono font-bold text-lg h-11"
+              />
+            </div>
+
+            {/* Payment Method */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Payment Method</Label>
+              <Select value={paySalaryMethod} onValueChange={setPaySalaryMethod}>
+                <SelectTrigger className="font-bold text-xs uppercase h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UPI" className="text-xs uppercase font-bold">UPI (GPay / PhonePe / Paytm)</SelectItem>
+                  <SelectItem value="Cash" className="text-xs uppercase font-bold">Cash</SelectItem>
+                  <SelectItem value="Bank Transfer" className="text-xs uppercase font-bold">Bank Transfer (NEFT/IMPS)</SelectItem>
+                  <SelectItem value="Cheque" className="text-xs uppercase font-bold">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Note / Memo */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Payment Memo / Note</Label>
+              <Input
+                value={paySalaryNote}
+                onChange={e => setPaySalaryNote(e.target.value)}
+                placeholder="e.g. Monthly salary payout cleared"
+                className="font-medium text-xs h-10"
+              />
+            </div>
+
+            {/* Settle Active Adjustments Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/40">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-bold uppercase text-foreground">
+                  Mark Active Advances &amp; Deductions Settled
+                </Label>
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Automatically clears active advances &amp; meal overages with this payout.
+                </p>
+              </div>
+              <Switch
+                checked={paySalarySettleAdjustments}
+                onCheckedChange={setPaySalarySettleAdjustments}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setIsPaySalaryModalOpen(false)} className="h-11 font-bold text-xs uppercase">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmPaySalary}
+              disabled={isSubmitting}
+              className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-xs tracking-wider shadow-lg flex-1"
+            >
+              {isSubmitting ? 'Recording Payout...' : 'Confirm Paid & Move to Paid Hub'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1571,6 +2088,145 @@ export function ExecutiveExpensesHub() {
               className="w-full h-12 font-bold uppercase text-xs tracking-wider shadow-lg"
             >
               {editingBill ? 'Save Changes' : 'Create Recurring Record'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: LOG & EDIT SALARY PAYOUT */}
+      <Dialog open={isLogSalaryOpen} onOpenChange={setIsLogSalaryOpen}>
+        <DialogContent className="sm:max-w-md font-body">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl flex items-center gap-2">
+              <Building className="text-indigo-400" /> {editingSalaryPayment ? 'Edit Salary Payment' : 'Log Staff Salary Payout'}
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase text-muted-foreground">
+              {editingSalaryPayment ? `Modify recorded payout for ${editingSalaryPayment.employeeDisplayName}` : 'Record a new salary payment for your staff roster'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            {/* Employee Selector (or locked display if editing) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Staff Member</Label>
+              {editingSalaryPayment ? (
+                <div className="p-3 rounded-xl bg-muted/30 border border-border/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-extrabold uppercase text-sm text-foreground">{editingSalaryPayment.employeeDisplayName}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">@{editingSalaryPayment.employeeUsername}</p>
+                  </div>
+                  <Badge variant="outline" className="border-indigo-500/30 text-indigo-400 font-mono text-[10px]">
+                    Cycle: {editingSalaryPayment.cycleKey}
+                  </Badge>
+                </div>
+              ) : (
+                <Select
+                  value={salaryForm.employeeId}
+                  onValueChange={(val) => {
+                    const emp = (employees || []).find(e => e.id === val);
+                    setSalaryForm(p => ({
+                      ...p,
+                      employeeId: val,
+                      amountPaid: emp?.salary ? emp.salary.toString() : p.amountPaid
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="font-bold text-xs uppercase h-10">
+                    <SelectValue placeholder="Select Staff Member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(employees || []).filter(e => e.username?.toLowerCase() !== 'viren').map(emp => (
+                      <SelectItem key={emp.id} value={emp.id} className="text-xs font-bold uppercase">
+                        {emp.displayName} (Base: ₹{(emp.salary || 0).toLocaleString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Amount Paid */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Amount Paid (₹)</Label>
+              <Input
+                type="number"
+                value={salaryForm.amountPaid}
+                onChange={e => setSalaryForm(p => ({ ...p, amountPaid: e.target.value }))}
+                placeholder="e.g. 6000"
+                className="font-mono font-bold text-lg h-11"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Target Cycle Month */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase text-muted-foreground">Cycle Month</Label>
+                <Select
+                  value={salaryForm.cycleKey}
+                  onValueChange={val => setSalaryForm(p => ({ ...p, cycleKey: val }))}
+                >
+                  <SelectTrigger className="font-mono font-bold text-xs h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map(opt => (
+                      <SelectItem key={opt.key} value={opt.key} className="text-xs font-bold font-mono">
+                        {opt.key}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase text-muted-foreground">Payment Mode</Label>
+                <Input
+                  value={salaryForm.paymentMethod}
+                  onChange={e => setSalaryForm(p => ({ ...p, paymentMethod: e.target.value }))}
+                  placeholder="UPI / Cash / Bank"
+                  className="font-bold text-xs uppercase h-10"
+                />
+              </div>
+            </div>
+
+            {/* Date & Time Paid */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Date &amp; Time Paid</Label>
+              <Input
+                type="datetime-local"
+                value={salaryForm.paidAt}
+                onChange={e => setSalaryForm(p => ({ ...p, paidAt: e.target.value }))}
+                className="font-mono text-xs h-10"
+              />
+            </div>
+
+            {/* Notes / Reference */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Notes / Remarks</Label>
+              <Input
+                value={salaryForm.note}
+                onChange={e => setSalaryForm(p => ({ ...p, note: e.target.value }))}
+                placeholder="Optional remark e.g. Early payment, Cash + UPI split"
+                className="text-xs h-10"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsLogSalaryOpen(false)}
+              className="text-xs font-bold uppercase"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveSalaryPayment}
+              disabled={isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold uppercase text-xs tracking-wider shadow-lg"
+            >
+              {editingSalaryPayment ? 'Update Record' : 'Record Salary Payout'}
             </Button>
           </DialogFooter>
         </DialogContent>

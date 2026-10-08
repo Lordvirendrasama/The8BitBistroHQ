@@ -180,6 +180,8 @@ export type LogEntryType =
     | 'REWARD_DELETED'
     | 'REFERRAL_BONUS'
     | 'STAFF_FOOD_ORDER'
+    | 'STAFF_SALARY_PAID'
+    | 'SALARY_PAYMENT_UNDONE'
     | 'ADMIN_LOGIN';
 
 export interface LogEntry {
@@ -480,10 +482,31 @@ export interface PaidBill {
   paymentMethod?: string;
   paidAt: string;
   nextDueDate?: string;
+  isVariable?: boolean;
   paidBy: {
     uid: string;
     displayName: string;
   };
+}
+
+export interface SalaryPayment {
+  id: string;
+  employeeId: string;
+  employeeUsername: string;
+  employeeDisplayName: string;
+  amountPaid: number;
+  baseSalary: number;
+  advancesSettled: number;
+  deductionsSettled: number;
+  bonusesAdded: number;
+  cycleKey: string;
+  paidAt: string;
+  paymentMethod?: string;
+  paidBy: {
+    uid: string;
+    displayName: string;
+  };
+  note?: string;
 }
 
 export interface InventoryPurchase {
@@ -548,6 +571,9 @@ export interface Employee {
   assignedShift?: 'opening' | 'closing' | 'both' | string;
   foodAllowanceBalance?: number;
   lastQuotaResetCycle?: string;
+  lastSalaryPaidCycle?: string;
+  lastSalaryPaidDate?: string;
+  lastSalaryAmount?: number;
   salaryAdjustments?: SalaryAdjustment[];
 }
 

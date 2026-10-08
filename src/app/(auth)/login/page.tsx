@@ -356,12 +356,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleViewAttendance = (emp: Employee) => {
-    setPendingUser(emp);
-    setRedirectUrl('/attendance');
-    setIsPinModalOpen(true);
-  };
-
   const handleLogoutClick = (emp: Employee, shift?: Shift) => {
     setLogoutTargetUser(emp);
     setLogoutTargetShift(shift || null);
@@ -629,31 +623,22 @@ export default function LoginPage() {
                                     )}
                                 </Button>
                                 
-                                {/* Three-Dot Option Menu */}
-                                <div className="absolute top-1.5 right-1.5 z-20">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-6 w-6 rounded-full hover:bg-foreground/5 text-muted-foreground/60 hover:text-foreground"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <MoreVertical className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="font-body w-36 border-2">
-                                            <DropdownMenuLabel className="text-sm font-bold uppercase text-muted-foreground tracking-normal px-2 py-1.5">Console Menu</DropdownMenuLabel>
-                                            <DropdownMenuItem 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleViewAttendance(emp);
-                                                }}
-                                                className="font-bold text-sm uppercase cursor-pointer"
-                                            >
-                                                View Attendance
-                                            </DropdownMenuItem>
-                                            {isOnline && (
+                                {/* Three-Dot Option Menu (Only shown when employee is online for quick logout) */}
+                                {isOnline && (
+                                    <div className="absolute top-1.5 right-1.5 z-20">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-6 w-6 rounded-full hover:bg-foreground/5 text-muted-foreground/60 hover:text-foreground"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <MoreVertical className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="font-body w-36 border-2">
+                                                <DropdownMenuLabel className="text-sm font-bold uppercase text-muted-foreground tracking-normal px-2 py-1.5">Console Menu</DropdownMenuLabel>
                                                 <DropdownMenuItem 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -663,10 +648,10 @@ export default function LoginPage() {
                                                 >
                                                     Logout
                                                 </DropdownMenuItem>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

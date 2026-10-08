@@ -16,7 +16,11 @@ import { cn } from '@/lib/utils';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function getCycleInfo(joinDateStr?: string) {
+export function getCycleInfo(
+  joinDateStr?: string,
+  lastSalaryPaidDateStr?: string,
+  lastSalaryPaidCycleStr?: string
+) {
   if (!joinDateStr) {
     const now = new Date();
     const cycleStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -28,7 +32,9 @@ export function getCycleInfo(joinDateStr?: string) {
       nextResetFormatted: '1st of next month',
       daysLeft: 0,
       isToday: false,
+      isPaidThisCycle: false,
       currentCycleKey: `${cycleStart.toISOString().slice(0, 10)}_to_${cycleEnd.toISOString().slice(0, 10)}`,
+      scheduledCycleKey: `${cycleStart.toISOString().slice(0, 10)}_to_${cycleEnd.toISOString().slice(0, 10)}`,
       cycleStartDate: cycleStart,
       cycleEndDate: cycleEnd,
     };
@@ -62,45 +68,62 @@ export function getCycleInfo(joinDateStr?: string) {
 
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
 
+  // Scheduled cycle window for current month's reset day:
+  // Runs from (joinDay + 1) of previous month to joinDay of this month
+  const prevMonthIndex = currentMonth - 1;
+  const prevMonthYear = prevMonthIndex < 0 ? currentYear - 1 : currentYear;
+  const normalizedPrevMonthIndex = (prevMonthIndex + 12) % 12;
+  const daysInPrevMonth = new Date(prevMonthYear, normalizedPrevMonthIndex + 1, 0).getDate();
+  const startDayPrevMonth = Math.min(joinDay + 1, daysInPrevMonth);
+  const thisMonthCycleStart = new Date(prevMonthYear, normalizedPrevMonthIndex, startDayPrevMonth, 0, 0, 0, 0);
+  const thisMonthCycleEnd = new Date(currentYear, currentMonth, targetDayThisMonth, 23, 59, 59, 999);
+
+  const scheduledCycleKey = `${thisMonthCycleStart.toISOString().slice(0, 10)}_to_${thisMonthCycleEnd.toISOString().slice(0, 10)}`;
+
+  // Check if current month's salary has already been paid
+  let isPaidThisCycle = false;
+  if (lastSalaryPaidCycleStr && (lastSalaryPaidCycleStr === scheduledCycleKey || lastSalaryPaidCycleStr.includes(thisMonthCycleEnd.toISOString().slice(0, 7)))) {
+    isPaidThisCycle = true;
+  } else if (lastSalaryPaidDateStr) {
+    const paidDate = new Date(lastSalaryPaidDateStr);
+    if (!isNaN(paidDate.getTime())) {
+      const diffDays = (todayStart.getTime() - paidDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (paidDate >= thisMonthCycleStart && diffDays <= 35) {
+        isPaidThisCycle = true;
+      }
+    }
+  }
+
   let nextReset: Date;
-  if (resetThisMonth.getTime() >= todayStart.getTime()) {
-    nextReset = resetThisMonth;
-  } else {
+  let effectiveCycleStart: Date;
+  let effectiveCycleEnd: Date;
+
+  if (isPaidThisCycle) {
+    // Current cycle settled! Next reset moves to next month and new cycle starts on (joinDay + 1)
     const nextMonth = currentMonth + 1;
     const daysInNextMonth = new Date(currentYear, nextMonth + 1, 0).getDate();
     const targetDayNextMonth = Math.min(joinDay, daysInNextMonth);
     nextReset = new Date(currentYear, nextMonth, targetDayNextMonth);
+
+    const startDayThisMonth = Math.min(joinDay + 1, daysInCurrentMonth);
+    effectiveCycleStart = new Date(currentYear, currentMonth, startDayThisMonth, 0, 0, 0, 0);
+    effectiveCycleEnd = new Date(currentYear, nextMonth, targetDayNextMonth, 23, 59, 59, 999);
+  } else {
+    // Current cycle not yet paid
+    if (resetThisMonth.getTime() >= todayStart.getTime()) {
+      nextReset = resetThisMonth;
+    } else {
+      nextReset = resetThisMonth; // Overdue
+    }
+    effectiveCycleStart = thisMonthCycleStart;
+    effectiveCycleEnd = thisMonthCycleEnd;
   }
 
   const diffMs = nextReset.getTime() - todayStart.getTime();
   const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  const isToday = resetThisMonth.getTime() === todayStart.getTime();
+  const isToday = !isPaidThisCycle && resetThisMonth.getTime() === todayStart.getTime();
 
-  // Determine current salary/quota cycle window:
-  // If nextReset > todayStart, the current cycle started exactly 1 month prior to nextReset.
-  // If today is salary day (daysLeft === 0 / isToday), a new cycle starts today!
-  const cycleEnd = new Date(nextReset);
-  cycleEnd.setHours(23, 59, 59, 999);
-
-  const cycleStart = new Date(nextReset);
-  cycleStart.setMonth(cycleStart.getMonth() - 1);
-  // Guard day bounds for previous month length
-  const daysInPrevMonth = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 0).getDate();
-  cycleStart.setDate(Math.min(joinDay, daysInPrevMonth));
-  cycleStart.setHours(0, 0, 0, 0);
-
-  // If today is the reset day, current cycle started today and ends next month!
-  let effectiveCycleStart = cycleStart;
-  let effectiveCycleEnd = cycleEnd;
-  let currentCycleKey = `${effectiveCycleStart.toISOString().slice(0, 10)}_to_${effectiveCycleEnd.toISOString().slice(0, 10)}`;
-
-  if (isToday) {
-    effectiveCycleStart = new Date(todayStart);
-    const followingMonth = new Date(now.getFullYear(), now.getMonth() + 1, Math.min(joinDay, new Date(now.getFullYear(), now.getMonth() + 2, 0).getDate()));
-    followingMonth.setHours(23, 59, 59, 999);
-    effectiveCycleEnd = followingMonth;
-    currentCycleKey = `${effectiveCycleStart.toISOString().slice(0, 10)}_to_${effectiveCycleEnd.toISOString().slice(0, 10)}`;
-  }
+  const currentCycleKey = `${effectiveCycleStart.toISOString().slice(0, 10)}_to_${effectiveCycleEnd.toISOString().slice(0, 10)}`;
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const joinDateFormatted = isNaN(d.getTime()) ? joinDateStr : `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
@@ -113,7 +136,9 @@ export function getCycleInfo(joinDateStr?: string) {
     nextResetFormatted,
     daysLeft,
     isToday,
+    isPaidThisCycle,
     currentCycleKey,
+    scheduledCycleKey,
     cycleStartDate: effectiveCycleStart,
     cycleEndDate: effectiveCycleEnd,
   };

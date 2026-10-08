@@ -29,6 +29,7 @@ import { GuestLoginWizardModal } from '@/components/dashboard/guest-login-wizard
 import { useToast } from '@/hooks/use-toast';
 import { updateEmployee } from '@/firebase/firestore/employees';
 import { updateStation } from '@/firebase/firestore/stations';
+import { recordSalaryPayment } from '@/firebase/firestore/financials';
 import { getSyncedDate } from '@/lib/synced-time';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getCycleInfo } from '@/components/owner-pulse/owner-pulse-employee-intel';
@@ -449,7 +450,7 @@ export default function OwnerMainPage() {
 
   // 2. Mark Salary Paid (With optional settlement of active advances/deductions)
   const handleMarkSalaryPaid = async () => {
-    if (!salaryEmployee) return;
+    if (!salaryEmployee || !user) return;
     const baseSalary = salaryEmployee.salary || 0;
     const adjustments = salaryEmployee.salaryAdjustments || [];
     const activeAdvances = adjustments.filter(a => a.status === 'active' && a.type === 'advance').reduce((s, a) => s + a.amount, 0);
@@ -458,35 +459,40 @@ export default function OwnerMainPage() {
     const netSalary = Math.max(0, baseSalary + activeBonuses - activeAdvances - activeDeductions);
 
     try {
-      const cycle = getCycleInfo(salaryEmployee.joinDate);
+      const cycle = getCycleInfo(salaryEmployee.joinDate, salaryEmployee.lastSalaryPaidDate, salaryEmployee.lastSalaryPaidCycle);
       const settledTimestamp = new Date().toISOString();
       const updatedAdjustments = settleAdjustmentsWithSalary && adjustments.length > 0
         ? adjustments.map(a => a.status === 'active' ? { ...a, status: 'settled' as const, settledAt: settledTimestamp } : a)
         : adjustments;
 
-      await updateEmployee(salaryEmployee.id, {
-        foodAllowanceBalance: 1000,
-        lastQuotaResetCycle: cycle.currentCycleKey,
-        ...(settleAdjustmentsWithSalary && adjustments.length > 0 ? { salaryAdjustments: updatedAdjustments } : {})
-      });
+      const employeeWithAdjustments = {
+        ...salaryEmployee,
+        salaryAdjustments: updatedAdjustments
+      };
 
-      if (db) {
-        await addDoc(collection(db, 'logs'), {
-          type: 'SHIFT_UPDATED',
-          description: `Viren marked salary as <strong>PAID</strong> for <strong>${salaryEmployee.displayName}</strong>. Net Paid: <strong>₹${netSalary.toLocaleString()}</strong> (Base: ₹${baseSalary.toLocaleString()}, Advances Settled: ₹${activeAdvances.toLocaleString()}, Deductions/Meal Overages Settled: ₹${activeDeductions.toLocaleString()}). Note: ${salaryNote || 'Salary cycle cleared'}.`,
-          timestamp: new Date().toISOString(),
-          user: { uid: 'Viren', displayName: 'Viren (Owner)' }
-        });
-      }
+      await recordSalaryPayment(
+        employeeWithAdjustments,
+        {
+          amountPaid: netSalary,
+          baseSalary,
+          advancesSettled: activeAdvances,
+          deductionsSettled: activeDeductions,
+          bonusesAdded: activeBonuses,
+          cycleKey: cycle.scheduledCycleKey || cycle.currentCycleKey,
+          note: salaryNote || 'Monthly salary cycle cleared',
+          paymentMethod: 'UPI / Cash',
+        },
+        user
+      );
 
       toast({
         title: "Salary Marked Paid",
-        description: `Logged ₹${netSalary.toLocaleString()} net salary payment for ${salaryEmployee.displayName}.`,
+        description: `Logged ₹${netSalary.toLocaleString()} net salary payment for ${salaryEmployee.displayName}. Next cycle starts from the ${(cycle.joinDay || 1) + 1}th.`,
       });
       setSalaryEmployee(null);
       setSalaryNote('');
-    } catch (err) {
-      toast({ variant: 'destructive', title: "Action Failed" });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: "Action Failed", description: err.message });
     }
   };
 
@@ -799,7 +805,7 @@ export default function OwnerMainPage() {
 
       {/* MINIMAL EXECUTIVE GRID */}
       <div className="space-y-8">
-        {/* 0. EXECUTIVE EXPENSES & UPCOMING DUE DATES HUB */}
+        {/* 0. ACCOUNTS PAYABLE SYSTEM (UPCOMING DUE OBLIGATIONS) */}
         <ExecutiveExpensesHub />
 
         {/* 1. EMPLOYEE & WORKFORCE CYCLE HUB (STAFF TEAM) */}
@@ -815,12 +821,14 @@ export default function OwnerMainPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(employees || []).filter(e => e.username?.toLowerCase() !== 'viren').map((emp) => {
-              const cycle = getCycleInfo(emp.joinDate);
+              const cycle = getCycleInfo(emp.joinDate, emp.lastSalaryPaidDate, emp.lastSalaryPaidCycle);
               const dailyRate = Math.round((emp.salary || 0) / 30);
+              const cycleStartDateISO = cycle.cycleStartDate.toISOString().slice(0, 10);
               const empAllShifts = (shifts || []).filter(
                 (s) => s.staffId === emp.username || s.employeeId === emp.username || s.employees?.some(e => e.username === emp.username)
               );
-              const absentShifts = empAllShifts.filter((s) => s.attendanceStatus === 'Absent');
+              // Filter absent shifts to current active cycle only
+              const absentShifts = empAllShifts.filter((s) => s.attendanceStatus === 'Absent' && s.date >= cycleStartDateISO);
               const absentCount = absentShifts.length;
               const totalAbsentShiftPenalty = absentCount * dailyRate;
 
@@ -859,8 +867,15 @@ export default function OwnerMainPage() {
                       <Badge variant="secondary" className="text-[10px] font-bold uppercase bg-primary/10 text-primary">
                         Join: {emp.joinDate ? emp.joinDate.split('T')[0] : 'N/A'}
                       </Badge>
-                      <Badge className={cn("text-[10px] font-mono font-bold uppercase px-2 py-0.5", cycle.isToday ? "bg-emerald-500 text-white animate-pulse" : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30")}>
-                        {cycle.isToday ? "Salary Day Today!" : `${cycle.daysLeft} Days Till Salary`}
+                      <Badge className={cn(
+                        "text-[10px] font-mono font-bold uppercase px-2 py-0.5",
+                        cycle.isPaidThisCycle
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : cycle.isToday
+                          ? "bg-emerald-500 text-white animate-pulse"
+                          : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
+                      )}>
+                        {cycle.isPaidThisCycle ? "Salary Paid for Month" : (cycle.isToday ? "Salary Day Today!" : `${cycle.daysLeft} Days Till Salary`)}
                       </Badge>
                     </div>
                   </div>
@@ -870,8 +885,15 @@ export default function OwnerMainPage() {
                     <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-indigo-400" /> Salary Day ({cycle.ordinalDay}):
                     </span>
-                    <span className={cn("font-extrabold text-xs px-2 py-0.5 rounded", cycle.isToday ? "bg-emerald-500 text-white animate-pulse" : "text-indigo-400 bg-indigo-500/10")}>
-                      {cycle.isToday ? "TODAY!" : `${cycle.daysLeft}d left (${cycle.nextResetFormatted})`}
+                    <span className={cn(
+                      "font-extrabold text-xs px-2 py-0.5 rounded",
+                      cycle.isPaidThisCycle
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : cycle.isToday
+                        ? "bg-emerald-500 text-white animate-pulse"
+                        : "text-indigo-400 bg-indigo-500/10"
+                    )}>
+                      {cycle.isPaidThisCycle ? `SETTLED (${cycle.nextResetFormatted})` : (cycle.isToday ? "TODAY!" : `${cycle.daysLeft}d left (${cycle.nextResetFormatted})`)}
                     </span>
                   </div>
 
@@ -1065,10 +1087,11 @@ export default function OwnerMainPage() {
           const ownerEmp = (employees || []).find(e => e.username?.toLowerCase() === 'viren');
           if (!ownerEmp) return null;
 
-          const cycle = getCycleInfo(ownerEmp.joinDate);
+          const cycle = getCycleInfo(ownerEmp.joinDate, ownerEmp.lastSalaryPaidDate, ownerEmp.lastSalaryPaidCycle);
           const dailyRate = Math.round((ownerEmp.salary || 0) / 30);
+          const cycleStartDateISO = cycle.cycleStartDate.toISOString().slice(0, 10);
           const empAllShifts = (shifts || []).filter(
-            (s) => s.staffId === ownerEmp.username || s.employeeId === ownerEmp.username || s.employees?.some(e => e.username === ownerEmp.username)
+            (s) => (s.staffId === ownerEmp.username || s.employeeId === ownerEmp.username || s.employees?.some(e => e.username === ownerEmp.username)) && s.date >= cycleStartDateISO
           );
           const absentShifts = empAllShifts.filter((s) => s.attendanceStatus === 'Absent');
           const absentCount = absentShifts.length;
@@ -1086,7 +1109,7 @@ export default function OwnerMainPage() {
           const netSalary = Math.max(0, (ownerEmp.salary || 0) + activeBonuses - activeAdvances - totalDeductions);
 
           const todayStr = new Date().toISOString().slice(0, 10);
-          const todayShift = empAllShifts.find((s) => s.date === todayStr);
+          const todayShift = (shifts || []).find((s) => (s.staffId === ownerEmp.username || s.employeeId === ownerEmp.username || s.employees?.some(e => e.username === ownerEmp.username)) && s.date === todayStr);
           const todayStatus = todayShift?.attendanceStatus || (todayShift ? 'Present' : 'Not Clocked In');
           const isAbsent = todayStatus === 'Absent';
           const isPresent = todayStatus === 'Present';
@@ -1126,8 +1149,15 @@ export default function OwnerMainPage() {
                       <Badge variant="secondary" className="text-[10px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
                         Join: {ownerEmp.joinDate ? ownerEmp.joinDate.split('T')[0] : 'N/A'}
                       </Badge>
-                      <Badge className={cn("text-[10px] font-mono font-bold uppercase px-2 py-0.5", cycle.isToday ? "bg-emerald-500 text-white animate-pulse" : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30")}>
-                        {cycle.isToday ? "Salary Day Today!" : `${cycle.daysLeft} Days Till Salary`}
+                      <Badge className={cn(
+                        "text-[10px] font-mono font-bold uppercase px-2 py-0.5",
+                        cycle.isPaidThisCycle
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : cycle.isToday
+                          ? "bg-emerald-500 text-white animate-pulse"
+                          : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
+                      )}>
+                        {cycle.isPaidThisCycle ? "Salary Paid for Month" : (cycle.isToday ? "Salary Day Today!" : `${cycle.daysLeft} Days Till Salary`)}
                       </Badge>
                     </div>
                   </div>
@@ -1137,8 +1167,15 @@ export default function OwnerMainPage() {
                     <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-amber-400" /> Salary Day ({cycle.ordinalDay}):
                     </span>
-                    <span className={cn("font-extrabold text-xs px-2 py-0.5 rounded", cycle.isToday ? "bg-emerald-500 text-white animate-pulse" : "text-amber-400 bg-amber-500/10")}>
-                      {cycle.isToday ? "TODAY!" : `${cycle.daysLeft}d left (${cycle.nextResetFormatted})`}
+                    <span className={cn(
+                      "font-extrabold text-xs px-2 py-0.5 rounded",
+                      cycle.isPaidThisCycle
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : cycle.isToday
+                        ? "bg-emerald-500 text-white animate-pulse"
+                        : "text-amber-400 bg-amber-500/10"
+                    )}>
+                      {cycle.isPaidThisCycle ? `SETTLED (${cycle.nextResetFormatted})` : (cycle.isToday ? "TODAY!" : `${cycle.daysLeft}d left (${cycle.nextResetFormatted})`)}
                     </span>
                   </div>
 
@@ -1316,155 +1353,6 @@ export default function OwnerMainPage() {
             </section>
           );
         })()}
-
-        {/* 2. CAFÉ & INVENTORY CONTROLS (MINIMAL QUICK ACTIONS GRID) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-border/40 pb-2">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Utensils className="h-4 w-4 text-primary" /> CAFÉ &amp; INVENTORY CONTROL HUB
-            </h2>
-            <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary uppercase">
-              7 INVENTORY ACTIONS
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-            <Button
-              variant="outline"
-              onClick={() => { setActiveInventoryAction('receive'); setInventoryItemName(''); setInventoryQty('10'); setInventoryCost('500'); }}
-              className="h-24 flex-col gap-2 border-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <PackageCheck className="h-6 w-6" /> Receive Stock
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActiveInventoryAction('count'); }}
-              className="h-24 flex-col gap-2 border-2 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/15 text-blue-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <Layers className="h-6 w-6" /> Stock Count
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActiveInventoryAction('wastage'); setInventoryItemName(''); setInventoryQty('1'); setInventoryCost('100'); }}
-              className="h-24 flex-col gap-2 border-2 border-destructive/30 bg-destructive/5 hover:bg-destructive/15 text-destructive font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <TrendingDown className="h-6 w-6" /> Wastage
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActiveInventoryAction('adjustment'); }}
-              className="h-24 flex-col gap-2 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/15 text-amber-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <RefreshCw className="h-6 w-6" /> Stock Adjust
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActiveInventoryAction('po'); setInventoryItemName(''); setInventoryQty('50'); setInventoryCost('2500'); }}
-              className="h-24 flex-col gap-2 border-2 border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/15 text-purple-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <FileText className="h-6 w-6" /> Purchase Order
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActiveInventoryAction('low-stock'); }}
-              className="h-24 flex-col gap-2 border-2 border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <AlertTriangle className="h-6 w-6" /> Low Stock
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActiveInventoryAction('cost-price'); }}
-              className="h-24 flex-col gap-2 border-2 border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/15 text-indigo-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <DollarSign className="h-6 w-6" /> Update Cost
-            </Button>
-          </div>
-        </section>
-
-        {/* 3. PAYROLL ACTION HUB (MINIMAL QUICK ACTIONS GRID) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-border/40 pb-2">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-emerald-400" /> PAYROLL ACTION HUB
-            </h2>
-            <Badge variant="outline" className="text-[10px] font-mono border-emerald-500/30 text-emerald-400 uppercase">
-              8 PAYROLL ACTIONS
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            <Button
-              variant="outline"
-              onClick={() => handlePayrollSubmit()}
-              onMouseDown={() => setActivePayrollAction('calculate')}
-              className="h-24 flex-col gap-2 border-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <Sparkles className="h-6 w-6" /> Calculate
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setActivePayrollAction('review')}
-              className="h-24 flex-col gap-2 border-2 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/15 text-blue-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <Eye className="h-6 w-6" /> Review
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setActivePayrollAction('approve')}
-              className="h-24 flex-col gap-2 border-2 border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/15 text-indigo-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <CheckCircle2 className="h-6 w-6" /> Approve
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActivePayrollAction('advance'); setPayrollAmount('500'); setPayrollEmpId(employees?.[0]?.id || ''); }}
-              className="h-24 flex-col gap-2 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/15 text-amber-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <ArrowUpRight className="h-6 w-6" /> Advance
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActivePayrollAction('deduction'); setPayrollAmount('200'); setPayrollEmpId(employees?.[0]?.id || ''); }}
-              className="h-24 flex-col gap-2 border-2 border-destructive/30 bg-destructive/5 hover:bg-destructive/15 text-destructive font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <ArrowDownRight className="h-6 w-6" /> Deduction
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActivePayrollAction('bonus'); setPayrollAmount('1000'); setPayrollEmpId(employees?.[0]?.id || ''); }}
-              className="h-24 flex-col gap-2 border-2 border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/15 text-yellow-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <Crown className="h-6 w-6" /> Bonus
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => { setActivePayrollAction('mark-paid'); setPayrollEmpId(employees?.[0]?.id || ''); }}
-              className="h-24 flex-col gap-2 border-2 border-teal-500/30 bg-teal-500/5 hover:bg-teal-500/15 text-teal-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <DollarSign className="h-6 w-6" /> Mark Paid
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setActivePayrollAction('payslip')}
-              className="h-24 flex-col gap-2 border-2 border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/15 text-purple-400 font-bold uppercase text-xs rounded-xl shadow-sm"
-            >
-              <FileSpreadsheet className="h-6 w-6" /> Payslip
-            </Button>
-          </div>
-        </section>
       </div>
 
       {/* GUEST CHECK-IN WIZARD MODAL */}
@@ -1613,185 +1501,6 @@ export default function OwnerMainPage() {
             <Button onClick={handleMarkSalaryPaid} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase">
               Confirm Salary Paid
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* DIALOG 3: INVENTORY ACTION DIALOG */}
-      <Dialog open={!!activeInventoryAction} onOpenChange={(open) => !open && setActiveInventoryAction(null)}>
-        <DialogContent className="sm:max-w-md font-body border-2 border-primary/20">
-          <DialogHeader>
-            <DialogTitle className="font-headline text-xl uppercase flex items-center gap-2 text-foreground">
-              <PackageCheck className="h-5 w-5 text-primary" />
-              CAFÉ INVENTORY: {activeInventoryAction?.toUpperCase()}
-            </DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase text-muted-foreground">
-              Execute inventory operation for bistro kitchen &amp; retail items.
-            </DialogDescription>
-          </DialogHeader>
-
-          {(activeInventoryAction === 'receive' || activeInventoryAction === 'wastage' || activeInventoryAction === 'po') && (
-            <div className="space-y-4 py-2 text-xs">
-              <div className="space-y-1.5">
-                <Label className="font-bold uppercase">Item Name</Label>
-                <Input
-                  placeholder="e.g. Campa Cola 250ml / Fries 1kg"
-                  value={inventoryItemName}
-                  onChange={(e) => setInventoryItemName(e.target.value)}
-                  className="h-10 font-bold text-sm"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="font-bold uppercase">Quantity</Label>
-                  <Input
-                    type="number"
-                    value={inventoryQty}
-                    onChange={(e) => setInventoryQty(e.target.value)}
-                    className="h-10 font-mono font-bold text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="font-bold uppercase">Total Cost (₹)</Label>
-                  <Input
-                    type="number"
-                    value={inventoryCost}
-                    onChange={(e) => setInventoryCost(e.target.value)}
-                    className="h-10 font-mono font-bold text-sm"
-                  />
-                </div>
-              </div>
-
-              {activeInventoryAction === 'wastage' && (
-                <div className="space-y-1.5">
-                  <Label className="font-bold uppercase">Wastage Reason</Label>
-                  <Input
-                    placeholder="Expired / Spoiled / Damaged"
-                    value={inventoryReason}
-                    onChange={(e) => setInventoryReason(e.target.value)}
-                    className="h-10 font-bold text-sm"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {(activeInventoryAction === 'count' || activeInventoryAction === 'adjustment' || activeInventoryAction === 'low-stock' || activeInventoryAction === 'cost-price') && (
-            <div className="py-4 text-center space-y-3">
-              <p className="text-xs uppercase font-bold text-muted-foreground">
-                Current Inventory Audit: {(foodItems || []).length} Menu &amp; Retail Items Tracked.
-              </p>
-              <div className="p-3 rounded-lg bg-muted/20 border border-border/40 text-xs font-mono text-left space-y-1 max-h-48 overflow-y-auto">
-                {(foodItems || []).map((item) => (
-                  <div key={item.id} className="flex justify-between py-1 border-b border-border/20">
-                    <span className="font-bold uppercase">{item.name}</span>
-                    <span className="text-emerald-400">₹{item.price}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveInventoryAction(null)}>Close</Button>
-            {(activeInventoryAction === 'receive' || activeInventoryAction === 'wastage' || activeInventoryAction === 'po') && (
-              <Button onClick={handleInventorySubmit} className="font-bold uppercase">Submit {activeInventoryAction}</Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* DIALOG 4: PAYROLL ACTION DIALOG */}
-      <Dialog open={!!activePayrollAction} onOpenChange={(open) => !open && setActivePayrollAction(null)}>
-        <DialogContent className="sm:max-w-md font-body border-2 border-emerald-500/30">
-          <DialogHeader>
-            <DialogTitle className="font-headline text-xl uppercase flex items-center gap-2 text-foreground">
-              <Wallet className="h-5 w-5 text-emerald-400" />
-              PAYROLL ACTION: {activePayrollAction?.toUpperCase()}
-            </DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase text-muted-foreground">
-              Execute workforce salary and payroll operations.
-            </DialogDescription>
-          </DialogHeader>
-
-          {payrollResultView ? (
-            <div className="py-4 space-y-3 font-mono text-xs">
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
-                <p className="font-bold text-sm text-emerald-400 uppercase">{payrollResultView.title}</p>
-                <div className="flex justify-between">
-                  <span>Total Active Staff:</span>
-                  <span className="font-bold">{payrollResultView.totalStaff}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Total Monthly Base Payout:</span>
-                  <span className="font-extrabold text-emerald-400">₹{payrollResultView.totalBaseSalary.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            (activePayrollAction === 'advance' || activePayrollAction === 'deduction' || activePayrollAction === 'bonus' || activePayrollAction === 'mark-paid') && (
-              <div className="space-y-4 py-2 text-xs">
-                <div className="space-y-1.5">
-                  <Label className="font-bold uppercase">Select Staff Member</Label>
-                  <Select value={payrollEmpId} onValueChange={setPayrollEmpId}>
-                    <SelectTrigger className="h-10 font-bold uppercase">
-                      <SelectValue placeholder="Select staff..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(employees || []).map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id} className="font-bold uppercase">
-                          {emp.displayName} (@{emp.username})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="font-bold uppercase">Amount (₹)</Label>
-                  <Input
-                    type="number"
-                    value={payrollAmount}
-                    onChange={(e) => setPayrollAmount(e.target.value)}
-                    className="h-10 font-mono font-bold text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="font-bold uppercase">Note / Reason</Label>
-                  <Input
-                    placeholder="e.g. Festival advance / Performance bonus / Fine"
-                    value={payrollNote}
-                    onChange={(e) => setPayrollNote(e.target.value)}
-                    className="h-10 font-bold text-sm"
-                  />
-                </div>
-              </div>
-            )
-          )}
-
-          {(activePayrollAction === 'review' || activePayrollAction === 'payslip') && (
-            <div className="py-4 space-y-3 font-mono text-xs">
-              <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-2">
-                <p className="font-bold uppercase text-foreground">Monthly Workforce Payout Summary</p>
-                {(employees || []).map((emp) => (
-                  <div key={emp.id} className="flex justify-between py-1 border-b border-border/20">
-                    <span>{emp.displayName}</span>
-                    <span className="font-bold text-emerald-400">₹{(emp.salary || 0).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setActivePayrollAction(null); setPayrollResultView(null); }}>Close</Button>
-            {activePayrollAction !== 'review' && activePayrollAction !== 'payslip' && (
-              <Button onClick={handlePayrollSubmit} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase">
-                Confirm {activePayrollAction}
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
