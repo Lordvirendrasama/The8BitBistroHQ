@@ -166,7 +166,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setTasksVisible={setTasksVisible}
             uncompletedTaskCount={activeShift?.tasks.filter(t => !t.completed && (t.shiftType !== undefined || t.type === 'strategic')).length || 0}
           />
-          <main className="p-3 sm:p-6 lg:p-8 bg-transparent min-h-0 overflow-y-auto">
+          <main className="p-3 sm:p-6 lg:p-8 bg-transparent min-h-0 overflow-y-auto max-w-full overflow-x-hidden">
             <GlobalTimerNotifications />
             {showTaskNotification && activeShift && tasksVisible && (
               <StartOfDayTasks

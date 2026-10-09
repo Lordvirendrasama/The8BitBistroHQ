@@ -210,7 +210,7 @@ const StrategicTarget = ({ projectedRevenue, cashTotal = 0, upiTotal = 0 }: { pr
   if (!isViren) {
     return (
       <div 
-        className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border bg-card border-primary/20 overflow-hidden relative shadow-sm select-none cursor-pointer touch-none"
+        className="flex flex-col justify-center h-10 sm:h-11 w-auto max-w-[180px] sm:w-64 px-2 sm:px-3 rounded-lg border bg-card border-primary/20 overflow-hidden relative shadow-sm select-none cursor-pointer touch-none shrink"
         onMouseDown={() => setIsPressed(true)}
         onMouseUp={() => setIsPressed(false)}
         onMouseLeave={() => setIsPressed(false)}
@@ -219,20 +219,20 @@ const StrategicTarget = ({ projectedRevenue, cashTotal = 0, upiTotal = 0 }: { pr
       >
         <div className="flex justify-between items-center w-full mb-1">
           {!isPressed ? (
-            <span className="text-sm sm:text-sm font-bold tracking-tight text-foreground/70 uppercase w-full text-center">
+            <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground/70 uppercase w-full text-center truncate">
               TOTAL
             </span>
           ) : (
             <>
-              <span className="text-sm font-bold font-mono tracking-tight text-emerald-600" title="Cash">
+              <span className="text-xs sm:text-sm font-bold font-mono tracking-tight text-emerald-600 truncate" title="Cash">
                 ₹{cashTotal.toLocaleString()} (C)
               </span>
               
-              <span className="text-sm font-bold font-mono text-primary" title="UPI">
+              <span className="text-xs sm:text-sm font-bold font-mono text-primary truncate" title="UPI">
                 ₹{upiTotal.toLocaleString()} (U)
               </span>
 
-              <span className="text-sm font-bold font-mono text-foreground" title="Grand Total">
+              <span className="text-xs sm:text-sm font-bold font-mono text-foreground truncate" title="Grand Total">
                 ₹{Math.round(projectedRevenue).toLocaleString()}
               </span>
             </>
@@ -255,20 +255,20 @@ const StrategicTarget = ({ projectedRevenue, cashTotal = 0, upiTotal = 0 }: { pr
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex flex-col justify-center h-10 sm:h-11 w-48 sm:w-64 px-3 rounded-lg border transition-all bg-card hover:bg-muted/5 group border-primary/20 data-[state=open]:border-primary overflow-hidden relative shadow-sm">
-          <div className="flex justify-between items-center w-full mb-1">
-            <span className={cn("text-sm sm:text-sm font-bold font-mono tracking-tight", isMet ? "text-emerald-600" : "text-foreground")}>
+        <button className="flex flex-col justify-center h-10 sm:h-11 w-auto max-w-[190px] sm:w-64 px-2 sm:px-3 rounded-lg border transition-all bg-card hover:bg-muted/5 group border-primary/20 data-[state=open]:border-primary overflow-hidden relative shadow-sm shrink">
+          <div className="flex justify-between items-center w-full mb-1 gap-1">
+            <span className={cn("text-xs sm:text-sm font-bold font-mono tracking-tight truncate", isMet ? "text-emerald-600" : "text-foreground")}>
               ₹{Math.round(projectedRevenue).toLocaleString()}
             </span>
             
             <span className={cn(
-              "text-sm font-bold font-mono",
+              "text-xs sm:text-sm font-bold font-mono truncate",
               isMet ? "text-emerald-600" : "text-primary"
             )}>
               {isMet ? `+₹${Math.abs(Math.round(diff)).toLocaleString()}` : `-₹${Math.round(diff).toLocaleString()}`}
             </span>
 
-            <span className="text-sm font-bold font-mono opacity-30">
+            <span className="text-xs sm:text-sm font-bold font-mono opacity-30 truncate">
               ₹{Math.round(target).toLocaleString()}
             </span>
           </div>
@@ -1601,11 +1601,12 @@ export function AppHeader({
                     </button>
 
                     {(user?.role === 'admin' || user?.username === 'Viren') && !isCustomerView && (
-                        <Popover>
+                        <div className="hidden sm:block shrink-0">
+                          <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex flex-col items-end gap-0.5 mr-1 shrink-0 hover:bg-muted/10 p-1 rounded transition-colors text-right">
-                                    <p className="text-sm sm:text-sm font-bold uppercase text-muted-foreground tracking-normal leading-none">Month Total</p>
-                                    <p className="text-sm sm:text-sm font-bold font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
+                                    <p className="text-xs sm:text-sm font-bold uppercase text-muted-foreground tracking-normal leading-none">Month Total</p>
+                                    <p className="text-xs sm:text-sm font-bold font-mono text-emerald-600 leading-none">₹{Math.round(monthRevenue).toLocaleString()}</p>
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-0 overflow-hidden font-body border-2 shadow-2xl" align="end">
@@ -1654,11 +1655,11 @@ export function AppHeader({
                                     <div className="grid grid-cols-2 gap-2 pt-2 border-t border-dashed text-xs">
                                         <div className="bg-emerald-500/5 border border-emerald-500/20 p-1.5 rounded flex flex-col">
                                             <span className="text-[10px] font-bold uppercase text-emerald-600/80 tracking-tight">Best Day</span>
-                                            <span className="font-bold font-mono text-emerald-600 tabular-nums mt-0.5">₹{Math.round(bestDay).toLocaleString()}</span>
+                                            <span className="font-mono font-bold text-emerald-600 tabular-nums mt-0.5">₹{Math.round(bestDay).toLocaleString()}</span>
                                         </div>
                                         <div className="bg-rose-500/5 border border-rose-500/20 p-1.5 rounded flex flex-col">
                                             <span className="text-[10px] font-bold uppercase text-rose-600/80 tracking-tight">Worst Day</span>
-                                            <span className="font-bold font-mono text-rose-600 tabular-nums mt-0.5">₹{Math.round(worstDay).toLocaleString()}</span>
+                                            <span className="font-mono font-bold text-rose-600 tabular-nums mt-0.5">₹{Math.round(worstDay).toLocaleString()}</span>
                                         </div>
                                     </div>
                                     <div className="pt-2 border-t border-dashed">
@@ -1668,28 +1669,33 @@ export function AppHeader({
                                     </div>
                                 </div>
                             </PopoverContent>
-                        </Popover>
+                          </Popover>
+                        </div>
                     )}
                     {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} cashTotal={cashTotal} upiTotal={upiTotal} />}
-                    {!isCustomerView && <OwnerConsumptionHeader />}
-                    {!isCustomerView && <TodayExpenses />}
+                    {!isCustomerView && <div className="hidden sm:block shrink-0"><OwnerConsumptionHeader /></div>}
+                    {!isCustomerView && <div className="hidden md:block shrink-0"><TodayExpenses /></div>}
                     {!isCustomerView && (user?.role === 'admin' || user?.username === 'Viren') && (
-                        <OwnerStaffFoodHeader 
-                            activeShift={activeShift} 
-                            currentEmployee={currentEmployee}
-                            activeCycle={activeCycle}
-                            handleSaveStaffOrder={handleSaveStaffOrder}
-                        />
+                        <div className="hidden md:block shrink-0">
+                          <OwnerStaffFoodHeader 
+                              activeShift={activeShift} 
+                              currentEmployee={currentEmployee}
+                              activeCycle={activeCycle}
+                              handleSaveStaffOrder={handleSaveStaffOrder}
+                          />
+                        </div>
                     )}
                     {!isCustomerView && (
-                        <StaffFoodHeaderButton 
-                            currentEmployee={currentEmployee}
-                            activeCycle={activeCycle}
-                            handleSaveStaffOrder={handleSaveStaffOrder}
-                        />
+                        <div className="hidden sm:block shrink-0">
+                          <StaffFoodHeaderButton 
+                              currentEmployee={currentEmployee}
+                              activeCycle={activeCycle}
+                              handleSaveStaffOrder={handleSaveStaffOrder}
+                          />
+                        </div>
                     )}
                     
-                    <div className="flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2">
+                    <div className="hidden sm:flex items-center gap-1 px-1 py-1 rounded-xl bg-muted/20 border-2 shrink-0">
                         <ChiptuneSoundToggle />
                         <PendingNotifications />
                         <div className="flex items-center gap-1">

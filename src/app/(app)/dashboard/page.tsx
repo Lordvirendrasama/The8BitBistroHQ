@@ -998,38 +998,39 @@ function DashboardContent() {
 
   return (
     <div className="space-y-3 sm:space-y-4 -mt-2 sm:-mt-4">
-        <div id="cafe-dashboard-header" className="flex flex-wrap items-center justify-end gap-2 pb-1">
+        <div id="cafe-dashboard-header" className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 sm:gap-2 pb-1 w-full max-w-full">
             <Button 
                 id="guest-login-btn"
                 onClick={() => setIsGuestWizardOpen(true)} 
-                className="h-9 px-4 font-bold uppercase tracking-normal bg-primary hover:bg-primary/90 text-primary-foreground shadow-md animate-in fade-in gap-1.5 text-xs"
+                className="h-8 sm:h-9 px-2.5 sm:px-4 font-bold uppercase tracking-normal bg-primary hover:bg-primary/90 text-primary-foreground shadow-md animate-in fade-in gap-1.5 text-xs shrink-0"
             >
                 <Sparkles className="h-3.5 w-3.5" />
-                Guest Login &amp; Check-in
+                <span className="hidden xs:inline">Guest Login &amp; Check-in</span>
+                <span className="xs:hidden">Guest Login</span>
             </Button>
             <Button 
                 onClick={() => setIsCompactMode(!isCompactMode)} 
                 variant="outline"
-                className="h-9 px-4 font-bold uppercase tracking-normal border-2 text-xs"
+                className="h-8 sm:h-9 px-2.5 sm:px-4 font-bold uppercase tracking-normal border-2 text-xs shrink-0"
             >
                 <LayoutTemplate className="mr-1.5 h-3.5 w-3.5" />
-                {isCompactMode ? 'Original Mode' : 'Compact Mode'}
+                {isCompactMode ? 'Original' : 'Compact'}
             </Button>
             <Button 
                 id="redeem-perks-btn"
                 onClick={() => setIsRewardsModalOpen(true)} 
-                className="h-9 px-4 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-md animate-in fade-in text-xs"
+                className="h-8 sm:h-9 px-2.5 sm:px-4 font-bold uppercase tracking-normal bg-emerald-500 hover:bg-emerald-600 text-black shadow-md animate-in fade-in text-xs shrink-0"
             >
-                <Gift className="mr-1.5 h-3.5 w-3.5 fill-current" />
-                Redeem Perks
+                <Gift className="mr-1 sm:mr-1.5 h-3.5 w-3.5 fill-current" />
+                <span>Perks</span>
             </Button>
             <Button 
                 id="quick-recharge-btn"
                 onClick={() => setIsRechargeModalOpen(true)} 
-                className="h-9 px-4 font-bold uppercase tracking-normal bg-yellow-500 hover:bg-yellow-600 text-black shadow-md animate-in fade-in text-xs"
+                className="h-8 sm:h-9 px-2.5 sm:px-4 font-bold uppercase tracking-normal bg-yellow-500 hover:bg-yellow-600 text-black shadow-md animate-in fade-in text-xs shrink-0"
             >
-                <Zap className="mr-1.5 h-3.5 w-3.5 fill-current" />
-                Quick Recharge
+                <Zap className="mr-1 sm:mr-1.5 h-3.5 w-3.5 fill-current" />
+                <span>Recharge</span>
             </Button>
         </div>
 

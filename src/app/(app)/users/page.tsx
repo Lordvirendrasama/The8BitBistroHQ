@@ -461,12 +461,12 @@ export default function UserManagementPage() {
 
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 max-w-full">
       <div>
-        <h1 className="font-headline text-4xl tracking-wider text-foreground">
+        <h1 className="font-headline text-2xl sm:text-4xl tracking-wide sm:tracking-wider text-foreground">
           User Management
         </h1>
-        <p className="mt-2 text-muted-foreground font-bold uppercase text-sm tracking-[0.2em]">
+        <p className="mt-1 sm:mt-2 text-muted-foreground font-bold uppercase text-xs sm:text-sm tracking-normal sm:tracking-[0.2em]">
           VIEW, EDIT, AND AUDIT ALL LOYALTY PROGRAM MEMBERS.
         </p>
       </div>
