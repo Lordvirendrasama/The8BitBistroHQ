@@ -885,26 +885,30 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
         )}
 
         {/* Top Header */}
-        <div className="px-6 py-3.5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-950 shrink-0">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h2 className="font-headline font-extrabold text-base sm:text-lg tracking-wide text-zinc-100 uppercase flex items-center gap-2">
+        <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-zinc-800/80 bg-zinc-950 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Sparkles className="h-5 w-5 text-primary shrink-0" />
+            <h2 className="font-headline font-extrabold text-base sm:text-lg tracking-wide text-zinc-100 uppercase truncate">
               {step === 'membership-check' && 'CUSTOMER CHECK-IN'}
-              {step === 'registration' && 'CUSTOMER REGISTRATION'}
+              {step === 'registration' && 'NEW REGISTRATION'}
               {step === 'selection' && 'ASSIGN PLAYERS'}
-              {step === 'configuration' && 'CONFIGURE SESSION LOGINS'}
+              {step === 'configuration' && 'SESSION DURATION'}
             </h2>
+            <span className="text-xs font-bold text-zinc-300 bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800 shrink-0">
+              {station.name}
+            </span>
           </div>
-          <div className="flex items-center gap-3 pr-8">
+
+          <div className="flex items-center gap-2 shrink-0">
             {step === 'selection' && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setStep('membership-check')}
-                className="h-7 text-[11px] text-zinc-400 hover:text-white px-2 font-bold uppercase gap-1"
+                className="h-9 text-xs text-zinc-400 hover:text-white px-2.5 font-bold uppercase gap-1"
               >
-                <ArrowLeft className="h-3 w-3" /> Change Option
+                <ArrowLeft className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Change Option</span><span className="sm:hidden">Back</span>
               </Button>
             )}
             {step === 'registration' && (
@@ -913,9 +917,9 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                 variant="ghost"
                 size="sm"
                 onClick={() => setStep('membership-check')}
-                className="h-7 text-[11px] text-zinc-400 hover:text-white px-2 font-bold uppercase gap-1"
+                className="h-9 text-xs text-zinc-400 hover:text-white px-2.5 font-bold uppercase gap-1"
               >
-                <ArrowLeft className="h-3 w-3" /> Back
+                <ArrowLeft className="h-3.5 w-3.5" /> Back
               </Button>
             )}
             {step === 'configuration' && (
@@ -924,47 +928,55 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                 variant="ghost"
                 size="sm"
                 onClick={() => setStep('selection')}
-                className="h-7 text-[11px] text-zinc-400 hover:text-white px-2 font-bold uppercase gap-1"
+                className="h-9 text-xs text-zinc-400 hover:text-white px-2.5 font-bold uppercase gap-1"
               >
-                <ArrowLeft className="h-3 w-3" /> Change Players
+                <ArrowLeft className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Change Players</span><span className="sm:hidden">Back</span>
               </Button>
             )}
-            <span className="text-xs font-bold text-zinc-300 bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-800 shadow-sm shrink-0">
-              {station.name}
-            </span>
+
+            {/* Direct Close / Cancel Button */}
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="h-10 w-10 sm:h-9 sm:w-9 flex items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all ml-1 shadow-sm"
+              title="Close and Cancel"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-950">
             {/* STEP 0: ARE YOU A MEMBER HERE? */}
             {step === 'membership-check' && (
-              <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-10 space-y-8 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto">
-                <div className="text-center space-y-3 max-w-md">
-                  <div className="h-16 w-16 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto text-primary shadow-xl">
-                    <Crown className="h-8 w-8" />
+              <div className="flex-1 flex flex-col justify-center items-center px-4 py-5 sm:p-10 space-y-4 sm:space-y-8 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto w-full">
+                <div className="text-center space-y-2.5 max-w-md w-full">
+                  <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto text-primary shadow-xl">
+                    <Crown className="h-7 w-7 sm:h-10 sm:w-10" />
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-extrabold uppercase text-white tracking-wide font-headline">
+                  <h3 className="text-xl sm:text-3xl font-extrabold uppercase text-white tracking-wide font-headline">
                     ARE YOU A MEMBER HERE?
                   </h3>
-                  <p className="text-sm text-zinc-300 font-medium leading-relaxed italic border-l-2 border-primary/40 pl-3 text-left">
+                  <p className="text-xs sm:text-base text-zinc-300 font-medium leading-relaxed italic border-l-2 border-primary/50 pl-3 text-left bg-zinc-900/40 p-2 sm:p-2.5 rounded-r-xl">
                     "Welcome to The 8 Bit Bistro! Are you registered with us as a member?"
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full max-w-lg">
                   {/* YES BUTTON */}
                   <div
                     onClick={() => setStep('selection')}
-                    className="p-6 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-b from-emerald-500/10 to-emerald-500/5 hover:bg-emerald-500/20 hover:border-emerald-500 transition-all flex flex-col items-center text-center gap-3 cursor-pointer shadow-xl group active:scale-95"
+                    className="p-4 sm:p-7 rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 hover:bg-emerald-500/25 hover:border-emerald-400 transition-all flex flex-col items-center text-center gap-2.5 sm:gap-3.5 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[110px] sm:min-h-[140px] justify-center"
                   >
-                    <div className="h-12 w-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all">
-                      <CheckCircle2 className="h-6 w-6" />
+                    <div className="h-14 w-14 rounded-xl bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all">
+                      <CheckCircle2 className="h-8 w-8" />
                     </div>
                     <div>
-                      <h4 className="text-lg font-extrabold uppercase text-white tracking-wide">
+                      <h4 className="text-xl font-extrabold uppercase text-white tracking-wide">
                         YES, I'M A MEMBER
                       </h4>
-                      <p className="text-xs text-emerald-400 font-medium pt-1">
+                      <p className="text-xs sm:text-sm text-emerald-300 font-semibold pt-1">
                         Search existing member database
                       </p>
                     </div>
@@ -973,20 +985,32 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                   {/* NO BUTTON */}
                   <div
                     onClick={() => setStep('registration')}
-                    className="p-6 rounded-2xl border-2 border-amber-500/40 bg-gradient-to-b from-amber-500/10 to-amber-500/5 hover:bg-amber-500/20 hover:border-amber-500 transition-all flex flex-col items-center text-center gap-3 cursor-pointer shadow-xl group active:scale-95"
+                    className="p-4 sm:p-7 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-b from-amber-500/15 to-amber-500/5 hover:bg-amber-500/25 hover:border-amber-400 transition-all flex flex-col items-center text-center gap-2.5 sm:gap-3.5 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[110px] sm:min-h-[140px] justify-center"
                   >
-                    <div className="h-12 w-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all">
-                      <UserPlus className="h-6 w-6" />
+                    <div className="h-14 w-14 rounded-xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all">
+                      <UserPlus className="h-8 w-8" />
                     </div>
                     <div>
-                      <h4 className="text-lg font-extrabold uppercase text-white tracking-wide">
+                      <h4 className="text-xl font-extrabold uppercase text-white tracking-wide">
                         NO, NEW CUSTOMER
                       </h4>
-                      <p className="text-xs text-amber-400 font-medium pt-1">
+                      <p className="text-xs sm:text-sm text-amber-300 font-semibold pt-1">
                         Register new account in 10 seconds
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Cancel & Go Back Button for Mobile */}
+                <div className="w-full max-w-lg pt-2 pb-safe flex justify-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => onOpenChange(false)}
+                    className="h-12 px-6 text-sm font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-xl gap-2 active:scale-95 border border-zinc-800/80"
+                  >
+                    <X className="h-4 w-4" /> Cancel & Close
+                  </Button>
                 </div>
               </div>
             )}
@@ -1183,20 +1207,20 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                 <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-5 space-y-4 animate-in fade-in duration-200">
                     
                     {/* Customer-First Hospitality Dialogue Quote */}
-                    <div className="px-2">
-                      <p className="text-base sm:text-lg font-light tracking-wide text-zinc-200 leading-relaxed italic border-l-2 border-primary/40 pl-4">
+                    <div className="px-1">
+                      <p className="text-sm sm:text-base font-medium tracking-wide text-zinc-200 leading-relaxed italic border-l-2 border-primary/50 pl-3.5 bg-zinc-900/30 p-2.5 rounded-r-xl">
                         "Welcome to The 8 Bit Bistro! May I have your name to assign players today?"
                       </p>
                     </div>
 
                     {/* Customer Name Search & Input Field */}
-                    <div className="space-y-2 pt-1">
+                    <div className="space-y-2.5 pt-1">
                       <div className="flex items-center justify-between px-1">
-                        <label className="text-xs font-extrabold uppercase text-zinc-300 tracking-wide flex items-center gap-2">
-                          <Search className="h-3.5 w-3.5 text-primary" />
+                        <label className="text-xs sm:text-sm font-extrabold uppercase text-zinc-300 tracking-wide flex items-center gap-2">
+                          <Search className="h-4 w-4 text-primary" />
                           <span>WHO'S PLAYING?</span>
                           {targetSlotsCount > 1 && (
-                            <Badge className="bg-primary/20 text-primary border border-primary/30 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md">
+                            <Badge className="bg-primary/20 text-primary border border-primary/30 text-xs font-extrabold uppercase px-2 py-0.5 rounded-md">
                               PLAYER {activeSlotIndex + 1}
                             </Badge>
                           )}
@@ -1205,21 +1229,21 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                           <button
                             type="button"
                             onClick={() => setShowGuestConfirmModal(true)}
-                            className="text-[11px] text-zinc-500 hover:text-zinc-300 underline font-medium transition-colors"
+                            className="text-xs sm:text-sm text-zinc-400 hover:text-white underline font-semibold transition-colors py-1"
                           >
                             Add a guest instead
                           </button>
                           {targetSlotsCount > 1 && (
-                            <span className="text-[11px] text-zinc-400 font-semibold uppercase">
+                            <span className="text-xs text-zinc-400 font-bold uppercase">
                               Slot {activeSlotIndex + 1} of {targetSlotsCount}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="relative flex items-center gap-3.5 bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border-2 border-primary shadow-[0_0_25px_rgba(239,68,68,0.3)] focus-within:shadow-[0_0_35px_rgba(239,68,68,0.55)] focus-within:border-primary rounded-2xl px-4 py-3 transition-all cursor-text">
-                        <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center shrink-0">
-                          <Search className="h-5 w-5 stroke-[2.5]" />
+                      <div className="relative flex items-center gap-3.5 bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border-2 border-primary shadow-[0_0_25px_rgba(239,68,68,0.3)] focus-within:shadow-[0_0_35px_rgba(239,68,68,0.55)] focus-within:border-primary rounded-2xl px-4 py-3.5 transition-all cursor-text min-h-[58px]">
+                        <div className="h-11 w-11 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center shrink-0">
+                          <Search className="h-6 w-6 stroke-[2.5]" />
                         </div>
                         <Input 
                           autoFocus
@@ -1236,18 +1260,18 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             }
                           }}
                           placeholder={`Search customer name or phone number...`}
-                          className="h-11 text-base sm:text-xl font-headline font-extrabold tracking-wide bg-transparent border-none focus-visible:ring-0 px-0 text-white placeholder:text-zinc-300 placeholder:font-normal transition-colors flex-1"
+                          className="h-12 text-base sm:text-lg font-medium bg-transparent border-none focus-visible:ring-0 px-0 text-white placeholder:text-zinc-400 transition-colors flex-1"
                         />
                         {searchTerm.trim() ? (
                           <button
                             type="button"
                             onClick={() => setSearchTerm('')}
-                            className="h-8 w-8 rounded-full bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition-colors shrink-0 shadow-inner"
+                            className="h-9 w-9 rounded-full bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition-colors shrink-0 shadow-inner"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-5 w-5" />
                           </button>
                         ) : (
-                          <Badge className="hidden sm:flex text-[10px] font-extrabold uppercase border border-primary/40 text-primary bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">
+                          <Badge className="hidden sm:flex text-[11px] font-extrabold uppercase border border-primary/40 text-primary bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">
                             START TYPING
                           </Badge>
                         )}
@@ -1256,37 +1280,37 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
                     {/* MATCHING EXISTING CUSTOMERS & "+ CREATE NEW CUSTOMER" (ONLY SHOWN WHEN TYPING) */}
                     {searchTerm.trim().length > 0 && (
-                      <div className="max-h-[220px] overflow-y-auto min-h-0 space-y-2 pr-1 animate-in fade-in-50 slide-in-from-top-1 duration-200">
+                      <div className="max-h-[260px] overflow-y-auto min-h-0 space-y-2.5 pr-1 animate-in fade-in-50 slide-in-from-top-1 duration-200">
                         
                         {/* + CREATE NEW CUSTOMER BUTTON */}
                         {searchTerm.trim().length > 0 && (
                           <div 
                             onClick={() => handleCreateNewCustomer(searchTerm.trim())}
-                            className="p-3 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex items-center justify-between gap-3 shadow-md cursor-pointer"
+                            className="p-3.5 sm:p-4 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex items-center justify-between gap-3 shadow-md cursor-pointer active:scale-[0.99]"
                           >
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9 border-2 border-emerald-500/50">
+                              <Avatar className="h-10 w-10 border-2 border-emerald-500/50">
                                 <AvatarImage src={GUEST_AVATAR} />
                                 <AvatarFallback className="font-bold text-xs bg-emerald-500 text-black">
                                   {searchTerm.trim().substring(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="text-sm font-extrabold uppercase text-white tracking-wide">{searchTerm.trim()}</p>
-                                <p className="text-[11px] text-emerald-400 font-semibold">Not registered? Fill registration form</p>
+                                <p className="text-sm sm:text-base font-extrabold uppercase text-white tracking-wide">{searchTerm.trim()}</p>
+                                <p className="text-xs text-emerald-400 font-semibold">Not registered? Fill registration form</p>
                               </div>
                             </div>
 
                             <Button 
-                              size="sm"
+                              size="sm" 
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCreateNewCustomer(searchTerm.trim());
                               }}
-                              className="h-8 px-3 font-bold uppercase text-xs bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-1 rounded-lg"
+                              className="h-9 px-3.5 font-bold uppercase text-xs bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-1 rounded-lg"
                             >
-                              <UserPlus className="h-3.5 w-3.5" /> + REGISTER NEW MEMBER
+                              <UserPlus className="h-4 w-4" /> + REGISTER
                             </Button>
                           </div>
                         )}
@@ -1300,22 +1324,22 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             <div 
                               key={member.id} 
                               onClick={() => handleSelectCustomer(member)}
-                              className="w-full p-2.5 rounded-xl border-2 border-zinc-800 bg-zinc-900/90 hover:border-primary/50 hover:bg-zinc-800 flex items-center justify-between gap-3 transition-all cursor-pointer"
+                              className="w-full p-3.5 rounded-xl border-2 border-zinc-800 bg-zinc-900/90 hover:border-primary/50 hover:bg-zinc-800 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99]"
                             >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <Avatar className="h-9 w-9 border border-zinc-700 shrink-0">
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <Avatar className="h-11 w-11 border border-zinc-700 shrink-0">
                                   <AvatarImage src={member.avatarUrl} />
-                                  <AvatarFallback className="font-bold text-xs bg-zinc-800 text-white">{member.name[0]}</AvatarFallback>
+                                  <AvatarFallback className="font-bold text-sm bg-zinc-800 text-white">{member.name[0]}</AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <p className="text-sm font-extrabold uppercase truncate text-white">{member.name}</p>
+                                    <p className="text-sm sm:text-base font-extrabold uppercase truncate text-white">{member.name}</p>
                                     {isMember ? (
-                                      <Badge className="text-[9px] font-bold uppercase px-1.5 py-0 border-amber-500/30 text-amber-400 bg-amber-500/10">
+                                      <Badge className="text-[10px] font-bold uppercase px-1.5 py-0 border-amber-500/30 text-amber-400 bg-amber-500/10">
                                         MEMBER
                                       </Badge>
                                     ) : (
-                                      <Badge variant="outline" className="text-[9px] font-bold uppercase px-1.5 py-0 border-zinc-700 text-zinc-400">
+                                      <Badge variant="outline" className="text-[10px] font-bold uppercase px-1.5 py-0 border-zinc-700 text-zinc-400">
                                         CUSTOMER
                                       </Badge>
                                     )}
@@ -1326,8 +1350,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
                               <div className="flex items-center gap-2 shrink-0">
                                 {balance > 0 && (
-                                  <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-xs font-bold uppercase">
-                                    <Zap className="h-3 w-3 fill-current" />{formatPackageDuration(balance)}
+                                  <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-xs font-bold uppercase">
+                                    <Zap className="h-3.5 w-3.5 fill-current" />{formatPackageDuration(balance)}
                                   </div>
                                 )}
                                 <Button
@@ -1337,9 +1361,9 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                     e.stopPropagation();
                                     handleSelectCustomer(member);
                                   }}
-                                  className="h-8 px-3 text-xs font-bold uppercase bg-primary hover:bg-primary/90 text-primary-foreground gap-1 rounded-lg"
+                                  className="h-9 px-3.5 text-xs font-bold uppercase bg-primary hover:bg-primary/90 text-primary-foreground gap-1 rounded-lg"
                                 >
-                                  <UserPlus className="h-3.5 w-3.5" /> SELECT
+                                  <UserPlus className="h-4 w-4" /> SELECT
                                 </Button>
                               </div>
                             </div>
@@ -1349,8 +1373,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                     )}
 
                     {/* INDIVIDUAL PLAYER SLOTS DISPLAY */}
-                    <div className="space-y-2 pt-2 border-t border-zinc-800">
-                      <div className="flex justify-between items-center text-xs font-bold uppercase text-zinc-400">
+                    <div className="space-y-2.5 pt-3 border-t border-zinc-800">
+                      <div className="flex justify-between items-center text-xs sm:text-sm font-bold uppercase text-zinc-400">
                         <span>SESSION PLAYER SLOTS ({validPlayers.length}/{targetSlotsCount})</span>
                         {targetSlotsCount < playerLimit && (
                           <Button
@@ -1358,14 +1382,14 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             variant="outline"
                             size="sm"
                             onClick={handleAddPlayerSlot}
-                            className="h-7 px-2.5 text-[11px] font-extrabold uppercase border-primary/40 text-primary hover:bg-primary hover:text-black transition-all gap-1 rounded-lg shadow-sm"
+                            className="h-8 px-3 text-xs font-extrabold uppercase border-primary/40 text-primary hover:bg-primary hover:text-black transition-all gap-1 rounded-lg shadow-sm"
                           >
                             <Plus className="h-3.5 w-3.5" /> ADD PLAYER
                           </Button>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         {Array.from({ length: targetSlotsCount }).map((_, idx) => {
                           const player = selectedPlayers[idx];
                           const isSelectedForEdit = activeSlotIndex === idx;
@@ -1376,15 +1400,15 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                               key={idx}
                               onClick={() => { setActiveSlotIndex(idx); setSearchTerm(''); }}
                               className={cn(
-                                "p-3 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer",
+                                "p-3.5 sm:p-4 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer min-h-[68px]",
                                 player ? "border-zinc-800 bg-zinc-900/90" : "border-dashed border-zinc-800 bg-zinc-950 hover:border-zinc-700",
                                 isSelectedForEdit && "border-primary bg-primary/10 ring-1 ring-primary"
                               )}
                             >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <Avatar className="h-9 w-9 border border-zinc-700">
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border border-zinc-700">
                                   <AvatarImage src={player?.avatarUrl || GUEST_AVATAR} />
-                                  <AvatarFallback className="font-bold text-xs bg-zinc-800 text-white">
+                                  <AvatarFallback className="font-bold text-sm bg-zinc-800 text-white">
                                     {player ? player.name[0] : `P${idx + 1}`}
                                   </AvatarFallback>
                                 </Avatar>
@@ -1393,13 +1417,13 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-bold uppercase text-zinc-400">Player {idx + 1}:</span>
                                     {player ? (
-                                      <span className="text-sm font-extrabold uppercase text-white truncate">{player.name}</span>
+                                      <span className="text-sm sm:text-base font-extrabold uppercase text-white truncate">{player.name}</span>
                                     ) : (
-                                      <span className="text-xs font-medium text-zinc-500 italic">Add customer</span>
+                                      <span className="text-sm font-semibold text-zinc-400 italic">Tap to add customer</span>
                                     )}
                                   </div>
                                   {isMember && (
-                                    <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-bold uppercase px-1.5 py-0 mt-0.5">
+                                    <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold uppercase px-1.5 py-0 mt-0.5">
                                       MEMBER
                                     </Badge>
                                   )}
@@ -1413,12 +1437,12 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                     e.stopPropagation();
                                     handleRemovePlayerAt(idx);
                                   }}
-                                  className="h-7 w-7 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                                  className="h-9 w-9 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
                                 >
-                                  <X className="h-4 w-4" />
+                                  <X className="h-5 w-5" />
                                 </button>
                               ) : (
-                                <Badge variant="outline" className="text-[10px] font-bold uppercase border-primary/40 text-primary">
+                                <Badge variant="outline" className="text-xs font-bold uppercase border-primary/40 text-primary px-2.5 py-1">
                                   Select
                                 </Badge>
                               )}
@@ -1429,36 +1453,47 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                         {targetSlotsCount < playerLimit && (
                           <div
                             onClick={handleAddPlayerSlot}
-                            className="p-3 rounded-xl border-2 border-dashed border-zinc-800 hover:border-primary/50 bg-zinc-950/50 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer text-zinc-400 hover:text-primary min-h-[58px]"
+                            className="p-3.5 rounded-xl border-2 border-dashed border-zinc-800 hover:border-primary/50 bg-zinc-950/50 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer text-zinc-400 hover:text-primary min-h-[68px]"
                           >
-                            <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
-                              <Plus className="h-4 w-4" />
+                            <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+                              <Plus className="h-5 w-5" />
                             </div>
-                            <span className="text-xs font-extrabold uppercase tracking-wide">ADD PLAYER SLOT</span>
+                            <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wide">ADD PLAYER SLOT</span>
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Footer Bar */}
-                    <div className="pt-3 pb-4 pb-safe border-t border-zinc-800 flex items-center justify-between">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleResetAll}
-                        className="text-xs text-zinc-500 uppercase font-bold gap-1 hover:text-white"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" /> RESET
-                      </Button>
+                    <div className="pt-4 pb-4 pb-safe border-t border-zinc-800 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onOpenChange(false)}
+                          className="h-11 sm:h-12 px-3 text-xs sm:text-sm text-zinc-400 uppercase font-bold gap-1.5 hover:text-white border border-zinc-800/80 rounded-xl"
+                        >
+                          <X className="h-4 w-4" /> CANCEL
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleResetAll}
+                          className="h-11 sm:h-12 px-3 text-xs sm:text-sm text-zinc-500 uppercase font-bold gap-1 hover:text-white"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" /> RESET
+                        </Button>
+                      </div>
 
                       <Button 
                         type="button"
                         onClick={handleProceedToConfiguration} 
                         disabled={validPlayers.length === 0} 
-                        className="h-13 sm:h-12 px-6 font-extrabold text-sm sm:text-base uppercase bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl rounded-xl gap-2 transition-transform active:scale-[0.99]"
+                        className="h-12 sm:h-12 px-6 sm:px-8 font-extrabold text-sm sm:text-base uppercase bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl rounded-xl gap-2 transition-transform active:scale-[0.99] flex-1 sm:flex-initial"
                       >
-                        START SESSION &rarr;
+                        NEXT STEP &rarr;
                       </Button>
                     </div>
 
@@ -1730,21 +1765,29 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             </div>
                         )}
                     </div>
-                    <div className="p-4 pb-6 pb-safe shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-3">
+                    <div className="p-4 pb-6 pb-safe shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-2.5">
                         <Button 
                             onClick={handleApplyAllAndStart} 
                             disabled={!activeConfigPlayerId || !configs[activeConfigPlayerId]?.name}
-                            className="flex-1 font-headline text-sm font-extrabold h-13 uppercase tracking-wide shadow-2xl transition-all active:scale-[0.98] gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                            className="font-headline text-sm font-extrabold h-12 uppercase tracking-wide shadow-2xl transition-all active:scale-[0.98] gap-2 bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                         >
-                            APPLY TO ALL AND START &rarr;
+                            APPLY TO ALL & START &rarr;
                         </Button>
                         <Button 
                             variant="outline" 
                             onClick={handleConfirmAll}
                             disabled={!allPlayersConfigured}
-                            className="flex-1 font-headline text-sm font-extrabold h-13 uppercase tracking-wide shadow-sm transition-all active:scale-[0.98] border-2 border-zinc-700 text-white hover:bg-zinc-800"
+                            className="font-headline text-sm font-extrabold h-12 uppercase tracking-wide shadow-sm transition-all active:scale-[0.98] border-2 border-zinc-700 text-white hover:bg-zinc-800 flex-1"
                         >
                             START SESSION &rarr;
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            className="h-11 px-4 text-xs font-bold uppercase text-zinc-400 hover:text-white border border-zinc-800 rounded-xl sm:hidden"
+                        >
+                            <X className="h-4 w-4 mr-1.5" /> CANCEL & CLOSE
                         </Button>
                     </div>
                 </div>
