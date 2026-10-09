@@ -88,11 +88,17 @@
   * {
     @apply border-border;
   }
+  html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
   body {
     background-color: var(--background);
     @apply text-foreground font-body;
     line-height: 1.5;
     letter-spacing: normal;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   
   .font-display {

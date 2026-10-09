@@ -8,7 +8,8 @@ import { ThemeProvider } from '@/components/layout/theme-provider';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
 };
 
