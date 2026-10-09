@@ -134,3 +134,14 @@
   border-color: var(--border);
   box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.3) !important;
 }
+
+/* iOS and Mobile touch & safe-area optimizations */
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+button, [role="button"], input, select {
+  touch-action: manipulation;
+}

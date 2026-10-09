@@ -693,7 +693,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent showClose={false} className="w-[98vw] max-w-[98vw] sm:max-w-2xl max-h-[88vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl font-body rounded-xl">
+      <DialogContent showClose={false} className="w-full h-full max-w-full sm:max-w-2xl sm:h-auto sm:max-h-[88vh] rounded-none sm:rounded-xl flex flex-col p-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl font-body">
         <DialogTitle className="sr-only">Assign Players Modal</DialogTitle>
         <DialogDescription className="sr-only">Assign customer players to gaming station and configure session time</DialogDescription>
 
@@ -1441,7 +1441,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                     </div>
 
                     {/* Footer Bar */}
-                    <div className="pt-3 border-t border-zinc-800 flex items-center justify-between">
+                    <div className="pt-3 pb-4 pb-safe border-t border-zinc-800 flex items-center justify-between">
                       <Button
                         type="button"
                         variant="ghost"
@@ -1456,7 +1456,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                         type="button"
                         onClick={handleProceedToConfiguration} 
                         disabled={validPlayers.length === 0} 
-                        className="h-12 px-6 font-extrabold text-sm uppercase bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl rounded-xl gap-2 transition-transform active:scale-[0.99]"
+                        className="h-13 sm:h-12 px-6 font-extrabold text-sm sm:text-base uppercase bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl rounded-xl gap-2 transition-transform active:scale-[0.99]"
                       >
                         START SESSION &rarr;
                       </Button>
@@ -1730,7 +1730,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             </div>
                         )}
                     </div>
-                    <div className="p-4 shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-3">
+                    <div className="p-4 pb-6 pb-safe shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-3">
                         <Button 
                             onClick={handleApplyAllAndStart} 
                             disabled={!activeConfigPlayerId || !configs[activeConfigPlayerId]?.name}

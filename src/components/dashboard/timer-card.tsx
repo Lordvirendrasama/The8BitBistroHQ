@@ -636,13 +636,13 @@ export function TimerCard({
 
         {/* QUICK TIME ADJUSTMENT BAR */}
         {(isRunning || isPaused || isFinishing) && (
-          <div className="w-full mt-2 bg-muted/20 border border-border/50 rounded-xl p-1.5 flex items-center justify-center gap-4 shadow-sm">
+          <div className="w-full mt-2 bg-muted/20 border border-border/50 rounded-xl p-1.5 flex items-center justify-center gap-2 sm:gap-4 shadow-sm">
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => handleQuickAdjust(-60)}
-                className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                className="h-9 sm:h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive active:scale-95 transition-all"
                 title={`Reduce 1 Hour for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
                 -1h
@@ -651,22 +651,22 @@ export function TimerCard({
                 size="sm"
                 variant="ghost"
                 onClick={() => handleQuickAdjust(-30)}
-                className="h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                className="h-9 sm:h-7 text-xs font-bold font-mono px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive active:scale-95 transition-all"
                 title={`Reduce 30 Mins for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
                 -30m
               </Button>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <Button
                 size="sm"
                 variant="default"
                 onClick={() => handleQuickAdjust(30)}
-                className="h-7 text-xs font-bold font-mono px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1"
+                className="h-9 sm:h-7 text-xs font-bold font-mono px-3 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1 active:scale-95 transition-all"
                 title={`Add 30 Mins (+₹${price30}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                 <span>30m</span>
                 <span className="text-[10px] font-sans font-semibold text-emerald-100">(+₹{price30})</span>
               </Button>
@@ -674,10 +674,10 @@ export function TimerCard({
                 size="sm"
                 variant="default"
                 onClick={() => handleQuickAdjust(60)}
-                className="h-7 text-xs font-bold font-mono px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1"
+                className="h-9 sm:h-7 text-xs font-bold font-mono px-3 sm:px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1 active:scale-95 transition-all"
                 title={`Add 1 Hour (+₹${price60}) for ${activeMembersCount} ${activeMembersCount === 1 ? 'player' : 'players'}`}
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                 <span>1h</span>
                 <span className="text-[10px] font-sans font-semibold text-indigo-100">(+₹{price60})</span>
               </Button>

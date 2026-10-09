@@ -309,10 +309,10 @@ export function BillModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[98vw] max-w-[98vw] md:max-w-7xl h-[94vh] md:h-[92vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl rounded-xl">
+      <DialogContent className="w-full h-full max-w-full md:max-w-7xl md:w-[98vw] md:h-[92vh] rounded-none md:rounded-xl flex flex-col p-0 overflow-hidden border-0 md:border-2 md:border-primary/30 shadow-2xl">
         <div className="flex flex-col shrink-0 bg-background border-b z-20">
             <DialogHeader className="px-4 pt-3 md:px-5 md:pt-4 pb-2 relative">
-                <div className="flex justify-between items-start gap-2 pr-8">
+                <div className="flex justify-between items-start gap-2 pr-10">
                     <div className="min-w-0">
                         <DialogTitle className="font-headline tracking-[0.1em] text-xl md:text-2xl text-primary truncate">{station.name}</DialogTitle>
                         <DialogDescription className="font-bold text-xs md:text-sm uppercase tracking-normal text-muted-foreground hidden sm:block">
@@ -328,8 +328,8 @@ export function BillModal({
                         ))}
                     </div>
                 </div>
-                <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                    <X className="h-5 w-5" />
+                <DialogPrimitive.Close className="absolute right-3 top-3 p-1.5 rounded-lg bg-muted/60 text-foreground transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <X className="h-6 w-6 md:h-5 md:w-5" />
                     <span className="sr-only">Close</span>
                 </DialogPrimitive.Close>
             </DialogHeader>
@@ -338,7 +338,7 @@ export function BillModal({
                 <button 
                     onClick={() => setActiveTab('menu')}
                     className={cn(
-                        "flex-1 h-11 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-1.5", 
+                        "flex-1 h-12 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
                         activeTab === 'menu' ? "border-primary text-primary bg-primary/10" : "border-transparent text-muted-foreground"
                     )}
                 >
@@ -347,23 +347,23 @@ export function BillModal({
                 <button 
                     onClick={() => setActiveTab('review')}
                     className={cn(
-                        "flex-1 h-11 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
+                        "flex-1 h-12 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
                         activeTab === 'review' ? "border-primary text-primary bg-primary/10" : "border-transparent text-muted-foreground"
                     )}
                 >
                     Review
-                    <Badge className="font-mono h-4 px-1.5 min-w-[18px] bg-primary text-primary-foreground text-xs">{billItems.length}</Badge>
+                    <Badge className="font-mono h-5 px-2 min-w-[20px] bg-primary text-primary-foreground text-xs">{billItems.length}</Badge>
                 </button>
             </div>
 
             {activeTab === 'menu' && (
                 <div className="flex flex-col bg-card">
-                    <div className="px-3 py-1.5 md:p-3 bg-muted/10 border-b">
+                    <div className="px-3 py-2 md:p-3 bg-muted/10 border-b">
                         <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
                                 placeholder="SEARCH ITEMS..." 
-                                className="pl-7 h-8 md:h-10 bg-background border-none font-bold uppercase tracking-tight text-sm md:text-sm"
+                                className="pl-9 h-11 md:h-10 bg-background border-none font-bold uppercase tracking-tight text-sm md:text-sm"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
@@ -470,20 +470,22 @@ export function BillModal({
                                     <span className="flex items-center gap-1.5"><Flame className="h-4 w-4 text-amber-500 fill-amber-500/20" /> MOST SOLD ITEMS</span>
                                     <span className="text-xs font-mono font-bold text-amber-600/80">TOP SELLERS</span>
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
                                     {popularItems.map(item => (
                                         <button 
                                             key={`popular-${item.id}`} 
                                             onClick={() => handleAddItem(item)}
-                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-amber-500/30 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
+                                            className="group p-3.5 md:p-4 rounded-xl border-2 border-amber-500/30 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left flex flex-col justify-between min-h-[92px] md:h-32 relative overflow-hidden active:scale-[0.98] active:border-amber-500 shadow-sm"
                                         >
                                             <div className="flex justify-between items-start">
-                                                <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-2 group-hover:text-amber-500 transition-colors line-clamp-2">{item.name}</p>
+                                                <p className="font-bold uppercase text-[15px] sm:text-[16px] md:text-[18px] leading-tight tracking-tight pr-2 group-hover:text-amber-500 transition-colors line-clamp-2">{item.name}</p>
                                                 <Badge variant="outline" className="text-[10px] h-4 bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase font-bold shrink-0">BESTSELLER</Badge>
                                             </div>
-                                            <div className="flex justify-between items-end">
-                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
-                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-amber-500 opacity-40 group-hover:opacity-100 transition-opacity" />
+                                            <div className="flex justify-between items-end mt-2">
+                                                <span className="font-mono font-bold text-[17px] md:text-[20px] text-foreground">₹{item.price}</span>
+                                                <div className="h-8 w-8 sm:h-7 sm:w-7 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-black transition-all">
+                                                    <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                                </div>
                                             </div>
                                         </button>
                                     ))}
@@ -497,17 +499,19 @@ export function BillModal({
                                 <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
                                     <Gamepad2 className="h-3.5 w-3.5" /> SESSION
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
                                     {filteredGaming.map(pkg => (
                                         <button 
                                             key={pkg.id} 
                                             onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
-                                            className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
+                                            className="group p-3.5 md:p-4 rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between min-h-[92px] md:h-32 relative overflow-hidden active:scale-[0.98] active:border-primary shadow-sm"
                                         >
-                                            <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
-                                            <div className="flex justify-between items-end">
-                                                <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{pkg.price}</span>
-                                                <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                            <p className="font-bold uppercase text-[15px] sm:text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                            <div className="flex justify-between items-end mt-2">
+                                                <span className="font-mono font-bold text-[17px] md:text-[20px] text-foreground">₹{pkg.price}</span>
+                                                <div className="h-8 w-8 sm:h-7 sm:w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                    <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                                </div>
                                             </div>
                                         </button>
                                     ))}
@@ -525,17 +529,19 @@ export function BillModal({
                                         <span>{categoryName}</span>
                                         <span className="text-xs font-mono font-bold text-muted-foreground/60">{items.length} ITEMS</span>
                                     </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
                                         {items.map(item => (
                                             <button 
                                                 key={item.id} 
                                                 onClick={() => handleAddItem(item)}
-                                                className="group p-3 md:p-4 rounded-lg md:rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between h-24 md:h-32 relative overflow-hidden active:scale-95 shadow-sm"
+                                                className="group p-3.5 md:p-4 rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between min-h-[92px] md:h-32 relative overflow-hidden active:scale-[0.98] active:border-primary shadow-sm"
                                             >
-                                                <p className="font-bold uppercase text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
-                                                <div className="flex justify-between items-end">
-                                                    <span className="font-mono font-bold text-[18px] md:text-[20px]">₹{item.price}</span>
-                                                    <PlusCircle className="h-4 w-4 md:h-6 md:w-6 text-primary opacity-20 group-hover:opacity-100 transition-opacity" />
+                                                <p className="font-bold uppercase text-[15px] sm:text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                                <div className="flex justify-between items-end mt-2">
+                                                    <span className="font-mono font-bold text-[17px] md:text-[20px] text-foreground">₹{item.price}</span>
+                                                    <div className="h-8 w-8 sm:h-7 sm:w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                        <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                                    </div>
                                                 </div>
                                             </button>
                                         ))}
@@ -615,18 +621,30 @@ export function BillModal({
                         <TableBody>
                             {billItems.length > 0 ? billItems.map((item, idx) => (
                                 <TableRow key={`${item.itemId}-${idx}`} className="border-b hover:bg-transparent">
-                                    <TableCell className="py-2.5 pl-0">
+                                    <TableCell className="py-3 pl-0">
                                         <p className="font-bold text-sm md:text-[14px] uppercase leading-tight">{item.name}</p>
-                                        <p className="text-sm md:text-sm font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
                                     </TableCell>
-                                    <TableCell className="py-2.5 px-0">
-                                        <div className="flex items-center justify-end gap-1.5">
-                                            <button onClick={() => handleUpdateQuantityByIndex(idx, item.quantity - 1)} className="text-muted-foreground hover:text-destructive"><MinusCircle className="h-4 w-4" /></button>
-                                            <span className="min-w-3 text-center font-bold text-sm">{item.quantity}</span>
-                                            <button onClick={() => handleAddItem({ id: item.itemId, name: item.name, price: item.price })} className="text-muted-foreground hover:text-green-600"><PlusCircle className="h-4 w-4" /></button>
+                                    <TableCell className="py-3 px-0">
+                                        <div className="flex items-center justify-end gap-1 sm:gap-1.5">
+                                            <button 
+                                                onClick={() => handleUpdateQuantityByIndex(idx, item.quantity - 1)} 
+                                                className="h-9 w-9 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-muted/60 hover:bg-destructive/20 text-muted-foreground hover:text-destructive active:scale-95 transition-all"
+                                                aria-label="Decrease quantity"
+                                            >
+                                                <MinusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                            </button>
+                                            <span className="min-w-6 text-center font-mono font-bold text-sm sm:text-base">{item.quantity}</span>
+                                            <button 
+                                                onClick={() => handleAddItem({ id: item.itemId, name: item.name, price: item.price })} 
+                                                className="h-9 w-9 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-primary/10 hover:bg-primary/20 text-primary active:scale-95 transition-all"
+                                                aria-label="Increase quantity"
+                                            >
+                                                <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                            </button>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right py-2.5 pr-0 font-bold text-sm md:text-[14px] font-mono whitespace-nowrap text-primary">
+                                    <TableCell className="text-right py-3 pr-0 font-bold text-sm md:text-[14px] font-mono whitespace-nowrap text-primary">
                                         ₹{(item.price * item.quantity).toLocaleString()}
                                     </TableCell>
                                 </TableRow>
@@ -656,12 +674,12 @@ export function BillModal({
             </div>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 p-2.5 md:p-3 border-t bg-background shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 p-3 sm:p-3 pb-6 sm:pb-3 pb-safe border-t bg-background shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
           <div className="flex gap-2 w-full sm:flex-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-bold uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-sm md:text-sm">Cancel</Button>
-            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-bold uppercase tracking-[0.1em] h-12 md:h-14 border-2 text-sm md:text-sm"><Save className="mr-1 h-3.5 w-3.5" /> Save</Button>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-bold uppercase tracking-[0.1em] h-13 py-3 md:h-14 border-2 text-sm active:scale-95 transition-all">Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-bold uppercase tracking-[0.1em] h-13 py-3 md:h-14 border-2 text-sm active:scale-95 transition-all"><Save className="mr-1.5 h-4 w-4" /> Save</Button>
           </div>
-          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-bold uppercase tracking-[0.1em] h-12 md:h-14 shadow-lg text-sm md:text-[15px] bg-primary text-primary-foreground"><CreditCard className="mr-1.5 h-4 w-4 md:h-5 md:w-5"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
+          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-bold uppercase tracking-[0.1em] h-14 py-3 md:h-14 shadow-lg text-sm sm:text-[15px] bg-primary text-primary-foreground active:scale-[0.99] transition-all"><CreditCard className="mr-2 h-5 w-5"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,9 +1,16 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { DataProvider } from '@/context/data-context';
 import { ThemeProvider } from '@/components/layout/theme-provider';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'The 8 Bit Bistro Members Club',

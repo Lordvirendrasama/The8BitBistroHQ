@@ -344,15 +344,15 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !isClosing && onOpenChange(open)}>
-        <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden border-2 border-primary/30 shadow-2xl rounded-xl">
-            <DialogHeader className="px-6 pt-5 shrink-0 bg-background border-b pb-3">
-                <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-base sm:text-xl">
-                    {step === 'review-bill' && <><Receipt className="h-4 w-4 text-primary" /> BILL REVIEW: {station.name}</>}
-                    {step === 'member-xp' && <><Star className="h-4 w-4 text-yellow-500" /> BITS EARNED</>}
-                    {step === 'payment-method' && <><Banknote className="h-4 w-4 text-primary" /> CHECKOUT</>}
-                    {step === 'split-details' && <><Layers className="h-4 w-4 text-amber-500" /> SPLIT PAYMENT</>}
-                    {step === 'pending-details' && <><FileWarning className="h-4 w-4 text-destructive" /> RECORD PENDING</>}
-                    {step === 'checkout-success' && <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> CHECKOUT COMPLETE</>}
+        <DialogContent className="w-full h-full max-w-full sm:max-w-lg sm:h-auto sm:max-h-[85vh] rounded-none sm:rounded-xl flex flex-col p-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl">
+            <DialogHeader className="px-5 py-4 sm:px-6 sm:pt-5 shrink-0 bg-background border-b pb-3">
+                <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-lg sm:text-xl">
+                    {step === 'review-bill' && <><Receipt className="h-5 w-5 text-primary" /> BILL REVIEW: {station.name}</>}
+                    {step === 'member-xp' && <><Star className="h-5 w-5 text-yellow-500" /> BITS EARNED</>}
+                    {step === 'payment-method' && <><Banknote className="h-5 w-5 text-primary" /> CHECKOUT</>}
+                    {step === 'split-details' && <><Layers className="h-5 w-5 text-amber-500" /> SPLIT PAYMENT</>}
+                    {step === 'pending-details' && <><FileWarning className="h-5 w-5 text-destructive" /> RECORD PENDING</>}
+                    {step === 'checkout-success' && <><CheckCircle2 className="h-5 w-5 text-emerald-500" /> CHECKOUT COMPLETE</>}
                 </DialogTitle>
             </DialogHeader>
 
@@ -374,15 +374,27 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                     </div>
                                 )}
                                 {billItems.map((item, idx) => (
-                                    <div key={`${item.itemId}-${idx}`} className="flex justify-between items-center p-2 rounded-lg bg-card border-2 shadow-sm animate-in slide-in-from-right-2 duration-300 group">
-                                        <div className="min-w-0 flex-1 pr-2"><p className="font-bold text-sm uppercase truncate leading-tight">{item.name}</p><p className="text-sm font-bold text-muted-foreground uppercase">₹{item.price} / unit</p></div>
+                                    <div key={`${item.itemId}-${idx}`} className="flex justify-between items-center p-3 rounded-xl bg-card border-2 shadow-sm animate-in slide-in-from-right-2 duration-300 group">
+                                        <div className="min-w-0 flex-1 pr-2"><p className="font-bold text-sm sm:text-base uppercase truncate leading-tight">{item.name}</p><p className="text-xs sm:text-sm font-bold text-muted-foreground uppercase">₹{item.price} / unit</p></div>
                                         <div className="flex items-center gap-2">
-                                            <div className="flex items-center bg-muted/30 rounded-md p-0.5 border">
-                                                <button onClick={() => handleUpdateQuantityByIndex(idx, -1)} className="h-5 w-5 flex items-center justify-center rounded hover:bg-destructive hover:text-white transition-colors"><Minus className="h-2.5 w-2.5"/></button>
-                                                <span className="w-6 text-center font-bold text-sm font-mono">{item.quantity}</span>
-                                                <button onClick={() => handleUpdateQuantityByIndex(idx, 1)} className="h-5 w-5 flex items-center justify-center rounded hover:bg-primary hover:text-white transition-colors"><Plus className="h-2.5 w-2.5"/></button>
+                                            <div className="flex items-center bg-muted/40 rounded-lg p-1 border">
+                                                <button 
+                                                    onClick={() => handleUpdateQuantityByIndex(idx, -1)} 
+                                                    className="h-8 w-8 sm:h-7 sm:w-7 flex items-center justify-center rounded-md bg-muted/80 hover:bg-destructive hover:text-white active:scale-95 transition-colors"
+                                                    aria-label="Decrease quantity"
+                                                >
+                                                    <Minus className="h-4 w-4 sm:h-3 sm:w-3"/>
+                                                </button>
+                                                <span className="w-8 text-center font-bold text-sm sm:text-base font-mono">{item.quantity}</span>
+                                                <button 
+                                                    onClick={() => handleUpdateQuantityByIndex(idx, 1)} 
+                                                    className="h-8 w-8 sm:h-7 sm:w-7 flex items-center justify-center rounded-md bg-primary/20 hover:bg-primary hover:text-white active:scale-95 transition-colors"
+                                                    aria-label="Increase quantity"
+                                                >
+                                                    <Plus className="h-4 w-4 sm:h-3 sm:w-3"/>
+                                                </button>
                                             </div>
-                                            <div className="text-right min-w-[50px]"><p className="font-mono font-bold text-sm text-primary">₹{(item.price * item.quantity).toLocaleString()}</p></div>
+                                            <div className="text-right min-w-[60px]"><p className="font-mono font-bold text-sm sm:text-base text-primary">₹{(item.price * item.quantity).toLocaleString()}</p></div>
                                         </div>
                                     </div>
                                 ))}
@@ -437,7 +449,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                 type="button"
                                 variant="outline" 
                                 className={cn(
-                                    "h-24 flex flex-col gap-1 text-base font-bold border-2 transition-all relative uppercase tracking-tight",
+                                    "h-24 sm:h-24 flex flex-col gap-1.5 text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
                                     selectedMethod === 'cash' ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 ring-2 ring-emerald-500/20" : "hover:border-emerald-500"
                                 )} 
                                 onClick={() => setSelectedMethod('cash')}
@@ -454,7 +466,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                 type="button"
                                 variant="outline" 
                                 className={cn(
-                                    "h-24 flex flex-col gap-1 text-base font-bold border-2 transition-all relative uppercase tracking-tight",
+                                    "h-24 sm:h-24 flex flex-col gap-1.5 text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
                                     selectedMethod === 'upi' ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "hover:border-primary"
                                 )} 
                                 onClick={() => setSelectedMethod('upi')}
@@ -471,7 +483,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                 type="button"
                                 variant="outline" 
                                 className={cn(
-                                    "h-24 flex flex-col gap-1 text-base font-bold border-2 transition-all relative uppercase tracking-tight",
+                                    "h-24 sm:h-24 flex flex-col gap-1.5 text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
                                     selectedMethod === 'district-dinein' ? "border-amber-500 bg-amber-500/10 text-amber-600 ring-2 ring-amber-500/20" : "hover:border-amber-500"
                                 )} 
                                 onClick={() => setSelectedMethod('district-dinein')}
@@ -484,11 +496,11 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                 <MapPin className="h-8 w-8 text-amber-500" /> District
                             </Button>
 
-                            <div className="grid grid-cols-1 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 <Button 
                                     type="button"
                                     variant="outline" 
-                                    className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-sm" 
+                                    className="h-14 sm:h-11 flex items-center justify-center gap-2 font-bold uppercase border-dashed border-2 text-sm sm:text-base active:scale-95 transition-all" 
                                     onClick={() => {
                                         setStep('split-details');
                                         const cashVal = parseFloat(splitCash) || 0;
@@ -500,15 +512,15 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                         }
                                     }}
                                 >
-                                    <Layers className="h-4 w-4 text-amber-500" /> Split
+                                    <Layers className="h-5 w-5 sm:h-4 sm:w-4 text-amber-500" /> Split
                                 </Button>
                                 <Button 
                                     type="button"
                                     variant="outline" 
-                                    className="h-10.5 flex gap-2 font-bold uppercase border-dashed border-2 text-sm" 
+                                    className="h-14 sm:h-11 flex items-center justify-center gap-2 font-bold uppercase border-dashed border-2 text-sm sm:text-base active:scale-95 transition-all" 
                                     onClick={() => setStep('pending-details')}
                                 >
-                                    <FileWarning className="h-4 w-4 text-destructive" /> Pending
+                                    <FileWarning className="h-5 w-5 sm:h-4 sm:w-4 text-destructive" /> Pending
                                 </Button>
                             </div>
                         </div>
@@ -809,37 +821,37 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                 )}
             </ScrollArea>
 
-            <DialogFooter className="px-4 py-3 border-t bg-muted/10 shrink-0">
-                {step === 'review-bill' && <Button disabled={isClosing} onClick={handleContinueToPayment} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
-                {step === 'member-xp' && <Button disabled={isClosing} onClick={handleConfirmRewards} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+            <DialogFooter className="px-4 py-3 sm:py-3.5 pb-6 sm:pb-3.5 pb-safe border-t bg-muted/10 shrink-0">
+                {step === 'review-bill' && <Button disabled={isClosing} onClick={handleContinueToPayment} className="w-full h-14 sm:h-12 font-display text-base sm:text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
+                {step === 'member-xp' && <Button disabled={isClosing} onClick={handleConfirmRewards} className="w-full h-14 sm:h-12 font-display text-base sm:text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
                 {step === 'payment-method' && (
                     <div className="flex items-center gap-2 w-full">
-                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="h-12 px-3 font-bold uppercase text-xs tracking-normal">
-                            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> REVIEW
+                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="h-14 sm:h-12 px-4 font-bold uppercase text-xs sm:text-sm tracking-normal">
+                            <ArrowLeft className="mr-1 h-4 w-4" /> REVIEW
                         </Button>
                         <Button 
                             disabled={!selectedMethod || isClosing} 
                             onClick={() => handleCheckout(selectedMethod)} 
-                            className="flex-1 h-12 font-bold uppercase tracking-tight text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl gap-2"
+                            className="flex-1 h-14 sm:h-12 font-bold uppercase tracking-tight text-sm sm:text-base bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl gap-2 active:scale-[0.99]"
                         >
-                            <CheckCircle2 className="h-4 w-4" /> CONFIRM & CLOSE SESSION
+                            <CheckCircle2 className="h-5 w-5" /> CONFIRM & CLOSE SESSION
                         </Button>
                     </div>
                 )}
                 {step === 'split-details' && (
                     <div className="flex items-center gap-2 w-full">
-                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('payment-method')} className="h-12 px-3 font-bold uppercase text-xs tracking-normal">
-                            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> BACK
+                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('payment-method')} className="h-14 sm:h-12 px-4 font-bold uppercase text-xs sm:text-sm tracking-normal">
+                            <ArrowLeft className="mr-1 h-4 w-4" /> BACK
                         </Button>
-                        <Button onClick={() => handleCheckout('split', parseFloat(splitCash), parseFloat(splitUpi))} disabled={isClosing || Math.abs((parseFloat(splitCash)||0) + (parseFloat(splitUpi)||0) - finalBillTotal) > 0.1} className="flex-1 h-12 font-bold uppercase tracking-tight text-base bg-primary shadow-xl">FINALIZE SPLIT</Button>
+                        <Button onClick={() => handleCheckout('split', parseFloat(splitCash), parseFloat(splitUpi))} disabled={isClosing || Math.abs((parseFloat(splitCash)||0) + (parseFloat(splitUpi)||0) - finalBillTotal) > 0.1} className="flex-1 h-14 sm:h-12 font-bold uppercase tracking-tight text-sm sm:text-base bg-primary shadow-xl">FINALIZE SPLIT</Button>
                     </div>
                 )}
                 {step === 'pending-details' && (
                     <div className="flex items-center gap-2 w-full">
-                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('payment-method')} className="h-12 px-3 font-bold uppercase text-xs tracking-normal">
-                            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> BACK
+                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('payment-method')} className="h-14 sm:h-12 px-4 font-bold uppercase text-xs sm:text-sm tracking-normal">
+                            <ArrowLeft className="mr-1 h-4 w-4" /> BACK
                         </Button>
-                        <Button onClick={handlePendingConfirm} disabled={isClosing} className="flex-1 h-12 font-bold uppercase tracking-tight text-base bg-destructive shadow-xl">SAVE DEBT & CLOSE</Button>
+                        <Button onClick={handlePendingConfirm} disabled={isClosing} className="flex-1 h-14 sm:h-12 font-bold uppercase tracking-tight text-sm sm:text-base bg-destructive shadow-xl">SAVE DEBT & CLOSE</Button>
                     </div>
                 )}
             </DialogFooter>
