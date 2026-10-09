@@ -434,20 +434,24 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
 
                 <Separator className="my-2 opacity-50" />
 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center gap-2">
                   <div className="flex items-center gap-2">
-                    <Label className="text-sm font-bold uppercase tracking-normal flex items-center gap-1">
-                      <Tag className="h-3 w-3 text-destructive" /> Discount
+                    <Label className="text-sm font-bold uppercase tracking-normal flex items-center gap-1 shrink-0">
+                      <Tag className="h-3.5 w-3.5 text-destructive" /> Discount
                     </Label>
-                    <Input
-                      type="number"
-                      value={discount || ''}
-                      onChange={e => setDiscount(Math.max(0, Math.min(subtotal, Number(e.target.value))))}
-                      className="w-16 h-7 text-right font-mono font-bold text-sm border-destructive/20 bg-background"
-                      placeholder="0"
-                    />
+                    <div className="relative w-24 sm:w-28 shrink-0">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-xs sm:text-sm text-destructive pointer-events-none">₹</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={discount || ''}
+                        onChange={e => setDiscount(Math.max(0, Math.min(subtotal, Number(e.target.value))))}
+                        className="h-7 pl-6 pr-2.5 text-right font-mono font-bold text-xs sm:text-sm text-destructive border-destructive/30 bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-destructive"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
-                  <span className="font-mono font-bold text-destructive text-sm">- ₹{totalDiscountValue.toLocaleString()}</span>
+                  <span className="font-mono font-bold text-destructive text-sm shrink-0">- ₹{totalDiscountValue.toLocaleString()}</span>
                 </div>
               </div>
 

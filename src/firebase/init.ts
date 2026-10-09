@@ -15,15 +15,20 @@ export const initializeFirebase = () => {
   const auth = getAuth(app);
   
   let db;
-  if (!getApps().length) {
-    db = initializeFirestore(app, {
-      localCache: !isServer 
-        ? persistentLocalCache({
-            tabManager: persistentMultipleTabManager(),
-          })
-        : undefined,
-    });
-  } else {
+  try {
+    if (!getApps().length) {
+      db = initializeFirestore(app, {
+        localCache: !isServer 
+          ? persistentLocalCache({
+              tabManager: persistentMultipleTabManager(),
+            })
+          : undefined,
+      });
+    } else {
+      db = getFirestore(app);
+    }
+  } catch (err) {
+    console.warn("Firestore persistent cache initialization failed (iOS Safari / Private Browsing), falling back to standard Firestore:", err);
     db = getFirestore(app);
   }
   

@@ -1047,7 +1047,7 @@ function DashboardContent() {
           </CardHeader>
           <CardContent className="p-0">
             {ps5Stations.length > 0 ? (
-              <div id="ps5-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div id="ps5-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 w-full max-w-full">
                 {ps5Stations.map(station => (
                   <TimerCard 
                     key={station.id} 
@@ -1082,7 +1082,7 @@ function DashboardContent() {
           </CardHeader>
           <CardContent className="p-0">
             {ps4Stations.length > 0 ? (
-              <div id="ps4-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div id="ps4-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 w-full max-w-full">
                 {ps4Stations.map(station => (
                   <TimerCard 
                     key={station.id} 
@@ -1116,7 +1116,7 @@ function DashboardContent() {
           </CardHeader>
           <CardContent className="p-0">
             {boardGameStations.length > 0 ? (
-              <div id="board-games-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div id="board-games-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 w-full max-w-full">
                 {boardGameStations.map(station => (
                   <TimerCard 
                     key={station.id} 
@@ -1150,7 +1150,7 @@ function DashboardContent() {
           </CardHeader>
           <CardContent className="p-0">
             {retroGamingStations.length > 0 ? (
-              <div id="retro-gaming-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div id="retro-gaming-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 w-full max-w-full">
                 {retroGamingStations.map(station => (
                   <TimerCard 
                     key={station.id} 

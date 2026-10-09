@@ -209,46 +209,59 @@ const StrategicTarget = ({ projectedRevenue, cashTotal = 0, upiTotal = 0 }: { pr
 
   if (!isViren) {
     return (
-      <div 
-        className="flex flex-col justify-center h-10 sm:h-11 w-auto max-w-[180px] sm:w-64 px-2 sm:px-3 rounded-lg border bg-card border-primary/20 overflow-hidden relative shadow-sm select-none cursor-pointer touch-none shrink"
-        onMouseDown={() => setIsPressed(true)}
-        onMouseUp={() => setIsPressed(false)}
-        onMouseLeave={() => setIsPressed(false)}
-        onTouchStart={() => setIsPressed(true)}
-        onTouchEnd={() => setIsPressed(false)}
-      >
-        <div className="flex justify-between items-center w-full mb-1">
-          {!isPressed ? (
-            <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground/70 uppercase w-full text-center truncate">
-              TOTAL
-            </span>
-          ) : (
-            <>
-              <span className="text-xs sm:text-sm font-bold font-mono tracking-tight text-emerald-600 truncate" title="Cash">
-                ₹{cashTotal.toLocaleString()} (C)
+      <Popover>
+        <PopoverTrigger asChild>
+          <button 
+            className="flex flex-col justify-center h-10 sm:h-11 w-auto min-w-[70px] max-w-[180px] sm:w-64 px-2.5 sm:px-3 rounded-lg border bg-card hover:bg-muted/10 active:scale-95 transition-all border-primary/20 overflow-hidden relative shadow-sm select-none cursor-pointer shrink"
+          >
+            <div className="flex justify-between items-center w-full mb-1">
+              <span className="text-xs sm:text-sm font-bold tracking-wider text-foreground/80 uppercase w-full text-center truncate">
+                TOTAL
               </span>
-              
-              <span className="text-xs sm:text-sm font-bold font-mono text-primary truncate" title="UPI">
-                ₹{upiTotal.toLocaleString()} (U)
-              </span>
+            </div>
+            <div className="w-full h-1 bg-muted/30 rounded-full relative overflow-hidden">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-1000 rounded-full", 
+                  isMet ? "bg-emerald-500" : "bg-primary"
+                )} 
+                style={{ width: `${progress}%` }} 
+              />
+            </div>
+            <div className={cn("absolute top-0 left-0 w-0.5 h-full", isMet ? "bg-emerald-500" : "bg-primary")} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-3 overflow-hidden font-body border-2 shadow-2xl rounded-xl" align="end" sideOffset={8}>
+          <div className="flex items-center justify-between border-b pb-2 mb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Shift Revenue Breakdown</span>
+            <Badge variant="outline" className="text-[9px] font-mono font-bold text-emerald-600 border-emerald-500/30">Live</Badge>
+          </div>
 
-              <span className="text-xs sm:text-sm font-bold font-mono text-foreground truncate" title="Grand Total">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center bg-muted/30 p-2 rounded-lg border">
+              <span className="text-xs font-bold uppercase text-muted-foreground">Grand Total</span>
+              <span className="text-base font-extrabold font-mono text-foreground">
                 ₹{Math.round(projectedRevenue).toLocaleString()}
               </span>
-            </>
-          )}
-        </div>
-        <div className="w-full h-1 bg-muted/30 rounded-full relative overflow-hidden">
-          <div 
-            className={cn(
-              "h-full transition-all duration-1000 rounded-full", 
-              isMet ? "bg-emerald-500" : "bg-primary"
-            )} 
-            style={{ width: `${progress}%` }} 
-          />
-        </div>
-        <div className={cn("absolute top-0 left-0 w-0.5 h-full", isMet ? "bg-emerald-500" : "bg-primary")} />
-      </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-lg flex flex-col">
+                <span className="text-[10px] font-bold uppercase text-emerald-600">Cash (C)</span>
+                <span className="font-mono font-extrabold text-emerald-600 text-sm mt-0.5">
+                  ₹{cashTotal.toLocaleString()}
+                </span>
+              </div>
+              <div className="bg-primary/10 border border-primary/30 p-2 rounded-lg flex flex-col">
+                <span className="text-[10px] font-bold uppercase text-primary">UPI (U)</span>
+                <span className="font-mono font-extrabold text-primary text-sm mt-0.5">
+                  ₹{upiTotal.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   }
 
@@ -1334,6 +1347,93 @@ const ShiftTaskDropdown = ({
   );
 };
 
+const MobileQuickHub = ({
+  projectedRevenue,
+  cashTotal,
+  upiTotal,
+  activeShift,
+  currentEmployee,
+  activeCycle,
+  handleSaveStaffOrder,
+  onTaskToggle,
+}: {
+  projectedRevenue: number;
+  cashTotal: number;
+  upiTotal: number;
+  activeShift: Shift | null;
+  currentEmployee: Employee | null;
+  activeCycle: string;
+  handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => Promise<void>;
+  onTaskToggle: (task: ShiftTask, result?: 'yes' | 'no') => void;
+}) => {
+  const { user } = useAuth();
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-9 px-2 gap-1 border-primary/30 bg-primary/10 text-primary font-bold text-xs flex sm:hidden shrink-0 active:scale-95 shadow-xs"
+        >
+          <Zap className="h-3.5 w-3.5 text-primary fill-current" />
+          <span>Tools</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[90vw] max-w-sm p-0 overflow-hidden font-body border-2 shadow-2xl rounded-2xl" align="end" sideOffset={8}>
+        <div className="p-3 bg-card border-b flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary fill-current" />
+            <h4 className="font-bold text-xs uppercase tracking-wider text-foreground">Bistro Quick Tools</h4>
+          </div>
+          <Badge variant="outline" className="text-[10px] font-bold uppercase border-primary/30 text-primary">Mobile Live</Badge>
+        </div>
+
+        <div className="p-3 space-y-3 bg-muted/5 max-h-[75vh] overflow-y-auto">
+          <div className="space-y-2">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground pl-0.5">Financial Metrics</p>
+            <div className="flex flex-col gap-2">
+              <StrategicTarget projectedRevenue={projectedRevenue} cashTotal={cashTotal} upiTotal={upiTotal} />
+              <div className="grid grid-cols-2 gap-2">
+                <OwnerConsumptionHeader />
+                <TodayExpenses />
+              </div>
+              {(user?.role === 'admin' || user?.username === 'Viren') && (
+                <OwnerStaffFoodHeader 
+                  activeShift={activeShift} 
+                  currentEmployee={currentEmployee}
+                  activeCycle={activeCycle}
+                  handleSaveStaffOrder={handleSaveStaffOrder}
+                />
+              )}
+              <StaffFoodHeaderButton 
+                currentEmployee={currentEmployee}
+                activeCycle={activeCycle}
+                handleSaveStaffOrder={handleSaveStaffOrder}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-dashed">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground pl-0.5">Quick Actions & Badges</p>
+            <div className="flex items-center justify-between p-2 rounded-xl bg-card border-2 shadow-xs">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <ChiptuneSoundToggle />
+                <PendingNotifications />
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <OwnerTaskDropdown />
+                <StaffNotepad />
+                <ShiftTaskDropdown activeShift={activeShift} onTaskToggle={onTaskToggle} />
+                <AdminNotifications />
+              </div>
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 interface AppHeaderProps {
   activeShift: Shift | null;
   onTaskToggle: (task: ShiftTask, result?: 'yes' | 'no') => void;
@@ -1600,6 +1700,19 @@ export function AppHeader({
                         )}
                     </button>
 
+                    {!isCustomerView && (
+                        <MobileQuickHub 
+                            projectedRevenue={projectedRevenue} 
+                            cashTotal={cashTotal} 
+                            upiTotal={upiTotal} 
+                            activeShift={activeShift} 
+                            currentEmployee={currentEmployee} 
+                            activeCycle={activeCycle} 
+                            handleSaveStaffOrder={handleSaveStaffOrder} 
+                            onTaskToggle={onTaskToggle} 
+                        />
+                    )}
+
                     {(user?.role === 'admin' || user?.username === 'Viren') && !isCustomerView && (
                         <div className="hidden sm:block shrink-0">
                           <Popover>
@@ -1672,11 +1785,15 @@ export function AppHeader({
                           </Popover>
                         </div>
                     )}
-                    {!isCustomerView && <StrategicTarget projectedRevenue={projectedRevenue} cashTotal={cashTotal} upiTotal={upiTotal} />}
-                    {!isCustomerView && <div className="hidden sm:block shrink-0"><OwnerConsumptionHeader /></div>}
-                    {!isCustomerView && <div className="hidden md:block shrink-0"><TodayExpenses /></div>}
+                    {!isCustomerView && (
+                        <div className="shrink-0">
+                            <StrategicTarget projectedRevenue={projectedRevenue} cashTotal={cashTotal} upiTotal={upiTotal} />
+                        </div>
+                    )}
+                    {!isCustomerView && <div className="hidden 2xl:block shrink-0"><OwnerConsumptionHeader /></div>}
+                    {!isCustomerView && <div className="hidden xl:block shrink-0"><TodayExpenses /></div>}
                     {!isCustomerView && (user?.role === 'admin' || user?.username === 'Viren') && (
-                        <div className="hidden md:block shrink-0">
+                        <div className="hidden 2xl:block shrink-0">
                           <OwnerStaffFoodHeader 
                               activeShift={activeShift} 
                               currentEmployee={currentEmployee}
@@ -1686,7 +1803,7 @@ export function AppHeader({
                         </div>
                     )}
                     {!isCustomerView && (
-                        <div className="hidden sm:block shrink-0">
+                        <div className="hidden xl:block shrink-0">
                           <StaffFoodHeaderButton 
                               currentEmployee={currentEmployee}
                               activeCycle={activeCycle}

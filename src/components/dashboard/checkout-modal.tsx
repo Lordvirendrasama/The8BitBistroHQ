@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { Station, GamingPackage, Member, MemberTier, BillItem, PaymentMethod, FoodItem, Bill } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Star, Receipt, Banknote, Smartphone, ArrowLeft, Layers, Tag, ChevronRight, FileWarning, Zap, Phone, Clock, CheckCircle2, Search, Plus, Minus, Trash2, ShoppingBag, MapPin, MessageSquare, Send } from 'lucide-react';
+import { Star, Receipt, Banknote, Smartphone, ArrowLeft, Layers, Tag, ChevronRight, FileWarning, Zap, Phone, Clock, CheckCircle2, Search, Plus, Minus, Trash2, ShoppingBag, MapPin, MessageSquare, Send, X } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { settings } from '@/lib/data';
@@ -73,7 +73,9 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
             i.name.startsWith('Buy Recharge:')
         );
 
-        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0) {
+        const isWalkInOrNoTimer = station.packageName === 'Walk-in Order' || !station.endTime;
+
+        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0 && !isWalkInOrNoTimer) {
             const isRecharge = station.packageName?.startsWith('Recharge: ');
             if (!isRecharge) {
                 let durMins = 60;
@@ -340,74 +342,79 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     handleCheckout('pending', paid, 0);
   };
 
-  if (!station) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !isClosing && onOpenChange(open)}>
-        <DialogContent className="w-full h-full max-w-full sm:max-w-lg sm:h-auto sm:max-h-[85vh] rounded-none sm:rounded-xl flex flex-col p-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl">
-            <DialogHeader className="px-5 py-4 sm:px-6 sm:pt-5 shrink-0 bg-background border-b pb-3">
-                <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-lg sm:text-xl">
-                    {step === 'review-bill' && <><Receipt className="h-5 w-5 text-primary" /> BILL REVIEW: {station.name}</>}
-                    {step === 'member-xp' && <><Star className="h-5 w-5 text-yellow-500" /> BITS EARNED</>}
-                    {step === 'payment-method' && <><Banknote className="h-5 w-5 text-primary" /> CHECKOUT</>}
-                    {step === 'split-details' && <><Layers className="h-5 w-5 text-amber-500" /> SPLIT PAYMENT</>}
-                    {step === 'pending-details' && <><FileWarning className="h-5 w-5 text-destructive" /> RECORD PENDING</>}
-                    {step === 'checkout-success' && <><CheckCircle2 className="h-5 w-5 text-emerald-500" /> CHECKOUT COMPLETE</>}
+        <DialogContent showClose={false} className="w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[85vh] max-w-full sm:max-w-lg rounded-none sm:rounded-xl flex flex-col p-0 gap-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl">
+            <DialogHeader className="px-4 py-3 sm:px-6 sm:pt-5 shrink-0 bg-background border-b flex flex-row items-center justify-between space-y-0">
+                <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-base sm:text-xl min-w-0 pr-2">
+                    {step === 'review-bill' && <><Receipt className="h-5 w-5 text-primary shrink-0" /> <span className="truncate">BILL REVIEW: {station.name}</span></>}
+                    {step === 'member-xp' && <><Star className="h-5 w-5 text-yellow-500 shrink-0" /> <span className="truncate">BITS EARNED</span></>}
+                    {step === 'payment-method' && <><Banknote className="h-5 w-5 text-primary shrink-0" /> <span className="truncate">CHECKOUT</span></>}
+                    {step === 'split-details' && <><Layers className="h-5 w-5 text-amber-500 shrink-0" /> <span className="truncate">SPLIT PAYMENT</span></>}
+                    {step === 'pending-details' && <><FileWarning className="h-5 w-5 text-destructive shrink-0" /> <span className="truncate">RECORD PENDING</span></>}
+                    {step === 'checkout-success' && <><CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /> <span className="truncate">CHECKOUT COMPLETE</span></>}
                 </DialogTitle>
+                <button
+                    onClick={() => !isClosing && onOpenChange(false)}
+                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted/80 active:scale-95 transition-colors text-muted-foreground hover:text-foreground shrink-0"
+                    aria-label="Close dialog"
+                >
+                    <X className="h-4 w-4" />
+                </button>
             </DialogHeader>
 
             <ScrollArea className="flex-1 min-h-0 bg-muted/5">
                 {step === 'review-bill' && (
-                    <div className="space-y-4 p-4 sm:p-6">
-                        <div className={cn("text-center p-4 rounded-xl border-2 border-dashed transition-all", finalBillTotal === 0 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-primary/5 border-primary/20")}>
-                            <p className="text-sm font-bold uppercase tracking-normal opacity-50 mb-0.5">{finalBillTotal === 0 ? "RECHARGE SETTLEMENT" : "FINAL AMOUNT DUE"}</p>
+                    <div className="space-y-4 p-4 sm:p-6 pb-6">
+                        <div className={cn("text-center p-3 sm:p-4 rounded-xl border-2 border-dashed transition-all", finalBillTotal === 0 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-primary/5 border-primary/20")}>
+                            <p className="text-xs sm:text-sm font-bold uppercase tracking-normal opacity-50 mb-0.5">{finalBillTotal === 0 ? "RECHARGE SETTLEMENT" : "FINAL AMOUNT DUE"}</p>
                             <p className={cn("text-3xl sm:text-5xl font-bold font-mono tracking-tight", finalBillTotal === 0 ? "text-emerald-600" : "text-primary")}>₹{finalBillTotal.toLocaleString()}</p>
-                            {finalBillTotal === 0 && <div className="flex items-center justify-center gap-1 mt-1 text-sm font-bold uppercase text-emerald-600 tracking-normal"><CheckCircle2 className="h-2.5 w-2.5" />Balance Covered</div>}
+                            {finalBillTotal === 0 && <div className="flex items-center justify-center gap-1 mt-1 text-xs sm:text-sm font-bold uppercase text-emerald-600 tracking-normal"><CheckCircle2 className="h-3 w-3" />Balance Covered</div>}
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-1.5 pl-1"><ShoppingBag className="h-2.5 w-2.5" />Bill Auditor</h3>
+                            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-1.5 pl-1"><ShoppingBag className="h-3 w-3" />Bill Auditor</h3>
                             <div className="space-y-1.5">
                                 {initialPackageInfo && (
-                                    <div className="flex justify-between items-center p-2 rounded-lg bg-card border-2 shadow-sm animate-in fade-in duration-300">
-                                        <div className="min-w-0"><p className="font-bold text-sm uppercase truncate flex items-center gap-1.5">{initialPackageInfo.name}{initialPackageInfo.isExistingRecharge && <Badge variant="outline" className="text-sm h-3.5 bg-yellow-500/10 text-yellow-600 border-yellow-500/20">PREPAID</Badge>}</p><p className="text-sm font-bold text-muted-foreground uppercase">Session Package</p></div>
-                                        <span className="font-mono font-bold text-sm text-foreground">₹{initialPackageInfo.total.toLocaleString()}</span>
+                                    <div className="flex justify-between items-center p-2.5 rounded-xl bg-card border-2 shadow-xs animate-in fade-in duration-300 gap-2">
+                                        <div className="min-w-0 flex-1"><p className="font-bold text-xs sm:text-sm uppercase truncate flex items-center gap-1.5">{initialPackageInfo.name}{initialPackageInfo.isExistingRecharge && <Badge variant="outline" className="text-[10px] sm:text-xs h-4 bg-yellow-500/10 text-yellow-600 border-yellow-500/20 shrink-0">PREPAID</Badge>}</p><p className="text-xs font-bold text-muted-foreground uppercase">Session Package</p></div>
+                                        <span className="font-mono font-bold text-xs sm:text-sm text-foreground shrink-0">₹{initialPackageInfo.total.toLocaleString()}</span>
                                     </div>
                                 )}
                                 {billItems.map((item, idx) => (
-                                    <div key={`${item.itemId}-${idx}`} className="flex justify-between items-center p-3 rounded-xl bg-card border-2 shadow-sm animate-in slide-in-from-right-2 duration-300 group">
-                                        <div className="min-w-0 flex-1 pr-2"><p className="font-bold text-sm sm:text-base uppercase truncate leading-tight">{item.name}</p><p className="text-xs sm:text-sm font-bold text-muted-foreground uppercase">₹{item.price} / unit</p></div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex items-center bg-muted/40 rounded-lg p-1 border">
+                                    <div key={`${item.itemId}-${idx}`} className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl bg-card border-2 shadow-xs animate-in slide-in-from-right-2 duration-300 group gap-2 overflow-hidden">
+                                        <div className="min-w-0 flex-1 pr-1"><p className="font-bold text-xs sm:text-sm uppercase truncate leading-tight">{item.name}</p><p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">₹{item.price} / unit</p></div>
+                                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                            <div className="flex items-center bg-muted/40 rounded-lg p-0.5 border">
                                                 <button 
                                                     onClick={() => handleUpdateQuantityByIndex(idx, -1)} 
-                                                    className="h-8 w-8 sm:h-7 sm:w-7 flex items-center justify-center rounded-md bg-muted/80 hover:bg-destructive hover:text-white active:scale-95 transition-colors"
+                                                    className="h-7 w-7 sm:h-7 sm:w-7 flex items-center justify-center rounded-md bg-muted/80 hover:bg-destructive hover:text-white active:scale-95 transition-colors shrink-0"
                                                     aria-label="Decrease quantity"
                                                 >
-                                                    <Minus className="h-4 w-4 sm:h-3 sm:w-3"/>
+                                                    <Minus className="h-3.5 w-3.5 sm:h-3 sm:w-3"/>
                                                 </button>
-                                                <span className="w-8 text-center font-bold text-sm sm:text-base font-mono">{item.quantity}</span>
+                                                <span className="w-6 sm:w-7 text-center font-bold text-xs sm:text-sm font-mono shrink-0">{item.quantity}</span>
                                                 <button 
                                                     onClick={() => handleUpdateQuantityByIndex(idx, 1)} 
-                                                    className="h-8 w-8 sm:h-7 sm:w-7 flex items-center justify-center rounded-md bg-primary/20 hover:bg-primary hover:text-white active:scale-95 transition-colors"
+                                                    className="h-7 w-7 sm:h-7 sm:w-7 flex items-center justify-center rounded-md bg-primary/20 hover:bg-primary hover:text-white active:scale-95 transition-colors shrink-0"
                                                     aria-label="Increase quantity"
                                                 >
-                                                    <Plus className="h-4 w-4 sm:h-3 sm:w-3"/>
+                                                    <Plus className="h-3.5 w-3.5 sm:h-3 sm:w-3"/>
                                                 </button>
                                             </div>
-                                            <div className="text-right min-w-[60px]"><p className="font-mono font-bold text-sm sm:text-base text-primary">₹{(item.price * item.quantity).toLocaleString()}</p></div>
+                                            <div className="text-right min-w-[44px] sm:min-w-[56px] shrink-0"><p className="font-mono font-bold text-xs sm:text-sm text-primary">₹{(item.price * item.quantity).toLocaleString()}</p></div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                             <div className="relative mt-3">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                <Input placeholder="QUICK ADD FOOD/DRINKS..." className="h-10 pl-8 border-2 border-dashed font-bold uppercase text-sm tracking-normal bg-background" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                {filteredFood.length > 0 && <div className="absolute top-full left-0 right-0 mt-1 bg-card border-2 rounded-lg shadow-2xl z-50 overflow-hidden divide-y">{filteredFood.map(food => <button key={food.id} onClick={() => handleAddItem(food)} className="w-full p-2.5 text-left hover:bg-primary/5 flex justify-between items-center transition-colors"><span className="font-bold text-sm uppercase">{food.name}</span><span className="font-mono font-bold text-sm text-primary">₹{food.price}</span></button>)}</div>}
+                                <Input placeholder="QUICK ADD FOOD/DRINKS..." className="h-10 pl-8 border-2 border-dashed font-bold uppercase text-xs sm:text-sm tracking-normal bg-background" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                {filteredFood.length > 0 && <div className="absolute top-full left-0 right-0 mt-1 bg-card border-2 rounded-lg shadow-2xl z-50 overflow-hidden divide-y">{filteredFood.map(food => <button key={food.id} onClick={() => handleAddItem(food)} className="w-full p-2.5 text-left hover:bg-primary/5 flex justify-between items-center transition-colors"><span className="font-bold text-xs sm:text-sm uppercase">{food.name}</span><span className="font-mono font-bold text-xs sm:text-sm text-primary">₹{food.price}</span></button>)}</div>}
                             </div>
                             <div className="pt-3 border-t border-dashed mt-3">
-                                <div className="flex items-center justify-between p-2 rounded-lg bg-destructive/5 border-2 border-destructive/20">
-                                    <div className="flex items-center gap-1.5"><Tag className="h-3 w-3 text-destructive" /><Label className="text-sm font-bold uppercase tracking-normal text-destructive">Discount</Label></div>
-                                    <div className="relative w-20"><span className="absolute left-1.5 top-1/2 -translate-y-1/2 font-mono font-bold text-sm text-destructive">₹</span><Input type="number" value={discountInput} onChange={e => handleDiscountChange(e.target.value)} onBlur={handleDiscountBlur} className="h-7 pl-4 text-right font-mono font-bold text-sm text-destructive border-destructive/30 focus-visible:ring-destructive" placeholder="0" /></div>
+                                <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-destructive/5 border-2 border-destructive/20 gap-2 overflow-hidden">
+                                    <div className="flex items-center gap-1.5 min-w-0 flex-1"><Tag className="h-3.5 w-3.5 text-destructive shrink-0" /><Label className="text-xs sm:text-sm font-bold uppercase tracking-normal text-destructive truncate">Discount</Label></div>
+                                    <div className="relative w-24 sm:w-28 shrink-0"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-xs sm:text-sm text-destructive pointer-events-none">₹</span><Input type="number" min="0" value={discountInput} onChange={e => handleDiscountChange(e.target.value)} onBlur={handleDiscountBlur} className="h-8 pl-6 pr-2 text-right font-mono font-bold text-xs sm:text-sm text-destructive border-destructive/30 focus-visible:ring-destructive bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" /></div>
                                 </div>
                             </div>
                         </div>
@@ -444,63 +451,63 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                 )}
                 {step === 'payment-method' && (
                     <div className="space-y-4 p-4 sm:p-6 my-2">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                             <Button 
                                 type="button"
                                 variant="outline" 
                                 className={cn(
-                                    "h-24 sm:h-24 flex flex-col gap-1.5 text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
+                                    "h-20 sm:h-24 flex flex-col gap-1 text-sm sm:text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
                                     selectedMethod === 'cash' ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 ring-2 ring-emerald-500/20" : "hover:border-emerald-500"
                                 )} 
                                 onClick={() => setSelectedMethod('cash')}
                             >
                                 {selectedMethod === 'cash' && (
-                                    <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
-                                        <CheckCircle2 className="h-4 w-4" />
+                                    <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-xs">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
                                     </div>
                                 )}
-                                <Banknote className="h-8 w-8 text-emerald-600" /> Cash
+                                <Banknote className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-600" /> Cash
                             </Button>
                             
                             <Button 
                                 type="button"
                                 variant="outline" 
                                 className={cn(
-                                    "h-24 sm:h-24 flex flex-col gap-1.5 text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
+                                    "h-20 sm:h-24 flex flex-col gap-1 text-sm sm:text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
                                     selectedMethod === 'upi' ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "hover:border-primary"
                                 )} 
                                 onClick={() => setSelectedMethod('upi')}
                             >
                                 {selectedMethod === 'upi' && (
-                                    <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-0.5 shadow-sm">
-                                        <CheckCircle2 className="h-4 w-4" />
+                                    <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-0.5 shadow-xs">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
                                     </div>
                                 )}
-                                <Smartphone className="h-8 w-8 text-primary" /> UPI
+                                <Smartphone className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> UPI
                             </Button>
 
                             <Button 
                                 type="button"
                                 variant="outline" 
                                 className={cn(
-                                    "h-24 sm:h-24 flex flex-col gap-1.5 text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
+                                    "h-20 sm:h-24 flex flex-col gap-1 text-sm sm:text-base font-bold border-2 transition-all relative uppercase tracking-tight active:scale-95",
                                     selectedMethod === 'district-dinein' ? "border-amber-500 bg-amber-500/10 text-amber-600 ring-2 ring-amber-500/20" : "hover:border-amber-500"
                                 )} 
                                 onClick={() => setSelectedMethod('district-dinein')}
                             >
                                 {selectedMethod === 'district-dinein' && (
-                                    <div className="absolute top-2 right-2 bg-amber-500 text-white rounded-full p-0.5 shadow-sm">
-                                        <CheckCircle2 className="h-4 w-4" />
+                                    <div className="absolute top-2 right-2 bg-amber-500 text-white rounded-full p-0.5 shadow-xs">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
                                     </div>
                                 )}
-                                <MapPin className="h-8 w-8 text-amber-500" /> District
+                                <MapPin className="h-6 w-6 sm:h-8 sm:w-8 text-amber-500" /> District
                             </Button>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2">
                                 <Button 
                                     type="button"
                                     variant="outline" 
-                                    className="h-14 sm:h-11 flex items-center justify-center gap-2 font-bold uppercase border-dashed border-2 text-sm sm:text-base active:scale-95 transition-all" 
+                                    className="h-20 sm:h-24 flex flex-col items-center justify-center gap-1 font-bold uppercase border-dashed border-2 text-xs sm:text-sm active:scale-95 transition-all p-1" 
                                     onClick={() => {
                                         setStep('split-details');
                                         const cashVal = parseFloat(splitCash) || 0;
@@ -512,15 +519,15 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                         }
                                     }}
                                 >
-                                    <Layers className="h-5 w-5 sm:h-4 sm:w-4 text-amber-500" /> Split
+                                    <Layers className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500" /> Split
                                 </Button>
                                 <Button 
                                     type="button"
                                     variant="outline" 
-                                    className="h-14 sm:h-11 flex items-center justify-center gap-2 font-bold uppercase border-dashed border-2 text-sm sm:text-base active:scale-95 transition-all" 
+                                    className="h-20 sm:h-24 flex flex-col items-center justify-center gap-1 font-bold uppercase border-dashed border-2 text-xs sm:text-sm active:scale-95 transition-all p-1" 
                                     onClick={() => setStep('pending-details')}
                                 >
-                                    <FileWarning className="h-5 w-5 sm:h-4 sm:w-4 text-destructive" /> Pending
+                                    <FileWarning className="h-5 w-5 sm:h-6 sm:w-6 text-destructive" /> Pending
                                 </Button>
                             </div>
                         </div>
@@ -821,12 +828,12 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                 )}
             </ScrollArea>
 
-            <DialogFooter className="px-4 py-3 sm:py-3.5 pb-6 sm:pb-3.5 pb-safe border-t bg-muted/10 shrink-0">
-                {step === 'review-bill' && <Button disabled={isClosing} onClick={handleContinueToPayment} className="w-full h-14 sm:h-12 font-display text-base sm:text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
-                {step === 'member-xp' && <Button disabled={isClosing} onClick={handleConfirmRewards} className="w-full h-14 sm:h-12 font-display text-base sm:text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
+            <DialogFooter className="px-4 py-3 sm:py-3.5 pb-3 sm:pb-3.5 pb-safe border-t bg-muted/10 shrink-0">
+                {step === 'review-bill' && <Button disabled={isClosing} onClick={handleContinueToPayment} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
+                {step === 'member-xp' && <Button disabled={isClosing} onClick={handleConfirmRewards} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
                 {step === 'payment-method' && (
                     <div className="flex items-center gap-2 w-full">
-                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="h-14 sm:h-12 px-4 font-bold uppercase text-xs sm:text-sm tracking-normal">
+                        <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="h-12 px-3 font-bold uppercase text-xs sm:text-sm tracking-normal">
                             <ArrowLeft className="mr-1 h-4 w-4" /> REVIEW
                         </Button>
                         <Button 

@@ -693,13 +693,13 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent showClose={false} className="w-full h-full max-w-full sm:max-w-2xl sm:h-auto sm:max-h-[88vh] rounded-none sm:rounded-xl flex flex-col p-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl font-body">
+      <DialogContent showClose={false} className="w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[88vh] max-w-full sm:max-w-2xl rounded-none sm:rounded-xl flex flex-col p-0 gap-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl font-body">
         <DialogTitle className="sr-only">Assign Players Modal</DialogTitle>
         <DialogDescription className="sr-only">Assign customer players to gaming station and configure session time</DialogDescription>
 
         {/* START TIMER CONFIRMATION OVERLAY (PRE-FLIGHT MISSION BRIEFING) */}
         {startTimerConfirm && (
-          <div className="absolute inset-0 z-50 bg-zinc-950/98 backdrop-blur-xl flex flex-col justify-between p-5 sm:p-7 animate-in zoom-in-95 duration-200 border-2 border-primary/40 rounded-xl overflow-y-auto font-body">
+          <div className="absolute inset-0 z-50 bg-zinc-950/98 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-7 animate-in zoom-in-95 duration-200 border-2 border-primary/40 rounded-xl overflow-y-auto max-h-[100dvh] font-body">
             <div className="space-y-4">
               
               {/* Header */}
@@ -950,33 +950,33 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-950">
             {/* STEP 0: ARE YOU A MEMBER HERE? */}
             {step === 'membership-check' && (
-              <div className="flex-1 flex flex-col justify-center items-center px-4 py-5 sm:p-10 space-y-4 sm:space-y-8 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto w-full">
-                <div className="text-center space-y-2.5 max-w-md w-full">
-                  <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto text-primary shadow-xl">
-                    <Crown className="h-7 w-7 sm:h-10 sm:w-10" />
+              <div className="flex-1 flex flex-col justify-start sm:justify-center items-center px-4 py-3 sm:p-8 space-y-3 sm:space-y-6 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto w-full my-auto">
+                <div className="text-center space-y-1.5 sm:space-y-2.5 max-w-md w-full">
+                  <div className="h-11 w-11 sm:h-16 sm:w-16 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto text-primary shadow-xl">
+                    <Crown className="h-6 w-6 sm:h-8 sm:w-8" />
                   </div>
-                  <h3 className="text-xl sm:text-3xl font-extrabold uppercase text-white tracking-wide font-headline">
+                  <h3 className="text-lg sm:text-2xl font-extrabold uppercase text-white tracking-wide font-headline">
                     ARE YOU A MEMBER HERE?
                   </h3>
-                  <p className="text-xs sm:text-base text-zinc-300 font-medium leading-relaxed italic border-l-2 border-primary/50 pl-3 text-left bg-zinc-900/40 p-2 sm:p-2.5 rounded-r-xl">
+                  <p className="text-xs sm:text-sm text-zinc-300 font-medium leading-relaxed italic border-l-2 border-primary/50 pl-2.5 text-left bg-zinc-900/40 p-2 rounded-r-xl">
                     "Welcome to The 8 Bit Bistro! Are you registered with us as a member?"
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full max-w-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 w-full max-w-lg">
                   {/* YES BUTTON */}
                   <div
                     onClick={() => setStep('selection')}
-                    className="p-4 sm:p-7 rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 hover:bg-emerald-500/25 hover:border-emerald-400 transition-all flex flex-col items-center text-center gap-2.5 sm:gap-3.5 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[110px] sm:min-h-[140px] justify-center"
+                    className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 hover:bg-emerald-500/25 hover:border-emerald-400 transition-all flex flex-col items-center text-center gap-2 sm:gap-3 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[90px] sm:min-h-[130px] justify-center"
                   >
-                    <div className="h-14 w-14 rounded-xl bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all">
-                      <CheckCircle2 className="h-8 w-8" />
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all shrink-0">
+                      <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7" />
                     </div>
                     <div>
-                      <h4 className="text-xl font-extrabold uppercase text-white tracking-wide">
+                      <h4 className="text-base sm:text-xl font-extrabold uppercase text-white tracking-wide">
                         YES, I'M A MEMBER
                       </h4>
-                      <p className="text-xs sm:text-sm text-emerald-300 font-semibold pt-1">
+                      <p className="text-[11px] sm:text-xs text-emerald-300 font-semibold pt-0.5">
                         Search existing member database
                       </p>
                     </div>
@@ -985,16 +985,16 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                   {/* NO BUTTON */}
                   <div
                     onClick={() => setStep('registration')}
-                    className="p-4 sm:p-7 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-b from-amber-500/15 to-amber-500/5 hover:bg-amber-500/25 hover:border-amber-400 transition-all flex flex-col items-center text-center gap-2.5 sm:gap-3.5 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[110px] sm:min-h-[140px] justify-center"
+                    className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-amber-500/50 bg-gradient-to-b from-amber-500/15 to-amber-500/5 hover:bg-amber-500/25 hover:border-amber-400 transition-all flex flex-col items-center text-center gap-2 sm:gap-3 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[90px] sm:min-h-[130px] justify-center"
                   >
-                    <div className="h-14 w-14 rounded-xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all">
-                      <UserPlus className="h-8 w-8" />
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all shrink-0">
+                      <UserPlus className="h-6 w-6 sm:h-7 sm:w-7" />
                     </div>
                     <div>
-                      <h4 className="text-xl font-extrabold uppercase text-white tracking-wide">
+                      <h4 className="text-base sm:text-xl font-extrabold uppercase text-white tracking-wide">
                         NO, NEW CUSTOMER
                       </h4>
-                      <p className="text-xs sm:text-sm text-amber-300 font-semibold pt-1">
+                      <p className="text-[11px] sm:text-xs text-amber-300 font-semibold pt-0.5">
                         Register new account in 10 seconds
                       </p>
                     </div>
@@ -1002,12 +1002,12 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                 </div>
 
                 {/* Cancel & Go Back Button for Mobile */}
-                <div className="w-full max-w-lg pt-2 pb-safe flex justify-center">
+                <div className="w-full max-w-lg pt-1 pb-safe flex justify-center">
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => onOpenChange(false)}
-                    className="h-12 px-6 text-sm font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-xl gap-2 active:scale-95 border border-zinc-800/80"
+                    className="h-10 sm:h-12 px-5 text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-xl gap-2 active:scale-95 border border-zinc-800/80"
                   >
                     <X className="h-4 w-4" /> Cancel & Close
                   </Button>

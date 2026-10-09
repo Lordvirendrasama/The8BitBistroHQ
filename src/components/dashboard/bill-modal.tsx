@@ -66,7 +66,9 @@ export function BillModal({
             i.name.startsWith('Buy Recharge:')
         );
 
-        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0) {
+        const isWalkInOrNoTimer = station.packageName === 'Walk-in Order' || !station.endTime;
+
+        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0 && !isWalkInOrNoTimer) {
             const isRecharge = station.packageName?.startsWith('Recharge: ');
             if (!isRecharge) {
                 let durMins = 60;
@@ -309,27 +311,27 @@ export function BillModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full h-full max-w-full md:max-w-7xl md:w-[98vw] md:h-[92vh] rounded-none md:rounded-xl flex flex-col p-0 overflow-hidden border-0 md:border-2 md:border-primary/30 shadow-2xl">
+      <DialogContent showClose={false} className="w-full h-[100dvh] max-h-[100dvh] md:max-h-[92vh] max-w-full md:max-w-7xl md:w-[98vw] md:h-[92vh] rounded-none md:rounded-xl flex flex-col p-0 gap-0 overflow-hidden border-0 md:border-2 md:border-primary/30 shadow-2xl">
         <div className="flex flex-col shrink-0 bg-background border-b z-20">
-            <DialogHeader className="px-4 pt-3 md:px-5 md:pt-4 pb-2 relative">
-                <div className="flex justify-between items-start gap-2 pr-10">
+            <DialogHeader className="px-3 py-2 md:px-5 md:pt-4 md:pb-2 relative">
+                <div className="flex justify-between items-center gap-2 pr-8">
                     <div className="min-w-0">
-                        <DialogTitle className="font-headline tracking-[0.1em] text-xl md:text-2xl text-primary truncate">{station.name}</DialogTitle>
+                        <DialogTitle className="font-headline tracking-wide text-lg md:text-2xl text-primary truncate">{station.name}</DialogTitle>
                         <DialogDescription className="font-bold text-xs md:text-sm uppercase tracking-normal text-muted-foreground hidden sm:block">
                             Station Management
                         </DialogDescription>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
                         {(station.members || []).map(m => (
-                            <Badge key={m.id} variant="outline" className="h-6 md:h-7 gap-1 pl-1 pr-2 rounded-full bg-muted/50 border-primary/20">
-                                <Avatar className="h-4 w-4 md:h-5 md:w-5 border-none"><AvatarFallback className="text-xs md:text-sm">{m.name[0]}</AvatarFallback></Avatar>
-                                <span className="font-bold text-xs md:text-sm uppercase truncate max-w-[60px]">{m.name}</span>
+                            <Badge key={m.id} variant="outline" className="h-5 sm:h-7 gap-1 px-1.5 rounded-full bg-muted/50 border-primary/20 text-[10px] sm:text-xs">
+                                <Avatar className="h-3.5 w-3.5 sm:h-5 sm:w-5 border-none"><AvatarFallback className="text-[9px] sm:text-xs">{m.name[0]}</AvatarFallback></Avatar>
+                                <span className="font-bold uppercase truncate max-w-[50px] sm:max-w-[80px]">{m.name}</span>
                             </Badge>
                         ))}
                     </div>
                 </div>
-                <DialogPrimitive.Close className="absolute right-3 top-3 p-1.5 rounded-lg bg-muted/60 text-foreground transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                    <X className="h-6 w-6 md:h-5 md:w-5" />
+                <DialogPrimitive.Close className="absolute right-2 top-2 p-1 rounded-lg bg-muted/60 text-foreground transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <X className="h-5 w-5 md:h-5 md:w-5" />
                     <span className="sr-only">Close</span>
                 </DialogPrimitive.Close>
             </DialogHeader>
@@ -338,50 +340,96 @@ export function BillModal({
                 <button 
                     onClick={() => setActiveTab('menu')}
                     className={cn(
-                        "flex-1 h-12 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
+                        "flex-1 h-9 font-bold uppercase text-xs tracking-normal border-b-2 transition-all flex items-center justify-center gap-1.5", 
                         activeTab === 'menu' ? "border-primary text-primary bg-primary/10" : "border-transparent text-muted-foreground"
                     )}
                 >
-                    <Utensils className="h-4 w-4" /> Menu
+                    <Utensils className="h-3.5 w-3.5" /> Menu
                 </button>
                 <button 
                     onClick={() => setActiveTab('review')}
                     className={cn(
-                        "flex-1 h-12 font-bold uppercase text-sm tracking-normal border-b-4 transition-all flex items-center justify-center gap-2", 
+                        "flex-1 h-9 font-bold uppercase text-xs tracking-normal border-b-2 transition-all flex items-center justify-center gap-1.5", 
                         activeTab === 'review' ? "border-primary text-primary bg-primary/10" : "border-transparent text-muted-foreground"
                     )}
                 >
                     Review
-                    <Badge className="font-mono h-5 px-2 min-w-[20px] bg-primary text-primary-foreground text-xs">{billItems.length}</Badge>
+                    <Badge className="font-mono h-4 px-1.5 min-w-[18px] bg-primary text-primary-foreground text-[10px]">{billItems.length}</Badge>
                 </button>
             </div>
 
             {activeTab === 'menu' && (
-                <div className="flex flex-col bg-card">
-                    <div className="px-3 py-2 md:p-3 bg-muted/10 border-b">
+                <div className="flex flex-col bg-card shrink-0">
+                    <div className="px-2.5 py-1.5 md:p-3 bg-muted/10 border-b">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input 
                                 placeholder="SEARCH ITEMS..." 
-                                className="pl-9 h-11 md:h-10 bg-background border-none font-bold uppercase tracking-tight text-sm md:text-sm"
+                                className="pl-8 h-8 md:h-10 bg-background border-none font-bold uppercase tracking-tight text-xs md:text-sm"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
+                    
+                    {/* QUICK ADD BAR (COMPACT IN TOP CONTROL BAR) */}
+                    <div className="px-2 py-1 bg-background border-b flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0 hidden sm:inline">Quick Add:</span>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 px-2 rounded-full border border-primary/20 hover:border-primary text-[10px] font-bold uppercase tracking-tight shrink-0 gap-0.5"
+                            onClick={() => handleQuickAdd('time', '1 hour')}
+                        >
+                            +1 Hour
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 px-2 rounded-full border border-primary/20 hover:border-primary text-[10px] font-bold uppercase tracking-tight shrink-0 gap-0.5"
+                            onClick={() => handleQuickAdd('time', 'half')}
+                        >
+                            +30 Min
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 px-2 rounded-full border border-primary/20 hover:border-primary text-[10px] font-bold uppercase tracking-tight shrink-0 gap-0.5"
+                            onClick={() => handleQuickAdd('food', 'cold coffee')}
+                        >
+                            Cold Coffee
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 px-2 rounded-full border border-primary/20 hover:border-primary text-[10px] font-bold uppercase tracking-tight shrink-0 gap-0.5"
+                            onClick={() => handleQuickAdd('food', 'water')}
+                        >
+                            Water
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 px-2 rounded-full border border-primary/20 hover:border-primary text-[10px] font-bold uppercase tracking-tight shrink-0 gap-0.5"
+                            onClick={() => handleQuickAdd('food', 'fries')}
+                        >
+                            Fries
+                        </Button>
+                    </div>
+
                     <div className="flex md:hidden overflow-x-auto no-scrollbar scroll-smooth bg-background border-b">
                         {categories.map(cat => (
                             <button 
                                 key={cat} 
                                 onClick={() => scrollToCategory(cat)}
                                 className={cn(
-                                    "px-4 py-2.5 text-center border-b-2 transition-all whitespace-nowrap shrink-0",
+                                    "px-3 py-1.5 text-center border-b-2 transition-all whitespace-nowrap shrink-0 text-xs",
                                     activeCategory === cat 
                                         ? "border-primary text-primary font-bold bg-primary/5" 
                                         : "border-transparent text-muted-foreground font-bold"
                                 )}
                             >
-                                <span className="text-sm md:text-[14px] uppercase tracking-[0.1em]">{cat}</span>
+                                <span className="text-[11px] md:text-[14px] uppercase tracking-[0.05em]">{cat}</span>
                             </button>
                         ))}
                     </div>
@@ -413,78 +461,31 @@ export function BillModal({
             </div>
 
             <div className={cn("flex-1 flex flex-col min-w-0 overflow-hidden", activeTab === 'review' && "hidden md:flex")}>
-                <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 md:px-5 md:py-4 scroll-smooth">
-                    <div className="space-y-6 pb-16">
-                        
-                        {/* STICKY QUICK ADD BAR */}
-                        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b pb-3 mb-4 shrink-0">
-                            <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground mb-1.5 px-1">Quick Add</p>
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
-                                    onClick={() => handleQuickAdd('time', '1 hour')}
-                                >
-                                    +1 Hour
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
-                                    onClick={() => handleQuickAdd('time', 'half')}
-                                >
-                                    +30 Min
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
-                                    onClick={() => handleQuickAdd('food', 'cold coffee')}
-                                >
-                                    Cold Coffee
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
-                                    onClick={() => handleQuickAdd('food', 'water')}
-                                >
-                                    Water
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-9 px-3.5 rounded-full border-2 border-primary/20 hover:border-primary text-sm font-bold uppercase tracking-tight shrink-0 gap-1"
-                                    onClick={() => handleQuickAdd('food', 'fries')}
-                                >
-                                    Fries
-                                </Button>
-                            </div>
-                        </div>
+                <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 md:px-5 md:py-4 scroll-smooth">
+                    <div className="space-y-4 pb-36 sm:pb-20">
 
                         {/* MOST SOLD CATEGORY */}
                         {popularItems.length > 0 && (
-                            <div key="MOST SOLD" id="category-section-MOST-SOLD" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-amber-500 bg-background/95 backdrop-blur-sm border-b border-amber-500/30 py-1.5 uppercase shadow-sm flex items-center justify-between pr-2">
-                                    <span className="flex items-center gap-1.5"><Flame className="h-4 w-4 text-amber-500 fill-amber-500/20" /> MOST SOLD ITEMS</span>
-                                    <span className="text-xs font-mono font-bold text-amber-600/80">TOP SELLERS</span>
+                            <div key="MOST SOLD" id="category-section-MOST-SOLD" className="space-y-1.5 md:space-y-3">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-xs md:text-sm tracking-normal text-amber-500 bg-background/95 backdrop-blur-sm border-b border-amber-500/30 py-1 uppercase shadow-sm flex items-center justify-between pr-2">
+                                    <span className="flex items-center gap-1.5"><Flame className="h-3.5 w-3.5 text-amber-500 fill-amber-500/20" /> MOST SOLD ITEMS</span>
+                                    <span className="text-[10px] font-mono font-bold text-amber-600/80">TOP SELLERS</span>
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-5">
                                     {popularItems.map(item => (
                                         <button 
                                             key={`popular-${item.id}`} 
                                             onClick={() => handleAddItem(item)}
-                                            className="group p-3.5 md:p-4 rounded-xl border-2 border-amber-500/30 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left flex flex-col justify-between min-h-[92px] md:h-32 relative overflow-hidden active:scale-[0.98] active:border-amber-500 shadow-sm"
+                                            className="group p-2.5 md:p-4 rounded-lg md:rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left flex flex-col justify-between min-h-[72px] md:h-32 relative overflow-hidden active:scale-[0.98] shadow-xs"
                                         >
                                             <div className="flex justify-between items-start">
-                                                <p className="font-bold uppercase text-[15px] sm:text-[16px] md:text-[18px] leading-tight tracking-tight pr-2 group-hover:text-amber-500 transition-colors line-clamp-2">{item.name}</p>
-                                                <Badge variant="outline" className="text-[10px] h-4 bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase font-bold shrink-0">BESTSELLER</Badge>
+                                                <p className="font-bold uppercase text-[11px] sm:text-xs md:text-[18px] leading-tight tracking-tight pr-1 group-hover:text-amber-500 transition-colors line-clamp-2">{item.name}</p>
+                                                <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase font-bold shrink-0 hidden sm:inline-flex">BESTSELLER</Badge>
                                             </div>
-                                            <div className="flex justify-between items-end mt-2">
-                                                <span className="font-mono font-bold text-[17px] md:text-[20px] text-foreground">₹{item.price}</span>
-                                                <div className="h-8 w-8 sm:h-7 sm:w-7 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-black transition-all">
-                                                    <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                            <div className="flex justify-between items-end mt-1">
+                                                <span className="font-mono font-bold text-xs sm:text-sm md:text-[20px] text-foreground">₹{item.price}</span>
+                                                <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-black transition-all">
+                                                    <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                                 </div>
                                             </div>
                                         </button>
@@ -495,22 +496,22 @@ export function BillModal({
 
                         {/* SESSION MASTER CATEGORY */}
                         {filteredGaming.length > 0 && (
-                            <div key="SESSION" id="category-section-SESSION" className="space-y-2 md:space-y-3">
-                                <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1.5 uppercase shadow-sm flex items-center gap-2">
+                            <div key="SESSION" id="category-section-SESSION" className="space-y-1.5 md:space-y-3">
+                                <h3 className="sticky top-[-1px] z-10 font-headline text-xs md:text-sm tracking-normal text-primary bg-background/95 backdrop-blur-sm border-b border-primary/20 py-1 uppercase shadow-sm flex items-center gap-1.5">
                                     <Gamepad2 className="h-3.5 w-3.5" /> SESSION
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-5">
                                     {filteredGaming.map(pkg => (
                                         <button 
                                             key={pkg.id} 
                                             onClick={() => handleAddItem({ id: pkg.id, name: pkg.name, price: pkg.price })}
-                                            className="group p-3.5 md:p-4 rounded-xl border-2 border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between min-h-[92px] md:h-32 relative overflow-hidden active:scale-[0.98] active:border-primary shadow-sm"
+                                            className="group p-2.5 md:p-4 rounded-lg md:rounded-xl border border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-left flex flex-col justify-between min-h-[72px] md:h-32 relative overflow-hidden active:scale-[0.98] shadow-xs"
                                         >
-                                            <p className="font-bold uppercase text-[15px] sm:text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
-                                            <div className="flex justify-between items-end mt-2">
-                                                <span className="font-mono font-bold text-[17px] md:text-[20px] text-foreground">₹{pkg.price}</span>
-                                                <div className="h-8 w-8 sm:h-7 sm:w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                                    <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                            <p className="font-bold uppercase text-[11px] sm:text-xs md:text-[18px] leading-tight tracking-tight pr-1 group-hover:text-primary transition-colors line-clamp-2">{pkg.name}</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <span className="font-mono font-bold text-xs sm:text-sm md:text-[20px] text-foreground">₹{pkg.price}</span>
+                                                <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                    <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                                 </div>
                                             </div>
                                         </button>
@@ -524,23 +525,23 @@ export function BillModal({
                             if (!items || items.length === 0) return null;
                             const catSectionId = `category-section-${categoryName.replace(/\s+/g, '-')}`;
                             return (
-                                <div key={categoryName} id={catSectionId} className="space-y-2 md:space-y-3">
-                                    <h3 className="sticky top-[-1px] z-10 font-headline text-sm md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1.5 uppercase shadow-sm flex items-center justify-between pr-2">
+                                <div key={categoryName} id={catSectionId} className="space-y-1.5 md:space-y-3">
+                                    <h3 className="sticky top-[-1px] z-10 font-headline text-xs md:text-sm tracking-normal text-muted-foreground bg-background/95 backdrop-blur-sm border-b border-dashed py-1 uppercase shadow-sm flex items-center justify-between pr-2">
                                         <span>{categoryName}</span>
-                                        <span className="text-xs font-mono font-bold text-muted-foreground/60">{items.length} ITEMS</span>
+                                        <span className="text-[10px] font-mono font-bold text-muted-foreground/60">{items.length} ITEMS</span>
                                     </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+                                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-5">
                                         {items.map(item => (
                                             <button 
                                                 key={item.id} 
                                                 onClick={() => handleAddItem(item)}
-                                                className="group p-3.5 md:p-4 rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between min-h-[92px] md:h-32 relative overflow-hidden active:scale-[0.98] active:border-primary shadow-sm"
+                                                className="group p-2.5 md:p-4 rounded-lg md:rounded-xl border bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between min-h-[72px] md:h-32 relative overflow-hidden active:scale-[0.98] shadow-xs"
                                             >
-                                                <p className="font-bold uppercase text-[15px] sm:text-[16px] md:text-[18px] leading-tight tracking-tight pr-8 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
-                                                <div className="flex justify-between items-end mt-2">
-                                                    <span className="font-mono font-bold text-[17px] md:text-[20px] text-foreground">₹{item.price}</span>
-                                                    <div className="h-8 w-8 sm:h-7 sm:w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                                        <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                                <p className="font-bold uppercase text-[11px] sm:text-xs md:text-[18px] leading-tight tracking-tight pr-1 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                                <div className="flex justify-between items-end mt-1">
+                                                    <span className="font-mono font-bold text-xs sm:text-sm md:text-[20px] text-foreground">₹{item.price}</span>
+                                                    <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                        <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                                     </div>
                                                 </div>
                                             </button>
@@ -555,13 +556,13 @@ export function BillModal({
 
             {/* Mobile Floating Cart Indicator */}
             {activeTab === 'menu' && billItems.length > 0 && (
-                <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 md:hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30 md:hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <Button 
                         onClick={() => setActiveTab('review')}
-                        className="rounded-full shadow-2xl bg-primary text-primary-foreground font-bold text-sm px-6 py-5 border-2 border-background flex items-center gap-2 tracking-wide uppercase"
+                        className="rounded-full shadow-2xl bg-primary text-primary-foreground font-bold text-xs px-4 py-2 border-2 border-background flex items-center gap-1.5 tracking-wide uppercase h-8"
                     >
-                        <ShoppingBag className="h-4 w-4" />
-                        CURRENT TAB: {billItems.length} Items • ₹{totalBeforeDiscount}
+                        <ShoppingBag className="h-3.5 w-3.5" />
+                        TAB: {billItems.length} • ₹{totalBeforeDiscount}
                     </Button>
                 </div>
             )}
@@ -571,37 +572,37 @@ export function BillModal({
                 "w-full md:w-[380px] bg-card border-t md:border-t-0 md:border-l shrink-0 flex flex-col overflow-hidden shadow-2xl transition-all",
                 activeTab === 'menu' && "hidden md:flex"
             )}>
-                <div className="p-4 border-b bg-muted/10 shrink-0 flex justify-between items-center">
+                <div className="p-3 md:p-4 border-b bg-muted/10 shrink-0 flex justify-between items-center">
                     <div>
-                        <h3 className="font-bold text-sm md:text-sm uppercase tracking-wide flex items-center gap-1.5 text-foreground">
-                            <ShoppingBag className="h-4 w-4 text-primary" />
+                        <h3 className="font-bold text-xs md:text-sm uppercase tracking-wide flex items-center gap-1.5 text-foreground">
+                            <ShoppingBag className="h-3.5 w-3.5 text-primary" />
                             CURRENT TAB
                         </h3>
-                        <p className="text-sm font-bold text-primary uppercase mt-0.5 tracking-wider">{station.name}</p>
+                        <p className="text-xs md:text-sm font-bold text-primary uppercase mt-0.5 tracking-wider">{station.name}</p>
                     </div>
-                    <Badge className="font-mono h-5 px-2 bg-primary text-primary-foreground text-sm">{billItems.length} Items</Badge>
+                    <Badge className="font-mono h-5 px-2 bg-primary text-primary-foreground text-xs">{billItems.length} Items</Badge>
                 </div>
 
                 {/* Session Status Timeline Indicator */}
                 {station.status === 'in-use' && station.startTime && (
-                    <div className="p-3 border-b bg-muted/5 space-y-2 shrink-0">
-                        <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground pl-1">SESSION STATUS</p>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                            <div className="p-1.5 rounded-lg bg-card border">
-                                <p className="text-sm font-bold uppercase text-muted-foreground">Started</p>
-                                <p className="font-mono font-bold text-sm mt-0.5 text-foreground">
+                    <div className="p-2.5 md:p-3 border-b bg-muted/5 space-y-1.5 shrink-0">
+                        <p className="text-[11px] font-bold uppercase tracking-normal text-muted-foreground pl-0.5">SESSION STATUS</p>
+                        <div className="grid grid-cols-3 gap-1.5 text-center">
+                            <div className="p-1 rounded-lg bg-card border">
+                                <p className="text-[10px] font-bold uppercase text-muted-foreground">Started</p>
+                                <p className="font-mono font-bold text-xs mt-0.5 text-foreground">
                                     {new Date(station.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                                 </p>
                             </div>
-                            <div className="p-1.5 rounded-lg bg-card border">
-                                <p className="text-sm font-bold uppercase text-muted-foreground">Ends</p>
-                                <p className="font-mono font-bold text-sm mt-0.5 text-foreground">
+                            <div className="p-1 rounded-lg bg-card border">
+                                <p className="text-[10px] font-bold uppercase text-muted-foreground">Ends</p>
+                                <p className="font-mono font-bold text-xs mt-0.5 text-foreground">
                                     {station.endTime ? new Date(station.endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Open'}
                                 </p>
                             </div>
-                            <div className="p-1.5 rounded-lg bg-card border">
-                                <p className="text-sm font-bold uppercase text-muted-foreground">Remaining</p>
-                                <p className="font-mono font-bold text-sm mt-0.5 text-primary animate-pulse">
+                            <div className="p-1 rounded-lg bg-card border">
+                                <p className="text-[10px] font-bold uppercase text-muted-foreground">Remaining</p>
+                                <p className="font-mono font-bold text-xs mt-0.5 text-primary animate-pulse">
                                     {(() => {
                                         if (!station.endTime) return 'Open Play';
                                         const end = new Date(station.endTime).getTime();
@@ -621,36 +622,36 @@ export function BillModal({
                         <TableBody>
                             {billItems.length > 0 ? billItems.map((item, idx) => (
                                 <TableRow key={`${item.itemId}-${idx}`} className="border-b hover:bg-transparent">
-                                    <TableCell className="py-3 pl-0">
-                                        <p className="font-bold text-sm md:text-[14px] uppercase leading-tight">{item.name}</p>
-                                        <p className="text-xs md:text-sm font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
+                                    <TableCell className="py-2.5 pl-0">
+                                        <p className="font-bold text-xs md:text-[14px] uppercase leading-tight">{item.name}</p>
+                                        <p className="text-[11px] md:text-sm font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
                                     </TableCell>
-                                    <TableCell className="py-3 px-0">
+                                    <TableCell className="py-2.5 px-0">
                                         <div className="flex items-center justify-end gap-1 sm:gap-1.5">
                                             <button 
                                                 onClick={() => handleUpdateQuantityByIndex(idx, item.quantity - 1)} 
-                                                className="h-9 w-9 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-muted/60 hover:bg-destructive/20 text-muted-foreground hover:text-destructive active:scale-95 transition-all"
+                                                className="h-8 w-8 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-muted/60 hover:bg-destructive/20 text-muted-foreground hover:text-destructive active:scale-95 transition-all"
                                                 aria-label="Decrease quantity"
                                             >
-                                                <MinusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                                <MinusCircle className="h-4 w-4" />
                                             </button>
-                                            <span className="min-w-6 text-center font-mono font-bold text-sm sm:text-base">{item.quantity}</span>
+                                            <span className="min-w-5 text-center font-mono font-bold text-xs sm:text-base">{item.quantity}</span>
                                             <button 
                                                 onClick={() => handleAddItem({ id: item.itemId, name: item.name, price: item.price })} 
-                                                className="h-9 w-9 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-primary/10 hover:bg-primary/20 text-primary active:scale-95 transition-all"
+                                                className="h-8 w-8 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-primary/10 hover:bg-primary/20 text-primary active:scale-95 transition-all"
                                                 aria-label="Increase quantity"
                                             >
-                                                <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                                                <PlusCircle className="h-4 w-4" />
                                             </button>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right py-3 pr-0 font-bold text-sm md:text-[14px] font-mono whitespace-nowrap text-primary">
+                                    <TableCell className="text-right py-2.5 pr-0 font-bold text-xs md:text-[14px] font-mono whitespace-nowrap text-primary">
                                         ₹{(item.price * item.quantity).toLocaleString()}
                                     </TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-16 text-sm italic font-bold text-muted-foreground uppercase tracking-normal opacity-40">
+                                    <TableCell colSpan={3} className="text-center py-12 text-xs sm:text-sm italic font-bold text-muted-foreground uppercase tracking-normal opacity-40">
                                         No items added
                                     </TableCell>
                                 </TableRow>
@@ -659,27 +660,25 @@ export function BillModal({
                     </Table>
                 </ScrollArea>
 
-                <div className="p-4 border-t bg-muted/20 space-y-2 shrink-0">
+                <div className="p-3 border-t bg-muted/20 space-y-1.5 shrink-0">
                     {initialPackagePrice > 0 && (
-                        <div className="flex justify-between items-center text-sm font-bold uppercase text-muted-foreground tracking-wider">
+                        <div className="flex justify-between items-center text-xs font-bold uppercase text-muted-foreground tracking-wider">
                             <span>Initial Package</span>
                             <span className="font-mono">₹{initialPackagePrice.toLocaleString()}</span>
                         </div>
                     )}
-                    <div className="flex justify-between items-center text-sm font-bold uppercase text-foreground">
+                    <div className="flex justify-between items-center text-xs sm:text-sm font-bold uppercase text-foreground">
                         <span>Subtotal</span>
-                        <span className="font-mono text-primary text-base">₹{totalBeforeDiscount.toLocaleString()}</span>
+                        <span className="font-mono text-primary text-sm sm:text-base">₹{totalBeforeDiscount.toLocaleString()}</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 p-3 sm:p-3 pb-6 sm:pb-3 pb-safe border-t bg-background shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-          <div className="flex gap-2 w-full sm:flex-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 font-bold uppercase tracking-[0.1em] h-13 py-3 md:h-14 border-2 text-sm active:scale-95 transition-all">Cancel</Button>
-            <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-bold uppercase tracking-[0.1em] h-13 py-3 md:h-14 border-2 text-sm active:scale-95 transition-all"><Save className="mr-1.5 h-4 w-4" /> Save</Button>
-          </div>
-          <Button size="sm" onClick={handleCheckout} className="w-full sm:flex-[2] font-bold uppercase tracking-[0.1em] h-14 py-3 md:h-14 shadow-lg text-sm sm:text-[15px] bg-primary text-primary-foreground active:scale-[0.99] transition-all"><CreditCard className="mr-2 h-5 w-5"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
+        <DialogFooter className="flex flex-row gap-1.5 sm:gap-2 p-2 sm:p-3 pb-3 sm:pb-3 pb-safe border-t bg-background shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.15)] z-40">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="px-2.5 font-bold uppercase text-xs h-9 sm:h-11 border-2 active:scale-95 shrink-0">Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={handleSave} className="flex-1 font-bold uppercase text-xs sm:text-sm h-9 sm:h-11 border-2 active:scale-95"><Save className="mr-1 h-3.5 w-3.5" /> Save</Button>
+          <Button size="sm" onClick={handleCheckout} className="flex-[2] font-bold uppercase text-xs sm:text-sm h-9 sm:h-11 bg-primary text-primary-foreground shadow-md active:scale-[0.99]"><CreditCard className="mr-1.5 h-4 w-4"/> Checkout ₹{totalBeforeDiscount.toLocaleString()}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
