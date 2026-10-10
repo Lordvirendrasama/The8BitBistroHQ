@@ -344,10 +344,10 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !isClosing && onOpenChange(open)}>
-        <DialogContent showClose={false} className="w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[85vh] max-w-full sm:max-w-lg rounded-none sm:rounded-xl flex flex-col p-0 gap-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl">
+        <DialogContent showClose={false} className="w-full h-[92dvh] sm:h-[88vh] max-h-[92dvh] sm:max-h-[88vh] max-w-full sm:max-w-lg rounded-none sm:rounded-xl flex flex-col sm:flex-col p-0 gap-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl">
             <DialogHeader className="px-4 py-3 sm:px-6 sm:pt-5 shrink-0 bg-background border-b flex flex-row items-center justify-between space-y-0">
                 <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-base sm:text-xl min-w-0 pr-2">
-                    {step === 'review-bill' && <><Receipt className="h-5 w-5 text-primary shrink-0" /> <span className="truncate">BILL REVIEW: {station.name}</span></>}
+                    {step === 'review-bill' && <><Receipt className="h-5 w-5 text-primary shrink-0" /> <span className="truncate">BILL REVIEW: {station?.name}</span></>}
                     {step === 'member-xp' && <><Star className="h-5 w-5 text-yellow-500 shrink-0" /> <span className="truncate">BITS EARNED</span></>}
                     {step === 'payment-method' && <><Banknote className="h-5 w-5 text-primary shrink-0" /> <span className="truncate">CHECKOUT</span></>}
                     {step === 'split-details' && <><Layers className="h-5 w-5 text-amber-500 shrink-0" /> <span className="truncate">SPLIT PAYMENT</span></>}
@@ -424,12 +424,12 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                     <div className="space-y-3 p-4 sm:p-6">
                         <div className="rounded-xl border-2 border-dashed bg-green-500/5 p-3 space-y-2">
                             {realMembersInSession.map((member, idx) => {
-                                const assignedMember = (station.members || []).find(sm => sm.id === member.id);
+                                const assignedMember = (station?.members || []).find(sm => sm.id === member.id);
                                 const isProvidingRecharge = !!assignedMember?.rechargeId;
                                 const isPurchaser = idx === 0 && initialPackageInfo?.isNewRechargePurchase;
                                 const currentBalanceSeconds = (member.recharges || []).filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0).reduce((sum, r) => sum + r.remainingDuration, 0);
                                 const newPackDuration = isPurchaser ? (initialPackageInfo?.purePackage?.duration || 0) : 0;
-                                const totalGroupManSeconds = playedSecondsPerPlayer * (station.members || []).length;
+                                const totalGroupManSeconds = playedSecondsPerPlayer * (station?.members || []).length;
                                 const deduction = (isProvidingRecharge || isPurchaser) ? totalGroupManSeconds : 0;
                                 const previewBalance = Math.max(0, (currentBalanceSeconds + newPackDuration) - deduction);
                                 const hasAnyBalanceContext = currentBalanceSeconds > 0 || isPurchaser;

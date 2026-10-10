@@ -693,7 +693,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent showClose={false} className="w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[88vh] max-w-full sm:max-w-2xl rounded-none sm:rounded-xl flex flex-col p-0 gap-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl font-body">
+      <DialogContent showClose={false} className="w-full h-[92dvh] sm:h-[88vh] max-h-[92dvh] sm:max-h-[88vh] max-w-full sm:max-w-2xl rounded-none sm:rounded-xl flex flex-col sm:flex-col p-0 gap-0 overflow-hidden border-0 sm:border-2 sm:border-primary/30 shadow-2xl font-body">
         <DialogTitle className="sr-only">Assign Players Modal</DialogTitle>
         <DialogDescription className="sr-only">Assign customer players to gaming station and configure session time</DialogDescription>
 
@@ -1509,7 +1509,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             <Button variant="ghost" size="sm" onClick={() => setStep('selection')} className="h-7 uppercase text-xs font-bold text-zinc-400 hover:text-white"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> CHANGE PLAYERS</Button>
                         </div>
 
-                        <div className="space-y-1.5 mb-4 shrink-0 overflow-y-auto max-h-[30%] sm:max-h-[25%] border-b border-zinc-800 pb-3">
+                        <div className="space-y-1.5 mb-2 sm:mb-2.5 shrink-0 overflow-y-auto max-h-[100px] sm:max-h-[120px] border-b border-zinc-800 pb-2">
                             {validPlayers.map((player) => {
                                 const config = configs[player.id];
                                 const isSelected = activeConfigPlayerId === player.id;
@@ -1536,7 +1536,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
                         {activeConfigPlayerId && (
                             <div className="flex-1 flex flex-col min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden">
-                                <div className="p-2 border border-zinc-800 rounded-xl bg-zinc-900/30 flex-1 flex flex-col overflow-hidden">
+                                <div className="p-2 sm:p-2.5 border border-zinc-800 rounded-xl bg-zinc-900/30 flex-1 flex flex-col min-h-0 overflow-hidden">
                                     <div className="flex items-center justify-between px-2 mb-2.5">
                                         <h4 className="text-xs font-bold uppercase text-zinc-400 tracking-wide">CONFIGURING FOR: <strong className="text-white">{validPlayers.find(p => p.id === activeConfigPlayerId)?.name}</strong></h4>
                                     </div>
@@ -1545,7 +1545,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                         <Button variant={configs[activeConfigPlayerId]?.mode === 'recharge' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'recharge')}><Zap className="h-4 w-4" /> RECHARGE</Button>
                                     </div>
                                     <ScrollArea className="flex-1 bg-zinc-950/60 rounded-xl border border-zinc-800 min-h-0">
-                                        <div className="p-2.5 space-y-2.5 pb-12 font-body">
+                                        <div className="p-2.5 space-y-2.5 pb-4 font-body">
                                             {configs[activeConfigPlayerId]?.mode === 'recharge' ? (
                                                 <div className="space-y-4">
                                                     {(() => {
@@ -1765,11 +1765,11 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             </div>
                         )}
                     </div>
-                    <div className="p-4 pb-6 pb-safe shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-2.5">
+                    <div className="p-3 sm:p-4 shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-2">
                         <Button 
                             onClick={handleApplyAllAndStart} 
                             disabled={!activeConfigPlayerId || !configs[activeConfigPlayerId]?.name}
-                            className="font-headline text-sm font-extrabold h-12 uppercase tracking-wide shadow-2xl transition-all active:scale-[0.98] gap-2 bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
+                            className="font-headline text-xs sm:text-sm font-extrabold h-11 sm:h-12 uppercase tracking-wide shadow-2xl transition-all active:scale-[0.98] gap-2 bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                         >
                             APPLY TO ALL & START &rarr;
                         </Button>
@@ -1777,7 +1777,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             variant="outline" 
                             onClick={handleConfirmAll}
                             disabled={!allPlayersConfigured}
-                            className="font-headline text-sm font-extrabold h-12 uppercase tracking-wide shadow-sm transition-all active:scale-[0.98] border-2 border-zinc-700 text-white hover:bg-zinc-800 flex-1"
+                            className="font-headline text-xs sm:text-sm font-extrabold h-11 sm:h-12 uppercase tracking-wide shadow-sm transition-all active:scale-[0.98] border-2 border-zinc-700 text-white hover:bg-zinc-800 flex-1"
                         >
                             START SESSION &rarr;
                         </Button>
@@ -1785,7 +1785,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                             type="button"
                             variant="ghost"
                             onClick={() => onOpenChange(false)}
-                            className="h-11 px-4 text-xs font-bold uppercase text-zinc-400 hover:text-white border border-zinc-800 rounded-xl sm:hidden"
+                            className="h-10 px-4 text-xs font-bold uppercase text-zinc-400 hover:text-white border border-zinc-800 rounded-xl sm:hidden"
                         >
                             <X className="h-4 w-4 mr-1.5" /> CANCEL & CLOSE
                         </Button>
