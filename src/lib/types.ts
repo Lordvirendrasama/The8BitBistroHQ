@@ -51,6 +51,9 @@ export interface FoodItem {
   name: string;
   category: string;
   price: number;
+  trackInventory?: boolean;
+  stock?: number;
+  lowStockThreshold?: number;
 }
 
 export type FoodItemFormData = Omit<FoodItem, 'id'>;

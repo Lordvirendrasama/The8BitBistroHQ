@@ -268,19 +268,38 @@ export function CreateBillModal({ isOpen, onOpenChange, foodItems, gamingPackage
                   <div key={category} className="space-y-2">
                     <h4 className="font-bold text-sm text-muted-foreground uppercase border-b border-dashed py-1 tracking-normal sticky top-0 bg-background/95 backdrop-blur-sm z-10">{category}</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {items.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleAddItem(item.id, item.name, item.price)}
-                          className="group p-3 rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex justify-between items-center h-14 active:scale-95 shadow-sm"
-                        >
-                          <span className="font-bold text-sm uppercase truncate pr-2 group-hover:text-primary transition-colors">{item.name}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono font-bold text-sm">₹{item.price}</span>
-                            <PlusCircle className="h-4 w-4 text-primary opacity-20 group-hover:opacity-100" />
-                          </div>
-                        </button>
-                      ))}
+                      {items.map(item => {
+                        const isTracked = Boolean(item.trackInventory);
+                        const stock = item.stock ?? 0;
+                        const isOut = isTracked && stock <= 0;
+                        return (
+                          <button
+                            key={item.id}
+                            disabled={isOut}
+                            onClick={() => handleAddItem(item.id, item.name, item.price)}
+                            className={cn(
+                              "group p-3 rounded-xl border-2 bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex justify-between items-center h-14 active:scale-95 shadow-sm",
+                              isOut && "opacity-50 cursor-not-allowed hover:border-border hover:bg-card"
+                            )}
+                          >
+                            <div className="flex flex-col min-w-0 pr-2">
+                              <span className="font-bold text-sm uppercase truncate group-hover:text-primary transition-colors">{item.name}</span>
+                              {isTracked && (
+                                <span className={cn(
+                                  "text-[10px] font-mono font-bold uppercase",
+                                  isOut ? "text-rose-400" : stock <= (item.lowStockThreshold ?? 5) ? "text-amber-400" : "text-emerald-400"
+                                )}>
+                                  {isOut ? "Out of Stock" : `${stock} in stock`}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-mono font-bold text-sm">₹{item.price}</span>
+                              <PlusCircle className="h-4 w-4 text-primary opacity-20 group-hover:opacity-100" />
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}

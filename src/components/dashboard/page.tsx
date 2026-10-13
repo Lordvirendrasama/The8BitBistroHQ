@@ -293,8 +293,10 @@ export default function DashboardPage() {
     if (selectedStation.status === 'paused' && selectedStation.remainingTimeOnPause != null) {
         newRemainingTimeOnPause = selectedStation.remainingTimeOnPause + durationToAddInSeconds;
     } else if (selectedStation.status === 'in-use' && selectedStation.endTime) {
-        const currentEndTime = new Date(selectedStation.endTime);
-        newEndTime = new Date(currentEndTime.getTime() + durationToAddInSeconds * 1000);
+        const currentEndTimeMs = new Date(selectedStation.endTime).getTime();
+        const now = Date.now();
+        const baseTime = currentEndTimeMs > now ? currentEndTimeMs : now;
+        newEndTime = new Date(baseTime + durationToAddInSeconds * 1000);
     } else {
         toast({ variant: 'destructive', title: "Cannot Add Time", description: "You can only add time to an active or paused session with a timer."});
         return;

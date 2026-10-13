@@ -13,7 +13,7 @@ import {
   Plus, Minus, ArrowUpRight, ArrowDownRight, RefreshCw, FileText, 
   Calendar, FileSpreadsheet, Eye, TrendingDown, Clock, Building, Users,
   Pencil, Trash2, History, Receipt, ArrowDownCircle, ArrowUpCircle, EyeOff,
-  UserX, Check
+  UserX, Check, Boxes, PackagePlus
 } from 'lucide-react';
 import { AppUpdatesDropdown } from '@/components/owner/app-updates-dropdown';
 import { ExecutiveExpensesHub } from '@/components/owner/executive-expenses-hub';
@@ -29,6 +29,7 @@ import { GuestLoginWizardModal } from '@/components/dashboard/guest-login-wizard
 import { useToast } from '@/hooks/use-toast';
 import { updateEmployee } from '@/firebase/firestore/employees';
 import { updateStation } from '@/firebase/firestore/stations';
+import { updateFoodItem, adjustFoodItemStock, setFoodItemStock } from '@/firebase/firestore/food-items';
 import { recordSalaryPayment } from '@/firebase/firestore/financials';
 import { getSyncedDate } from '@/lib/synced-time';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -147,6 +148,68 @@ export default function OwnerMainPage() {
   const [inventoryQty, setInventoryQty] = useState('10');
   const [inventoryCost, setInventoryCost] = useState('500');
   const [inventoryReason, setInventoryReason] = useState('Regular Intake');
+
+  // Tracked & Low Stock Inventory Computations
+  const trackedItems = useMemo(() => {
+    return (foodItems || []).filter(item => item.trackInventory);
+  }, [foodItems]);
+
+  const lowStockItems = useMemo(() => {
+    return trackedItems.filter(item => (item.stock ?? 0) <= (item.lowStockThreshold ?? 5));
+  }, [trackedItems]);
+
+  const campaItems = useMemo(() => {
+    return (foodItems || []).filter(item => item.name.toLowerCase().includes('campa'));
+  }, [foodItems]);
+
+  // Restock Dialog / Quick Adjustment State
+  const [restockItem, setRestockItem] = useState<FoodItem | null>(null);
+  const [restockAmount, setRestockAmount] = useState('12');
+
+  const handleQuickRestock = async (item: FoodItem, amount: number) => {
+    const currentStock = item.stock ?? 0;
+    const newStock = Math.max(0, currentStock + amount);
+    await adjustFoodItemStock(item.id, amount, item.name);
+    if (db) {
+      await addDoc(collection(db, 'logs'), {
+        type: 'INVENTORY_PURCHASED',
+        description: `Viren restocked <strong>${amount > 0 ? '+' + amount : amount}</strong> units of <strong>${item.name}</strong> (New stock: ${newStock}).`,
+        timestamp: new Date().toISOString(),
+        user: { uid: 'Viren', displayName: 'Viren (Owner)' }
+      });
+    }
+    toast({
+      title: amount > 0 ? "Stock Added" : "Stock Adjusted",
+      description: `${item.name}: ${newStock} units now in stock.`,
+    });
+  };
+
+  const handleEnableCampaTracking = async () => {
+    if (!foodItems) return;
+    const campas = foodItems.filter(i => i.name.toLowerCase().includes('campa'));
+    for (const c of campas) {
+      await updateFoodItem(c.id, {
+        trackInventory: true,
+        stock: c.stock !== undefined ? c.stock : 24,
+        lowStockThreshold: c.lowStockThreshold !== undefined ? c.lowStockThreshold : 5,
+      });
+    }
+    toast({
+      title: "Campa Inventory Activated",
+      description: `Enabled inventory tracking with stock counters for ${campas.length} Campa flavors.`,
+    });
+  };
+
+  const handleCustomRestockSubmit = async () => {
+    if (!restockItem) return;
+    const amt = parseInt(restockAmount, 10);
+    if (isNaN(amt)) {
+      toast({ variant: 'destructive', title: 'Invalid quantity' });
+      return;
+    }
+    await handleQuickRestock(restockItem, amt);
+    setRestockItem(null);
+  };
 
   // Payroll Dialog State
   const [activePayrollAction, setActivePayrollAction] = useState<string | null>(null);
@@ -807,6 +870,254 @@ export default function OwnerMainPage() {
       <div className="space-y-8">
         {/* 0. ACCOUNTS PAYABLE SYSTEM (UPCOMING DUE OBLIGATIONS) */}
         <ExecutiveExpensesHub />
+
+        {/* 0.5 INVENTORY & LOW STOCK WATCHLIST */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2">
+            <div className="flex items-center gap-2">
+              <Boxes className="h-5 w-5 text-amber-500" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                INVENTORY &amp; LOW STOCK WATCHLIST
+              </h2>
+              {lowStockItems.length > 0 && (
+                <Badge className="bg-rose-500 text-white font-mono font-bold text-[10px] uppercase animate-pulse">
+                  {lowStockItems.length} LOW
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {campaItems.some(c => !c.trackInventory) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEnableCampaTracking}
+                  className="h-8 text-[11px] font-bold uppercase border-amber-500/40 text-amber-500 hover:bg-amber-500/10 gap-1.5"
+                >
+                  <PackageCheck className="h-3.5 w-3.5" /> Quick-Track Campa Stock
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => router.push('/settings/menu')}
+                className="h-8 text-[11px] font-bold uppercase text-muted-foreground hover:text-primary gap-1"
+              >
+                Catalog Settings <ArrowUpRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* HIGH PRIORITY LOW STOCK ALERT BANNER */}
+          {lowStockItems.length > 0 ? (
+            <div className="p-4 rounded-xl border-2 border-rose-500/40 bg-gradient-to-r from-rose-950/40 via-background to-amber-950/30 shadow-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-rose-400 font-bold uppercase text-xs tracking-wider">
+                  <AlertTriangle className="h-4 w-4 animate-bounce" />
+                  <span>URGENT: {lowStockItems.length} ITEM{lowStockItems.length > 1 ? 'S' : ''} NEED RESTOCKING</span>
+                </div>
+                <Badge variant="outline" className="border-rose-500/50 text-rose-400 font-mono text-xs uppercase font-bold">
+                  Owner Hub Alert
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {lowStockItems.map(item => {
+                  const stock = item.stock ?? 0;
+                  const threshold = item.lowStockThreshold ?? 5;
+                  const isOut = stock <= 0;
+
+                  return (
+                    <div
+                      key={`alert-${item.id}`}
+                      className="p-3 rounded-lg border border-rose-500/30 bg-card/90 flex flex-col justify-between gap-2.5 shadow-sm"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-extrabold text-sm uppercase text-foreground leading-tight">{item.name}</p>
+                          <p className="text-[10px] font-bold uppercase text-muted-foreground">{item.category}</p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] font-mono font-bold uppercase px-2 py-0.5",
+                            isOut
+                              ? "bg-rose-500/20 text-rose-400 border-rose-500/50 animate-pulse"
+                              : "bg-amber-500/20 text-amber-400 border-amber-500/50"
+                          )}
+                        >
+                          {isOut ? "OUT OF STOCK" : `${stock} LEFT (Threshold: ${threshold})`}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-border/40 text-xs">
+                        <span className="font-mono text-muted-foreground text-[11px]">Price: ₹{item.price}</span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleQuickRestock(item, 12)}
+                            className="h-7 px-2 text-[10px] font-bold uppercase border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 gap-1"
+                          >
+                            <Plus className="h-3 w-3" /> +12 Crate
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setRestockItem(item); setRestockAmount('24'); }}
+                            className="h-7 px-2 text-[10px] font-bold uppercase border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10"
+                          >
+                            Custom
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>All Tracked Inventory Healthy ({trackedItems.length} items monitored)</span>
+              </div>
+              <span className="text-[11px] font-mono text-muted-foreground">No low-stock warnings</span>
+            </div>
+          )}
+
+          {/* CAMPA INVENTORY & TRACKED ITEMS OVERVIEW GRID */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <PackageCheck className="h-3.5 w-3.5 text-amber-500" />
+              Bistro &amp; Campa Stock Breakdown ({trackedItems.length} Tracked)
+            </h3>
+
+            {trackedItems.length === 0 ? (
+              <Card className="p-8 text-center border-dashed border-2">
+                <Boxes className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="font-bold uppercase text-sm text-foreground">No Inventory Items Currently Tracked</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                  Enable inventory tracking on your items in Settings &gt; Menu, or click below to immediately track all Campa flavors.
+                </p>
+                {campaItems.length > 0 && (
+                  <Button
+                    onClick={handleEnableCampaTracking}
+                    className="mt-4 bg-primary font-bold uppercase text-xs h-9"
+                  >
+                    Track All Campa Products (Set 24 units stock)
+                  </Button>
+                )}
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {trackedItems.map(item => {
+                  const stock = item.stock ?? 0;
+                  const threshold = item.lowStockThreshold ?? 5;
+                  const isOut = stock <= 0;
+                  const isLow = stock > 0 && stock <= threshold;
+                  const isCampa = item.name.toLowerCase().includes('campa');
+
+                  return (
+                    <Card
+                      key={`card-${item.id}`}
+                      className={cn(
+                        "p-3.5 border-2 transition-all flex flex-col justify-between gap-3 bg-card/90",
+                        isOut && "border-rose-500/50 bg-rose-950/10",
+                        isLow && "border-amber-500/50 bg-amber-950/10",
+                        !isOut && !isLow && "border-border/60 hover:border-primary/40",
+                        isCampa && "ring-1 ring-amber-500/20"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-1">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-extrabold text-sm uppercase text-foreground leading-tight">{item.name}</h4>
+                            {isCampa && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase font-bold bg-amber-500/15 text-amber-500 border-amber-500/30">
+                                Campa
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-bold uppercase text-muted-foreground mt-0.5">{item.category} &bull; ₹{item.price}</p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[9px] font-mono font-bold uppercase px-1.5 py-0",
+                            isOut && "bg-rose-500/20 text-rose-400 border-rose-500/40",
+                            isLow && "bg-amber-500/20 text-amber-400 border-amber-500/40",
+                            !isOut && !isLow && "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                          )}
+                        >
+                          {isOut ? "OUT" : isLow ? "LOW" : "OK"}
+                        </Badge>
+                      </div>
+
+                      {/* LARGE STOCK DISPLAY */}
+                      <div className="flex items-baseline justify-between p-2.5 rounded-lg bg-muted/30 border border-border/40 font-mono">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">In Stock</span>
+                          <span className={cn(
+                            "text-2xl font-extrabold tracking-tight",
+                            isOut ? "text-rose-400" : isLow ? "text-amber-400" : "text-emerald-400"
+                          )}>
+                            {stock}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-1">units</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Alert At</span>
+                          <span className="text-xs font-bold text-foreground">&le; {threshold}</span>
+                        </div>
+                      </div>
+
+                      {/* QUICK RESTOCK / ADJUST BAR */}
+                      <div className="grid grid-cols-4 gap-1 pt-1 border-t border-border/30">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={stock <= 0}
+                          onClick={() => handleQuickRestock(item, -1)}
+                          className="h-7 text-xs font-mono font-bold text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 rounded"
+                          title="Deduct 1 unit"
+                        >
+                          -1
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleQuickRestock(item, 1)}
+                          className="h-7 text-xs font-mono font-bold text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 rounded"
+                          title="Add 1 unit"
+                        >
+                          +1
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleQuickRestock(item, 12)}
+                          className="h-7 text-[10px] font-mono font-bold border-border/60 hover:border-emerald-500/40 hover:text-emerald-400"
+                          title="Add 1 crate (12 units)"
+                        >
+                          +12
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setRestockItem(item); setRestockAmount(String(stock)); }}
+                          className="h-7 text-[10px] font-mono font-bold border-border/60 hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                          title="Set custom stock"
+                        >
+                          Set
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* 1. EMPLOYEE & WORKFORCE CYCLE HUB (STAFF TEAM) */}
         <section className="space-y-4">
@@ -2425,6 +2736,79 @@ export default function OwnerMainPage() {
               className="h-10 font-bold uppercase text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1 flex-1 shadow-md shadow-rose-950/40"
             >
               <UserX className="h-3.5 w-3.5" /> Mark Absent {autoDeductAbsentSalary && attendanceEmployee?.salary ? `(-₹${Math.round((attendanceEmployee.salary || 0) / 30).toLocaleString()})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: CUSTOM RESTOCK / INVENTORY LEVEL */}
+      <Dialog open={!!restockItem} onOpenChange={(open) => !open && setRestockItem(null)}>
+        <DialogContent className="sm:max-w-md font-body border-2 border-primary/20">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl text-foreground flex items-center gap-2">
+              <Boxes className="h-5 w-5 text-amber-500" />
+              UPDATE STOCK: {restockItem?.name}
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase text-muted-foreground">
+              Adjust stock on hand or set new crate inventory level.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3 rounded-lg bg-muted/20 border border-border/40 font-mono text-xs flex justify-between items-center">
+              <span className="text-muted-foreground">Current Stock on Hand:</span>
+              <span className="font-bold text-sm text-foreground">{restockItem?.stock ?? 0} units</span>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase">Units to Add or Set</Label>
+              <Input
+                type="number"
+                value={restockAmount}
+                onChange={(e) => setRestockAmount(e.target.value)}
+                placeholder="e.g. 12"
+                className="h-10 font-mono font-bold text-sm"
+              />
+              <div className="flex gap-1.5 pt-1">
+                <Button size="sm" variant="outline" onClick={() => setRestockAmount('6')} className="h-7 text-xs font-mono font-bold">+6</Button>
+                <Button size="sm" variant="outline" onClick={() => setRestockAmount('12')} className="h-7 text-xs font-mono font-bold">+12 (Crate)</Button>
+                <Button size="sm" variant="outline" onClick={() => setRestockAmount('24')} className="h-7 text-xs font-mono font-bold">+24 (2 Crates)</Button>
+                <Button size="sm" variant="outline" onClick={() => setRestockAmount('48')} className="h-7 text-xs font-mono font-bold">+48</Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setRestockItem(null)} className="h-9 font-bold text-xs uppercase">
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!restockItem) return;
+                const exact = parseInt(restockAmount, 10);
+                if (isNaN(exact)) return;
+                await setFoodItemStock(restockItem.id, exact, restockItem.name);
+                if (db) {
+                  await addDoc(collection(db, 'logs'), {
+                    type: 'INVENTORY_PURCHASED',
+                    description: `Viren updated stock for <strong>${restockItem.name}</strong> to <strong>${exact} units</strong>.`,
+                    timestamp: new Date().toISOString(),
+                    user: { uid: 'Viren', displayName: 'Viren (Owner)' }
+                  });
+                }
+                toast({ title: "Stock Updated", description: `${restockItem.name} set to ${exact} units.` });
+                setRestockItem(null);
+              }}
+              variant="secondary"
+              className="h-9 font-bold uppercase text-xs"
+            >
+              Set Exact ({restockAmount})
+            </Button>
+            <Button
+              onClick={handleCustomRestockSubmit}
+              className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-xs"
+            >
+              Add +{restockAmount} to Stock
             </Button>
           </DialogFooter>
         </DialogContent>

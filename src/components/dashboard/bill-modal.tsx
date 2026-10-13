@@ -181,7 +181,37 @@ export function BillModal({
   };
 
   // Updates local bill items state when an item is added
-  const handleAddItem = (item: FoodItem | { id: string, name: string, price: number }) => {
+  const handleAddItem = (item: FoodItem | { id: string, name: string, price: number, trackInventory?: boolean, stock?: number }) => {
+    // Check if this item tracks inventory
+    const trackedFood = 'trackInventory' in item && item.trackInventory 
+      ? item 
+      : foodItems.find(f => (f.id === item.id || f.name.toLowerCase() === item.name.toLowerCase()) && f.trackInventory);
+
+    if (trackedFood && trackedFood.trackInventory) {
+      const availableStock = trackedFood.stock ?? 0;
+      if (availableStock <= 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Out of Stock',
+          description: `${trackedFood.name} is currently out of stock.`
+        });
+        return;
+      }
+
+      const existingQtyInBill = billItems
+        .filter(bi => bi.itemId === trackedFood.id || bi.name.toLowerCase() === trackedFood.name.toLowerCase())
+        .reduce((sum, bi) => sum + bi.quantity, 0);
+
+      if (existingQtyInBill >= availableStock) {
+        toast({
+          variant: 'destructive',
+          title: 'Stock Limit Reached',
+          description: `Cannot add more ${trackedFood.name}: only ${availableStock} units available in stock.`
+        });
+        return;
+      }
+    }
+
     setBillItems(prevItems => {
       const existingItemIndex = prevItems.findIndex(bi => bi.itemId === item.id && bi.name === item.name);
       if (existingItemIndex > -1) {
@@ -194,6 +224,24 @@ export function BillModal({
 
   // Updates local bill items state when quantity is adjusted
   const handleUpdateQuantityByIndex = (index: number, newQuantity: number) => {
+    const currentItem = billItems[index];
+    if (currentItem && newQuantity > currentItem.quantity) {
+      const trackedFood = foodItems.find(f => 
+        (f.id === currentItem.itemId || f.name.toLowerCase() === currentItem.name.toLowerCase()) && f.trackInventory
+      );
+      if (trackedFood && trackedFood.trackInventory) {
+        const availableStock = trackedFood.stock ?? 0;
+        if (newQuantity > availableStock) {
+          toast({
+            variant: 'destructive',
+            title: 'Stock Limit Reached',
+            description: `Cannot add more ${trackedFood.name}: only ${availableStock} units available in stock.`
+          });
+          return;
+        }
+      }
+    }
+
     setBillItems(prevItems => {
         if (newQuantity <= 0) {
             return prevItems.filter((_, i) => i !== index);
@@ -472,24 +520,63 @@ export function BillModal({
                                     <span className="text-[10px] font-mono font-bold text-amber-600/80">TOP SELLERS</span>
                                 </h3>
                                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-5">
-                                    {popularItems.map(item => (
-                                        <button 
-                                            key={`popular-${item.id}`} 
-                                            onClick={() => handleAddItem(item)}
-                                            className="group p-2.5 md:p-4 rounded-lg md:rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left flex flex-col justify-between min-h-[72px] md:h-32 relative overflow-hidden active:scale-[0.98] shadow-xs"
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <p className="font-bold uppercase text-[11px] sm:text-xs md:text-[18px] leading-tight tracking-tight pr-1 group-hover:text-amber-500 transition-colors line-clamp-2">{item.name}</p>
-                                                <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase font-bold shrink-0 hidden sm:inline-flex">BESTSELLER</Badge>
-                                            </div>
-                                            <div className="flex justify-between items-end mt-1">
-                                                <span className="font-mono font-bold text-xs sm:text-sm md:text-[20px] text-foreground">₹{item.price}</span>
-                                                <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-black transition-all">
-                                                    <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                    {popularItems.map(item => {
+                                        const isTracked = Boolean(item.trackInventory);
+                                        const stock = item.stock ?? 0;
+                                        const threshold = item.lowStockThreshold ?? 5;
+                                        const isOut = isTracked && stock <= 0;
+                                        const isLow = isTracked && stock > 0 && stock <= threshold;
+
+                                        return (
+                                            <button 
+                                                key={`popular-${item.id}`} 
+                                                disabled={isOut}
+                                                onClick={() => handleAddItem(item)}
+                                                className={cn(
+                                                    "group p-2.5 md:p-4 rounded-lg md:rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left flex flex-col justify-between min-h-[72px] md:h-32 relative overflow-hidden active:scale-[0.98] shadow-xs",
+                                                    isOut && "opacity-50 cursor-not-allowed hover:border-amber-500/30 hover:bg-amber-500/5"
+                                                )}
+                                            >
+                                                <div className="flex justify-between items-start gap-1">
+                                                    <p className="font-bold uppercase text-[11px] sm:text-xs md:text-[18px] leading-tight tracking-tight pr-1 group-hover:text-amber-500 transition-colors line-clamp-2">{item.name}</p>
+                                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                                        <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase font-bold shrink-0 hidden sm:inline-flex">BESTSELLER</Badge>
+                                                        {isTracked && (
+                                                            <Badge 
+                                                                variant="outline" 
+                                                                className={cn(
+                                                                    "text-[9px] h-4 px-1.5 font-mono uppercase font-bold shrink-0",
+                                                                    isOut && "bg-rose-500/20 text-rose-400 border-rose-500/40",
+                                                                    isLow && "bg-amber-500/20 text-amber-400 border-amber-500/40",
+                                                                    !isOut && !isLow && "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                                                )}
+                                                            >
+                                                                {isOut ? "OUT OF STOCK" : isLow ? `LOW: ${stock} LEFT` : `${stock} IN STOCK`}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </button>
-                                    ))}
+                                                <div className="flex justify-between items-end mt-1">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-mono font-bold text-xs sm:text-sm md:text-[20px] text-foreground">₹{item.price}</span>
+                                                        {isTracked && !isOut && (
+                                                            <span className="text-[10px] font-mono text-muted-foreground sm:hidden font-bold">
+                                                                {stock} in stock
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className={cn(
+                                                        "h-6 w-6 sm:h-7 sm:w-7 rounded-full flex items-center justify-center transition-all",
+                                                        isOut 
+                                                            ? "bg-muted text-muted-foreground cursor-not-allowed" 
+                                                            : "bg-amber-500/15 text-amber-500 group-hover:bg-amber-500 group-hover:text-black"
+                                                    )}>
+                                                        <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -531,21 +618,60 @@ export function BillModal({
                                         <span className="text-[10px] font-mono font-bold text-muted-foreground/60">{items.length} ITEMS</span>
                                     </h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-5">
-                                        {items.map(item => (
-                                            <button 
-                                                key={item.id} 
-                                                onClick={() => handleAddItem(item)}
-                                                className="group p-2.5 md:p-4 rounded-lg md:rounded-xl border bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between min-h-[72px] md:h-32 relative overflow-hidden active:scale-[0.98] shadow-xs"
-                                            >
-                                                <p className="font-bold uppercase text-[11px] sm:text-xs md:text-[18px] leading-tight tracking-tight pr-1 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
-                                                <div className="flex justify-between items-end mt-1">
-                                                    <span className="font-mono font-bold text-xs sm:text-sm md:text-[20px] text-foreground">₹{item.price}</span>
-                                                    <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                                        <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                        {items.map(item => {
+                                            const isTracked = Boolean(item.trackInventory);
+                                            const stock = item.stock ?? 0;
+                                            const threshold = item.lowStockThreshold ?? 5;
+                                            const isOut = isTracked && stock <= 0;
+                                            const isLow = isTracked && stock > 0 && stock <= threshold;
+
+                                            return (
+                                                <button 
+                                                    key={item.id} 
+                                                    disabled={isOut}
+                                                    onClick={() => handleAddItem(item)}
+                                                    className={cn(
+                                                        "group p-2.5 md:p-4 rounded-lg md:rounded-xl border bg-card hover:border-primary hover:bg-primary/5 transition-all text-left flex flex-col justify-between min-h-[72px] md:h-32 relative overflow-hidden active:scale-[0.98] shadow-xs",
+                                                        isOut && "opacity-50 cursor-not-allowed hover:border-border hover:bg-card"
+                                                    )}
+                                                >
+                                                    <div className="flex justify-between items-start gap-1">
+                                                        <p className="font-bold uppercase text-[11px] sm:text-xs md:text-[18px] leading-tight tracking-tight pr-1 group-hover:text-primary transition-colors line-clamp-2">{item.name}</p>
+                                                        {isTracked && (
+                                                            <Badge 
+                                                                variant="outline" 
+                                                                className={cn(
+                                                                    "text-[9px] h-4 px-1.5 font-mono uppercase font-bold shrink-0",
+                                                                    isOut && "bg-rose-500/20 text-rose-400 border-rose-500/40",
+                                                                    isLow && "bg-amber-500/20 text-amber-400 border-amber-500/40",
+                                                                    !isOut && !isLow && "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                                                )}
+                                                            >
+                                                                {isOut ? "OUT OF STOCK" : isLow ? `LOW: ${stock} LEFT` : `${stock} IN STOCK`}
+                                                            </Badge>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </button>
-                                        ))}
+                                                    <div className="flex justify-between items-end mt-1">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-mono font-bold text-xs sm:text-sm md:text-[20px] text-foreground">₹{item.price}</span>
+                                                            {isTracked && !isOut && (
+                                                                <span className="text-[10px] font-mono text-muted-foreground sm:hidden font-bold">
+                                                                    {stock} in stock
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className={cn(
+                                                            "h-6 w-6 sm:h-7 sm:w-7 rounded-full flex items-center justify-center transition-all",
+                                                            isOut 
+                                                                ? "bg-muted text-muted-foreground cursor-not-allowed" 
+                                                                : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
+                                                        )}>
+                                                            <PlusCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );
@@ -624,7 +750,22 @@ export function BillModal({
                                 <TableRow key={`${item.itemId}-${idx}`} className="border-b hover:bg-transparent">
                                     <TableCell className="py-2.5 pl-0">
                                         <p className="font-bold text-xs md:text-[14px] uppercase leading-tight">{item.name}</p>
-                                        <p className="text-[11px] md:text-sm font-bold text-muted-foreground mt-0.5">₹{item.price} x {item.quantity}</p>
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                            <p className="text-[11px] md:text-sm font-bold text-muted-foreground">₹{item.price} x {item.quantity}</p>
+                                            {(() => {
+                                                const matchingFood = foodItems.find(f => f.id === item.itemId || f.name.toLowerCase() === item.name.toLowerCase());
+                                                if (!matchingFood?.trackInventory) return null;
+                                                const remaining = (matchingFood.stock ?? 0) - item.quantity;
+                                                return (
+                                                    <span className={cn(
+                                                        "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border",
+                                                        remaining <= 0 ? "bg-rose-500/15 text-rose-400 border-rose-500/30" : "bg-muted text-muted-foreground border-border/40"
+                                                    )}>
+                                                        {remaining <= 0 ? "Max in tab" : `${remaining} left in stock`}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
                                     </TableCell>
                                     <TableCell className="py-2.5 px-0">
                                         <div className="flex items-center justify-end gap-1 sm:gap-1.5">
@@ -636,13 +777,26 @@ export function BillModal({
                                                 <MinusCircle className="h-4 w-4" />
                                             </button>
                                             <span className="min-w-5 text-center font-mono font-bold text-xs sm:text-base">{item.quantity}</span>
-                                            <button 
-                                                onClick={() => handleAddItem({ id: item.itemId, name: item.name, price: item.price })} 
-                                                className="h-8 w-8 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-primary/10 hover:bg-primary/20 text-primary active:scale-95 transition-all"
-                                                aria-label="Increase quantity"
-                                            >
-                                                <PlusCircle className="h-4 w-4" />
-                                            </button>
+                                            {(() => {
+                                                const matchingFood = foodItems.find(f => f.id === item.itemId || f.name.toLowerCase() === item.name.toLowerCase());
+                                                const isStockMaxed = matchingFood?.trackInventory && item.quantity >= (matchingFood.stock ?? 0);
+
+                                                return (
+                                                    <button 
+                                                        disabled={isStockMaxed}
+                                                        onClick={() => handleAddItem(matchingFood || { id: item.itemId, name: item.name, price: item.price })} 
+                                                        className={cn(
+                                                            "h-8 w-8 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg active:scale-95 transition-all",
+                                                            isStockMaxed 
+                                                                ? "bg-muted text-muted-foreground cursor-not-allowed opacity-50" 
+                                                                : "bg-primary/10 hover:bg-primary/20 text-primary"
+                                                        )}
+                                                        aria-label="Increase quantity"
+                                                    >
+                                                        <PlusCircle className="h-4 w-4" />
+                                                    </button>
+                                                );
+                                            })()}
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right py-2.5 pr-0 font-bold text-xs md:text-[14px] font-mono whitespace-nowrap text-primary">

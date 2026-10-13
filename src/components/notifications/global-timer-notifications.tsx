@@ -32,7 +32,6 @@ import { playChiptuneAlarmSound } from '@/lib/audio/chiptune';
 
 const audioQueue: string[] = [];
 let isProcessingQueue = false;
-let globalToast: any = null;
 let activeUtterance: SpeechSynthesisUtterance | null = null; // Prevent GC
 let sharedAudioCtx: AudioContext | null = null;
 
@@ -116,20 +115,11 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
         activeUtterance = null;
         const errCode = (e as any).error;
         if (errCode === 'interrupted' || errCode === 'canceled' || errCode === 'not-allowed') {
-           // Standard interruptions or permission denial, just move on
+           // Standard interruptions or browser autoplay permission restrictions, fail silently
         } else {
-           console.error(`SpeechSynthesis actual failure [${errCode}]:`, e);
+           console.warn(`SpeechSynthesis audio note [${errCode}]:`, e);
         }
         
-        if (typeof window !== 'undefined' && window.navigator.platform.toLowerCase().includes('linux')) {
-            if (globalToast && errCode !== 'interrupted') {
-                globalToast({
-                    title: "Audio Link Failure",
-                    description: errCode === 'not-allowed' ? "Browser blocked audio. Click settings to allow." : "Synthesis failed. System restart might help.",
-                    variant: "destructive"
-                });
-            }
-        }
         isProcessingQueue = false;
         setTimeout(() => processQueue(audioRef), 100);
       };
@@ -138,12 +128,23 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
       setTimeout(() => {
         if (isProcessingQueue) {
             console.warn("SpeechSynthesis timed out, forcing next in queue");
+            activeUtterance = null;
             isProcessingQueue = false;
             processQueue(audioRef);
         }
       }, 10000);
 
-      window.speechSynthesis.speak(utterance);
+      // Give a tiny 50ms pause after cancel() before speak() to avoid Chromium cancel drop
+      setTimeout(() => {
+        try {
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.error("speechSynthesis.speak error:", err);
+          activeUtterance = null;
+          isProcessingQueue = false;
+          setTimeout(() => processQueue(audioRef), 100);
+        }
+      }, 50);
     } else {
       console.error("SpeechSynthesis NOT supported in this browser");
       isProcessingQueue = false;
@@ -152,12 +153,16 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
   };
 
   try {
-    const response = await generateSpeech({ text });
+    const ttsPromise = generateSpeech({ text });
+    const timeoutPromise = new Promise<{ audioDataUri?: string; error?: string }>((_, reject) => 
+      setTimeout(() => reject(new Error('TTS timeout')), 3500)
+    );
+    const response = await Promise.race([ttsPromise, timeoutPromise]);
     if (response.audioDataUri && audioRef.current) {
       audioRef.current.src = response.audioDataUri;
       audioRef.current.onended = () => {
         isProcessingQueue = false;
-        processQueue(audioRef);
+        setTimeout(() => processQueue(audioRef), 100);
       };
       audioRef.current.onerror = () => {
         fallbackSpeech();
@@ -187,6 +192,8 @@ export async function announceGlobally(text: string, audioRef?: React.RefObject<
     globalAudioRef = audioRef;
   }
 
+  if (!text || text.trim() === "") return;
+
   audioQueue.push(text);
   
   if (globalAudioRef) {
@@ -204,10 +211,6 @@ export function GlobalTimerNotifications() {
   const [breakState, setBreakState] = useState<any>(null);
   const [showBreakOverAlert, setShowBreakOverAlert] = useState(false);
   const lastAlertedBreakStart = useRef<string | null>(null);
-
-  useEffect(() => {
-    globalToast = toast;
-  }, [toast]);
 
   // Listen to Firestore break timer config
   useEffect(() => {
@@ -230,8 +233,9 @@ export function GlobalTimerNotifications() {
   }, [db]);
 
 
-  const announcedWarnings = useRef<Set<string>>(new Set());
-  const announcedEnds = useRef<Set<string>>(new Set());
+  // Map of "stationId::memberId" -> announced endTime timestamp in ms
+  const announcedWarnings = useRef<Map<string, number>>(new Map());
+  const announcedEnds = useRef<Map<string, number>>(new Map());
   const processedAnnouncements = useRef<Set<string>>(new Set());
   const [activeEndAlert, setActiveEndAlert] = useState<{ station: Station, memberName: string, endTime?: string | null } | null>(null);
   const [activeWarningAlert, setActiveWarningAlert] = useState<{ station: Station, memberName: string } | null>(null);
@@ -418,62 +422,116 @@ export function GlobalTimerNotifications() {
       const now = getSyncedNow();
       const fiveMinutes = 5 * 60 * 1000;
 
+      // Clean up tracking maps for stations that are no longer active
+      const activeStationIds = new Set(activeStations.map(s => s.id));
+      for (const key of Array.from(announcedEnds.current.keys())) {
+        const [stId] = key.split('::');
+        if (!activeStationIds.has(stId)) {
+          announcedEnds.current.delete(key);
+        }
+      }
+      for (const key of Array.from(announcedWarnings.current.keys())) {
+        const [stId] = key.split('::');
+        if (!activeStationIds.has(stId)) {
+          announcedWarnings.current.delete(key);
+        }
+      }
+
       activeStations.forEach((station) => {
         if (station.status !== 'in-use') return;
 
-        const activeMembersWithTimers = station.members.filter(m => m.status !== 'finished' && !!m.endTime);
+        const activeMembersWithTimers = station.members.filter(
+          m => m.status !== 'finished' && m.status !== 'paused' && !!m.endTime
+        );
+
+        // Reset tracking for members whose timers currently have active remaining time.
+        // This ensures that when time is added to extend a session after timer expiration,
+        // the previous "ended" announcement flag is cleared, and the updated timer will
+        // properly sound the alarm and announce "Time is up!" when the new duration runs out!
+        activeMembersWithTimers.forEach(m => {
+          const memberKey = `${station.id}::${m.id}`;
+          const mEndTime = new Date(m.endTime!).getTime();
+          const mRemaining = mEndTime - now;
+
+          if (mRemaining > 0) {
+            // Timer has time left -> clear ended state so subsequent expiration triggers
+            if (announcedEnds.current.has(memberKey)) {
+              announcedEnds.current.delete(memberKey);
+            }
+            // If they have more than 5 minutes remaining, clear warning state so the warning can fire again
+            if (mRemaining > fiveMinutes && announcedWarnings.current.has(memberKey)) {
+              announcedWarnings.current.delete(memberKey);
+            }
+          }
+        });
         
         // 1. SESSION END CHECK
         const endCandidates = activeMembersWithTimers.filter(m => {
-            const mEndTime = new Date(m.endTime!).getTime();
-            const mRemaining = mEndTime - now;
-            const endKey = `${station.id}-${m.id}-ended`;
-            return mRemaining <= 0 && !announcedEnds.current.has(endKey);
+          const mEndTime = new Date(m.endTime!).getTime();
+          const mRemaining = mEndTime - now;
+          const memberKey = `${station.id}::${m.id}`;
+          return mRemaining <= 0 && announcedEnds.current.get(memberKey) !== mEndTime;
         });
 
         if (endCandidates.length > 1) {
-            // Group announcement for multiple players
-            endCandidates.forEach(m => announcedEnds.current.add(`${station.id}-${m.id}-ended`));
-            playChiptuneAlarmSound();
-            playAnnouncement(`Time is up for ${station.name}. All sessions ended.`);
-            const maxEndTime = new Date(Math.max(...endCandidates.map(m => new Date(m.endTime!).getTime()))).toISOString();
-            setActiveEndAlert({ station, memberName: "EVERYONE", endTime: maxEndTime });
-            setActiveWarningAlert(null);
+          // Group announcement for multiple players
+          endCandidates.forEach(m => {
+            const memberKey = `${station.id}::${m.id}`;
+            const mEndTime = new Date(m.endTime!).getTime();
+            announcedEnds.current.set(memberKey, mEndTime);
+            announcedWarnings.current.delete(memberKey);
+          });
+          playChiptuneAlarmSound();
+          playAnnouncement(`Time is up for ${station.name}. All sessions ended.`);
+          const maxEndTime = new Date(Math.max(...endCandidates.map(m => new Date(m.endTime!).getTime()))).toISOString();
+          setActiveEndAlert({ station, memberName: "EVERYONE", endTime: maxEndTime });
+          setActiveWarningAlert(null);
         } else if (endCandidates.length === 1) {
-            // Individual announcement for single player
-            const m = endCandidates[0];
-            announcedEnds.current.add(`${station.id}-${m.id}-ended`);
-            playChiptuneAlarmSound();
-            playAnnouncement(`Time is up for ${m.name} at ${station.name}.`);
-            setActiveEndAlert({ station, memberName: m.name, endTime: m.endTime });
-            setActiveWarningAlert(null);
+          // Individual announcement for single player
+          const m = endCandidates[0];
+          const memberKey = `${station.id}::${m.id}`;
+          const mEndTime = new Date(m.endTime!).getTime();
+          announcedEnds.current.set(memberKey, mEndTime);
+          announcedWarnings.current.delete(memberKey);
+          playChiptuneAlarmSound();
+          playAnnouncement(`Time is up for ${m.name} at ${station.name}.`);
+          setActiveEndAlert({ station, memberName: m.name, endTime: m.endTime });
+          setActiveWarningAlert(null);
         }
 
         // 2. FIVE MINUTE WARNING CHECK
         const warningCandidates = activeMembersWithTimers.filter(m => {
-            const mEndTime = new Date(m.endTime!).getTime();
-            const mRemaining = mEndTime - now;
-            const warningKey = `${station.id}-${m.id}-5min`;
-            const endKey = `${station.id}-${m.id}-ended`;
-            
-            return mRemaining <= fiveMinutes && mRemaining > 0 && 
-                   !announcedWarnings.current.has(warningKey) && 
-                   !announcedEnds.current.has(endKey);
+          const mEndTime = new Date(m.endTime!).getTime();
+          const mRemaining = mEndTime - now;
+          const memberKey = `${station.id}::${m.id}`;
+          
+          return (
+            mRemaining <= fiveMinutes &&
+            mRemaining > 0 && 
+            announcedWarnings.current.get(memberKey) !== mEndTime && 
+            announcedEnds.current.get(memberKey) !== mEndTime
+          );
         });
 
         if (warningCandidates.length > 1) {
-            warningCandidates.forEach(m => announcedWarnings.current.add(`${station.id}-${m.id}-5min`));
-            playAnnouncement(`Attention. Five minutes remaining for everyone at ${station.name}. Please ask if they will be continuing or ending their session.`);
-            if (!activeEndAlertRef.current) {
-                setActiveWarningAlert({ station, memberName: "EVERYONE" });
-            }
+          warningCandidates.forEach(m => {
+            const memberKey = `${station.id}::${m.id}`;
+            const mEndTime = new Date(m.endTime!).getTime();
+            announcedWarnings.current.set(memberKey, mEndTime);
+          });
+          playAnnouncement(`Attention. Five minutes remaining for everyone at ${station.name}. Please ask if they will be continuing or ending their session.`);
+          if (!activeEndAlertRef.current) {
+            setActiveWarningAlert({ station, memberName: "EVERYONE" });
+          }
         } else if (warningCandidates.length === 1) {
-            const m = warningCandidates[0];
-            announcedWarnings.current.add(`${station.id}-${m.id}-5min`);
-            playAnnouncement(`Attention. Five minutes remaining for ${m.name} at ${station.name}. Please ask if they will be continuing or ending their session.`);
-            if (!activeEndAlertRef.current) {
-                setActiveWarningAlert({ station, memberName: m.name });
-            }
+          const m = warningCandidates[0];
+          const memberKey = `${station.id}::${m.id}`;
+          const mEndTime = new Date(m.endTime!).getTime();
+          announcedWarnings.current.set(memberKey, mEndTime);
+          playAnnouncement(`Attention. Five minutes remaining for ${m.name} at ${station.name}. Please ask if they will be continuing or ending their session.`);
+          if (!activeEndAlertRef.current) {
+            setActiveWarningAlert({ station, memberName: m.name });
+          }
         }
       });
     }, 2000);

@@ -28,6 +28,7 @@ import { GlobalRechargeModal } from '@/components/dashboard/global-recharge-moda
 import { GlobalRewardsModal } from '@/components/dashboard/global-rewards-modal';
 import { SessionRequestHandler } from '@/components/dashboard/session-request-handler';
 import { archiveBill } from '@/firebase/firestore/bills';
+import { adjustFoodItemStock } from '@/firebase/firestore/food-items';
 import { createSystemAnnouncement } from '@/firebase/firestore/announcements';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/firebase/auth/use-user';
@@ -634,6 +635,29 @@ function DashboardContent() {
   const handleSaveBill = (stationId: string, newBill: BillItem[], newDiscount: number) => {
     const station = stations.find(s => s.id === stationId);
     const updates: Partial<Station> = { currentBill: newBill, discount: newDiscount };
+
+    // Real-time inventory adjustment: calculate delta per tracked item
+    if (foodItems && foodItems.length > 0) {
+      const oldBill = station?.currentBill || [];
+      foodItems.forEach(food => {
+        if (!food.trackInventory) return;
+
+        const oldQty = oldBill
+          .filter(bi => bi.itemId === food.id || bi.name.toLowerCase() === food.name.toLowerCase())
+          .reduce((sum, bi) => sum + bi.quantity, 0);
+
+        const newQty = newBill
+          .filter(bi => bi.itemId === food.id || bi.name.toLowerCase() === food.name.toLowerCase())
+          .reduce((sum, bi) => sum + bi.quantity, 0);
+
+        const delta = newQty - oldQty;
+        if (delta !== 0) {
+          // delta > 0: items added to tab -> deduct from stock (-delta)
+          // delta < 0: items removed from tab -> restore to stock (+Math.abs(delta))
+          adjustFoodItemStock(food.id, -delta, food.name);
+        }
+      });
+    }
     
     if (station?.status === 'available' && newBill.length > 0) {
         updates.status = 'in-use';
@@ -864,8 +888,18 @@ function DashboardContent() {
         // Feature: Automatically deposit/withdraw from the Firestore registry pool if the player is mapped to it!
         if (m.rechargeId === 'pool' && pkg.id !== 'account-pool') {
             adjustMemberBalancePool(m.id, durationToAddInSeconds);
-            const shiftedEndTime = m.endTime ? new Date(new Date(m.endTime).getTime() + durationToAddInSeconds * 1000).toISOString() : null;
-            return { ...m, endTime: shiftedEndTime };
+            const memberEndTimeMs = m.endTime ? new Date(m.endTime).getTime() : 0;
+            const now = getSyncedNow();
+            const basePoolTime = (memberEndTimeMs > now && m.status !== 'finished' && selectedStation.status !== 'finishing')
+                ? memberEndTimeMs
+                : now;
+            const shiftedEndTime = new Date(basePoolTime + durationToAddInSeconds * 1000).toISOString();
+            return { 
+                ...m, 
+                status: 'active' as const, 
+                endTime: shiftedEndTime,
+                remainingTimeOnPause: null
+            };
         }
 
         let newEndTime = m.endTime ? new Date(m.endTime).toISOString() : null;
@@ -875,11 +909,16 @@ function DashboardContent() {
         if ((selectedStation.status === 'paused' || m.status === 'paused') && m.remainingTimeOnPause != null) {
             newRemaining = m.remainingTimeOnPause + durationToAddInSeconds;
         } else {
-            const baseTime = (m.endTime && !wasFinished && selectedStation.status !== 'finishing') 
-                ? new Date(m.endTime).getTime() 
-                : getSyncedNow();
+            const memberEndTimeMs = m.endTime ? new Date(m.endTime).getTime() : 0;
+            const now = getSyncedNow();
+            // If continuing the session after the timer is up (memberEndTimeMs <= now),
+            // start the added time from right NOW so they get the full duration!
+            // If they still had time remaining, extend from their current future endTime.
+            const baseTime = (memberEndTimeMs > now && !wasFinished && selectedStation.status !== 'finishing') 
+                ? memberEndTimeMs 
+                : now;
             
-            const effectiveAdd = Math.max(0, durationToAddInSeconds - graceDeduction);
+            const effectiveAdd = Math.max(0, durationToAddInSeconds - (selectedStation.status === 'finishing' ? graceDeduction : 0));
             newEndTime = new Date(baseTime + effectiveAdd * 1000).toISOString();
         }
 

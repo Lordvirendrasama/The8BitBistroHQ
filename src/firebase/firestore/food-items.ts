@@ -1,6 +1,6 @@
 'use client';
 
-import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, increment } from 'firebase/firestore';
 import type { FoodItemFormData, LogEntry } from '@/lib/types';
 
 const createLogEntry = (
@@ -72,3 +72,28 @@ export const deleteFoodItem = async (itemId: string, itemName: string) => {
         console.error("Error deleting food item: ", e);
     }
 }
+
+export const adjustFoodItemStock = async (itemId: string, delta: number, itemName?: string) => {
+    const db = getFirestore();
+    const itemRef = doc(db, 'foodItems', itemId);
+    try {
+        await updateDoc(itemRef, {
+            stock: increment(delta)
+        });
+    } catch (e) {
+        console.error(`Error adjusting stock for ${itemName || itemId}: `, e);
+    }
+};
+
+export const setFoodItemStock = async (itemId: string, newStock: number, itemName?: string) => {
+    const db = getFirestore();
+    const itemRef = doc(db, 'foodItems', itemId);
+    try {
+        await updateDoc(itemRef, {
+            stock: Math.max(0, newStock)
+        });
+    } catch (e) {
+        console.error(`Error setting stock for ${itemName || itemId}: `, e);
+    }
+};
+
