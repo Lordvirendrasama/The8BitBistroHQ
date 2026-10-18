@@ -2,11 +2,11 @@
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
-import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem, MemberTier, PaymentMethod, Booking } from '@/lib/types';
+import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem, MemberTier, PaymentMethod, Booking, RawMaterialRequest } from '@/lib/types';
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils, Sparkles, LayoutTemplate, Calendar } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils, Sparkles, LayoutTemplate, Calendar, Package } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -41,6 +41,7 @@ import { isToday } from 'date-fns';
 import { BookingsManagerModal } from '@/components/bookings/bookings-manager-modal';
 import { useBookingAutoStarter } from '@/components/bookings/use-booking-auto-starter';
 import { completeBooking } from '@/firebase/firestore/bookings';
+import { RawMaterialsOrderModal } from '@/components/dashboard/raw-materials-order-modal';
 
 
 const tierMultipliers: Record<MemberTier, number> = {
@@ -68,6 +69,7 @@ function DashboardContent() {
   const [isRewardsModalOpen, setIsRewardsModalOpen] = useState(false);
   const [isGuestWizardOpen, setIsGuestWizardOpen] = useState(false);
   const [isBookingsModalOpen, setIsBookingsModalOpen] = useState(false);
+  const [isRawMaterialsModalOpen, setIsRawMaterialsModalOpen] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [manageType, setManageType] = useState<'ps5' | 'ps4' | 'boardgame' | 'retrogaming'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -108,6 +110,12 @@ function DashboardContent() {
       title: "5. Board Game Tables",
       description: "Track physical board games, table rentals, and play durations. End table sessions to invoice renting customers.",
       position: "top"
+    },
+    {
+      selector: "#order-raw-material-btn",
+      title: "6. Raw Materials & Stock Order",
+      description: "When supplies run low, employees click here to report items that need ordering directly to the owner.",
+      position: "left"
     }
   ];
 
@@ -236,6 +244,13 @@ function DashboardContent() {
       }
     }).length;
   }, [bookings]);
+
+  const rawRequestsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'rawMaterialRequests'), where('status', '==', 'pending'));
+  }, [db]);
+  const { data: pendingRawRequests } = useCollection<RawMaterialRequest>(rawRequestsQuery);
+  const pendingRawRequestsCount = pendingRawRequests?.length || 0;
 
 
   const stations = useMemo(() => {
@@ -1130,6 +1145,19 @@ function DashboardContent() {
                   </span>
                 )}
             </Button>
+            <Button 
+                id="order-raw-material-btn"
+                onClick={() => setIsRawMaterialsModalOpen(true)} 
+                className="h-8 sm:h-9 px-2.5 sm:px-4 font-bold uppercase tracking-normal bg-amber-500 hover:bg-amber-600 text-black shadow-md animate-in fade-in text-xs shrink-0 gap-1.5"
+            >
+                <Package className="h-3.5 w-3.5" />
+                <span>Need to Order</span>
+                {pendingRawRequestsCount > 0 && (
+                  <span className="h-4 px-1.5 bg-black text-amber-400 rounded-full font-mono text-[10px] font-extrabold flex items-center justify-center animate-pulse">
+                    {pendingRawRequestsCount}
+                  </span>
+                )}
+            </Button>
         </div>
 
       <div className="space-y-3 sm:space-y-4">
@@ -1344,6 +1372,11 @@ function DashboardContent() {
         bookings={bookings || []}
         stations={stations}
         members={members || []}
+      />
+
+      <RawMaterialsOrderModal
+        isOpen={isRawMaterialsModalOpen}
+        onClose={() => setIsRawMaterialsModalOpen(false)}
       />
 
       {/* Guided Tour component */}

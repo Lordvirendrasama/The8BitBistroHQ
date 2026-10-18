@@ -665,4 +665,47 @@ export interface StaffOrder {
   approved?: boolean;
 }
 
+export interface RawMaterial {
+  id: string;
+  name: string;
+  category: string; // e.g. 'Dairy', 'Kitchen & Food', 'Beverages', 'Packaging & Supplies', 'Gaming & Tech', 'Cleaning & Housekeeping', 'Other'
+  unit: string; // e.g. 'Litres', 'Kg', 'Packets', 'Pieces', 'Cans', 'Boxes', 'Bottles'
+  lowStockThreshold?: number;
+  preferredSupplier?: string;
+  estimatedCost?: number;
+  notes?: string;
+  isActive?: boolean;
+  createdAt?: string;
+}
+
+export type RawMaterialFormData = Omit<RawMaterial, 'id'>;
+
+export interface RawMaterialRequestItem {
+  rawMaterialId?: string;
+  name: string;
+  category: string;
+  unit: string;
+  quantityRequested: number | string;
+  isUrgent?: boolean;
+}
+
+export interface RawMaterialRequest {
+  id: string;
+  items: RawMaterialRequestItem[];
+  requestedBy: {
+    uid: string;
+    displayName: string;
+    role?: string;
+  };
+  notes?: string;
+  status: 'pending' | 'ordered' | 'received' | 'cancelled';
+  urgency: 'low' | 'normal' | 'urgent';
+  createdAt: string;
+  updatedAt?: string;
+  orderedAt?: string;
+  receivedAt?: string;
+  cycle?: string;
+}
+
+
 

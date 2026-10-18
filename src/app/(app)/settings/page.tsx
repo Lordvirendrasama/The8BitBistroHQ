@@ -16,7 +16,8 @@ import {
   History, 
   Database,
   ArrowRight,
-  ChevronRight
+  ChevronRight,
+  Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,10 +31,11 @@ const settingGroups = [
   },
   {
     title: "Bistro & Gaming",
-    description: "Food menu, categories, and gaming rates.",
+    description: "Food menu, packages, gaming rates, and inventory.",
     items: [
       { href: '/settings/menu', label: 'Menu & Packages', icon: Utensils, color: 'text-orange-600' },
       { href: '/settings/recharge-packs', label: 'Recharge Packs', icon: Zap, color: 'text-yellow-500' },
+      { href: '/settings/raw-materials', label: 'Raw Materials & Supplies', icon: Package, color: 'text-amber-500' },
     ]
   },
   {
