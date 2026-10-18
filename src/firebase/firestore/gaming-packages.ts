@@ -157,6 +157,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       playerCapacity: 1,
       stationType: 'ps5',
       isPriorityOffer: true,
+      isRechargePack: true,
     },
     {
       name: 'PS5 1 Hour Duo Session (Per Player)',
@@ -165,6 +166,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       validity: 1,
       playerCapacity: 2,
       stationType: 'ps5',
+      isRechargePack: true,
     },
     {
       name: 'PS5 30 Min Solo Session',
@@ -173,6 +175,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       validity: 1,
       playerCapacity: 1,
       stationType: 'ps5',
+      isRechargePack: true,
     },
     {
       name: 'PS5 30 Min Duo Session (Per Player)',
@@ -181,6 +184,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       validity: 1,
       playerCapacity: 2,
       stationType: 'ps5',
+      isRechargePack: true,
     },
     {
       name: 'PS5 Happy Hour 1 Hour Solo (8 AM - 1 PM)',
@@ -191,6 +195,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       stationType: 'ps5',
       startTime: '08:00',
       endTime: '13:00',
+      isRechargePack: true,
     },
     {
       name: 'PS5 Happy Hour 1 Hour Duo (8 AM - 1 PM)',
@@ -201,6 +206,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       stationType: 'ps5',
       startTime: '08:00',
       endTime: '13:00',
+      isRechargePack: true,
     },
 
     // PS4 Rates
@@ -212,6 +218,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       playerCapacity: 1,
       stationType: 'ps4',
       isPriorityOffer: true,
+      isRechargePack: true,
     },
     {
       name: 'PS4 1 Hour Duo Session (Per Player)',
@@ -220,6 +227,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       validity: 1,
       playerCapacity: 2,
       stationType: 'ps4',
+      isRechargePack: true,
     },
     {
       name: 'PS4 30 Min Solo Session',
@@ -228,6 +236,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       validity: 1,
       playerCapacity: 1,
       stationType: 'ps4',
+      isRechargePack: true,
     },
     {
       name: 'PS4 30 Min Duo Session (Per Player)',
@@ -236,6 +245,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       validity: 1,
       playerCapacity: 2,
       stationType: 'ps4',
+      isRechargePack: true,
     },
     {
       name: 'PS4 Happy Hour 1 Hour Solo (8 AM - 1 PM)',
@@ -246,6 +256,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       stationType: 'ps4',
       startTime: '08:00',
       endTime: '13:00',
+      isRechargePack: true,
     },
     {
       name: 'PS4 Happy Hour 1 Hour Duo (8 AM - 1 PM)',
@@ -256,6 +267,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       stationType: 'ps4',
       startTime: '08:00',
       endTime: '13:00',
+      isRechargePack: true,
     },
 
     // Board Games Rates
@@ -268,6 +280,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       stationType: 'boardgame',
       isBoardGamePass: true,
       isPriorityOffer: true,
+      isRechargePack: true,
     },
     {
       name: 'Board Pass 30 Min Session',
@@ -277,6 +290,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       playerCapacity: 1,
       stationType: 'boardgame',
       isBoardGamePass: true,
+      isRechargePack: true,
     },
     {
       name: 'Board Pass Happy Hour 1 Hour (8 AM - 1 PM)',
@@ -288,6 +302,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       isBoardGamePass: true,
       startTime: '08:00',
       endTime: '13:00',
+      isRechargePack: true,
     },
 
     // Retro Gaming Rates
@@ -300,6 +315,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       stationType: 'retrogaming',
       isRetroGamePass: true,
       isPriorityOffer: true,
+      isRechargePack: true,
     },
     {
       name: 'Retro Pass 30 Min Session',
@@ -309,6 +325,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       playerCapacity: 1,
       stationType: 'retrogaming',
       isRetroGamePass: true,
+      isRechargePack: true,
     },
     {
       name: 'Retro Pass Happy Hour 1 Hour (8 AM - 1 PM)',
@@ -320,6 +337,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       isRetroGamePass: true,
       startTime: '08:00',
       endTime: '13:00',
+      isRechargePack: true,
     },
 
     // Recharge Packs
@@ -329,6 +347,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       price: 1200,
       validity: 30,
       playerCapacity: 1,
+      stationType: 'ps5',
       isRechargePack: true,
     },
     {
@@ -337,6 +356,7 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
       price: 650,
       validity: 15,
       playerCapacity: 1,
+      stationType: 'ps5',
       isRechargePack: true,
     },
   ];
@@ -348,10 +368,118 @@ export const seedDefaultRateCardPackages = async (): Promise<number> => {
 
   createLogEntry(db, batch, {
     type: 'SETTINGS_UPDATED',
-    description: `Populated rate card packages (${defaultPackages.length} packages created).`,
+    description: `Populated rate card packages (${defaultPackages.length} packages created as Recharge Packs).`,
     details: { count: defaultPackages.length }
   });
 
   await batch.commit();
   return defaultPackages.length;
+};
+
+/**
+ * Converts all existing gaming packages in Firestore to Recharge Packs (isRechargePack: true).
+ */
+export const convertAllGamingPackagesToRechargePacks = async (): Promise<number> => {
+  const db = getFirestore();
+  const batch = writeBatch(db);
+  const colRef = collection(db, 'gamingPackages');
+  const snapshot = await getDocs(colRef);
+
+  if (snapshot.empty) return 0;
+
+  let count = 0;
+  snapshot.docs.forEach(docSnap => {
+    const data = docSnap.data();
+    const needsRechargePack = !data.isRechargePack;
+    const needsValidity = !data.validity || data.validity <= 0;
+    if (needsRechargePack || needsValidity) {
+      batch.update(docSnap.ref, { 
+        isRechargePack: true,
+        validity: data.validity && data.validity > 0 ? data.validity : 1 
+      });
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    createLogEntry(db, batch, {
+      type: 'SETTINGS_UPDATED',
+      description: `Converted ${count} gaming packages to recharge packs (prepaid).`,
+      details: { convertedCount: count }
+    });
+    await batch.commit();
+  }
+  return count;
+};
+
+/**
+ * Bulk updates the recharge status and validity for multiple packages.
+ */
+export const bulkUpdatePackageRechargeStatus = async (
+  packageIds: string[], 
+  isRechargePack: boolean, 
+  validity?: number
+): Promise<number> => {
+  if (packageIds.length === 0) return 0;
+  const db = getFirestore();
+  const batch = writeBatch(db);
+
+  packageIds.forEach(id => {
+    const pkgRef = doc(db, 'gamingPackages', id);
+    const updates: Record<string, any> = { isRechargePack };
+    if (isRechargePack) {
+      updates.validity = (validity !== undefined && validity > 0) ? validity : 1;
+    }
+    batch.update(pkgRef, updates);
+  });
+
+  createLogEntry(db, batch, {
+    type: 'SETTINGS_UPDATED',
+    description: `Bulk updated recharge status for ${packageIds.length} packages (isRechargePack: ${isRechargePack}${validity ? `, validity: ${validity}d` : ''}).`,
+    details: { packageIds, isRechargePack, validity }
+  });
+
+  await batch.commit();
+  return packageIds.length;
+};
+
+/**
+ * Bulk updates validity (in days, e.g. 1 = 24h) for multiple packages.
+ */
+export const bulkUpdatePackageValidity = async (
+  packageIds: string[], 
+  validityDays: number
+): Promise<number> => {
+  if (packageIds.length === 0 || validityDays <= 0) return 0;
+  const db = getFirestore();
+  const batch = writeBatch(db);
+
+  packageIds.forEach(id => {
+    const pkgRef = doc(db, 'gamingPackages', id);
+    batch.update(pkgRef, { validity: validityDays });
+  });
+
+  createLogEntry(db, batch, {
+    type: 'SETTINGS_UPDATED',
+    description: `Updated validity to ${validityDays} day(s) for ${packageIds.length} gaming packages.`,
+    details: { packageIds, validityDays }
+  });
+
+  await batch.commit();
+  return packageIds.length;
+};
+
+/**
+ * Toggles a single package's recharge pack status.
+ */
+export const togglePackageRecharge = async (packageId: string, currentStatus: boolean, validity?: number): Promise<boolean> => {
+  const db = getFirestore();
+  const pkgRef = doc(db, 'gamingPackages', packageId);
+  const newStatus = !currentStatus;
+  const updates: Record<string, any> = { isRechargePack: newStatus };
+  if (newStatus && (!validity || validity <= 0)) {
+    updates.validity = 1; // Default to 24 hours
+  }
+  await updateDoc(pkgRef, updates);
+  return newStatus;
 };

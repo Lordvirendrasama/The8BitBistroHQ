@@ -118,7 +118,7 @@ export function EditTimeModal({ isOpen, onOpenChange, onAddTime, onReduceTime, g
         if (p.isAddTimePackage) return true;
 
         if (p.isPriorityOffer) {
-            if (p.isRechargePack) return false;
+            if (p.validity && p.validity > 1) return false;
 
             const stName = p.name.toUpperCase();
             if (station.type === 'ps5' && (p.isBoardGamePass || p.isRetroGamePass || p.stationType === 'ps4' || stName.includes('PS4') || stName.includes('RETRO'))) return false;

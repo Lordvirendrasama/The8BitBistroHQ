@@ -144,7 +144,10 @@ export function EditBillModal({ isOpen, onOpenChange, bill, foodItems, gamingPac
   }, [billItems]);
   
   const totalDiscountValue = Math.min(foodSubtotal, discount);
-  const total = foodSubtotal - totalDiscountValue + initialPackagePrice + timePackageTotal;
+  const debtAdjustmentAmount = bill?.debtAdjustment
+    ? (bill.debtAdjustment.type === 'receivable' ? bill.debtAdjustment.amount : -bill.debtAdjustment.amount)
+    : 0;
+  const total = Math.max(0, foodSubtotal - totalDiscountValue + initialPackagePrice + timePackageTotal + debtAdjustmentAmount);
 
   const handleSave = () => {
     if (bill) {
@@ -171,6 +174,7 @@ export function EditBillModal({ isOpen, onOpenChange, bill, foodItems, gamingPac
         stationName: stationName.trim() || bill.stationName,
         initialPackagePrice: initialPackagePrice,
         packageName: packageName.trim() || undefined,
+        debtAdjustment: bill.debtAdjustment || undefined,
         members: bill.members && bill.members.length > 0 
           ? bill.members.map((m, idx) => idx === 0 ? { ...m, name: memberName.trim() || m.name } : m)
           : memberName.trim() ? [{ id: 'guest', name: memberName.trim(), avatarUrl: '' }] : [],

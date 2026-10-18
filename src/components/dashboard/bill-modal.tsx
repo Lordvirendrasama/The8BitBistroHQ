@@ -168,7 +168,7 @@ export function BillModal({
     if (!gamingPackages) return [];
     const term = searchTerm.toLowerCase();
     return gamingPackages
-        .filter(p => !p.isAddTimePackage && !p.isRechargePack)
+        .filter(p => !p.isAddTimePackage && !(p.validity && p.validity > 1))
         .filter(p => p.name.toLowerCase().includes(term));
   }, [gamingPackages, searchTerm]);
 
@@ -267,7 +267,7 @@ export function BillModal({
     if (type === 'time') {
       const pkg = gamingPackages.find(p => 
         !p.isAddTimePackage && 
-        !p.isRechargePack && 
+        !(p.validity && p.validity > 1) && 
         p.name.toLowerCase().includes(searchKey.toLowerCase())
       );
       if (pkg) {

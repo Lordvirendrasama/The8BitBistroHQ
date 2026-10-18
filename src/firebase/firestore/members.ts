@@ -5,6 +5,7 @@ import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch
 import type { Member, ClaimedReward, Reward, Transaction, LogEntry, LogEntryType, GamingPackage, MemberRecharge } from '@/lib/types';
 import { getSettings } from './settings';
 import { addMonths, isAfter } from 'date-fns';
+import { getTierMultiplier } from '@/lib/pricing';
 
 /**
  * Robustly sanitizes data for Firestore by removing any 'undefined' values.
@@ -149,17 +150,30 @@ export const addMember = async (memberData: Omit<Member, 'id'>, referrerId?: str
                 const referralBonus = 500;
                 const currentBits = referrerData.bitsBalance ?? (referrerData.points || 0);
                 const currentLifetime = referrerData.lifetimeBitsEarned ?? currentBits;
+                const newLifetime = currentLifetime + referralBonus;
+                const newLevel = Math.max(referrerData.level || 1, Math.floor(newLifetime / 100) + 1);
+
                 transaction.update(referrerRef, { 
                   bitsBalance: currentBits + referralBonus,
-                  lifetimeBitsEarned: currentLifetime + referralBonus
+                  lifetimeBitsEarned: newLifetime,
+                  level: newLevel,
+                  isBitsMigrated: true
                 });
+
+                const txRef = doc(collection(db, 'members', referrerId, 'transactions'));
+                transaction.set(txRef, sanitize({
+                    date: new Date().toISOString(),
+                    amount: 0,
+                    bitsGained: referralBonus,
+                    cycle: dataToAdd.cycle
+                }));
                 
                 const referralLogRef = doc(collection(db, 'logs'));
                 transaction.set(referralLogRef, sanitize({
                     type: 'BITS_EARNED',
                     description: `<strong>${referrerData.name}</strong> earned <strong>${referralBonus} Bits</strong> for referral.`,
                     memberId: referrerId,
-                    details: { bonusBits: referralBonus },
+                    details: { bonusBits: referralBonus, referredMemberId: newMemberRef.id },
                     timestamp: new Date().toISOString(),
                     user: { uid: currentUser.uid, displayName: currentUser.displayName },
                     cycle: dataToAdd.cycle
@@ -296,8 +310,8 @@ export const rechargeMember = async (memberId: string, pkg: GamingPackage, payme
     if (!memberSnap.exists()) return null;
     
     const member = memberSnap.data() as Member;
-    const now = new Date();
-    const expiry = new Date(now.getTime() + (pkg.validity * 24 * 60 * 60 * 1000));
+    const validityDays = (pkg.validity && pkg.validity > 0) ? pkg.validity : 1;
+    const expiry = new Date(now.getTime() + (validityDays * 24 * 60 * 60 * 1000));
     
     const newRechargeId = doc(collection(db, 'dummy')).id;
     const newRecharge: MemberRecharge = {
@@ -312,12 +326,25 @@ export const rechargeMember = async (memberId: string, pkg: GamingPackage, payme
     };
 
     const updatedRecharges = [...(member.recharges || []), newRecharge];
-    batch.update(memberRef, sanitize({ 
-        recharges: updatedRecharges,
-        totalSpent: (member.totalSpent || 0) + pkg.price
-    }));
 
     if (!options?.skipBill) {
+        const tierMultiplier = getTierMultiplier(member.tier);
+        const bitsEarned = Math.floor((pkg.price / 10) * tierMultiplier);
+        const currentBits = member.bitsBalance ?? (member as any).points ?? 0;
+        const currentLifetime = member.lifetimeBitsEarned ?? currentBits;
+        const newBitsBalance = currentBits + bitsEarned;
+        const newLifetimeBits = currentLifetime + bitsEarned;
+        const newLevel = Math.max(member.level || 1, Math.floor(newLifetimeBits / 100) + 1);
+
+        batch.update(memberRef, sanitize({ 
+            recharges: updatedRecharges,
+            totalSpent: (member.totalSpent || 0) + pkg.price,
+            bitsBalance: newBitsBalance,
+            lifetimeBitsEarned: newLifetimeBits,
+            level: newLevel,
+            isBitsMigrated: true
+        }));
+
         // Record this as a special bill for accounting
         const billRef = doc(collection(db, 'bills'));
         batch.set(billRef, sanitize({
@@ -333,6 +360,27 @@ export const rechargeMember = async (memberId: string, pkg: GamingPackage, payme
             items: [],
             cycle: settings.activeCycle || 'Live Cycle',
             isRechargePurchase: true
+        }));
+
+        const txRef = doc(collection(db, 'members', member.id, 'transactions'));
+        batch.set(txRef, sanitize({
+            date: now.toISOString(),
+            amount: pkg.price,
+            bitsGained: bitsEarned,
+            billId: billRef.id,
+            cycle: settings.activeCycle || 'Live Cycle'
+        }));
+
+        createLogEntry(db, batch, {
+            type: 'BITS_EARNED',
+            description: `<strong>${member.name}</strong> earned <strong>${bitsEarned} Bits</strong> for purchasing <strong>${pkg.name}</strong> recharge pack.`,
+            memberId: member.id,
+            details: { amount: pkg.price, bitsGained: bitsEarned, billId: billRef.id },
+            cycle: settings.activeCycle || 'Live Cycle'
+        });
+    } else {
+        batch.update(memberRef, sanitize({ 
+            recharges: updatedRecharges
         }));
     }
 

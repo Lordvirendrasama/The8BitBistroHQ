@@ -255,7 +255,7 @@ export default function LoginPage() {
 
     return packages.filter(pkg => {
       if (!pkg.isPriorityOffer) return false;
-      if (pkg.isAddTimePackage || pkg.isRechargePack) return false;
+      if (pkg.isAddTimePackage || (pkg.validity && pkg.validity > 1)) return false;
       
       let isAvailable = true;
       if (pkg.availableDays && pkg.availableDays.length > 0 && !pkg.availableDays.includes(day)) isAvailable = false;

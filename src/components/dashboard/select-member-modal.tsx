@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Member, MemberTier, AssignedMember, Station, GamingPackage, MemberRecharge } from '@/lib/types';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Search, UserPlus, X, Clock, Zap, ChevronRight, ArrowLeft, CheckCircle2, Gamepad2, Users, Sparkles, RotateCcw, Timer, Play, Crown, User, Plus, Lock, AlertTriangle } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow } from '@/lib/synced-time';
-import { generateDynamicQuickPlayPackages } from '@/lib/pricing';
+import { generateDynamicQuickPlayPackages, filterAndSortRechargePackages } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
@@ -59,6 +59,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   const [step, setStep] = useState<ModalStep>('membership-check');
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<AssignedMember[]>([]);
   const [targetSlotsCount, setTargetSlotsCount] = useState<number>(1);
   const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
@@ -129,6 +130,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   useEffect(() => {
     if (isOpen) {
+      setClientTime(new Date().toTimeString().slice(0, 5));
       if (initialPlayers && initialPlayers.length > 0) {
         setSelectedPlayers(initialPlayers);
         setTargetSlotsCount(initialPlayers.length);
@@ -207,8 +209,15 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
   const { data: allPackages } = useCollection<GamingPackage>(packagesCollection);
 
   const rechargePackages = useMemo(() => {
-    return allPackages?.filter(p => p.isRechargePack) || [];
-  }, [allPackages]);
+    if (!allPackages) return [];
+    const playerCount = Math.max(1, selectedPlayers.filter(Boolean).length || targetSlotsCount);
+    return filterAndSortRechargePackages({
+      packages: allPackages,
+      stationType: station?.type,
+      playerCount,
+      currentTime: clientTime,
+    });
+  }, [allPackages, station?.type, selectedPlayers, targetSlotsCount, clientTime]);
 
   const walkInPackages = useMemo(() => {
     if (!station) return [];
@@ -237,8 +246,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
       setConfigs(prev => {
         if (prev[activeConfigPlayerId]?.mode) return prev;
 
-        const activeRecharges = getMemberActiveRecharges(activeConfigPlayerId);
-        const defaultMode: 'recharge' | 'walkin' = activeRecharges.length > 0 ? 'recharge' : 'walkin';
+        const defaultMode: 'recharge' | 'walkin' = 'recharge';
 
         return {
           ...prev,
@@ -291,6 +299,11 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
     if (nextSlot < targetSlotsCount) {
       setActiveSlotIndex(nextSlot);
     }
+
+    // Immediately re-focus the search bar so typing can seamlessly continue for the next player
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 30);
   };
 
   const handleSelectCustomer = (member: Member) => {
@@ -469,6 +482,51 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
     setSearchTerm('');
   };
 
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+
+    // If typing in the search bar and the currently active slot is already assigned to a player
+    if (val.length > 0 && selectedPlayers[activeSlotIndex]) {
+      // First check if an empty slot exists in the currently opened slots
+      const emptySlotIndex = Array.from({ length: targetSlotsCount }).findIndex(
+        (_, idx) => !selectedPlayers[idx]
+      );
+
+      if (emptySlotIndex !== -1) {
+        setActiveSlotIndex(emptySlotIndex);
+      } else if (targetSlotsCount < playerLimit) {
+        // All current slots are occupied: automatically create and select the next slot
+        const nextSlot = targetSlotsCount;
+        setTargetSlotsCount(prev => prev + 1);
+        setActiveSlotIndex(nextSlot);
+      }
+    }
+  };
+
+  // Keyboard typing listener: If a player is selected and the user starts typing on keyboard, route keystrokes to search bar
+  useEffect(() => {
+    if (!isOpen || step !== 'selection') return;
+    if (showGuestConfirmModal || duplicatePromptState.isOpen) return;
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.key === 'Escape' || e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown') return;
+
+      if (e.key.length === 1) {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+        handleSearchChange(e.key);
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => window.removeEventListener('keydown', handleWindowKeyDown);
+  }, [isOpen, step, showGuestConfirmModal, duplicatePromptState.isOpen, selectedPlayers, activeSlotIndex, targetSlotsCount, playerLimit]);
+
   const handleRemovePlayerAt = (index: number) => {
     setSelectedPlayers(prev => {
       const updated = [...prev];
@@ -507,6 +565,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
       toast({ variant: 'destructive', title: "No Players Selected", description: "Please add at least one customer to start." });
       return;
     }
+    setSelectedPlayers(validPlayers);
+    setTargetSlotsCount(validPlayers.length);
     setStep('configuration');
     setActiveConfigPlayerId(validPlayers[0].id);
   };
@@ -1228,7 +1288,21 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            onClick={() => setShowGuestConfirmModal(true)}
+                            onClick={() => {
+                              if (selectedPlayers[activeSlotIndex]) {
+                                const emptySlotIndex = Array.from({ length: targetSlotsCount }).findIndex(
+                                  (_, idx) => !selectedPlayers[idx]
+                                );
+                                if (emptySlotIndex !== -1) {
+                                  setActiveSlotIndex(emptySlotIndex);
+                                } else if (targetSlotsCount < playerLimit) {
+                                  const nextSlot = targetSlotsCount;
+                                  setTargetSlotsCount(prev => prev + 1);
+                                  setActiveSlotIndex(nextSlot);
+                                }
+                              }
+                              setShowGuestConfirmModal(true);
+                            }}
                             className="text-xs sm:text-sm text-zinc-400 hover:text-white underline font-semibold transition-colors py-1"
                           >
                             Add a guest instead
@@ -1246,9 +1320,10 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                           <Search className="h-6 w-6 stroke-[2.5]" />
                         </div>
                         <Input 
+                          ref={searchInputRef}
                           autoFocus
                           value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onChange={(e) => handleSearchChange(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && searchTerm.trim()) {
                               const exactMatch = filteredMembers.find(m => m.name.toLowerCase() === searchTerm.trim().toLowerCase());
@@ -1323,7 +1398,10 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                           return (
                             <div 
                               key={member.id} 
-                              onClick={() => handleSelectCustomer(member)}
+                              onClick={() => {
+                                handleSelectCustomer(member);
+                                setTimeout(() => searchInputRef.current?.focus(), 20);
+                              }}
                               className="w-full p-3.5 rounded-xl border-2 border-zinc-800 bg-zinc-900/90 hover:border-primary/50 hover:bg-zinc-800 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99]"
                             >
                               <div className="flex items-center gap-3.5 min-w-0">
@@ -1360,6 +1438,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleSelectCustomer(member);
+                                    setTimeout(() => searchInputRef.current?.focus(), 20);
                                   }}
                                   className="h-9 px-3.5 text-xs font-bold uppercase bg-primary hover:bg-primary/90 text-primary-foreground gap-1 rounded-lg"
                                 >
@@ -1440,6 +1519,18 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                   className="h-9 w-9 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
                                 >
                                   <X className="h-5 w-5" />
+                                </button>
+                              ) : targetSlotsCount > 1 ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemovePlayerAt(idx);
+                                  }}
+                                  className="h-9 w-9 flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-full transition-colors"
+                                  title="Remove empty slot"
+                                >
+                                  <X className="h-4 w-4" />
                                 </button>
                               ) : (
                                 <Badge variant="outline" className="text-xs font-bold uppercase border-primary/40 text-primary px-2.5 py-1">
@@ -1612,68 +1703,144 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                                                     })()}
                                                     <div className="space-y-2.5">
                                                         <p className="text-xs font-bold uppercase text-zinc-400 px-1 tracking-normal">INDIVIDUAL PACKS</p>
-                                                        {getMemberActiveRecharges(activeConfigPlayerId).map((r, rIdx) => {
-                                                            const isSelected = configs[activeConfigPlayerId]?.rechargeId === r.id;
-                                                            return (
-                                                                <div 
-                                                                    key={`${r.id}-${rIdx}`} 
-                                                                    className={cn(
-                                                                        "p-3 rounded-lg border-2 transition-all", 
-                                                                        isSelected 
-                                                                            ? "border-primary bg-primary/10 ring-1 ring-primary shadow-md" 
-                                                                            : "border-zinc-800 bg-zinc-900 opacity-70 hover:opacity-100"
-                                                                    )}
-                                                                >
-                                                                    <div className="flex justify-between items-center">
-                                                                        <div className="min-w-0">
-                                                                            <p className="text-xs font-bold uppercase truncate text-white">{r.packageName}</p>
-                                                                            <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase mt-0.5"><Clock className="h-3 w-3" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
+                                                        {getMemberActiveRecharges(activeConfigPlayerId).length > 0 ? (
+                                                            getMemberActiveRecharges(activeConfigPlayerId).map((r, rIdx) => {
+                                                                const isSelected = configs[activeConfigPlayerId]?.rechargeId === r.id;
+                                                                return (
+                                                                    <div 
+                                                                        key={`${r.id}-${rIdx}`} 
+                                                                        className={cn(
+                                                                            "p-3 rounded-lg border-2 transition-all", 
+                                                                            isSelected 
+                                                                                ? "border-primary bg-primary/10 ring-1 ring-primary shadow-md" 
+                                                                                : "border-zinc-800 bg-zinc-900 opacity-70 hover:opacity-100"
+                                                                        )}
+                                                                    >
+                                                                        <div className="flex justify-between items-center">
+                                                                            <div className="min-w-0">
+                                                                                <p className="text-xs font-bold uppercase truncate text-white">{r.packageName}</p>
+                                                                                <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase mt-0.5"><Clock className="h-3 w-3" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
+                                                                            </div>
+                                                                            <Button size="sm" variant="ghost" onClick={() => handlePickConfig(activeConfigPlayerId, r, true)} className="h-7 px-3 text-xs font-bold uppercase hover:bg-primary/10">Select</Button>
                                                                         </div>
-                                                                        <Button size="sm" variant="ghost" onClick={() => handlePickConfig(activeConfigPlayerId, r, true)} className="h-7 px-3 text-xs font-bold uppercase hover:bg-primary/10">Select</Button>
                                                                     </div>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <div className="p-3 text-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500 font-bold uppercase">
+                                                                No active time packs &bull; Select a package below
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="pt-3">
                                                         <p className="text-xs font-bold uppercase text-zinc-500 text-center mb-3 tracking-normal border-t border-zinc-800 pt-3">--- BUY NEW PACK ---</p>
-                                                        <div className="space-y-2">
-                                                             {rechargePackages.map(pkg => {
-                                                                const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
-                                                                return (
-                                                                    <div 
-                                                                        key={pkg.id} 
-                                                                        onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)} 
-                                                                        className={cn(
-                                                                            "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
-                                                                            isSelected 
-                                                                                ? "border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500 shadow-md" 
-                                                                                : "border-zinc-800 bg-zinc-900 hover:border-yellow-500/50"
-                                                                        )}
-                                                                    >
-                                                                        <div className="min-w-0">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <p className={cn("text-xs font-bold uppercase truncate text-white group-hover:text-yellow-400", isSelected && "text-yellow-400 font-bold")}>{pkg.name}</p>
-                                                                                {isSelected && (
-                                                                                    <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
-                                                                                        <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
-                                                                                    </Badge>
-                                                                                )}
+                                                        {(() => {
+                                                            const sessionPacks = rechargePackages.filter(p => p.duration < 14400 && (!p.validity || p.validity <= 1));
+                                                            const bulkPacks = rechargePackages.filter(p => p.duration >= 14400 || (p.validity && p.validity > 1));
+
+                                                            return (
+                                                                <div className="space-y-3">
+                                                                    {sessionPacks.length > 0 && (
+                                                                        <div className="space-y-2">
+                                                                            {sessionPacks.map(pkg => {
+                                                                                const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
+                                                                                return (
+                                                                                    <div 
+                                                                                        key={pkg.id} 
+                                                                                        onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)} 
+                                                                                        className={cn(
+                                                                                            "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
+                                                                                            isSelected 
+                                                                                                ? "border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500 shadow-md" 
+                                                                                                : "border-zinc-800 bg-zinc-900 hover:border-yellow-500/50"
+                                                                                        )}
+                                                                                    >
+                                                                                        <div className="min-w-0">
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <p className={cn("text-xs font-bold uppercase truncate text-white group-hover:text-yellow-400", isSelected && "text-yellow-400 font-bold")}>{pkg.name}</p>
+                                                                                                {isSelected && (
+                                                                                                    <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
+                                                                                                        <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
+                                                                                                    </Badge>
+                                                                                                )}
+                                                                                                {pkg.isPriorityOffer && !isSelected && (
+                                                                                                    <Badge className="h-4 px-1 text-[8px] bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase font-bold">
+                                                                                                        SPECIAL
+                                                                                                    </Badge>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                                                <p className="text-xs font-bold text-zinc-400 uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} {pkg.validity === 1 ? 'Day' : 'Days'}</p>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <span className={cn(
+                                                                                            "text-xs font-bold transition-colors",
+                                                                                            isSelected ? "text-yellow-400 font-bold" : "text-primary"
+                                                                                        )}>
+                                                                                            ₹{pkg.price}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {bulkPacks.length > 0 && (
+                                                                        <div className="mt-3 pt-3 border-t border-zinc-800/80">
+                                                                            <div className="flex items-center justify-between mb-2">
+                                                                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                                                                                    Multi-Hour Time Banking Passes
+                                                                                </span>
+                                                                                <span className="text-[10px] font-bold text-zinc-500 uppercase">Save Unspent Hours</span>
                                                                             </div>
-                                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                                <p className="text-xs font-bold text-zinc-400 uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
+                                                                            <div className="space-y-2">
+                                                                                {bulkPacks.map(pkg => {
+                                                                                    const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
+                                                                                    return (
+                                                                                        <div 
+                                                                                            key={pkg.id} 
+                                                                                            onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)} 
+                                                                                            className={cn(
+                                                                                                "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
+                                                                                                isSelected 
+                                                                                                    ? "border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500 shadow-md" 
+                                                                                                    : "border-zinc-800 bg-zinc-900/60 hover:border-yellow-500/50"
+                                                                                            )}
+                                                                                        >
+                                                                                            <div className="min-w-0">
+                                                                                                <div className="flex items-center gap-2">
+                                                                                                    <p className={cn("text-xs font-bold uppercase truncate text-white group-hover:text-yellow-400", isSelected && "text-yellow-400 font-bold")}>{pkg.name}</p>
+                                                                                                    {isSelected && (
+                                                                                                        <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
+                                                                                                            <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
+                                                                                                        </Badge>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                                                    <p className="text-xs font-bold text-zinc-400 uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} {pkg.validity === 1 ? 'Day' : 'Days'}</p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <span className={cn(
+                                                                                                "text-xs font-bold transition-colors",
+                                                                                                isSelected ? "text-yellow-400 font-bold" : "text-primary"
+                                                                                            )}>
+                                                                                                ₹{pkg.price}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
                                                                             </div>
                                                                         </div>
-                                                                        <span className={cn(
-                                                                            "text-xs font-bold transition-colors",
-                                                                            isSelected ? "text-yellow-400 font-bold" : "text-primary"
-                                                                        )}>
-                                                                            ₹{pkg.price}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                             })}
-                                                        </div>
+                                                                    )}
+
+                                                                    {sessionPacks.length === 0 && bulkPacks.length === 0 && (
+                                                                        <div className="p-3 text-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500 font-bold uppercase">
+                                                                            No recharge packages available for {station?.name || 'this station'}.
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 </div>
                                             ) : configs[activeConfigPlayerId]?.mode === 'walkin' ? (

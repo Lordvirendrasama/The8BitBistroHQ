@@ -41,7 +41,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [isFullDay, setIsFullDay] = useState(true);
   const [isAddTimePackage, setIsAddTimePackage] = useState(false);
-  const [isRechargePack, setIsRechargePack] = useState(false);
+  const [isRechargePack, setIsRechargePack] = useState(true);
   const [playerCapacity, setPlayerCapacity] = useState('1');
   const [isPriorityOffer, setIsPriorityOffer] = useState(false);
   const [isBoardGamePass, setIsBoardGamePass] = useState(false);
@@ -86,7 +86,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
         setAvailableDays(daysOfWeek);
         setIsFullDay(true);
         setIsAddTimePackage(false);
-        setIsRechargePack(false);
+        setIsRechargePack(true);
         setPlayerCapacity('1');
         setIsPriorityOffer(false);
         setIsBoardGamePass(false);
@@ -102,7 +102,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
     const totalDurationInSeconds = (numMinutes * 60) + numSeconds;
     
     const numPrice = parseInt(price, 10);
-    const numValidity = parseInt(validity, 10);
+    const numValidity = parseFloat(validity) || 1;
     const numCapacity = parseInt(playerCapacity, 10);
 
     if (!name || totalDurationInSeconds <= 0 || isNaN(numPrice) || numPrice < 0 || isNaN(numValidity) || numValidity <= 0) {
@@ -243,7 +243,14 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                     </div>
                     
                     <div className="space-y-2 p-4 rounded-xl bg-primary/5 border-2 border-primary/20">
-                        <Label className="text-sm font-bold uppercase tracking-normal text-primary block mb-2">Pricing & Validity</Label>
+                        <div className="flex items-center justify-between mb-2">
+                            <Label className="text-sm font-bold uppercase tracking-normal text-primary">Pricing & Validity</Label>
+                            {validity && (
+                                <span className="text-[11px] font-mono font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 uppercase">
+                                    Expires in {Math.round((parseFloat(validity) || 1) * 24)}h
+                                </span>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2">
                             <div className="flex-1">
                                 <Label htmlFor="price" className="text-sm font-bold uppercase text-primary/60">PRICE (₹)</Label>
@@ -254,13 +261,39 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                                 />
                             </div>
                             <div className="flex-1">
-                                <Label htmlFor="validity" className="text-sm font-bold uppercase text-primary/60">DAYS</Label>
+                                <Label htmlFor="validity" className="text-sm font-bold uppercase text-primary/60">VALIDITY (DAYS)</Label>
                                 <Input 
-                                    id="validity" type="number" 
+                                    id="validity" type="number" step="any"
                                     value={validity} onChange={(e) => setValidity(e.target.value)} 
                                     className="font-mono font-bold text-lg h-10 border-primary/20"
+                                    placeholder="1 (24 hours)"
                                 />
                             </div>
+                        </div>
+                        {/* Quick Validity Presets */}
+                        <div className="pt-2 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Presets:</span>
+                            {[
+                                { label: '24h (1 Day)', value: '1' },
+                                { label: '48h (2 Days)', value: '2' },
+                                { label: '7 Days', value: '7' },
+                                { label: '15 Days', value: '15' },
+                                { label: '30 Days', value: '30' },
+                            ].map((preset) => (
+                                <button
+                                    key={preset.value}
+                                    type="button"
+                                    onClick={() => setValidity(preset.value)}
+                                    className={cn(
+                                        "px-2 py-0.5 rounded text-[10px] font-bold uppercase border transition-colors",
+                                        validity === preset.value
+                                            ? "bg-yellow-500 text-black border-yellow-500 font-extrabold"
+                                            : "bg-background/80 hover:bg-muted text-muted-foreground border-border"
+                                    )}
+                                >
+                                    {preset.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -286,7 +319,7 @@ export function GamingPackageFormModal({ isOpen, onOpenChange, onSave, pkg }: Ga
                             <Checkbox id="recharge-pkg" checked={isRechargePack} onCheckedChange={(v) => setIsRechargePack(!!v)} />
                             <div>
                                 <p className="text-sm font-bold uppercase tracking-tight">Recharge Pack</p>
-                                <p className="text-sm font-bold opacity-60">Visible in Recharge Hub</p>
+                                <p className="text-xs font-bold opacity-60">24h Time-Banking (Unspent time saved)</p>
                             </div>
                         </Label>
                     </div>

@@ -275,6 +275,15 @@ export interface Bill {
   upiAmount?: number;
   cycle?: string;
   isRechargePurchase?: boolean;
+  advancePaid?: number;
+  bookingId?: string;
+  debtAdjustment?: {
+    debtId: string;
+    type: 'receivable' | 'payable';
+    amount: number;
+    description: string;
+    settled: boolean;
+  };
 }
 
 export type StationStatus = 'available' | 'in-use' | 'paused' | 'finishing';
@@ -294,6 +303,41 @@ export interface Station {
   currentBill?: BillItem[];
   discount?: number;
   order?: number;
+  advancePaid?: number;
+  bookingId?: string;
+}
+
+export type BookingStatus = 'confirmed' | 'active' | 'completed' | 'cancelled' | 'no-show';
+
+export interface Booking {
+  id: string;
+  stationId: string;
+  stationName: string;
+  stationType: 'ps5' | 'ps4';
+  customerType: 'member' | 'guest';
+  memberId?: string;
+  customerName: string;
+  customerPhone?: string;
+  playerCount: number;
+  date: string;              // 'YYYY-MM-DD'
+  startTime: string;         // ISO string
+  endTime: string;           // ISO string
+  durationMinutes: number;   // e.g. 60, 120
+  hasAdvance: boolean;       // whether advance was paid or not paid
+  advancePaid: number;       // e.g. 0 if not paid, or amount if paid
+  advancePaymentMethod?: 'cash' | 'upi';
+  advanceBillId?: string;
+  estimatedTotal: number;
+  status: BookingStatus;
+  autoStarted: boolean;
+  notes?: string;
+  createdBy: {
+    uid: string;
+    displayName: string;
+    role: string;
+  };
+  createdAt: string;
+  cycle: string;
 }
 
 export interface ShiftTask {

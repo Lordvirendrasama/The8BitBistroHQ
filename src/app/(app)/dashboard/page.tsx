@@ -2,11 +2,11 @@
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
-import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem, MemberTier, PaymentMethod } from '@/lib/types';
+import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem, MemberTier, PaymentMethod, Booking } from '@/lib/types';
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils, Sparkles, LayoutTemplate } from 'lucide-react';
+import { Gamepad2, PlusCircle, Users, Loader2, Settings2, Zap, Gift, HelpCircle, Clock, Utensils, Sparkles, LayoutTemplate, Calendar } from 'lucide-react';
 import { SelectMemberModal } from '@/components/dashboard/select-member-modal';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -37,6 +37,10 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow, getSyncedDate } from '@/lib/synced-time';
 import { calculateGroupPrice, calculatePlayerPrice } from '@/lib/pricing';
 import { GuestLoginWizardModal } from '@/components/dashboard/guest-login-wizard-modal';
+import { isToday } from 'date-fns';
+import { BookingsManagerModal } from '@/components/bookings/bookings-manager-modal';
+import { useBookingAutoStarter } from '@/components/bookings/use-booking-auto-starter';
+import { completeBooking } from '@/firebase/firestore/bookings';
 
 
 const tierMultipliers: Record<MemberTier, number> = {
@@ -63,6 +67,7 @@ function DashboardContent() {
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [isRewardsModalOpen, setIsRewardsModalOpen] = useState(false);
   const [isGuestWizardOpen, setIsGuestWizardOpen] = useState(false);
+  const [isBookingsModalOpen, setIsBookingsModalOpen] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [manageType, setManageType] = useState<'ps5' | 'ps4' | 'boardgame' | 'retrogaming'>('ps5');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -215,6 +220,23 @@ function DashboardContent() {
 
   const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
 
+  const bookingsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'bookings'), orderBy('startTime', 'asc'));
+  }, [db]);
+  const { data: bookings } = useCollection<Booking>(bookingsQuery);
+
+  const todayBookingsCount = useMemo(() => {
+    if (!bookings) return 0;
+    return bookings.filter(b => {
+      try {
+        return isToday(new Date(b.startTime)) && (b.status === 'confirmed' || b.status === 'active');
+      } catch {
+        return false;
+      }
+    }).length;
+  }, [bookings]);
+
 
   const stations = useMemo(() => {
     if (!rawStations) return [];
@@ -231,6 +253,8 @@ function DashboardContent() {
   const boardGameStations = useMemo(() => stations?.filter(s => s.type === 'boardgame') || [], [stations]);
   const retroGamingStations = useMemo(() => stations?.filter(s => s.type === 'retrogaming') || [], [stations]);
   const availableStations = useMemo(() => stations?.filter(s => s.status === 'available') || [], [stations]);
+
+  useBookingAutoStarter({ bookings: bookings || [], stations });
 
   useEffect(() => {
     const checkoutId = searchParams.get('checkoutId');
@@ -273,7 +297,8 @@ function DashboardContent() {
       if (!memberDoc.exists()) throw "Member not found!";
 
       const member = memberDoc.data() as Member;
-      const multiplier = tierMultipliers[member.tier] || 1;
+      const normalizedTier = (member.tier ? member.tier.trim().charAt(0).toUpperCase() + member.tier.trim().slice(1).toLowerCase() : 'Red') as MemberTier;
+      const multiplier = tierMultipliers[normalizedTier] || 1;
       // Formula: bitsEarned = floor(amountSpent / 10 * tierMultiplier)
       const bitsEarned = Math.floor((billAmount / 10) * multiplier);
       
@@ -302,6 +327,19 @@ function DashboardContent() {
         amount: billAmount,
         bitsGained: bitsEarned,
         billId: billId || null
+      });
+
+      const logRef = doc(collection(db, 'logs'));
+      const currentUserJson = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
+      const currentUser = currentUserJson ? JSON.parse(currentUserJson) : { uid: 'system', displayName: 'System' };
+      transaction.set(logRef, {
+        type: 'BITS_EARNED',
+        description: `<strong>${member.name}</strong> earned <strong>${bitsEarned} Bits</strong>.`,
+        memberId: member.id,
+        details: { amount: billAmount, bitsGained: bitsEarned, billId: billId || null },
+        timestamp: new Date().toISOString(),
+        user: { uid: currentUser.username || currentUser.uid, displayName: currentUser.displayName },
+        cycle: settings.activeCycle || 'Live Cycle'
       });
 
     }).catch(e => {
@@ -695,7 +733,8 @@ function DashboardContent() {
     cashAmount?: number,
     upiAmount?: number,
     isRechargePurchase?: boolean,
-    rechargePkg?: GamingPackage
+    rechargePkg?: GamingPackage,
+    debtAdjustment?: Bill['debtAdjustment']
   ) => {
     const station = stations?.find(s => s.id === stationId);
     if (!station) return;
@@ -812,6 +851,9 @@ function DashboardContent() {
         paymentMethod,
         cashAmount: cashAmount || 0,
         upiAmount: upiAmount || 0,
+        advancePaid: station.advancePaid || 0,
+        bookingId: station.bookingId || undefined,
+        debtAdjustment: debtAdjustment || undefined,
     });
 
     if (!newBillId) {
@@ -833,8 +875,12 @@ function DashboardContent() {
 
     updateStation(stationId, {
       status: 'available', startTime: null, endTime: null, packageName: null,
-      members: [], currentBill: [], discount: 0,
+      members: [], currentBill: [], discount: 0, advancePaid: 0, bookingId: null,
     });
+
+    if (station.bookingId) {
+      await completeBooking(station.bookingId);
+    }
     
     const paymentLabel = paymentMethod === 'split' ? `Split` : paymentMethod.toUpperCase();
     toast({ title: "Session Closed", description: `Total: ₹${finalBill.toLocaleString()} via ${paymentLabel}.` });
@@ -1071,6 +1117,19 @@ function DashboardContent() {
                 <Zap className="mr-1 sm:mr-1.5 h-3.5 w-3.5 fill-current" />
                 <span>Recharge</span>
             </Button>
+            <Button 
+                id="ps5-bookings-btn"
+                onClick={() => setIsBookingsModalOpen(true)} 
+                className="h-8 sm:h-9 px-2.5 sm:px-4 font-bold uppercase tracking-normal bg-sky-500 hover:bg-sky-600 text-black shadow-md animate-in fade-in text-xs shrink-0 gap-1.5"
+            >
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Bookings</span>
+                {todayBookingsCount > 0 && (
+                  <span className="h-4 px-1.5 bg-black text-sky-400 rounded-full font-mono text-[10px] font-extrabold flex items-center justify-center">
+                    {todayBookingsCount}
+                  </span>
+                )}
+            </Button>
         </div>
 
       <div className="space-y-3 sm:space-y-4">
@@ -1087,23 +1146,31 @@ function DashboardContent() {
           <CardContent className="p-0">
             {ps5Stations.length > 0 ? (
               <div id="ps5-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 w-full max-w-full">
-                {ps5Stations.map(station => (
-                  <TimerCard 
-                    key={station.id} 
-                    station={station} 
-                    onToggleTimer={() => handleToggleTimer(station)} 
-                    onStopSession={() => handleStopSession(station)} 
-                    onOpenBillModal={() => handleOpenBillModal(station)} 
-                    onOpenEditTimeModal={() => handleOpenEditTimeModal(station)} 
-                    onOpenMoveModal={() => handleOpenMoveModal(station)} 
-                    onStopPlayer={handleStopPlayer}
-                    onOpenJoinModal={handleOpenJoinModal}
-                    onTogglePlayerTimer={handleTogglePlayerTimer}
-                    allMembers={members || []}
-                    compactMode={isCompactMode}
-                  />
-
-                ))}
+                {ps5Stations.map(station => {
+                  const upcoming = (bookings || []).find(b => 
+                    b.stationId === station.id && 
+                    b.status === 'confirmed' &&
+                    new Date(b.startTime).getTime() >= getSyncedNow() - (5 * 60 * 1000) &&
+                    new Date(b.startTime).getTime() <= getSyncedNow() + (45 * 60 * 1000)
+                  );
+                  return (
+                    <TimerCard 
+                      key={station.id} 
+                      station={station} 
+                      onToggleTimer={() => handleToggleTimer(station)} 
+                      onStopSession={() => handleStopSession(station)} 
+                      onOpenBillModal={() => handleOpenBillModal(station)} 
+                      onOpenEditTimeModal={() => handleOpenEditTimeModal(station)} 
+                      onOpenMoveModal={() => handleOpenMoveModal(station)} 
+                      onStopPlayer={handleStopPlayer}
+                      onOpenJoinModal={handleOpenJoinModal}
+                      onTogglePlayerTimer={handleTogglePlayerTimer}
+                      allMembers={members || []}
+                      compactMode={isCompactMode}
+                      upcomingBooking={upcoming}
+                    />
+                  );
+                })}
               </div>
             ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active PS5 units.</div>}
           </CardContent>
@@ -1122,22 +1189,31 @@ function DashboardContent() {
           <CardContent className="p-0">
             {ps4Stations.length > 0 ? (
               <div id="ps4-consoles-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 w-full max-w-full">
-                {ps4Stations.map(station => (
-                  <TimerCard 
-                    key={station.id} 
-                    station={station} 
-                    onToggleTimer={() => handleToggleTimer(station)} 
-                    onStopSession={() => handleStopSession(station)} 
-                    onOpenBillModal={() => handleOpenBillModal(station)} 
-                    onOpenEditTimeModal={() => handleOpenEditTimeModal(station)} 
-                    onOpenMoveModal={() => handleOpenMoveModal(station)} 
-                    onStopPlayer={handleStopPlayer}
-                    onOpenJoinModal={handleOpenJoinModal}
-                    onTogglePlayerTimer={handleTogglePlayerTimer}
-                    allMembers={members || []}
-                    compactMode={isCompactMode}
-                  />
-                ))}
+                {ps4Stations.map(station => {
+                  const upcoming = (bookings || []).find(b => 
+                    b.stationId === station.id && 
+                    b.status === 'confirmed' &&
+                    new Date(b.startTime).getTime() >= getSyncedNow() - (5 * 60 * 1000) &&
+                    new Date(b.startTime).getTime() <= getSyncedNow() + (45 * 60 * 1000)
+                  );
+                  return (
+                    <TimerCard 
+                      key={station.id} 
+                      station={station} 
+                      onToggleTimer={() => handleToggleTimer(station)} 
+                      onStopSession={() => handleStopSession(station)} 
+                      onOpenBillModal={() => handleOpenBillModal(station)} 
+                      onOpenEditTimeModal={() => handleOpenEditTimeModal(station)} 
+                      onOpenMoveModal={() => handleOpenMoveModal(station)} 
+                      onStopPlayer={handleStopPlayer}
+                      onOpenJoinModal={handleOpenJoinModal}
+                      onTogglePlayerTimer={handleTogglePlayerTimer}
+                      allMembers={members || []}
+                      compactMode={isCompactMode}
+                      upcomingBooking={upcoming}
+                    />
+                  );
+                })}
               </div>
             ) : <div className="text-center text-muted-foreground py-12 italic border-2 border-dashed rounded-xl">No active PS4 units.</div>}
           </CardContent>
@@ -1261,6 +1337,14 @@ function DashboardContent() {
       />
 
       <SessionRequestHandler ps5Stations={ps5Stations} onApprove={handleApproveSessionRequest} />
+
+      <BookingsManagerModal
+        isOpen={isBookingsModalOpen}
+        onOpenChange={setIsBookingsModalOpen}
+        bookings={bookings || []}
+        stations={stations}
+        members={members || []}
+      />
 
       {/* Guided Tour component */}
       <GuidedTour

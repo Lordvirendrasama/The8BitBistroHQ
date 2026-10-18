@@ -80,7 +80,10 @@ export const archiveBill = async (billData: Omit<Bill, 'id' | 'shiftId'>): Promi
         cashAmount: billData.cashAmount ?? 0,
         upiAmount: billData.upiAmount ?? 0,
         shiftId: activeShiftId ?? null,
-        isRechargePurchase: billData.isRechargePurchase ?? false
+        isRechargePurchase: billData.isRechargePurchase ?? false,
+        advancePaid: billData.advancePaid ?? 0,
+        bookingId: billData.bookingId ?? null,
+        debtAdjustment: billData.debtAdjustment ? sanitize(billData.debtAdjustment) : null
     };
 
     // Deep sanitize to prevent "undefined" values
@@ -173,8 +176,20 @@ export const deleteBill = async (billId: string, user: CustomUser): Promise<{suc
                     const newTotalSpent = Math.max(0, (memberData.totalSpent || 0) - txData.amount);
                     const bitsGained = txData.bitsGained ?? txData.xpGained ?? 0;
                     const newBits = Math.max(0, (memberData.bitsBalance || 0) - bitsGained);
+                    const currentLifetime = memberData.lifetimeBitsEarned ?? (memberData.bitsBalance || 0);
+                    const newLifetime = Math.max(0, currentLifetime - bitsGained);
+                    const newLevel = Math.max(1, Math.floor(newLifetime / 100) + 1);
                     const newXp = Math.max(0, (memberData.xp || 0) - (txData.xpGained ?? 0));
-                    memberUpdates.push({ memberRef, updates: { totalSpent: newTotalSpent, bitsBalance: newBits, xp: newXp } });
+                    memberUpdates.push({ 
+                        memberRef, 
+                        updates: { 
+                            totalSpent: newTotalSpent, 
+                            bitsBalance: newBits, 
+                            lifetimeBitsEarned: newLifetime, 
+                            level: newLevel, 
+                            xp: newXp 
+                        } 
+                    });
                 }
             }
         }

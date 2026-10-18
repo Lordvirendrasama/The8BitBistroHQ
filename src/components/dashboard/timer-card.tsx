@@ -2,7 +2,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Station, AssignedMember, StationStatus, GamingPackage, BillItem, Member } from '@/lib/types';
+import type { Station, AssignedMember, StationStatus, GamingPackage, BillItem, Member, Booking } from '@/lib/types';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ interface TimerCardProps {
   allMembers?: Member[];
   gamingPackages?: GamingPackage[];
   compactMode?: boolean;
+  upcomingBooking?: Booking;
 }
 
 
@@ -159,7 +161,8 @@ export function TimerCard({
   onTogglePlayerTimer, 
   allMembers, 
   gamingPackages,
-  compactMode = false 
+  compactMode = false,
+  upcomingBooking
 }: TimerCardProps) {
   const { user } = useAuth();
   const isViren = user?.username === 'Viren' || user?.role === 'admin';
@@ -494,7 +497,18 @@ export function TimerCard({
             <CardTitle className="text-lg font-display tracking-tight uppercase flex items-center gap-2">
                 {station.type === 'ps5' ? <Gamepad2 className="h-5 w-5"/> : <Users className="h-5 w-5" />}
                 {station.name}
+                {station.advancePaid && station.advancePaid > 0 && (
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold h-4">
+                        Adv: ₹{station.advancePaid}
+                    </Badge>
+                )}
             </CardTitle>
+            {upcomingBooking && (
+                <div className="flex items-center gap-1 text-[11px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/30 w-fit">
+                    <Clock className="h-3 w-3" />
+                    <span>Booked: {upcomingBooking.customerName} ({format(new Date(upcomingBooking.startTime), 'hh:mm a')})</span>
+                </div>
+            )}
             {shortestMember ? (
                 <>
                     <span className="text-sm font-bold uppercase text-primary tracking-normal flex items-center gap-1.5 bg-background/80 border border-primary/10 px-2 py-0.5 rounded-full w-fit shadow-sm">

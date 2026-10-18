@@ -219,7 +219,18 @@ export default function DashboardPage() {
     }
   };
 
-  const handleConfirmCheckout = async (stationId: string, finalBill: number, billItems: BillItem[], discountValue: number) => {
+  const handleConfirmCheckout = async (
+    stationId: string, 
+    finalBill: number, 
+    billItems: BillItem[], 
+    discountValue: number,
+    paymentMethod: PaymentMethod = 'cash',
+    cashAmount?: number,
+    upiAmount?: number,
+    isRechargePurchase?: boolean,
+    rechargePkg?: GamingPackage,
+    debtAdjustment?: Bill['debtAdjustment']
+  ) => {
     const station = stations?.find(s => s.id === stationId);
     if (!station) return;
 
@@ -237,7 +248,10 @@ export default function DashboardPage() {
         discount: discountValue,
         totalAmount: finalBill,
         timestamp: new Date().toISOString(),
-        paymentMethod: 'cash', // Default fallback
+        paymentMethod,
+        cashAmount: cashAmount || 0,
+        upiAmount: upiAmount || 0,
+        debtAdjustment: debtAdjustment || undefined,
     });
 
     if (!newBillId) {

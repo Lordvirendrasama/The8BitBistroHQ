@@ -381,6 +381,25 @@ export default function BillingHistoryPage() {
                                                                     <TableCell className="text-right px-3 font-mono">- ₹{bill.discount.toLocaleString()}</TableCell>
                                                                 </TableRow>
                                                             )}
+                                                            {bill.advancePaid && bill.advancePaid > 0 ? (
+                                                                <TableRow className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                                                    <TableCell className="px-3 uppercase text-sm">Advance Paid (Deducted)</TableCell>
+                                                                    <TableCell></TableCell>
+                                                                    <TableCell className="text-right px-3 font-mono">- ₹{bill.advancePaid.toLocaleString()}</TableCell>
+                                                                </TableRow>
+                                                            ) : null}
+                                                            {bill.debtAdjustment ? (
+                                                                <TableRow className={cn("font-bold text-sm", bill.debtAdjustment.type === 'receivable' ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                                                                    <TableCell className="px-3 uppercase text-sm">
+                                                                        {bill.debtAdjustment.type === 'receivable' ? 'Previous Due Settled' : 'Credit Deducted'}
+                                                                        {bill.debtAdjustment.description ? ` (${bill.debtAdjustment.description})` : ''}
+                                                                    </TableCell>
+                                                                    <TableCell></TableCell>
+                                                                    <TableCell className="text-right px-3 font-mono">
+                                                                        {bill.debtAdjustment.type === 'receivable' ? `+ ₹${bill.debtAdjustment.amount.toLocaleString()}` : `- ₹${bill.debtAdjustment.amount.toLocaleString()}`}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ) : null}
                                                             {bill.paymentMethod === 'split' && (
                                                                 <>
                                                                     <TableRow className="text-sm text-muted-foreground border-t border-dashed">

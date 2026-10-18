@@ -236,18 +236,24 @@ export default function UserManagementPage() {
               
               toast({ title: 'Bill Logged', description: `Added ₹${amount} and granted ${bitsEarned} Bits.` });
 
-          } else {
-              let newBits = currentBits;
-              let newLifetime = currentLifetime;
-              if (pointsAction === 'add_points') {
-                  newBits += amount;
-                  newLifetime += amount;
-              } else if (pointsAction === 'remove_points') {
-                  newBits = Math.max(0, newBits - amount);
-              }
+          } else if (pointsAction === 'add_points') {
+              const newBitsBalance = currentBits + amount;
+              const newLifetimeBits = currentLifetime + amount;
+              const bitsPerLevelThreshold = 100;
+              const calculatedLevel = Math.floor(newLifetimeBits / bitsPerLevelThreshold) + 1;
+              const newLevel = Math.max(selectedMemberForPoints.level || 1, calculatedLevel);
 
-              await updateMember(selectedMemberForPoints.id, { bitsBalance: newBits, lifetimeBitsEarned: newLifetime, isBitsMigrated: true });
-              toast({ title: 'Bits Updated', description: `${selectedMemberForPoints.name} now has ${newBits} Bits.` });
+              await recordTransaction(
+                  selectedMemberForPoints,
+                  { bitsBalance: newBitsBalance, lifetimeBitsEarned: newLifetimeBits, level: newLevel, isBitsMigrated: true },
+                  { amount: 0, bitsGained: amount }
+              );
+              toast({ title: 'Bits Granted', description: `Granted ${amount} Bits to ${selectedMemberForPoints.name}.` });
+
+          } else if (pointsAction === 'remove_points') {
+              const newBits = Math.max(0, currentBits - amount);
+              await updateMember(selectedMemberForPoints.id, { bitsBalance: newBits, isBitsMigrated: true });
+              toast({ title: 'Bits Deducted', description: `${selectedMemberForPoints.name} now has ${newBits} Bits.` });
           }
 
           setIsPointsModalOpen(false);

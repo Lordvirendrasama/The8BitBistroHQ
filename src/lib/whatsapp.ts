@@ -53,6 +53,18 @@ export function formatWhatsAppBillMessage(bill: Bill, customerName?: string): st
     message += `Discount: -Rs. ${bill.discount.toLocaleString('en-IN')}\n`;
   }
 
+  if (bill.advancePaid && bill.advancePaid > 0) {
+    message += `Advance Paid: -Rs. ${bill.advancePaid.toLocaleString('en-IN')}\n`;
+  }
+
+  if (bill.debtAdjustment && bill.debtAdjustment.settled) {
+    if (bill.debtAdjustment.type === 'receivable') {
+      message += `Previous Due Settled: +Rs. ${bill.debtAdjustment.amount.toLocaleString('en-IN')} (${bill.debtAdjustment.description || 'Owed to Bistro'})\n`;
+    } else {
+      message += `Previous Credit Deducted: -Rs. ${bill.debtAdjustment.amount.toLocaleString('en-IN')} (${bill.debtAdjustment.description || 'Bistro Owed Customer'})\n`;
+    }
+  }
+
   message += `*TOTAL AMOUNT: Rs. ${(bill.totalAmount || 0).toLocaleString('en-IN')}*\n`;
   
   const paymentMethodLabel = bill.paymentMethod ? bill.paymentMethod.toUpperCase() : 'CASH';

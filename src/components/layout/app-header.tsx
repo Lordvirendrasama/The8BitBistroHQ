@@ -1347,6 +1347,104 @@ const ShiftTaskDropdown = ({
   );
 };
 
+interface MonthStats {
+  monthRevenue: number;
+  businessDayCount: number;
+  monthName: string;
+  totalDaysInMonth: number;
+  dailyAverage: number;
+  dailyAverageDiff: number;
+  dailyAverageDiffPercent: number;
+  projectedMonthEnd: number;
+  bestDay: number;
+  worstDay: number;
+  avgBillValue: number;
+}
+
+const MobileMonthTotal = ({ stats }: { stats: MonthStats }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="rounded-xl border-2 border-emerald-500/25 bg-card overflow-hidden shadow-xs transition-all hover:border-emerald-500/40">
+      <button 
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-2.5 flex items-center justify-between hover:bg-muted/10 active:bg-muted/20 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+            <Activity className="h-4 w-4 text-emerald-500" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground leading-tight">Month Total</span>
+            <span className="text-[11px] font-semibold text-muted-foreground/80 leading-tight mt-0.5">{stats.monthName} ({stats.businessDayCount}d Active)</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end">
+            <span className="text-sm sm:text-base font-extrabold font-mono text-emerald-500 leading-tight">
+              ₹{Math.round(stats.monthRevenue).toLocaleString()}
+            </span>
+          </div>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-180")} />
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="px-3 pb-3 pt-1 border-t border-dashed space-y-2.5 text-xs animate-in fade-in-50 duration-200">
+          <div className="flex justify-between items-center pt-1">
+            <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Total Sales</span>
+            <span className="text-sm font-bold font-mono text-foreground tabular-nums">
+              ₹{Math.round(stats.monthRevenue).toLocaleString()}
+            </span>
+          </div>
+          <div className="flex justify-between items-start pt-2 border-t border-dashed">
+            <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Daily Average</span>
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-bold font-mono text-emerald-500 tabular-nums">
+                ₹{Math.round(stats.dailyAverage).toLocaleString()}
+              </span>
+              <span className={cn(
+                "text-[10px] font-semibold tracking-tight mt-0.5 flex items-center gap-0.5",
+                stats.dailyAverageDiff >= 0 ? "text-emerald-500" : "text-rose-500"
+              )}>
+                {stats.dailyAverageDiff >= 0 ? '↑' : '↓'} ₹{Math.abs(Math.round(stats.dailyAverageDiff)).toLocaleString()} ({stats.dailyAverageDiffPercent >= 0 ? '+' : ''}{stats.dailyAverageDiffPercent.toFixed(1)}%) vs yesterday
+              </span>
+            </div>
+          </div>
+          <div className="flex justify-between items-center pt-2 border-t border-dashed">
+            <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Projected End</span>
+            <span className="text-sm font-bold font-mono text-primary tabular-nums">
+              ₹{Math.round(stats.projectedMonthEnd).toLocaleString()}
+            </span>
+          </div>
+          <div className="flex justify-between items-center pt-2 border-t border-dashed">
+            <span className="text-xs font-bold uppercase text-muted-foreground tracking-tight">Avg Bill Value</span>
+            <span className="text-sm font-bold font-mono text-foreground tabular-nums">
+              ₹{stats.avgBillValue.toLocaleString()}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-dashed text-xs">
+            <div className="bg-emerald-500/5 border border-emerald-500/20 p-1.5 rounded flex flex-col">
+              <span className="text-[10px] font-bold uppercase text-emerald-600/80 tracking-tight">Best Day</span>
+              <span className="font-mono font-bold text-emerald-600 tabular-nums mt-0.5">₹{Math.round(stats.bestDay).toLocaleString()}</span>
+            </div>
+            <div className="bg-rose-500/5 border border-rose-500/20 p-1.5 rounded flex flex-col">
+              <span className="text-[10px] font-bold uppercase text-rose-600/80 tracking-tight">Worst Day</span>
+              <span className="font-mono font-bold text-rose-600 tabular-nums mt-0.5">₹{Math.round(stats.worstDay).toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-dashed">
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-normal leading-tight text-center">
+              Calculated across {stats.businessDayCount} days of active business.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MobileQuickHub = ({
   projectedRevenue,
   cashTotal,
@@ -1356,6 +1454,7 @@ const MobileQuickHub = ({
   activeCycle,
   handleSaveStaffOrder,
   onTaskToggle,
+  monthStats,
 }: {
   projectedRevenue: number;
   cashTotal: number;
@@ -1365,6 +1464,7 @@ const MobileQuickHub = ({
   activeCycle: string;
   handleSaveStaffOrder: (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => Promise<void>;
   onTaskToggle: (task: ShiftTask, result?: 'yes' | 'no') => void;
+  monthStats?: MonthStats;
 }) => {
   const { user } = useAuth();
   return (
@@ -1392,6 +1492,9 @@ const MobileQuickHub = ({
           <div className="space-y-2">
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground pl-0.5">Financial Metrics</p>
             <div className="flex flex-col gap-2">
+              {(user?.role === 'admin' || user?.username === 'Viren') && monthStats && (
+                <MobileMonthTotal stats={monthStats} />
+              )}
               <StrategicTarget projectedRevenue={projectedRevenue} cashTotal={cashTotal} upiTotal={upiTotal} />
               <div className="grid grid-cols-2 gap-2">
                 <OwnerConsumptionHeader />
@@ -1639,6 +1742,20 @@ export function AppHeader({
     const dailyAverage = monthRevenue / businessDayCount;
     const projectedMonthEnd = dailyAverage * totalDaysInMonth;
 
+    const monthStats = useMemo(() => ({
+      monthRevenue,
+      businessDayCount,
+      monthName,
+      totalDaysInMonth,
+      dailyAverage,
+      dailyAverageDiff,
+      dailyAverageDiffPercent,
+      projectedMonthEnd,
+      bestDay,
+      worstDay,
+      avgBillValue,
+    }), [monthRevenue, businessDayCount, monthName, totalDaysInMonth, dailyAverage, dailyAverageDiff, dailyAverageDiffPercent, projectedMonthEnd, bestDay, worstDay, avgBillValue]);
+
 
 
 
@@ -1709,7 +1826,8 @@ export function AppHeader({
                             currentEmployee={currentEmployee} 
                             activeCycle={activeCycle} 
                             handleSaveStaffOrder={handleSaveStaffOrder} 
-                            onTaskToggle={onTaskToggle} 
+                            onTaskToggle={onTaskToggle}
+                            monthStats={monthStats} 
                         />
                     )}
 

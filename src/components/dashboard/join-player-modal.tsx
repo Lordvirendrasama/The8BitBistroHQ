@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Search, UserPlus, X, Clock, UserPlus2, Zap, ChevronRight, ArrowLeft, CheckCircle2, Gamepad2, Star } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { generateDynamicQuickPlayPackages, calculatePlayerPrice } from '@/lib/pricing';
+import { generateDynamicQuickPlayPackages, calculatePlayerPrice, filterAndSortRechargePackages } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
@@ -64,10 +64,20 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
     return generateDynamicQuickPlayPackages(station.type, activePlayerCount);
   }, [station]);
 
-  const rechargePackages = useMemo(() => allPackages?.filter(p => p.isRechargePack) || [], [allPackages]);
+  const rechargePackages = useMemo(() => {
+    if (!allPackages) return [];
+    const activePlayerCount = (station?.members?.length || 0) + 1;
+    return filterAndSortRechargePackages({
+      packages: allPackages,
+      stationType: station?.type,
+      playerCount: activePlayerCount,
+      currentTime: clientTime,
+    });
+  }, [allPackages, station?.type, station?.members?.length, clientTime]);
 
   useEffect(() => {
     if (isOpen) {
+      setClientTime(new Date().toTimeString().slice(0, 5));
       setStep('selection');
       setSearchTerm('');
       setSelectedMember(null);
@@ -317,12 +327,22 @@ export function JoinPlayerModal({ isOpen, onOpenChange, station, members, onConf
                                             {rechargePackages.map(pkg => (
                                                 <div key={pkg.id} onClick={() => handleSelectPlan(pkg, 'buy-recharge')} className={cn("p-4 rounded-xl border-2 border-dashed bg-card transition-all flex justify-between items-center group", isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-emerald-500 cursor-pointer")}>
                                                     <div className="min-w-0">
-                                                        <p className="text-sm font-bold uppercase truncate opacity-80">{pkg.name}</p>
-                                                        <p className="text-sm font-bold text-muted-foreground uppercase mt-1">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} Days</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-sm font-bold uppercase truncate opacity-80">{pkg.name}</p>
+                                                            {pkg.isPriorityOffer && (
+                                                                <Badge className="h-4 px-1 text-[8px] bg-amber-500/20 text-amber-500 border border-amber-500/30 uppercase font-bold">
+                                                                    SPECIAL
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm font-bold text-muted-foreground uppercase mt-1">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} {pkg.validity === 1 ? 'Day' : 'Days'}</p>
                                                     </div>
                                                     <span className="font-mono font-bold text-emerald-600">₹{pkg.price}</span>
                                                 </div>
                                             ))}
+                                            {rechargePackages.length === 0 && (
+                                                <p className="text-sm text-center italic text-muted-foreground py-4">No recharge packages available for this station.</p>
+                                            )}
                                         </div>
                                     </div>
                                 </>
