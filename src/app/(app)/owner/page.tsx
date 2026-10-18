@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { AppUpdatesDropdown } from '@/components/owner/app-updates-dropdown';
 import { ExecutiveExpensesHub } from '@/components/owner/executive-expenses-hub';
+import { OwnerRawMaterialsHub } from '@/components/owner/owner-raw-materials-hub';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -870,6 +871,9 @@ export default function OwnerMainPage() {
       <div className="space-y-8">
         {/* 0. ACCOUNTS PAYABLE SYSTEM (UPCOMING DUE OBLIGATIONS) */}
         <ExecutiveExpensesHub />
+
+        {/* 0.25 RAW MATERIALS & RESTOCK PROCUREMENT ORDERS */}
+        <OwnerRawMaterialsHub />
 
         {/* 0.5 INVENTORY & LOW STOCK WATCHLIST */}
         <section className="space-y-4">

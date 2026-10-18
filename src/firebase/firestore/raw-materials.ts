@@ -14,6 +14,22 @@ import {
 import type { RawMaterial, RawMaterialFormData, RawMaterialRequest, LogEntry } from '@/lib/types';
 import { getSettings } from './settings';
 
+export const sanitizeData = (data: any): any => {
+  if (Array.isArray(data)) {
+    return data.map(sanitizeData);
+  }
+  if (data !== null && typeof data === 'object') {
+    const clean: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        clean[key] = sanitizeData(value);
+      }
+    }
+    return clean;
+  }
+  return data;
+};
+
 const createLogEntry = (
   db: ReturnType<typeof getFirestore>,
   batch: ReturnType<typeof writeBatch>,
@@ -21,8 +37,9 @@ const createLogEntry = (
   userDisplayName: string = 'Staff'
 ) => {
   const logRef = doc(collection(db, 'logs'));
+  const cleanEntry = sanitizeData(entry);
   batch.set(logRef, {
-    ...entry,
+    ...cleanEntry,
     timestamp: new Date().toISOString(),
     user: {
       uid: 'system',
@@ -37,15 +54,10 @@ export const addRawMaterial = async (materialData: RawMaterialFormData, userDisp
   const newRef = doc(collection(db, 'rawMaterials'));
 
   try {
-    const cleanData: Record<string, any> = {
+    const cleanData: Record<string, any> = sanitizeData({
       ...materialData,
       isActive: materialData.isActive !== false,
       createdAt: new Date().toISOString(),
-    };
-
-    // Remove any undefined values
-    Object.keys(cleanData).forEach(key => {
-      if (cleanData[key] === undefined) delete cleanData[key];
     });
 
     batch.set(newRef, cleanData);
@@ -70,10 +82,7 @@ export const updateRawMaterial = async (materialId: string, updates: Partial<Raw
   const itemRef = doc(db, 'rawMaterials', materialId);
 
   try {
-    const cleanUpdates: Record<string, any> = { ...updates };
-    Object.keys(cleanUpdates).forEach(key => {
-      if (cleanUpdates[key] === undefined) delete cleanUpdates[key];
-    });
+    const cleanUpdates: Record<string, any> = sanitizeData({ ...updates });
 
     batch.update(itemRef, cleanUpdates);
 
@@ -203,27 +212,30 @@ export const createRawMaterialRequest = async (
     const settings = await getSettings();
     const cycle = settings?.activeCycle || 'Live Cycle';
 
-    const fullData: Record<string, any> = {
+    const fullData: Record<string, any> = sanitizeData({
       ...requestData,
       status: requestData.status || 'pending',
       urgency: requestData.urgency || 'normal',
       createdAt: new Date().toISOString(),
       cycle
-    };
-
-    // Clean undefined fields
-    Object.keys(fullData).forEach(key => {
-      if (fullData[key] === undefined) delete fullData[key];
     });
 
     batch.set(newRef, fullData);
 
     const itemsSummary = requestData.items.map(i => `${i.name} (${i.quantityRequested} ${i.unit})`).join(', ');
 
+    const details: Record<string, any> = {
+      requestId: newRef.id,
+      items: sanitizeData(requestData.items)
+    };
+    if (requestData.notes) {
+      details.notes = requestData.notes;
+    }
+
     createLogEntry(db, batch, {
       type: 'SETTINGS_UPDATED',
       description: `Employee <strong>${requestData.requestedBy.displayName}</strong> submitted low-stock order request for: ${itemsSummary}.`,
-      details: { requestId: newRef.id, items: requestData.items, notes: requestData.notes }
+      details
     }, requestData.requestedBy.displayName);
 
     await batch.commit();
