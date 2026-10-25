@@ -21,16 +21,27 @@ const createLogEntry = (
   });
 };
 
+const clean = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const result: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  });
+  return result;
+};
+
 export const addCategory = async (categoryData: CategoryFormData) => {
   const db = getFirestore();
   const batch = writeBatch(db);
   const newCategoryRef = doc(collection(db, 'categories'));
   try {
-    batch.set(newCategoryRef, categoryData);
+    const cleanData = clean(categoryData);
+    batch.set(newCategoryRef, cleanData);
     createLogEntry(db, batch, {
         type: 'SETTINGS_UPDATED',
         description: `Added new menu category: <strong>${categoryData.name}</strong>.`,
-        details: { categoryId: newCategoryRef.id, categoryData }
+        details: { categoryId: newCategoryRef.id, categoryData: cleanData }
     });
     await batch.commit();
     return newCategoryRef.id;
@@ -45,11 +56,12 @@ export const updateCategory = async (categoryId: string, categoryData: Partial<C
     const batch = writeBatch(db);
     const categoryRef = doc(db, 'categories', categoryId);
     try {
-        batch.update(categoryRef, categoryData);
+        const cleanData = clean(categoryData);
+        batch.update(categoryRef, cleanData);
         createLogEntry(db, batch, {
             type: 'SETTINGS_UPDATED',
             description: `Updated menu category <strong>${categoryData.name || 'ID: ' + categoryId}</strong>.`,
-            details: { categoryId, updates: categoryData }
+            details: { categoryId, updates: cleanData }
         });
         await batch.commit();
     } catch (e) {

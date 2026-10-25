@@ -21,16 +21,27 @@ const createLogEntry = (
   });
 };
 
+const clean = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const result: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  });
+  return result;
+};
+
 export const addReward = async (rewardData: RewardFormData) => {
   const db = getFirestore();
   const batch = writeBatch(db);
   const newRewardRef = doc(collection(db, 'rewards'));
   try {
-    batch.set(newRewardRef, rewardData);
+    const cleanData = clean(rewardData);
+    batch.set(newRewardRef, cleanData);
     createLogEntry(db, batch, {
         type: 'REWARD_CREATED',
         description: `Created a new reward: <strong>${rewardData.name}</strong>.`,
-        details: { rewardId: newRewardRef.id, rewardData }
+        details: { rewardId: newRewardRef.id, rewardData: cleanData }
     });
     await batch.commit();
     return newRewardRef.id;
@@ -45,11 +56,12 @@ export const updateReward = async (rewardId: string, rewardData: Partial<RewardF
     const batch = writeBatch(db);
     const rewardRef = doc(db, 'rewards', rewardId);
     try {
-        batch.update(rewardRef, rewardData);
+        const cleanData = clean(rewardData);
+        batch.update(rewardRef, cleanData);
         createLogEntry(db, batch, {
             type: 'REWARD_UPDATED',
             description: `Updated details for reward <strong>${rewardData.name || 'ID: ' + rewardId}</strong>.`,
-            details: { rewardId, updates: rewardData }
+            details: { rewardId, updates: cleanData }
         });
         await batch.commit();
     } catch (e) {

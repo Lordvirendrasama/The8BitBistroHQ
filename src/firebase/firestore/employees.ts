@@ -132,6 +132,16 @@ async function createOrUpdateAuthAccount(options: {
   }
 }
 
+const clean = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const result: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  });
+  return result;
+};
+
 export const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
   const db = getFirestore();
   try {
@@ -147,10 +157,10 @@ export const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
       });
     }
 
-    await setDoc(docRef, {
+    await setDoc(docRef, clean({
       ...employeeData,
       isActive: true
-    });
+    }));
     
     await addDoc(collection(db, 'logs'), {
       type: 'EMPLOYEE_ADDED',
@@ -175,7 +185,7 @@ export const updateEmployee = async (
   const ref = doc(db, 'employees', employeeId);
   try {
     // 1. Always update Firestore employee document first to guarantee saving changes
-    await updateDoc(ref, updates);
+    await updateDoc(ref, clean(updates));
 
     // 2. Best-effort sync to userRoles and Firebase Auth credentials
     const effectiveUsername = updates.username ?? previousState?.username ?? '';

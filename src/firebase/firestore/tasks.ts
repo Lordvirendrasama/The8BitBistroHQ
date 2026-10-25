@@ -5,7 +5,12 @@ import type { TaskFormData, LogEntry, Shift } from '@/lib/types';
 
 
 const mapToDb = (data: Partial<TaskFormData>) => {
-  const dbData: any = { ...data };
+  const dbData: any = {};
+  Object.keys(data).forEach(key => {
+    if ((data as any)[key] !== undefined) {
+      dbData[key] = (data as any)[key];
+    }
+  });
   if (dbData.shiftType !== undefined) {
     dbData.shift_type = dbData.shiftType;
   }

@@ -6,6 +6,20 @@ import type { LogEntry, LogEntryType } from '@/lib/types';
 import type { CustomUser } from '../auth/use-user';
 import { getSettings } from './settings';
 
+const sanitizeDetails = (data: any): any => {
+  if (data === undefined || data === null) return null;
+  if (Array.isArray(data)) return data.map(sanitizeDetails);
+  if (typeof data === 'object') {
+    const clean: any = {};
+    Object.keys(data).forEach(key => {
+      const val = data[key];
+      if (val !== undefined) clean[key] = sanitizeDetails(val);
+    });
+    return clean;
+  }
+  return data;
+};
+
 const log = async (
     type: LogEntryType,
     description: string,
@@ -33,7 +47,7 @@ const log = async (
   }
 
   if (details) {
-    logEntry.details = details;
+    logEntry.details = sanitizeDetails(details);
   }
 
   try {
@@ -51,7 +65,7 @@ export const logUserAction = async (
     description: string, 
     details?: Record<string, any>
 ) => {
-  const currentUser: CustomUser = JSON.parse(sessionStorage.getItem('user') || 'null');
+  const currentUser: CustomUser = typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || 'null') : null;
   await log('UI_ACTION', description, currentUser, details);
 };
 
@@ -59,7 +73,7 @@ export const logSettingsUpdate = async (
     description: string, 
     details?: Record<string, any>
 ) => {
-    const currentUser: CustomUser = JSON.parse(sessionStorage.getItem('user') || 'null');
+    const currentUser: CustomUser = typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || 'null') : null;
     await log('SETTINGS_UPDATED', description, currentUser, details);
 }
 
@@ -67,6 +81,6 @@ export const logDataAction = async (
     description: string,
     details?: Record<string, any>
 ) => {
-    const currentUser: CustomUser = JSON.parse(sessionStorage.getItem('user') || 'null');
+    const currentUser: CustomUser = typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || 'null') : null;
     await log('DATA_ACTION', description, currentUser, details);
 }

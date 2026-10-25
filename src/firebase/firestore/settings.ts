@@ -38,7 +38,12 @@ export const updateSettings = async (updates: Partial<Settings>) => {
   const docRef = doc(db, 'settings', SETTINGS_DOC_ID);
   try {
     const current = await getSettings();
-    const finalUpdates: any = { ...updates };
+    const finalUpdates: any = {};
+    Object.keys(updates).forEach(key => {
+      if ((updates as any)[key] !== undefined) {
+        finalUpdates[key] = (updates as any)[key];
+      }
+    });
 
     // If changing the cycle name, we archive the current start date as the "last" start date
     if (updates.activeCycle && updates.activeCycle !== current.activeCycle) {

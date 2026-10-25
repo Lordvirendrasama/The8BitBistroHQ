@@ -55,16 +55,24 @@ export const updateGamingPackage = async (packageId: string, packageData: Partia
     const batch = writeBatch(db);
     const packageRef = doc(db, 'gamingPackages', packageId);
     try {
-        const dataToUpdate: { [key: string]: any } = { ...packageData };
-        const dataToLog: { [key: string]: any } = { ...packageData };
+        const dataToUpdate: { [key: string]: any } = {};
+        const dataToLog: { [key: string]: any } = {};
 
-        if (dataToUpdate.startTime === undefined) {
+        Object.entries(packageData).forEach(([k, v]) => {
+            if (v !== undefined) {
+                dataToUpdate[k] = v;
+                dataToLog[k] = v;
+            }
+        });
+
+        if (packageData.startTime === undefined) {
             dataToUpdate.startTime = deleteField();
-            delete dataToLog.startTime;
         }
-        if (dataToUpdate.endTime === undefined) {
+        if (packageData.endTime === undefined) {
             dataToUpdate.endTime = deleteField();
-            delete dataToLog.endTime;
+        }
+        if (packageData.stationType === undefined) {
+            dataToUpdate.stationType = deleteField();
         }
 
         batch.update(packageRef, dataToUpdate);

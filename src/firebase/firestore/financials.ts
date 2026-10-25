@@ -6,12 +6,23 @@ import type { CustomUser } from '../auth/use-user';
 import { getSettings } from './settings';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 
+// Helper to strip undefined values so Firestore never throws unsupported field value error
+const clean = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const result: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  });
+  return result;
+};
+
 // --- FIXED BILLS ---
 
 export const addFixedBill = async (billData: Omit<FixedBill, 'id'>, user: CustomUser) => {
   const db = getFirestore();
   try {
-    const docRef = await addDoc(collection(db, 'fixedBills'), billData);
+    const docRef = await addDoc(collection(db, 'fixedBills'), clean(billData));
     
     const logRef = await addDoc(collection(db, 'logs'), {
       type: 'SETTINGS_UPDATED',
@@ -31,7 +42,7 @@ export const updateFixedBill = async (billId: string, updates: Partial<FixedBill
   const db = getFirestore();
   const billRef = doc(db, 'fixedBills', billId);
   try {
-    await updateDoc(billRef, updates);
+    await updateDoc(billRef, clean(updates));
     await addDoc(collection(db, 'logs'), {
       type: 'SETTINGS_UPDATED',
       description: `Updated fixed bill: <strong>${updates.name || 'ID: ' + billId}</strong>.`,
@@ -372,10 +383,10 @@ export const updateSalaryPayment = async (
     if (!paySnap.exists()) throw new Error("Salary payment record not found");
     const existing = paySnap.data() as SalaryPayment;
 
-    await updateDoc(payRef, {
+    await updateDoc(payRef, clean({
       ...updatedFields,
       updatedAt: new Date().toISOString()
-    });
+    }));
 
     // Update employee document if amount or cycle changed
     if (existing.employeeId) {
@@ -393,7 +404,7 @@ export const updateSalaryPayment = async (
           updates.lastSalaryPaidDate = updatedFields.paidAt;
         }
         if (Object.keys(updates).length > 0) {
-          await updateDoc(empRef, updates);
+          await updateDoc(empRef, clean(updates));
         }
       }
     }
@@ -425,10 +436,10 @@ export const updatePaidBillRecord = async (
   const db = getFirestore();
   try {
     const billRef = doc(db, 'paidBills', paidBillId);
-    await updateDoc(billRef, {
+    await updateDoc(billRef, clean({
       ...updates,
       updatedAt: new Date().toISOString()
-    });
+    }));
 
     await addDoc(collection(db, 'logs'), {
       type: 'SETTINGS_UPDATED',
@@ -459,10 +470,10 @@ export const updateExpenseRecord = async (
   const db = getFirestore();
   try {
     const expRef = doc(db, 'expenses', expenseId);
-    await updateDoc(expRef, {
+    await updateDoc(expRef, clean({
       ...updates,
       updatedAt: new Date().toISOString()
-    });
+    }));
 
     await addDoc(collection(db, 'logs'), {
       type: 'SETTINGS_UPDATED',

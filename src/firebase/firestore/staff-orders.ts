@@ -3,6 +3,16 @@
 import { getFirestore, collection, doc, writeBatch, getDoc, getDocs, query, where } from 'firebase/firestore';
 import type { StaffOrder, LogEntry, Employee, SalaryAdjustment } from '@/lib/types';
 
+const clean = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const result: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  });
+  return result;
+};
+
 export const addStaffOrder = async (
   employeeId: string,
   newBalance: number,
@@ -18,7 +28,7 @@ export const addStaffOrder = async (
 
   // 1. Reference to create a new staff order
   const orderRef = doc(collection(db, 'staffOrders'));
-  batch.set(orderRef, normalizedOrderData);
+  batch.set(orderRef, clean(normalizedOrderData));
 
   // 2. Fetch employee to update foodAllowanceBalance & check for overage salary deduction
   let empDocRef = null;
@@ -78,7 +88,7 @@ export const addStaffOrder = async (
       employeeUpdates.salaryAdjustments = [newAdjustment, ...existingAdjustments];
     }
 
-    batch.update(empDocRef, employeeUpdates);
+    batch.update(empDocRef, clean(employeeUpdates));
   }
 
   // 3. Create a log entry
@@ -103,7 +113,7 @@ export const addStaffOrder = async (
       overageDeduction: overageAmount
     }
   };
-  batch.set(logRef, logEntry);
+  batch.set(logRef, clean(logEntry));
 
   await batch.commit();
   return orderRef.id;

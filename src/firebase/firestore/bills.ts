@@ -39,7 +39,7 @@ const createLogEntry = (
   entry: Omit<LogEntry, 'id' | 'timestamp' | 'user'>
 ) => {
   const logRef = doc(collection(db, 'logs'));
-  const currentUserJson = sessionStorage.getItem('user');
+  const currentUserJson = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
   const currentUser = currentUserJson ? JSON.parse(currentUserJson) : null;
   
   const rawLogData = {
