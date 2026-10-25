@@ -35,7 +35,7 @@ import { useAuth } from '@/firebase/auth/use-user';
 import { rechargeMember, consumeRechargeTime, consumeMemberBalancePool, adjustMemberBalancePool } from '@/firebase/firestore/members';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow, getSyncedDate } from '@/lib/synced-time';
-import { calculateGroupPrice, calculatePlayerPrice } from '@/lib/pricing';
+import { calculateGroupPrice, calculatePlayerPrice, getTierMultiplier } from '@/lib/pricing';
 import { GuestLoginWizardModal } from '@/components/dashboard/guest-login-wizard-modal';
 import { isToday } from 'date-fns';
 import { BookingsManagerModal } from '@/components/bookings/bookings-manager-modal';
@@ -43,6 +43,18 @@ import { useBookingAutoStarter } from '@/components/bookings/use-booking-auto-st
 import { completeBooking } from '@/firebase/firestore/bookings';
 import { RawMaterialsOrderModal } from '@/components/dashboard/raw-materials-order-modal';
 
+const sanitize = (data: any): any => {
+  if (data === undefined || data === null) return null;
+  if (Array.isArray(data)) return data.map(v => sanitize(v));
+  if (typeof data === 'object' && data !== null) {
+    const clean: any = {};
+    Object.keys(data).forEach(key => {
+      if (data[key] !== undefined) clean[key] = sanitize(data[key]);
+    });
+    return clean;
+  }
+  return data;
+};
 
 const tierMultipliers: Record<MemberTier, number> = {
   Red: 1,
@@ -305,15 +317,14 @@ function DashboardContent() {
   }, [stations, selectedStation]);
 
   const onGrantXp = (memberId: string, baseXp: number, billAmount: number, billId?: string) => {
-    if (!db) return;
+    if (!db || !memberId) return;
     runTransaction(db, async (transaction) => {
       const memberRef = doc(db, "members", memberId);
       const memberDoc = await transaction.get(memberRef);
       if (!memberDoc.exists()) throw "Member not found!";
 
       const member = memberDoc.data() as Member;
-      const normalizedTier = (member.tier ? member.tier.trim().charAt(0).toUpperCase() + member.tier.trim().slice(1).toLowerCase() : 'Red') as MemberTier;
-      const multiplier = tierMultipliers[normalizedTier] || 1;
+      const multiplier = getTierMultiplier(member.tier);
       // Formula: bitsEarned = floor(amountSpent / 10 * tierMultiplier)
       const bitsEarned = Math.floor((billAmount / 10) * multiplier);
       
@@ -328,34 +339,33 @@ function DashboardContent() {
       const calculatedLevel = Math.floor(newLifetimeBits / bitsPerLevelThreshold) + 1;
       const newLevel = Math.max(member.level || 1, calculatedLevel);
 
-      transaction.update(memberRef, { 
+      transaction.update(memberRef, sanitize({ 
         bitsBalance: newBitsBalance, 
         lifetimeBitsEarned: newLifetimeBits, 
         level: newLevel, 
         totalSpent: newTotalSpent,
         isBitsMigrated: true
-      });
+      }));
       
       const transactionRef = doc(collection(db, `members/${memberId}/transactions`));
-      transaction.set(transactionRef, {
+      transaction.set(transactionRef, sanitize({
         date: new Date().toISOString(),
         amount: billAmount,
         bitsGained: bitsEarned,
         billId: billId || null
-      });
+      }));
 
       const logRef = doc(collection(db, 'logs'));
-      const currentUserJson = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
-      const currentUser = currentUserJson ? JSON.parse(currentUserJson) : { uid: 'system', displayName: 'System' };
-      transaction.set(logRef, {
+      const activeUser = user || { username: 'System', displayName: 'System' };
+      transaction.set(logRef, sanitize({
         type: 'BITS_EARNED',
-        description: `<strong>${member.name}</strong> earned <strong>${bitsEarned} Bits</strong>.`,
-        memberId: member.id,
+        description: `<strong>${member.name || 'Member'}</strong> earned <strong>${bitsEarned} Bits</strong>.`,
+        memberId: memberId,
         details: { amount: billAmount, bitsGained: bitsEarned, billId: billId || null },
         timestamp: new Date().toISOString(),
-        user: { uid: currentUser.username || currentUser.uid, displayName: currentUser.displayName },
+        user: { uid: activeUser.username || 'system', displayName: activeUser.displayName || activeUser.username || 'System' },
         cycle: settings.activeCycle || 'Live Cycle'
-      });
+      }));
 
     }).catch(e => {
         console.error("Bits Transaction failed: ", e);

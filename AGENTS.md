@@ -70,25 +70,14 @@ Terminal commands can trigger IDE permission prompts, so avoid unnecessary comma
 - Before considering a substantial feature complete, perform appropriate broader validation.
 - Do not repeatedly run the same check if it provides no new information.
 
-## 8. Build and Deployment Validation
-
-Before a production build or deployment:
-
-1. Verify the affected functionality.
-2. Run the appropriate TypeScript/type check if applicable.
-3. Run the production build.
-4. Fix any errors.
-5. Inspect Git state if necessary.
-6. Report any remaining issues.
-
-## 9. Permission Prompts
+## 8. Permission Prompts
 
 - Avoid commands that unnecessarily trigger IDE permission dialogs.
 - Prefer native non-prompting tools whenever they can accomplish the same task.
 - When a safe development command genuinely needs to be executed, run it rather than asking the user to perform it manually.
 - Do not repeatedly request permission for routine file inspection or editing.
 
-## 10. General Principle
+## 9. General Principle
 
 Prioritize:
 

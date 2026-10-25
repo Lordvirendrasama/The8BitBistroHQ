@@ -2,7 +2,7 @@
 'use client';
 
 import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, WriteBatch, getDoc, runTransaction, where, query, getDocs, limit } from 'firebase/firestore';
-import type { Member, ClaimedReward, Reward, Transaction, LogEntry, LogEntryType, GamingPackage, MemberRecharge } from '@/lib/types';
+import type { Member, ClaimedReward, Reward, Transaction, LogEntry, LogEntryType, GamingPackage, MemberRecharge, Bill } from '@/lib/types';
 import { getSettings } from './settings';
 import { addMonths, isAfter } from 'date-fns';
 import { getTierMultiplier } from '@/lib/pricing';
@@ -38,7 +38,7 @@ const createLogEntry = (
   entry: Omit<LogEntry, 'id' | 'timestamp' | 'user'>
 ) => {
   const logRef = doc(collection(db, 'logs'));
-  const currentUserJson = sessionStorage.getItem('user');
+  const currentUserJson = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
   const currentUser = currentUserJson ? JSON.parse(currentUserJson) : { uid: 'system', displayName: 'System' };
   
   batch.set(logRef, sanitize({
@@ -304,6 +304,7 @@ export const rechargeMember = async (memberId: string, pkg: GamingPackage, payme
     const db = getFirestore();
     const settings = await getSettings();
     const batch = writeBatch(db);
+    const now = new Date();
     
     const memberRef = doc(db, 'members', memberId);
     const memberSnap = await getDoc(memberRef);
@@ -561,3 +562,203 @@ export const searchMembers = async (searchTerm: string): Promise<Member[]> => {
     return Array.from(map.values()).slice(0, 30);
 };
 
+/**
+ * Retroactively scans all bills and credits missing Bits and Total Spent to members.
+ * Checks members/{memberId}/transactions to ensure idempotent, safe execution without duplicate credits.
+ */
+export const syncMissingMemberBitsFromBills = async (): Promise<{
+  success: boolean;
+  updatedMembersCount: number;
+  totalBitsAwarded: number;
+  totalSpentAwarded: number;
+  details: Array<{ memberId: string; name: string; bitsAdded: number; spentAdded: number; billsCount: number }>;
+}> => {
+  const db = getFirestore();
+  const settings = await getSettings();
+  
+  try {
+    // 1. Fetch all bills
+    const billsSnap = await getDocs(collection(db, 'bills'));
+    const bills = billsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bill));
+    
+    // 2. Fetch all members
+    const membersSnap = await getDocs(collection(db, 'members'));
+    const members = membersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
+    const memberMap = new Map<string, Member>();
+    members.forEach(m => memberMap.set(m.id, m));
+
+    // 3. Find all member IDs that appear in at least one bill
+    const memberIdsInBills = new Set<string>();
+    bills.forEach(bill => {
+      (bill.members || []).forEach(m => {
+        if (m.id && !m.id.startsWith('guest-') && memberMap.has(m.id)) {
+          memberIdsInBills.add(m.id);
+        }
+      });
+    });
+
+    // 4. For each relevant member, fetch their existing transactions to find already credited bills
+    const memberCreditedBills = new Map<string, Set<string>>();
+    for (const memberId of memberIdsInBills) {
+      const txSnap = await getDocs(collection(db, `members/${memberId}/transactions`));
+      const billIds = new Set<string>();
+      txSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.billId) billIds.add(data.billId);
+      });
+      memberCreditedBills.set(memberId, billIds);
+    }
+
+    // 5. Calculate missing rewards per member
+    const memberAdjustments = new Map<string, {
+      member: Member;
+      missingBits: number;
+      missingSpent: number;
+      billsCount: number;
+      newTransactions: Array<{
+        date: string;
+        amount: number;
+        bitsGained: number;
+        billId: string;
+        cycle: string;
+      }>;
+    }>();
+
+    for (const bill of bills) {
+      if (!bill.members || bill.members.length === 0 || !bill.totalAmount || bill.totalAmount <= 0) {
+        continue;
+      }
+
+      const realMembers = bill.members.filter(m => m.id && !m.id.startsWith('guest-') && memberMap.has(m.id));
+      if (realMembers.length === 0) continue;
+
+      const totalPlayers = bill.members.length;
+      const billPerMember = totalPlayers > 0 ? bill.totalAmount / totalPlayers : 0;
+      if (billPerMember <= 0) continue;
+
+      for (const assignedMember of realMembers) {
+        const memberId = assignedMember.id;
+        const credited = memberCreditedBills.get(memberId);
+        
+        if (!credited || !credited.has(bill.id)) {
+          const currentMemberData = memberMap.get(memberId)!;
+          const tierMultiplier = getTierMultiplier(currentMemberData.tier);
+          const bitsEarned = Math.floor((billPerMember / 10) * tierMultiplier);
+
+          if (!memberAdjustments.has(memberId)) {
+            memberAdjustments.set(memberId, {
+              member: currentMemberData,
+              missingBits: 0,
+              missingSpent: 0,
+              billsCount: 0,
+              newTransactions: []
+            });
+          }
+
+          const adj = memberAdjustments.get(memberId)!;
+          adj.missingBits += bitsEarned;
+          adj.missingSpent += billPerMember;
+          adj.billsCount += 1;
+          adj.newTransactions.push({
+            date: bill.timestamp || new Date().toISOString(),
+            amount: billPerMember,
+            bitsGained: bitsEarned,
+            billId: bill.id,
+            cycle: bill.cycle || settings.activeCycle || 'Live Cycle'
+          });
+
+          if (credited) credited.add(bill.id);
+        }
+      }
+    }
+
+    // 6. Commit adjustments in Firestore chunks to respect batch operation limits
+    let updatedMembersCount = 0;
+    let totalBitsAwarded = 0;
+    let totalSpentAwarded = 0;
+    const summaryDetails: Array<{ memberId: string; name: string; bitsAdded: number; spentAdded: number; billsCount: number }> = [];
+
+    let currentBatch = writeBatch(db);
+    let currentBatchOps = 0;
+
+    const commitBatchIfNeeded = async (force = false) => {
+      if (currentBatchOps > 0 && (force || currentBatchOps >= 400)) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+        currentBatchOps = 0;
+      }
+    };
+
+    for (const [memberId, adj] of memberAdjustments.entries()) {
+      if (adj.missingBits === 0 && adj.missingSpent === 0) continue;
+
+      const memberRef = doc(db, 'members', memberId);
+      const currentBits = adj.member.bitsBalance ?? adj.member.points ?? 0;
+      const currentLifetime = adj.member.lifetimeBitsEarned ?? currentBits;
+      const newBitsBalance = currentBits + adj.missingBits;
+      const newLifetime = currentLifetime + adj.missingBits;
+      const newTotalSpent = (adj.member.totalSpent || 0) + adj.missingSpent;
+      const newLevel = Math.max(adj.member.level || 1, Math.floor(newLifetime / 100) + 1);
+
+      currentBatch.update(memberRef, sanitize({
+        bitsBalance: newBitsBalance,
+        lifetimeBitsEarned: newLifetime,
+        totalSpent: newTotalSpent,
+        level: newLevel,
+        isBitsMigrated: true
+      }));
+      currentBatchOps++;
+      await commitBatchIfNeeded();
+
+      for (const tx of adj.newTransactions) {
+        const txRef = doc(collection(db, `members/${memberId}/transactions`));
+        currentBatch.set(txRef, sanitize(tx));
+        currentBatchOps++;
+        await commitBatchIfNeeded();
+      }
+
+      const logRef = doc(collection(db, 'logs'));
+      currentBatch.set(logRef, sanitize({
+        type: 'BITS_EARNED',
+        description: `<strong>${adj.member.name}</strong> retroactively credited with <strong>${adj.missingBits} Bits</strong> from ${adj.billsCount} bill(s).`,
+        memberId: memberId,
+        details: { amount: adj.missingSpent, bitsGained: adj.missingBits },
+        timestamp: new Date().toISOString(),
+        user: { uid: 'system', displayName: 'Bits Sync Repair' },
+        cycle: settings.activeCycle || 'Live Cycle'
+      }));
+      currentBatchOps++;
+      await commitBatchIfNeeded();
+
+      updatedMembersCount++;
+      totalBitsAwarded += adj.missingBits;
+      totalSpentAwarded += adj.missingSpent;
+      summaryDetails.push({
+        memberId,
+        name: adj.member.name,
+        bitsAdded: adj.missingBits,
+        spentAdded: adj.missingSpent,
+        billsCount: adj.billsCount
+      });
+    }
+
+    await commitBatchIfNeeded(true);
+
+    return {
+      success: true,
+      updatedMembersCount,
+      totalBitsAwarded,
+      totalSpentAwarded,
+      details: summaryDetails
+    };
+  } catch (error) {
+    console.error("Sync missing member bits failed:", error);
+    return {
+      success: false,
+      updatedMembersCount: 0,
+      totalBitsAwarded: 0,
+      totalSpentAwarded: 0,
+      details: []
+    };
+  }
+};

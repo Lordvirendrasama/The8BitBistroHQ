@@ -7,12 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Loader2, Users } from 'lucide-react';
+import { Save, Loader2, Users, RefreshCw } from 'lucide-react';
 import { logUserAction } from '@/firebase/firestore/logs';
 import { getSettings, updateSettings } from '@/firebase/firestore/settings';
 import type { Settings } from '@/lib/types';
 
-import { migrateMembersToBits } from '@/firebase/firestore/members';
+import { migrateMembersToBits, syncMissingMemberBitsFromBills } from '@/firebase/firestore/members';
 
 export function SettingsForm() {
   const { toast } = useToast();
@@ -20,6 +20,7 @@ export function SettingsForm() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSubmitting] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     getSettings().then(data => {
@@ -53,6 +54,34 @@ export function SettingsForm() {
       });
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  const handleSyncMissingBits = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncMissingMemberBitsFromBills();
+      if (res.success) {
+        toast({
+          title: 'Bits Sync Complete!',
+          description: `Credited ${res.totalBitsAwarded.toLocaleString()} Bits & ₹${res.totalSpentAwarded.toLocaleString()} spent across ${res.updatedMembersCount} member(s).`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Sync Failed',
+          description: 'Failed to sync missing Bits from bills.',
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: 'destructive',
+        title: 'Sync Error',
+        description: 'An unexpected error occurred during sync.',
+      });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -100,16 +129,28 @@ export function SettingsForm() {
               <CardTitle className="font-headline tracking-wide text-2xl">System Configuration</CardTitle>
               <CardDescription>Adjust core Bits loyalty mechanics and active data phase.</CardDescription>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleRunMigration}
-              disabled={isMigrating}
-              className="font-bold border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10"
-            >
-              {isMigrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Run Migration to Bits (1:1)
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSyncMissingBits}
+                disabled={isSyncing || isMigrating}
+                className="font-bold border-emerald-500/50 text-emerald-600 hover:bg-emerald-500/10"
+              >
+                {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Sync Missing Bill Bits
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRunMigration}
+                disabled={isMigrating || isSyncing}
+                className="font-bold border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10"
+              >
+                {isMigrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Run Migration to Bits (1:1)
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
