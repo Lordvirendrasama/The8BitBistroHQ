@@ -16,10 +16,10 @@ export function OwnerPulseGrowthCentre({ benchmarks }: GrowthCentreProps) {
     label: string,
     current: number,
     previous: number,
-    pct: number,
+    pct: number | null,
     prefix: string = '₹'
   ) => {
-    const isPositive = pct >= 0;
+    const isPositive = pct !== null && pct >= 0;
 
     return (
       <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/10 hover:bg-muted/20 transition-all">
@@ -35,7 +35,11 @@ export function OwnerPulseGrowthCentre({ benchmarks }: GrowthCentreProps) {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {isPositive ? (
+          {pct === null ? (
+            <Badge variant="outline" className="text-muted-foreground font-mono text-xs">
+              No Baseline
+            </Badge>
+          ) : isPositive ? (
             <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-mono font-bold text-xs">
               <TrendingUp className="h-3 w-3 mr-1" /> +{pct}%
             </Badge>

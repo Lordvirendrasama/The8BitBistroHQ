@@ -29,16 +29,44 @@ export function OwnerPulseBrief({ data }: { data: OwnerBriefData }) {
         
         <div className="space-y-3">
           <div className="flex items-start gap-3">
-            {data.revenuePctChange >= 0 ? <TrendingUp className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" /> : <TrendingDown className="h-5 w-5 text-destructive shrink-0 mt-0.5" />}
+            {data.revenuePctChange === null ? (
+              <TrendingUp className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+            ) : data.revenuePctChange >= 0 ? (
+              <TrendingUp className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+            ) : (
+              <TrendingDown className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            )}
             <p className="text-sm font-medium text-zinc-300">
-              Revenue this month is <strong className={data.revenuePctChange >= 0 ? "text-emerald-400" : "text-destructive"}>{data.revenuePctChange >= 0 ? 'up' : 'down'} {Math.abs(data.revenuePctChange)}%</strong>.
+              Revenue this month is{' '}
+              {data.revenuePctChange === null ? (
+                <strong className="text-muted-foreground">baseline pending</strong>
+              ) : (
+                <strong className={data.revenuePctChange >= 0 ? "text-emerald-400" : "text-destructive"}>
+                  {data.revenuePctChange >= 0 ? 'up' : 'down'} {Math.abs(data.revenuePctChange)}%
+                </strong>
+              )}
+              .
             </p>
           </div>
 
           <div className="flex items-start gap-3">
-            {data.footfallPctChange >= 0 ? <Users className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" /> : <Users className="h-5 w-5 text-destructive shrink-0 mt-0.5" />}
+            {data.footfallPctChange === null ? (
+              <Users className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+            ) : data.footfallPctChange >= 0 ? (
+              <Users className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+            ) : (
+              <Users className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            )}
             <p className="text-sm font-medium text-zinc-300">
-              Footfall is <strong className={data.footfallPctChange >= 0 ? "text-emerald-400" : "text-destructive"}>{data.footfallPctChange >= 0 ? 'up' : 'down'} {Math.abs(data.footfallPctChange)}%</strong>.
+              Footfall is{' '}
+              {data.footfallPctChange === null ? (
+                <strong className="text-muted-foreground">baseline pending</strong>
+              ) : (
+                <strong className={data.footfallPctChange >= 0 ? "text-emerald-400" : "text-destructive"}>
+                  {data.footfallPctChange >= 0 ? 'up' : 'down'} {Math.abs(data.footfallPctChange)}%
+                </strong>
+              )}
+              .
             </p>
           </div>
 

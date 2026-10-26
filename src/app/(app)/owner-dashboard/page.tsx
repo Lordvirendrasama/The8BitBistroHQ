@@ -5,9 +5,40 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
-import type { Station, Bill, Expense, Employee, Shift, LiabilityState, FixedBill, Settings, Member } from '@/lib/types';
+import type {
+  Station,
+  Bill,
+  Expense,
+  Employee,
+  Shift,
+  LiabilityState,
+  FixedBill,
+  Settings,
+  Member,
+  FoodItem,
+  RawMaterial
+} from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { Crown, Filter, Globe, RefreshCw, LayoutDashboard, Sparkles, PieChart, Users, Gamepad2, Utensils, Wallet, Activity, ShieldCheck, Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
+import {
+  Crown,
+  Filter,
+  Globe,
+  RefreshCw,
+  LayoutDashboard,
+  Sparkles,
+  PieChart,
+  Users,
+  Gamepad2,
+  Utensils,
+  Wallet,
+  Activity,
+  ShieldCheck,
+  Calendar as CalendarIcon,
+  RotateCcw,
+  CheckSquare,
+  FileCheck2,
+  SlidersHorizontal
+} from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -17,9 +48,11 @@ import { getAvailableCycles, type CycleMetadata } from '@/firebase/firestore/dat
 import { computeOwnerPulseData } from '@/lib/business-rules';
 import { getBusinessDate, formatDateDDMMYYYY } from '@/lib/utils';
 
-// 11 Core Modules
+// Core Intelligence Modules
 import { OwnerPulseBrief } from '@/components/owner-pulse/owner-pulse-brief';
 import { OwnerPulseExecutiveSummary } from '@/components/owner-pulse/owner-pulse-executive-summary';
+import { OwnerPulseActionCentre } from '@/components/owner-pulse/owner-pulse-action-centre';
+import { OwnerPulseReconciliationView } from '@/components/owner-pulse/owner-pulse-reconciliation-view';
 import { OwnerPulseRulesInsights } from '@/components/owner-pulse/owner-pulse-rules-insights';
 import { OwnerPulseGrowthCentre } from '@/components/owner-pulse/owner-pulse-growth-centre';
 import { OwnerPulseRevenueIntel } from '@/components/owner-pulse/owner-pulse-revenue-intel';
@@ -76,6 +109,12 @@ export default function OwnerDashboardPage() {
   const membersQuery = useMemo(() => (!db ? null : collection(db, 'members')), [db]);
   const { data: members } = useCollection<Member>(membersQuery);
 
+  const foodItemsQuery = useMemo(() => (!db ? null : collection(db, 'foodItems')), [db]);
+  const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
+
+  const rawMaterialsQuery = useMemo(() => (!db ? null : collection(db, 'rawMaterials')), [db]);
+  const { data: rawMaterials } = useCollection<RawMaterial>(rawMaterialsQuery);
+
   const [liabilityState, setLiabilityState] = useState<LiabilityState | null>(null);
   const [appSettings, setAppSettings] = useState<Settings | null>(null);
 
@@ -111,9 +150,26 @@ export default function OwnerDashboardPage() {
       fixedBills,
       liabilityState,
       appSettings,
-      selectedDate
+      selectedDate,
+      foodItems || [],
+      rawMaterials || [],
+      selectedPhase
     );
-  }, [bills, expenses, stations, employees, allShifts, members, fixedBills, liabilityState, appSettings, selectedPhase, selectedDate]);
+  }, [
+    bills,
+    expenses,
+    stations,
+    employees,
+    allShifts,
+    members,
+    fixedBills,
+    liabilityState,
+    appSettings,
+    selectedPhase,
+    selectedDate,
+    foodItems,
+    rawMaterials
+  ]);
 
   if (!pulseData) {
     return (
@@ -234,6 +290,22 @@ export default function OwnerDashboardPage() {
         </Button>
         <Button
           size="sm"
+          variant={activeTab === 'actions' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('actions')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0 border-amber-500/40 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+        >
+          <CheckSquare className="h-3.5 w-3.5 text-amber-400" /> CEO Actions ({pulseData.actionCentre.length})
+        </Button>
+        <Button
+          size="sm"
+          variant={activeTab === 'reconciliation' ? 'default' : 'outline'}
+          onClick={() => scrollToSection('reconciliation')}
+          className="h-8 text-xs font-bold gap-1.5 shrink-0 border-cyan-500/40 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+        >
+          <FileCheck2 className="h-3.5 w-3.5 text-cyan-400" /> Data Quality &amp; Audit
+        </Button>
+        <Button
+          size="sm"
           variant={activeTab === 'growth' ? 'default' : 'outline'}
           onClick={() => scrollToSection('growth')}
           className="h-8 text-xs font-bold gap-1.5 shrink-0"
@@ -312,47 +384,60 @@ export default function OwnerDashboardPage() {
         />
       </section>
 
-      {/* 2. RULE-BASED INSIGHTS ALERTS */}
+      {/* 2. CEO ACTION CENTRE */}
+      <section id="actions">
+        <OwnerPulseActionCentre initialActions={pulseData.actionCentre} />
+      </section>
+
+      {/* 3. DATA QUALITY & RECONCILIATION AUDIT */}
+      <section id="reconciliation">
+        <OwnerPulseReconciliationView
+          report={pulseData.reconciliationReport}
+          dictionary={pulseData.metricDictionary}
+        />
+      </section>
+
+      {/* 4. RULE-BASED INSIGHTS ALERTS (BACKWARD-COMPATIBLE SUMMARY) */}
       <section id="insights">
         <OwnerPulseRulesInsights insights={pulseData.ruleInsights} />
       </section>
 
-      {/* 3. GROWTH CENTRE */}
+      {/* 5. GROWTH CENTRE */}
       <section id="growth">
         <OwnerPulseGrowthCentre benchmarks={pulseData.periodBenchmarks} />
       </section>
 
-      {/* 4. REVENUE INTELLIGENCE */}
+      {/* 6. REVENUE INTELLIGENCE */}
       <section id="revenue">
         <OwnerPulseRevenueIntel data={pulseData.revenueIntelligence} />
       </section>
 
-      {/* 5. CUSTOMER INTELLIGENCE */}
+      {/* 7. CUSTOMER INTELLIGENCE */}
       <section id="customer">
         <OwnerPulseCustomerIntel data={pulseData.customerIntelligence} />
       </section>
 
-      {/* 6. GAMING INTELLIGENCE */}
+      {/* 8. GAMING INTELLIGENCE */}
       <section id="gaming">
         <OwnerPulseGamingIntel data={pulseData.gamingIntelligence} />
       </section>
 
-      {/* 7. CAFE INTELLIGENCE */}
+      {/* 9. CAFE INTELLIGENCE */}
       <section id="cafe">
         <OwnerPulseCafeIntel data={pulseData.cafeIntelligence} />
       </section>
 
-      {/* 8. EMPLOYEE INTELLIGENCE */}
+      {/* 10. EMPLOYEE INTELLIGENCE */}
       <section id="employee">
         <OwnerPulseEmployeeIntel employees={pulseData.employeeIntelList} />
       </section>
 
-      {/* 9. FINANCIAL INTELLIGENCE */}
+      {/* 11. FINANCIAL INTELLIGENCE */}
       <section id="financial">
         <OwnerPulseFinancialIntel data={pulseData.financialIntelligence} />
       </section>
 
-      {/* 10. OPERATIONAL HEALTH */}
+      {/* 12. OPERATIONAL HEALTH */}
       <section id="operational">
         <OwnerPulseOperationalHealth data={pulseData.operationalHealth} />
       </section>

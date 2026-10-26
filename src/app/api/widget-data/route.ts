@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { initializeFirebase } from '@/firebase/init';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import type { Station, Bill, GamingPackage } from '@/lib/types';
+import { getBusinessDayRangeKolkata } from '@/lib/metrics-layer';
 
 export const dynamic = 'force-dynamic'; // Ensures this route is always evaluated dynamically
 
@@ -30,15 +31,13 @@ export async function GET(request: Request) {
           return (Date.now() - startTimeMs) < ONE_DAY_MS;
       });
       
-    // 2. Get today's revenue
-    // Get start of today (midnight)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const startOfTodayIso = today.toISOString();
+    // 2. Get today's revenue using Asia/Kolkata 5:00 AM business rollover
+    const { startIso, endIso } = getBusinessDayRangeKolkata(new Date());
     
     const billsQuery = query(
         collection(db, 'bills'),
-        where('timestamp', '>=', startOfTodayIso)
+        where('timestamp', '>=', startIso),
+        where('timestamp', '<=', endIso)
     );
     const billsSnapshot = await getDocs(billsQuery);
     

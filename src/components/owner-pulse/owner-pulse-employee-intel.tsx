@@ -458,20 +458,29 @@ export function OwnerPulseEmployeeIntel({ employees }: EmployeeIntelProps) {
                   </div>
                 </div>
 
-                {/* PERFORMANCE STATS */}
-                <div className="grid grid-cols-2 gap-3 text-xs font-medium pt-1 border-t border-border/40">
+                {/* FAIR NORMALIZED PERFORMANCE STATS (PHASE 4) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-medium pt-2 border-t border-border/40 bg-background/30 p-2.5 rounded-lg">
                   <div className="space-y-0.5">
-                    <span className="text-muted-foreground text-[10px] uppercase font-bold block">Revenue Billed</span>
-                    <span className="text-sm font-extrabold text-foreground font-mono">₹{emp.revenueGenerated.toLocaleString()}</span>
+                    <span className="text-muted-foreground text-[10px] uppercase font-bold block">Rev / Shift Hr</span>
+                    <span className="text-sm font-extrabold text-foreground font-mono">₹{(emp.revenuePerHourWorked || 0).toLocaleString()}<span className="text-[10px] font-normal opacity-70">/hr</span></span>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-muted-foreground text-[10px] uppercase font-bold block">Orders Processed</span>
-                    <span className="text-sm font-extrabold text-foreground">{emp.ordersServed} orders</span>
+                    <span className="text-muted-foreground text-[10px] uppercase font-bold block">Orders / Hr</span>
+                    <span className="text-sm font-extrabold text-foreground font-mono">{emp.ordersPerHourWorked || 0}<span className="text-[10px] font-normal opacity-70">/hr</span></span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-muted-foreground text-[10px] uppercase font-bold block">Total Billed</span>
+                    <span className="text-sm font-bold text-muted-foreground font-mono">₹{emp.revenueGenerated.toLocaleString()}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-muted-foreground text-[10px] uppercase font-bold block">Hours Worked</span>
+                    <span className="text-sm font-bold text-muted-foreground font-mono">{emp.hoursWorkedTotal || 0} hrs</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center text-[11px] font-medium pt-1 text-muted-foreground">
                   <span>Shifts Worked: <strong className="text-foreground">{emp.shiftsWorked}</strong></span>
+                  <span>Orders Processed: <strong className="text-foreground">{emp.ordersServed}</strong></span>
                   <span>Late Arrivals: <strong className={emp.lateArrivalsCount > 0 ? 'text-destructive font-bold' : 'text-emerald-400 font-bold'}>{emp.lateArrivalsCount}</strong></span>
                 </div>
               </div>
