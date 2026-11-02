@@ -93,6 +93,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
     virtualPackage: GamingPackage;
     totalCost: number;
     durationText: string;
+    playerDurations: Record<string, number>;
   } | null>(null);
 
   const [checklist, setChecklist] = useState({ charged: false, cable: false, takenUpstairs: false });
@@ -652,10 +653,9 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
           return;
       }
 
-      const now = new Date();
       let calculatedTotalCost = 0;
-
       const validPlayers = selectedPlayers.filter(Boolean);
+      const playerDurations: Record<string, number> = {};
 
       const finalPlayers = validPlayers.map(p => {
           let configToUse = { ...currentConfig };
@@ -663,8 +663,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
           if (!configToUse || !configToUse.name) return null;
 
           const durationSeconds = configToUse.reminderDuration || configToUse.duration || 0;
-          const endTime = durationSeconds > 0 ? new Date(now.getTime() + durationSeconds * 1000).toISOString() : null;
-          
+          playerDurations[p.id] = durationSeconds;
           calculatedTotalCost += (configToUse.price || 0);
 
           return { 
@@ -672,8 +671,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
               rechargeId: configToUse.rechargeId || null, 
               packageId: configToUse.packageId || null, 
               isNewRecharge: configToUse.mode === 'buy-recharge',
-              startTime: now.toISOString(),
-              endTime: endTime,
+              startTime: null,
+              endTime: null,
               status: 'active' as const,
               remainingTimeOnPause: null
           };
@@ -684,19 +683,18 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
           return;
       }
 
-      let minDuration = 24 * 3600; 
       let sessionName = currentConfig.name || "Standard Session";
-      
-      const virtualPackage: GamingPackage = { id: 'mixed-session', name: sessionName, duration: minDuration, price: 0, validity: 1 };
-      
       const durationSeconds = currentConfig.reminderDuration || currentConfig.duration || 3600;
+      const virtualPackage: GamingPackage = { id: 'mixed-session', name: sessionName, duration: durationSeconds, price: 0, validity: 1 };
       const durationText = currentConfig.name || formatPackageDuration(durationSeconds);
 
+      setChecklist({ charged: false, cable: false, takenUpstairs: false });
       setStartTimerConfirm({
           finalPlayers,
           virtualPackage,
           totalCost: calculatedTotalCost,
-          durationText
+          durationText,
+          playerDurations
       });
   };
 
@@ -709,13 +707,13 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   const handleConfirmAll = () => {
       if (!allPlayersConfigured) return;
-      const syncedNow = getSyncedNow();
       let calculatedTotalCost = 0;
+      const playerDurations: Record<string, number> = {};
       
       const finalPlayers = validPlayers.map(p => {
           const config = configs[p.id];
           const durationSeconds = config.reminderDuration || config.duration || 0;
-          const endTime = durationSeconds > 0 ? new Date(syncedNow + durationSeconds * 1000).toISOString() : null;
+          playerDurations[p.id] = durationSeconds;
           calculatedTotalCost += (config.price || 0);
 
           return { 
@@ -723,8 +721,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
               rechargeId: config.rechargeId || null, 
               packageId: config.packageId || null, 
               isNewRecharge: config.mode === 'buy-recharge',
-              startTime: new Date(syncedNow).toISOString(),
-              endTime: endTime,
+              startTime: null,
+              endTime: null,
               status: 'active' as const,
               remainingTimeOnPause: null
           };
@@ -741,12 +739,43 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
       const firstConfig = configs[validPlayers[0]?.id];
       const durationText = firstConfig?.name || formatPackageDuration(minDuration);
 
+      setChecklist({ charged: false, cable: false, takenUpstairs: false });
       setStartTimerConfirm({
           finalPlayers,
           virtualPackage,
           totalCost: calculatedTotalCost,
-          durationText
+          durationText,
+          playerDurations
       });
+  };
+
+  const handleStartTimerFromConfirm = () => {
+      if (!startTimerConfirm) return;
+      if (!isAllChecked) {
+          toast({
+              variant: 'destructive',
+              title: "Checklist Incomplete",
+              description: "Please tick all 3 checkboxes before starting the timer."
+          });
+          return;
+      }
+
+      const syncedNow = getSyncedNow();
+      const freshStartTime = new Date(syncedNow).toISOString();
+
+      const freshPlayers: AssignedMember[] = startTimerConfirm.finalPlayers.map(p => {
+          const durationSeconds = startTimerConfirm.playerDurations[p.id] || 0;
+          return {
+              ...p,
+              startTime: freshStartTime,
+              endTime: durationSeconds > 0 ? new Date(syncedNow + durationSeconds * 1000).toISOString() : null,
+              status: 'active' as const,
+              remainingTimeOnPause: null
+          };
+      });
+
+      onConfirm(freshPlayers, startTimerConfirm.virtualPackage);
+      setStartTimerConfirm(null);
   };
 
   if (!station) return null;
@@ -927,18 +956,17 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
               <Button
                 type="button"
-                onClick={() => {
-                  onConfirm(startTimerConfirm.finalPlayers, startTimerConfirm.virtualPackage);
-                  setStartTimerConfirm(null);
-                }}
+                disabled={!isAllChecked}
+                onClick={handleStartTimerFromConfirm}
                 className={cn(
-                  "flex-1 h-14 text-base font-extrabold uppercase transition-all shadow-2xl rounded-xl gap-2 tracking-wide active:scale-[0.98]",
+                  "flex-1 h-14 text-base font-extrabold uppercase transition-all shadow-2xl rounded-xl gap-2 tracking-wide",
                   isAllChecked 
-                    ? "bg-emerald-500 hover:bg-emerald-600 text-black ring-2 ring-emerald-400/30" 
-                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/30 active:scale-[0.98] ring-2 ring-primary/40 cursor-pointer" 
+                    : "bg-zinc-900 border border-zinc-800 text-zinc-500 cursor-not-allowed opacity-50"
                 )}
               >
-                <Play className="h-5 w-5 fill-current" /> {isAllChecked ? '✓ ALL READY - START TIMER' : 'START TIMER'}
+                <Play className="h-5 w-5 fill-current" /> 
+                {isAllChecked ? 'START TIMER' : 'START TIMER (TICK ALL 3 BOXES)'}
               </Button>
             </div>
           </div>
