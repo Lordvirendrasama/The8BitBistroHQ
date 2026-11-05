@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { updateStation } from '@/firebase/firestore/stations';
+import { reconcileMemberBalance, isRechargeValid } from '@/firebase/firestore/members';
 import { useCustomerView } from '@/context/customer-view-context';
 import { useAuth } from '@/firebase/auth/use-user';
 import { getSyncedNow } from '@/lib/synced-time';
@@ -89,21 +90,22 @@ const IndividualPlayerTimer = ({
             // Pool Balance Lookup
             const memberData = allMembers?.find(m => m.id === member.id);
             if (memberData && memberData.recharges) {
+                const now = new Date();
                 const totalPool = memberData.recharges
-                    .filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                    .filter(r => isRechargeValid(r, now) && r.remainingDuration > 0)
                     .reduce((sum: number, r) => sum + r.remainingDuration, 0);
 
-                if (isRunning && member.startTime) {
+                if (isRunning && member.startTime && member.rechargeId) {
                     const now = getSyncedNow();
                     const startTs = new Date(member.startTime).getTime();
                     const elapsed = Math.max(0, (now - startTs) / 1000);
                     
                     // The member's predicted account balance (Total Pool - Live Elapsed)
                     setPoolRem(Math.max(0, totalPool - elapsed));
-                } else if (isPaused) {
+                } else if (isPaused && member.rechargeId) {
                     // For paused sessions, we need to know how much was played before pause
                     // If they are explicitly using a recharge/pool session
-                    if (member.rechargeId && member.startTime && member.endTime) {
+                    if (member.startTime && member.endTime) {
                        const startTs = new Date(member.startTime).getTime();
                        const endTs = new Date(member.endTime).getTime();
                        const totalDuration = (endTs - startTs) / 1000;
@@ -208,6 +210,37 @@ export function TimerCard({
     };
 
     try {
+      // Reconcile any active prepaid members before resetting so elapsed gameplay time is never lost
+      const nowMs = getSyncedNow();
+      for (const m of (station.members || [])) {
+        const isPrepaid = m.billingType === 'prepaid' || (!!m.rechargeId && !m.isNewRecharge);
+        if (isPrepaid && !m.id.startsWith('guest-')) {
+          const startIso = m.startTime || station.startTime;
+          const endIso = m.endTime || station.endTime;
+          let elapsed = Number.isFinite(m.consumedSeconds) ? m.consumedSeconds! : 0;
+          if (startIso && m.status !== 'finished') {
+            const rawStartMs = new Date(startIso).getTime();
+            const startMs = !isNaN(rawStartMs) ? rawStartMs : nowMs;
+            const rawEndMs = endIso ? new Date(endIso).getTime() : NaN;
+            const endMs = !isNaN(rawEndMs) ? rawEndMs : startMs + (m.allocatedSeconds || 3600) * 1000;
+            const totalPossible = Math.max(0, Math.floor((endMs - startMs) / 1000));
+            let rem = 0;
+            if ((station.status === 'paused' || m.status === 'paused') && (m.remainingTimeOnPause != null || station.remainingTimeOnPause != null)) {
+              rem = Number(m.remainingTimeOnPause ?? station.remainingTimeOnPause ?? 0);
+            } else if (endIso && nowMs < endMs) {
+              rem = Math.max(0, Math.floor((endMs - nowMs) / 1000));
+            }
+            if (isNaN(rem)) rem = 0;
+            elapsed = Math.max(0, totalPossible - rem);
+          }
+          const totalAllocated = Number.isFinite(m.allocatedSeconds) ? m.allocatedSeconds! : 3600;
+          const entitledPlayed = Math.min(totalAllocated, isNaN(elapsed) ? 0 : elapsed);
+          const alreadyDeducted = Number.isFinite(m.consumedSeconds) ? m.consumedSeconds! : 0;
+          const deltaDeduct = Math.max(0, entitledPlayed - alreadyDeducted);
+          await reconcileMemberBalance(m.id, totalAllocated, deltaDeduct, m.rechargeId);
+        }
+      }
+
       setLastCancelledBackup(backupSnapshot);
       await updateStation(station.id, {
         status: 'available',
@@ -220,6 +253,7 @@ export function TimerCard({
         remainingTimeOnPause: null,
         packageName: null,
         finishingStartTime: null,
+        checkoutProcessed: false,
       });
 
       toast({
@@ -518,8 +552,9 @@ export function TimerCard({
                     {(() => {
                         const memberData = allMembers?.find(m => m.id === shortestMember.id);
                         if (!memberData || !memberData.recharges) return null;
+                        const now = new Date();
                         const balance = memberData.recharges
-                            .filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                            .filter(r => isRechargeValid(r, now) && r.remainingDuration > 0)
                             .reduce((sum: number, r) => sum + r.remainingDuration, 0);
                         
                         if (balance <= 0) return null;

@@ -77,6 +77,7 @@
     "@types/wav": "^1.0.4",
     "genkit-cli": "^1.20.0",
     "postcss": "^8",
+    "puppeteer-core": "^25.16.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }

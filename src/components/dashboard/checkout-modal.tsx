@@ -71,36 +71,86 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
   useEffect(() => {
     if (isOpen && station) {
         let items = station.currentBill ? [...station.currentBill] : [];
-        const hasSessionItems = items.some(i => 
-            i.name.startsWith('Time:') || 
-            i.name.startsWith('Recharge:') || 
-            i.name.startsWith('Buy Recharge:')
-        );
-
         const isWalkInOrNoTimer = station.packageName === 'Walk-in Order' || !station.endTime;
 
-        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0 && !isWalkInOrNoTimer) {
-            const isRecharge = station.packageName?.startsWith('Recharge: ');
-            if (!isRecharge) {
-                let durMins = 60;
-                if (station.startTime && station.endTime) {
-                    const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
-                    durMins = Math.max(1, Math.round(diff / 60000));
-                }
-                const count = station.members.length;
-                const perPlayerPrice = calculatePlayerPrice(station.type || 'ps5', count, durMins);
-                const durText = durMins >= 60 ? `${durMins / 60} Hour` : `${durMins} Min`;
-
-                const synthesizedItems: BillItem[] = station.members.map(m => ({
-                    itemId: `time-${m.id}`,
-                    name: `Time: ${durText} Session (${m.name})`,
-                    price: perPlayerPrice,
-                    quantity: 1,
-                    addedAt: station.startTime || new Date().toISOString()
-                }));
-
-                items = [...synthesizedItems, ...items];
+        if (station.status !== 'available' && station.members && station.members.length > 0 && !isWalkInOrNoTimer) {
+            let durMins = 60;
+            if (station.startTime && station.endTime) {
+                const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
+                durMins = Math.max(1, Math.round(diff / 60000));
             }
+            const durText = durMins >= 60 ? `${durMins / 60} Hour` : `${durMins} Min`;
+            const count = station.members.length;
+
+            station.members.forEach(m => {
+                const isPrepaid = m.billingType === 'prepaid' || (!!m.rechargeId && !m.isNewRecharge);
+                const isRechargePurchase = m.billingType === 'recharge_purchase' || !!m.isNewRecharge;
+
+                // 1. Walk-in session items: only for walk-in players
+                if (!isPrepaid && !isRechargePurchase) {
+                    const hasItem = items.some(i => i.memberId === m.id || i.itemId === `time-${m.id}` || i.name.toLowerCase().includes(`(${m.name.toLowerCase()})`));
+                    if (!hasItem) {
+                        const perPlayerPrice = calculatePlayerPrice(station.type || 'ps5', count, durMins);
+                        items.push({
+                            itemId: `time-${m.id}`,
+                            name: `Time: ${durText} Session (${m.name})`,
+                            price: perPlayerPrice,
+                            quantity: 1,
+                            billingType: 'walk_in',
+                            memberId: m.id,
+                            addedAt: station.startTime || new Date().toISOString()
+                        });
+                    }
+                }
+
+                // 2. Recharge purchases: ensure new pack is charged at pack price
+                if (isRechargePurchase) {
+                    const hasItem = items.some(i => (i.billingType === 'recharge_purchase' || i.name.startsWith('Buy Recharge:')) && (i.memberId === m.id || i.name.toLowerCase().includes(`(${m.name.toLowerCase()})`)));
+                    if (!hasItem && m.packageId) {
+                        const pkg = gamingPackages.find(p => p.id === m.packageId);
+                        if (pkg) {
+                            items.push({
+                                itemId: `recharge-${m.id}`,
+                                name: `Buy Recharge: ${pkg.name} (${m.name})`,
+                                price: pkg.price,
+                                quantity: 1,
+                                billingType: 'recharge_purchase',
+                                memberId: m.id,
+                                addedAt: station.startTime || new Date().toISOString()
+                            });
+                        }
+                    }
+                }
+
+                // 3. Overtime detection for all players (including prepaid and recharge purchase)
+                const endMs = m.endTime ? new Date(m.endTime).getTime() : 0;
+                const nowMs = getSyncedNow();
+                let otSecs = 0;
+                if (station.status === 'paused' || m.status === 'paused') {
+                    if (m.remainingTimeOnPause === 0 && station.pauseStartTime && endMs > 0) {
+                        otSecs = Math.max(0, Math.floor((new Date(station.pauseStartTime).getTime() - endMs) / 1000));
+                    }
+                } else if (endMs > 0 && nowMs > endMs) {
+                    otSecs = Math.max(0, Math.floor((nowMs - endMs) / 1000));
+                }
+
+                if (otSecs > 300) {
+                    const otMins = Math.ceil(otSecs / 60);
+                    const hasOt = items.some(i => (i.billingType === 'overtime' || i.name.startsWith('Overtime:')) && (i.memberId === m.id || i.name.toLowerCase().includes(`(${m.name.toLowerCase()})`)));
+                    if (!hasOt) {
+                        const otPrice = calculatePlayerPrice(station.type || 'ps5', count, otMins);
+                        items.push({
+                            itemId: `overtime-${m.id}`,
+                            name: `Overtime: ${otMins}m (${m.name})`,
+                            price: otPrice,
+                            quantity: 1,
+                            billingType: 'overtime',
+                            memberId: m.id,
+                            addedAt: new Date().toISOString()
+                        });
+                    }
+                }
+            });
         }
 
         setBillItems(items);
@@ -158,22 +208,17 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     if (hasItemizedSessionItems) return null;
     if (billItems.some(i => i.name === station.packageName)) return null;
     const isRechargeUsed = station.packageName.toLowerCase().startsWith('recharge: ');
-    
-    // SMART CHECK: Even if not started as "Recharge:", if the members HAVE balance, we treat it as prepaid
-    const membersWithPool = members.filter(am => {
-        const mData = allMembers.find(m => m.id === am.id);
-        return (mData?.recharges || []).some(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0);
-    });
-    const autoUsePool = membersWithPool.length > 0;
-
     const isRechargeBought = station.packageName.toLowerCase().startsWith('buy recharge: ');
     const pureName = station.packageName.replace(/^(Recharge: |Buy Recharge: )/i, '').trim();
     const pkg = gamingPackages.find(p => p.name.toLowerCase().trim() === pureName.toLowerCase());
     const playerCount = members.length > 0 ? members.length : 1;
 
     let total = 0;
-    if (isRechargeUsed || autoUsePool) {
+    if (isRechargeUsed) {
       total = 0;
+    } else if (isRechargeBought) {
+      const buyCount = station.members.filter(m => m.isNewRecharge).length || 1;
+      total = pkg ? (pkg.price * buyCount) : 0;
     } else if (pkg) {
       const capacity = pkg.playerCapacity || 1;
       total = pkg.price * Math.ceil(playerCount / capacity);
@@ -190,7 +235,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
         name: station.packageName, 
         purePackage: pkg, 
         total, 
-        isExistingRecharge: isRechargeUsed || autoUsePool, 
+        isExistingRecharge: isRechargeUsed, 
         isNewRechargePurchase: isRechargeBought 
     };
 
@@ -198,7 +243,7 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
 
 
   const { db } = useFirebase();
-  const debtsQuery = useMemo(() => (!db ? null : query(collection(db, 'debts'), where('status', '==', 'pending'))), [db]);
+  const debtsQuery = useMemo(() => (!db || !isOpen ? null : query(collection(db, 'debts'), where('status', '==', 'pending'))), [db, isOpen]);
   const { data: allPendingDebts } = useCollection<Debt>(debtsQuery);
   const [appliedDebtIds, setAppliedDebtIds] = useState<string[]>([]);
 
@@ -347,10 +392,10 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     if (!station) return;
     const finalDiscount = Math.max(0, parseFloat(discountInput) || 0);
     onSaveBill(station.id, billItems, finalDiscount);
-    if (realMembersInSession.length > 0) {
-      setStep('member-xp');
-    } else if (finalBillTotal === 0) {
+    if (finalBillTotal === 0) {
       handleCheckout('recharge');
+    } else if (realMembersInSession.length > 0) {
+      setStep('member-xp');
     } else {
       setStep('payment-method');
     }
@@ -429,64 +474,74 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
     if (!station || isClosing) return;
     setIsClosing(true);
     playCoinSound();
-    await handleSettleDebts();
-    onConfirmCheckout(
-      station.id, 
-      finalBillTotal, 
-      billItems, 
-      discount, 
-      method, 
-      cash, 
-      upi, 
-      initialPackageInfo?.isNewRechargePurchase, 
-      initialPackageInfo?.purePackage,
-      debtAdjustmentPayload
-    );
+    try {
+      await handleSettleDebts();
+      await onConfirmCheckout(
+        station.id, 
+        finalBillTotal, 
+        billItems, 
+        discount, 
+        method, 
+        cash, 
+        upi, 
+        initialPackageInfo?.isNewRechargePurchase, 
+        initialPackageInfo?.purePackage,
+        debtAdjustmentPayload
+      );
+    } catch (err) {
+      console.error("Error during checkout:", err);
+      setIsClosing(false);
+    }
   };
 
   const handlePendingConfirm = async () => {
     if (!station || !user || isClosing) return;
     setIsClosing(true);
-    const paid = parseFloat(paidNow) || 0;
-    const diff = finalBillTotal - paid;
-    
-    // First clear old settled debts so balance isn't double-recorded
-    await handleSettleDebts();
+    try {
+      const paid = parseFloat(paidNow) || 0;
+      const diff = finalBillTotal - paid;
+      
+      // First clear old settled debts so balance isn't double-recorded
+      await handleSettleDebts();
 
-    if (diff > 0) {
-      await recordDebt({ 
-        type: 'receivable', 
-        contactName, 
-        contactPhone, 
-        amount: diff, 
-        originalAmount: finalBillTotal, 
-        description: `Pending for ${station.name}`, 
-        memberId: ((station.members || [])[0]?.id && (station.members || [])[0]?.id.startsWith('guest-')) ? undefined : (station.members || [])[0]?.id 
-      }, user);
-    } else if (diff < 0) {
-      await recordDebt({ 
-        type: 'payable', 
-        contactName, 
-        contactPhone, 
-        amount: Math.abs(diff), 
-        originalAmount: finalBillTotal, 
-        description: `Overpayment change for ${station.name}`, 
-        memberId: ((station.members || [])[0]?.id && (station.members || [])[0]?.id.startsWith('guest-')) ? undefined : (station.members || [])[0]?.id 
-      }, user);
+      if (diff > 0) {
+        await recordDebt({ 
+          type: 'receivable', 
+          contactName, 
+          contactPhone, 
+          amount: diff, 
+          originalAmount: finalBillTotal, 
+          description: `Pending for ${station.name}`, 
+          memberId: ((station.members || [])[0]?.id && (station.members || [])[0]?.id.startsWith('guest-')) ? undefined : (station.members || [])[0]?.id 
+        }, user);
+      } else if (diff < 0) {
+        await recordDebt({ 
+          type: 'payable', 
+          contactName, 
+          contactPhone, 
+          amount: Math.abs(diff), 
+          originalAmount: finalBillTotal, 
+          description: `Overpayment change for ${station.name}`, 
+          memberId: ((station.members || [])[0]?.id && (station.members || [])[0]?.id.startsWith('guest-')) ? undefined : (station.members || [])[0]?.id 
+        }, user);
+      }
+
+      await onConfirmCheckout(
+        station.id, 
+        finalBillTotal, 
+        billItems, 
+        discount, 
+        'pending', 
+        paid, 
+        0, 
+        initialPackageInfo?.isNewRechargePurchase, 
+        initialPackageInfo?.purePackage,
+        debtAdjustmentPayload
+      );
+    } catch (err) {
+      console.error("Error during pending checkout:", err);
+      setIsClosing(false);
     }
-
-    onConfirmCheckout(
-      station.id, 
-      finalBillTotal, 
-      billItems, 
-      discount, 
-      'pending', 
-      paid, 
-      0, 
-      initialPackageInfo?.isNewRechargePurchase, 
-      initialPackageInfo?.purePackage,
-      debtAdjustmentPayload
-    );
   };
 
   return (
@@ -502,7 +557,10 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                     {step === 'checkout-success' && <><CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /> <span className="truncate">CHECKOUT COMPLETE</span></>}
                 </DialogTitle>
                 <button
-                    onClick={() => !isClosing && onOpenChange(false)}
+                    onClick={() => {
+                        setIsClosing(false);
+                        onOpenChange(false);
+                    }}
                     className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted/80 active:scale-95 transition-colors text-muted-foreground hover:text-foreground shrink-0"
                     aria-label="Close dialog"
                 >
@@ -518,6 +576,33 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                             <p className={cn("text-3xl sm:text-5xl font-bold font-mono tracking-tight", finalBillTotal === 0 ? "text-emerald-600" : "text-primary")}>₹{finalBillTotal.toLocaleString()}</p>
                             {finalBillTotal === 0 && <div className="flex items-center justify-center gap-1 mt-1 text-xs sm:text-sm font-bold uppercase text-emerald-600 tracking-normal"><CheckCircle2 className="h-3 w-3" />Balance Covered</div>}
                         </div>
+
+                        {/* Time usage breakdown for prepaid recharge sessions */}
+                        {station?.members?.some(m => m.billingType === 'prepaid' || (!!m.rechargeId && !m.isNewRecharge)) && (
+                            <div className="space-y-1.5">
+                                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-normal text-muted-foreground flex items-center gap-1.5 pl-1">
+                                    <Clock className="h-3.5 w-3.5 text-primary" /> Recharge Time Used
+                                </h3>
+                                {(station.members ?? []).filter(m => m.billingType === 'prepaid' || (!!m.rechargeId && !m.isNewRecharge)).map(m => {
+                                    const consumed = m.consumedSeconds ?? playedSecondsPerPlayer;
+                                    const allocated = m.allocatedSeconds ?? 0;
+                                    const remaining = allocated > 0
+                                        ? Math.max(0, allocated - consumed)
+                                        : null;
+                                    return (
+                                        <div key={m.id} className="flex justify-between items-center p-2.5 rounded-xl bg-card border-2 shadow-xs gap-2">
+                                            <span className="font-bold text-xs sm:text-sm uppercase truncate text-foreground">{m.name}</span>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <span className="text-xs font-bold font-mono text-primary">Used: {formatBalance(consumed)}</span>
+                                                {remaining !== null && (
+                                                    <span className="text-xs font-bold font-mono text-emerald-500">Left: {formatBalance(remaining)}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {matchingDebts.length > 0 && (
                             <div className="space-y-2">
@@ -675,8 +760,8 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
                                 const isPurchaser = idx === 0 && initialPackageInfo?.isNewRechargePurchase;
                                 const currentBalanceSeconds = (member.recharges || []).filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0).reduce((sum, r) => sum + r.remainingDuration, 0);
                                 const newPackDuration = isPurchaser ? (initialPackageInfo?.purePackage?.duration || 0) : 0;
-                                const totalGroupManSeconds = playedSecondsPerPlayer * (station?.members || []).length;
-                                const deduction = (isProvidingRecharge || isPurchaser) ? totalGroupManSeconds : 0;
+                                const memberPlayedSeconds = assignedMember?.consumedSeconds || playedSecondsPerPlayer;
+                                const deduction = (isProvidingRecharge || isPurchaser) ? memberPlayedSeconds : 0;
                                 const previewBalance = Math.max(0, (currentBalanceSeconds + newPackDuration) - deduction);
                                 const hasAnyBalanceContext = currentBalanceSeconds > 0 || isPurchaser;
                                 return (
@@ -1075,8 +1160,26 @@ export function CheckoutModal({ isOpen, onOpenChange, station, gamingPackages, o
             </ScrollArea>
 
             <DialogFooter className="px-4 py-3 sm:py-3.5 pb-3 sm:pb-3.5 pb-safe border-t bg-muted/10 shrink-0">
-                {step === 'review-bill' && <Button disabled={isClosing} onClick={handleContinueToPayment} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 && realMembersInSession.length === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
-                {step === 'member-xp' && <Button disabled={isClosing} onClick={handleConfirmRewards} className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]">{finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} <ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
+                {step === 'review-bill' && (
+                    <Button 
+                        disabled={isClosing} 
+                        onClick={handleContinueToPayment} 
+                        className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]"
+                    >
+                        {isClosing ? 'PROCESSING...' : finalBillTotal === 0 ? 'SETTLE & CLOSE' : 'CONTINUE TO PAYMENT'} 
+                        <ChevronRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                )}
+                {step === 'member-xp' && (
+                    <Button 
+                        disabled={isClosing} 
+                        onClick={handleConfirmRewards} 
+                        className="w-full h-12 font-display text-sm uppercase tracking-normal shadow-xl active:scale-[0.99]"
+                    >
+                        {isClosing ? 'PROCESSING...' : finalBillTotal === 0 ? 'COMPLETE SETTLEMENT' : 'CONFIRM REWARDS & PAY'} 
+                        <ChevronRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                )}
                 {step === 'payment-method' && (
                     <div className="flex items-center gap-2 w-full">
                         <Button variant="ghost" disabled={isClosing} onClick={() => setStep('review-bill')} className="h-12 px-3 font-bold uppercase text-xs sm:text-sm tracking-normal">

@@ -19,7 +19,7 @@ import { StickyNote, Send, History, PencilLine, Clock, CheckCircle2, Circle, Eye
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
@@ -48,14 +48,16 @@ export function StaffNotepad() {
       // Viren sees ALL staff briefings
       return query(
         baseQuery,
-        where('type', '==', 'STAFF_NOTE')
+        where('type', '==', 'STAFF_NOTE'),
+        limit(30)
       );
     } else {
       // Staff see only their own history
       return query(
         baseQuery,
         where('triggeredBy.username', '==', user.username),
-        where('type', '==', 'STAFF_NOTE')
+        where('type', '==', 'STAFF_NOTE'),
+        limit(30)
       );
     }
   }, [db, user, isOwner]);

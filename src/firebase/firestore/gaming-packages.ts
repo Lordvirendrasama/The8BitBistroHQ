@@ -5,7 +5,7 @@ import type { GamingPackage, GamingPackageFormData, LogEntry } from '@/lib/types
 
 
 const createLogEntry = (
-  db: ReturnType<typeof getFirestore>, 
+  db: ReturnType<typeof getFirestore>,
   batch: ReturnType<typeof writeBatch>,
   entry: Omit<LogEntry, 'id' | 'timestamp' | 'user'>
 ) => {
@@ -38,9 +38,9 @@ export const addGamingPackage = async (packageData: GamingPackageFormData) => {
     batch.set(newPackageRef, dataToAdd);
 
     createLogEntry(db, batch, {
-        type: 'SETTINGS_UPDATED',
-        description: `Created a new gaming package: <strong>${dataToAdd.name}</strong>.`,
-        details: { packageId: newPackageRef.id, packageData: dataToAdd }
+      type: 'SETTINGS_UPDATED',
+      description: `Created a new gaming package: <strong>${dataToAdd.name}</strong>.`,
+      details: { packageId: newPackageRef.id, packageData: dataToAdd }
     });
     await batch.commit();
     return newPackageRef.id;
@@ -51,103 +51,103 @@ export const addGamingPackage = async (packageData: GamingPackageFormData) => {
 };
 
 export const updateGamingPackage = async (packageId: string, packageData: Partial<GamingPackageFormData>) => {
-    const db = getFirestore();
-    const batch = writeBatch(db);
-    const packageRef = doc(db, 'gamingPackages', packageId);
-    try {
-        const dataToUpdate: { [key: string]: any } = {};
-        const dataToLog: { [key: string]: any } = {};
+  const db = getFirestore();
+  const batch = writeBatch(db);
+  const packageRef = doc(db, 'gamingPackages', packageId);
+  try {
+    const dataToUpdate: { [key: string]: any } = {};
+    const dataToLog: { [key: string]: any } = {};
 
-        Object.entries(packageData).forEach(([k, v]) => {
-            if (v !== undefined) {
-                dataToUpdate[k] = v;
-                dataToLog[k] = v;
-            }
-        });
+    Object.entries(packageData).forEach(([k, v]) => {
+      if (v !== undefined) {
+        dataToUpdate[k] = v;
+        dataToLog[k] = v;
+      }
+    });
 
-        if (packageData.startTime === undefined) {
-            dataToUpdate.startTime = deleteField();
-        }
-        if (packageData.endTime === undefined) {
-            dataToUpdate.endTime = deleteField();
-        }
-        if (packageData.stationType === undefined) {
-            dataToUpdate.stationType = deleteField();
-        }
-
-        batch.update(packageRef, dataToUpdate);
-        
-        createLogEntry(db, batch, {
-            type: 'SETTINGS_UPDATED',
-            description: `Updated details for gaming package <strong>${packageData.name || 'ID: ' + packageId}</strong>.`,
-            details: { packageId, updates: dataToLog }
-        });
-        await batch.commit();
-    } catch (e) {
-        console.error("Error updating gaming package: ", e);
+    if (packageData.startTime === undefined) {
+      dataToUpdate.startTime = deleteField();
     }
+    if (packageData.endTime === undefined) {
+      dataToUpdate.endTime = deleteField();
+    }
+    if (packageData.stationType === undefined) {
+      dataToUpdate.stationType = deleteField();
+    }
+
+    batch.update(packageRef, dataToUpdate);
+
+    createLogEntry(db, batch, {
+      type: 'SETTINGS_UPDATED',
+      description: `Updated details for gaming package <strong>${packageData.name || 'ID: ' + packageId}</strong>.`,
+      details: { packageId, updates: dataToLog }
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error("Error updating gaming package: ", e);
+  }
 }
 
 export const deleteGamingPackage = async (packageId: string, packageName: string) => {
-    const db = getFirestore();
-    const batch = writeBatch(db);
-    const packageRef = doc(db, 'gamingPackages', packageId);
-    try {
-        batch.delete(packageRef);
-        createLogEntry(db, batch, {
-            type: 'SETTINGS_UPDATED',
-            description: `Deleted gaming package <strong>${packageName}</strong>.`,
-            details: { packageId, packageName }
-        });
-        await batch.commit();
-    } catch (e) {
-        console.error("Error deleting gaming package: ", e);
-    }
+  const db = getFirestore();
+  const batch = writeBatch(db);
+  const packageRef = doc(db, 'gamingPackages', packageId);
+  try {
+    batch.delete(packageRef);
+    createLogEntry(db, batch, {
+      type: 'SETTINGS_UPDATED',
+      description: `Deleted gaming package <strong>${packageName}</strong>.`,
+      details: { packageId, packageName }
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error("Error deleting gaming package: ", e);
+  }
 }
 
-export const migratePackageDurations = async (): Promise<{success: boolean, migratedCount: number}> => {
-    const db = getFirestore();
-    const packagesRef = collection(db, 'gamingPackages');
-    const snapshot = await getDocs(packagesRef);
-    
-    if (snapshot.empty) {
-        return { success: true, migratedCount: 0 };
-    }
+export const migratePackageDurations = async (): Promise<{ success: boolean, migratedCount: number }> => {
+  const db = getFirestore();
+  const packagesRef = collection(db, 'gamingPackages');
+  const snapshot = await getDocs(packagesRef);
 
-    const batch = writeBatch(db);
-    let migratedCount = 0;
-
-    snapshot.forEach(doc => {
-        const pkg = doc.data() as GamingPackage;
-        // Assume durations under 1000 are in minutes and need migration.
-        // This is a heuristic to avoid re-migrating.
-        if (pkg.duration && pkg.duration < 1000) {
-            batch.update(doc.ref, { duration: pkg.duration * 60 });
-            migratedCount++;
-        }
-    });
-
-    if (migratedCount > 0) {
-        try {
-            await batch.commit();
-            // Also log this action
-            const logRef = doc(collection(db, 'logs'));
-            const logBatch = writeBatch(db);
-            createLogEntry(db, logBatch, {
-                type: 'DATA_ACTION',
-                description: `Migrated <strong>${migratedCount}</strong> gaming package durations from minutes to seconds.`,
-                details: { migratedCount }
-            });
-            await logBatch.commit();
-
-            return { success: true, migratedCount };
-        } catch (e) {
-            console.error("Error migrating package durations: ", e);
-            return { success: false, migratedCount: 0 };
-        }
-    }
-
+  if (snapshot.empty) {
     return { success: true, migratedCount: 0 };
+  }
+
+  const batch = writeBatch(db);
+  let migratedCount = 0;
+
+  snapshot.forEach(doc => {
+    const pkg = doc.data() as GamingPackage;
+    // Assume durations under 1000 are in minutes and need migration.
+    // This is a heuristic to avoid re-migrating.
+    if (pkg.duration && pkg.duration < 1000) {
+      batch.update(doc.ref, { duration: pkg.duration * 60 });
+      migratedCount++;
+    }
+  });
+
+  if (migratedCount > 0) {
+    try {
+      await batch.commit();
+      // Also log this action
+      const logRef = doc(collection(db, 'logs'));
+      const logBatch = writeBatch(db);
+      createLogEntry(db, logBatch, {
+        type: 'DATA_ACTION',
+        description: `Migrated <strong>${migratedCount}</strong> gaming package durations from minutes to seconds.`,
+        details: { migratedCount }
+      });
+      await logBatch.commit();
+
+      return { success: true, migratedCount };
+    } catch (e) {
+      console.error("Error migrating package durations: ", e);
+      return { success: false, migratedCount: 0 };
+    }
+  }
+
+  return { success: true, migratedCount: 0 };
 }
 
 export const seedDefaultRateCardPackages = async (): Promise<number> => {
@@ -401,9 +401,9 @@ export const convertAllGamingPackagesToRechargePacks = async (): Promise<number>
     const needsRechargePack = !data.isRechargePack;
     const needsValidity = !data.validity || data.validity <= 0;
     if (needsRechargePack || needsValidity) {
-      batch.update(docSnap.ref, { 
+      batch.update(docSnap.ref, {
         isRechargePack: true,
-        validity: data.validity && data.validity > 0 ? data.validity : 1 
+        validity: data.validity && data.validity > 0 ? data.validity : 1
       });
       count++;
     }
@@ -424,8 +424,8 @@ export const convertAllGamingPackagesToRechargePacks = async (): Promise<number>
  * Bulk updates the recharge status and validity for multiple packages.
  */
 export const bulkUpdatePackageRechargeStatus = async (
-  packageIds: string[], 
-  isRechargePack: boolean, 
+  packageIds: string[],
+  isRechargePack: boolean,
   validity?: number
 ): Promise<number> => {
   if (packageIds.length === 0) return 0;
@@ -455,7 +455,7 @@ export const bulkUpdatePackageRechargeStatus = async (
  * Bulk updates validity (in days, e.g. 1 = 24h) for multiple packages.
  */
 export const bulkUpdatePackageValidity = async (
-  packageIds: string[], 
+  packageIds: string[],
   validityDays: number
 ): Promise<number> => {
   if (packageIds.length === 0 || validityDays <= 0) return 0;

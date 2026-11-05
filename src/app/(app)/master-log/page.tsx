@@ -2,7 +2,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, where, WhereFilterOp } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, WhereFilterOp } from 'firebase/firestore';
 import type { LogEntry, LogEntryType } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -108,10 +108,10 @@ export default function MasterLogPage() {
 
     if (selectedLogTypes.length > 0) {
       // The query requires an index. Removing orderBy to avoid this. Sorting will be done client-side.
-      return query(logsCollection, where('type', 'in', selectedLogTypes));
+      return query(logsCollection, where('type', 'in', selectedLogTypes), limit(100));
     }
 
-    return query(logsCollection, orderBy('timestamp', 'desc'));
+    return query(logsCollection, orderBy('timestamp', 'desc'), limit(100));
   }, [db, selectedLogTypes]);
 
   const { data: logs, loading, error } = useCollection<LogEntry>(logsQuery);

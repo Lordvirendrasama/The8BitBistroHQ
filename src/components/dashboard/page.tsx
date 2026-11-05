@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem, MemberTier, StationStatus } from '@/lib/types';
+import type { Station, Member, AssignedMember, GamingPackage, FoodItem, BillItem, MemberTier, StationStatus, PaymentMethod, Bill } from '@/lib/types';
 import { TimerCard } from '@/components/dashboard/timer-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

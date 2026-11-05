@@ -1,11 +1,14 @@
 export type MemberTier = 'Red' | 'Green' | 'Gold';
 
+export type SessionBillingType = 'walk_in' | 'prepaid' | 'recharge_purchase';
+
 export interface MemberRecharge {
   id: string;
   packageId: string;
   packageName: string;
   totalDuration: number; // in seconds
   remainingDuration: number; // in seconds
+  reservedDuration?: number; // active reserved duration in seconds
   purchaseDate: string;
   expiryDate: string;
   pricePaid: number;
@@ -237,9 +240,13 @@ export interface AssignedMember {
   id: string;
   name: string;
   avatarUrl: string;
+  billingType?: SessionBillingType; // Explicit structured billing type
   rechargeId?: string | null; // Specific recharge being used
   packageId?: string | null; // Specific walk-in package being used
   isNewRecharge?: boolean; // Flag if they are buying a recharge pack at start
+  allocatedSeconds?: number; // Total prepaid or purchased seconds allocated
+  consumedSeconds?: number; // Total seconds actually consumed
+  rechargeProcessed?: boolean; // Idempotency flag preventing double-deduction
   startTime?: string | null;
   endTime?: string | null;
   remainingTimeOnPause?: number | null; // in seconds
@@ -253,6 +260,8 @@ export interface BillItem {
   price: number;
   quantity: number;
   addedAt?: string;
+  billingType?: SessionBillingType | 'food' | 'custom' | 'overtime';
+  memberId?: string;
 }
 
 export type PaymentMethod = 'cash' | 'upi' | 'split' | 'pending' | 'recharge' | 'district-dinein';
@@ -262,6 +271,8 @@ export interface Bill {
   stationId: string;
   stationName: string;
   packageName?: string;
+  billingType?: SessionBillingType | 'mixed';
+  checkoutProcessed?: boolean;
   members: AssignedMember[];
   items: BillItem[];
   initialPackagePrice: number;
@@ -293,6 +304,8 @@ export interface Station {
   name: string;
   type: 'ps5' | 'ps4' | 'boardgame' | 'retrogaming';
   status: StationStatus;
+  billingType?: SessionBillingType | 'mixed';
+  checkoutProcessed?: boolean;
   startTime: string | null;
   endTime: string | null;
   pauseStartTime?: string | null;

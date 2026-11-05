@@ -107,7 +107,7 @@ export function GamingPackagesManager() {
       const count = await convertAllGamingPackagesToRechargePacks();
       toast({
         title: 'Packages Converted!',
-        description: `Successfully converted ${count} gaming packages to prepaid Recharge Packs (24-hour validity).`,
+        description: `Successfully converted ${count} gaming packages to prepaid Recharge Packs (30-day validity).`,
       });
       logUserAction("Converted gaming packages to recharge packs", { count });
     } catch (e) {

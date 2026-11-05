@@ -53,43 +53,93 @@ export function BillModal({
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch bills to determine real popularity (optional metadata)
-  const billsQuery = useMemo(() => !db ? null : query(collection(db, 'bills'), orderBy('timestamp', 'desc'), limit(200)), [db]);
+  // Fetch bills to determine real popularity only when modal is open
+  const billsQuery = useMemo(() => (!db || !isOpen ? null : query(collection(db, 'bills'), orderBy('timestamp', 'desc'), limit(30))), [db, isOpen]);
   const { data: recentBills } = useCollection<Bill>(billsQuery);
 
   useEffect(() => {
     if (isOpen && station) {
         let items = station.currentBill ? [...station.currentBill] : [];
-        const hasSessionItems = items.some(i => 
-            i.name.startsWith('Time:') || 
-            i.name.startsWith('Recharge:') || 
-            i.name.startsWith('Buy Recharge:')
-        );
-
         const isWalkInOrNoTimer = station.packageName === 'Walk-in Order' || !station.endTime;
 
-        if (!hasSessionItems && station.status !== 'available' && station.members && station.members.length > 0 && !isWalkInOrNoTimer) {
-            const isRecharge = station.packageName?.startsWith('Recharge: ');
-            if (!isRecharge) {
-                let durMins = 60;
-                if (station.startTime && station.endTime) {
-                    const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
-                    durMins = Math.max(1, Math.round(diff / 60000));
-                }
-                const count = station.members.length;
-                const perPlayerPrice = calculatePlayerPrice(station.type || 'ps5', count, durMins);
-                const durText = durMins >= 60 ? `${durMins / 60} Hour` : `${durMins} Min`;
-
-                const synthesizedItems: BillItem[] = station.members.map(m => ({
-                    itemId: `time-${m.id}`,
-                    name: `Time: ${durText} Session (${m.name})`,
-                    price: perPlayerPrice,
-                    quantity: 1,
-                    addedAt: station.startTime || new Date().toISOString()
-                }));
-
-                items = [...synthesizedItems, ...items];
+        if (station.status !== 'available' && station.members && station.members.length > 0 && !isWalkInOrNoTimer) {
+            let durMins = 60;
+            if (station.startTime && station.endTime) {
+                const diff = new Date(station.endTime).getTime() - new Date(station.startTime).getTime();
+                durMins = Math.max(1, Math.round(diff / 60000));
             }
+            const durText = durMins >= 60 ? `${durMins / 60} Hour` : `${durMins} Min`;
+            const count = station.members.length;
+
+            station.members.forEach(m => {
+                const isPrepaid = m.billingType === 'prepaid' || (!!m.rechargeId && !m.isNewRecharge);
+                const isRechargePurchase = m.billingType === 'recharge_purchase' || !!m.isNewRecharge;
+
+                // 1. Walk-in session items: only for walk-in players
+                if (!isPrepaid && !isRechargePurchase) {
+                    const hasItem = items.some(i => i.memberId === m.id || i.itemId === `time-${m.id}` || i.name.toLowerCase().includes(`(${m.name.toLowerCase()})`));
+                    if (!hasItem) {
+                        const perPlayerPrice = calculatePlayerPrice(station.type || 'ps5', count, durMins);
+                        items.push({
+                            itemId: `time-${m.id}`,
+                            name: `Time: ${durText} Session (${m.name})`,
+                            price: perPlayerPrice,
+                            quantity: 1,
+                            billingType: 'walk_in',
+                            memberId: m.id,
+                            addedAt: station.startTime || new Date().toISOString()
+                        });
+                    }
+                }
+
+                // 2. Recharge purchases: ensure new pack is charged at pack price
+                if (isRechargePurchase) {
+                    const hasItem = items.some(i => (i.billingType === 'recharge_purchase' || i.name.startsWith('Buy Recharge:')) && (i.memberId === m.id || i.name.toLowerCase().includes(`(${m.name.toLowerCase()})`)));
+                    if (!hasItem && m.packageId) {
+                        const pkg = gamingPackages.find(p => p.id === m.packageId);
+                        if (pkg) {
+                            items.push({
+                                itemId: `recharge-${m.id}`,
+                                name: `Buy Recharge: ${pkg.name} (${m.name})`,
+                                price: pkg.price,
+                                quantity: 1,
+                                billingType: 'recharge_purchase',
+                                memberId: m.id,
+                                addedAt: station.startTime || new Date().toISOString()
+                            });
+                        }
+                    }
+                }
+
+                // 3. Overtime detection for all players (including prepaid and recharge purchase)
+                const endMs = m.endTime ? new Date(m.endTime).getTime() : 0;
+                const nowMs = Date.now();
+                let otSecs = 0;
+                if (station.status === 'paused' || m.status === 'paused') {
+                    if (m.remainingTimeOnPause === 0 && station.pauseStartTime && endMs > 0) {
+                        otSecs = Math.max(0, Math.floor((new Date(station.pauseStartTime).getTime() - endMs) / 1000));
+                    }
+                } else if (endMs > 0 && nowMs > endMs) {
+                    otSecs = Math.max(0, Math.floor((nowMs - endMs) / 1000));
+                }
+
+                if (otSecs > 300) {
+                    const otMins = Math.ceil(otSecs / 60);
+                    const hasOt = items.some(i => (i.billingType === 'overtime' || i.name.startsWith('Overtime:')) && (i.memberId === m.id || i.name.toLowerCase().includes(`(${m.name.toLowerCase()})`)));
+                    if (!hasOt) {
+                        const otPrice = calculatePlayerPrice(station.type || 'ps5', count, otMins);
+                        items.push({
+                            itemId: `overtime-${m.id}`,
+                            name: `Overtime: ${otMins}m (${m.name})`,
+                            price: otPrice,
+                            quantity: 1,
+                            billingType: 'overtime',
+                            memberId: m.id,
+                            addedAt: new Date().toISOString()
+                        });
+                    }
+                }
+            });
         }
 
         setBillItems(items);

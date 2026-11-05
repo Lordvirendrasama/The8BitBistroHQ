@@ -30,6 +30,7 @@ export function BookingsCalendarView({
   members = [],
   onSelectSlot,
   onStartBookingNow,
+  onEditBooking,
 }: BookingsCalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'ps5' | 'ps4'>('all');

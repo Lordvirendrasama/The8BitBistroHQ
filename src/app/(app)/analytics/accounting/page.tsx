@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import type { Bill, Expense, DateRange, FixedBill, LiabilityState, Settings } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,10 +47,18 @@ export default function AccountingPage() {
     return () => { unsubLiab(); unsubSett(); };
   }, [db]);
 
-  const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
+  const billsQuery = useMemo(() => {
+    if (!db) return null;
+    const cutoff = subMonths(new Date(), 6).toISOString();
+    return query(collection(db, 'bills'), where('timestamp', '>=', cutoff));
+  }, [db]);
   const { data: bills, loading: billsLoading } = useCollection<Bill>(billsQuery);
 
-  const expensesQuery = useMemo(() => !db ? null : collection(db, 'expenses'), [db]);
+  const expensesQuery = useMemo(() => {
+    if (!db) return null;
+    const cutoff = subMonths(new Date(), 6).toISOString();
+    return query(collection(db, 'expenses'), where('timestamp', '>=', cutoff));
+  }, [db]);
   const { data: expenses, loading: expensesLoading } = useCollection<Expense>(expensesQuery);
 
   const fixedBillsQuery = useMemo(() => !db ? null : collection(db, 'fixedBills'), [db]);

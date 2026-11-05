@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import type { Member, MemberTier, AssignedMember, Station, GamingPackage, MemberRecharge } from '@/lib/types';
+import type { Member, MemberTier, AssignedMember, Station, GamingPackage, MemberRecharge, SessionBillingType } from '@/lib/types';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,13 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Search, UserPlus, X, Clock, Zap, ChevronRight, ArrowLeft, CheckCircle2, Gamepad2, Users, Sparkles, RotateCcw, Timer, Play, Crown, User, Plus, Lock, AlertTriangle } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { getSyncedNow } from '@/lib/synced-time';
-import { generateDynamicQuickPlayPackages, filterAndSortRechargePackages } from '@/lib/pricing';
+import { generateDynamicQuickPlayPackages, filterAndSortRechargePackages, calculatePlayerPrice } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
-import { collection } from 'firebase/firestore';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useData } from '@/context/data-context';
 import { Label } from '@/components/ui/label';
-import { addMember, searchMembers } from '@/firebase/firestore/members';
+import { addMember, searchMembers, isRechargeValid, parseDateSafe } from '@/firebase/firestore/members';
+import { doc, getDoc } from 'firebase/firestore';
 import { isAfter } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -23,23 +23,27 @@ import { useToast } from '@/hooks/use-toast';
 const GUEST_AVATAR = PlaceHolderImages.find(img => img.id === 'avatar-6')?.imageUrl || 'https://picsum.photos/seed/guest/100/100';
 
 const formatPackageDuration = (totalSeconds: number) => {
-    if (!totalSeconds || totalSeconds < 0) return '0m';
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const parts = [];
-    if (hours > 0) parts.push(`${hours}H`);
-    if (minutes > 0) parts.push(`${minutes}M`);
-    return parts.length > 0 ? parts.join(' ') : '0M';
+  if (!totalSeconds || totalSeconds < 0) return '0M';
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts = [];
+  if (hours > 0) parts.push(`${hours}H`);
+  if (minutes > 0) parts.push(`${minutes}M`);
+  if (hours === 0 && seconds > 0) parts.push(`${seconds}S`);
+  return parts.length > 0 ? parts.join(' ') : '0M';
 };
 
 type PlayerConfig = {
-    mode: 'recharge' | 'walkin' | 'buy-recharge' | null;
-    packageId: string | null;
-    rechargeId: string | null;
-    name: string | null;
-    duration: number | null;
-    price: number | null;
-    reminderDuration?: number | null;
+  mode: 'recharge' | 'walkin' | 'buy-recharge' | null;
+  packageId: string | null;
+  rechargeId: string | null;
+  name: string | null;
+  duration: number | null;
+  price: number | null;
+  reminderDuration?: number | null;
+  savedWalkin?: { packageId: string | null; name: string | null; duration: number | null; price: number | null };
+  savedRecharge?: any;
 };
 
 type ModalStep = 'membership-check' | 'registration' | 'selection' | 'configuration';
@@ -174,7 +178,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
       setSearchResults([]);
       return;
     }
-    
+
     setIsSearching(true);
     const delayDebounce = setTimeout(async () => {
       try {
@@ -203,11 +207,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
   const playerLimit = (station?.type === 'ps5' || station?.type === 'ps4') ? 4 : 8;
 
-  const packagesCollection = useMemo(() => {
-    if (!db) return null;
-    return collection(db, 'gamingPackages');
-  }, [db]);
-  const { data: allPackages } = useCollection<GamingPackage>(packagesCollection);
+  const { gamingPackages: allPackages } = useData();
 
   const rechargePackages = useMemo(() => {
     if (!allPackages) return [];
@@ -230,34 +230,165 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
     const member = loadedMembers[memberId];
     if (!member || !member.recharges) return [];
     const now = new Date();
-    return member.recharges.filter(r => isAfter(new Date(r.expiryDate), now) && r.remainingDuration > 0);
+    return member.recharges
+      .filter(r => isRechargeValid(r, now) && (r.remainingDuration - (r.reservedDuration || 0)) > 0)
+      .map(r => ({
+        ...r,
+        remainingDuration: Math.max(0, r.remainingDuration - (r.reservedDuration || 0))
+      }));
   };
 
   const getMemberTotalBalance = (member: Member) => {
     if (!member || !member.recharges) return 0;
     const now = new Date();
     return member.recharges
-        .filter(r => isAfter(new Date(r.expiryDate), now) && r.remainingDuration > 0)
-        .reduce((sum, r) => sum + r.remainingDuration, 0);
+      .filter(r => isRechargeValid(r, now) && r.remainingDuration > 0)
+      .reduce((sum, r) => sum + Math.max(0, r.remainingDuration - (r.reservedDuration || 0)), 0);
   };
+
+  // Authoritatively refresh the member's profile and wallet from Firestore when configuring
+  useEffect(() => {
+    if (activeConfigPlayerId && !activeConfigPlayerId.startsWith('guest-') && db) {
+      getDoc(doc(db, 'members', activeConfigPlayerId)).then(snap => {
+        if (snap.exists()) {
+          const freshMember = { id: snap.id, ...snap.data() } as Member;
+          setLoadedMembers(prev => ({ ...prev, [snap.id]: freshMember }));
+
+          // Synchronize active player config with fresh Firestore wallet data.
+          // Also upgrades walkin → recharge if the auto-init ran before Firestore data arrived.
+          setConfigs(prev => {
+            const current = prev[snap.id];
+
+            const now = new Date();
+            const activeRecharges = (freshMember.recharges || []).filter(
+              r => isRechargeValid(r, now) && r.remainingDuration > 0
+            );
+            const totalBalance = activeRecharges.reduce((sum, r) => sum + r.remainingDuration, 0);
+
+            // No balance — if already walkin that's correct; if recharge, downgrade.
+            if (totalBalance <= 0) {
+              if (!current || current.mode === 'walkin') return prev;
+              if (current.mode === 'buy-recharge') return prev; // operator chose to buy, leave it
+              return {
+                ...prev,
+                [snap.id]: {
+                  mode: 'walkin',
+                  packageId: null,
+                  rechargeId: null,
+                  name: null,
+                  duration: null,
+                  price: null,
+                  reminderDuration: null,
+                  savedWalkin: current?.savedWalkin
+                }
+              };
+            }
+
+            // Has balance — only touch walkin (auto-init fallback) or recharge (sync) modes.
+            // Never override buy-recharge (explicit operator choice).
+            if (!current) return prev;
+            if (current.mode === 'buy-recharge') return prev;
+
+            if (activeRecharges.length === 1) {
+              const single = activeRecharges[0];
+              const prevReminder = current.reminderDuration;
+              const newReminder = prevReminder && prevReminder <= single.remainingDuration
+                ? prevReminder
+                : single.remainingDuration;
+              return {
+                ...prev,
+                [snap.id]: {
+                  ...current,
+                  mode: 'recharge',
+                  rechargeId: single.id,
+                  packageId: single.packageId || single.id,
+                  name: `Recharge: ${single.packageName}`,
+                  duration: single.remainingDuration,
+                  price: 0,
+                  reminderDuration: newReminder,
+                  savedWalkin: current.savedWalkin
+                }
+              };
+            }
+
+            // Multiple recharge packs — pool them
+            const prevReminder = current.reminderDuration;
+            return {
+              ...prev,
+              [snap.id]: {
+                ...current,
+                mode: 'recharge',
+                rechargeId: current.rechargeId || 'pool',
+                packageId: current.packageId || 'pool',
+                name: current.name || 'Recharge: Combined Balance',
+                duration: totalBalance,
+                price: 0,
+                reminderDuration: prevReminder && prevReminder <= totalBalance ? prevReminder : totalBalance,
+                savedWalkin: current.savedWalkin
+              }
+            };
+          });
+        }
+      }).catch(err => console.error("Error refreshing active member:", err));
+    }
+  }, [activeConfigPlayerId, db]);
 
   // Auto-initialize mode for active configuration player
   useEffect(() => {
     if (activeConfigPlayerId) {
       setConfigs(prev => {
-        if (prev[activeConfigPlayerId]?.mode) return prev;
+        const existing = prev[activeConfigPlayerId];
+        if (existing?.name) return prev;
 
-        const defaultMode: 'recharge' | 'walkin' = 'recharge';
+        const member = loadedMembers[activeConfigPlayerId];
+        const now = new Date();
+        const activeRecharges = member?.recharges
+          ? member.recharges.filter(r => isRechargeValid(r, now) && r.remainingDuration > 0)
+          : [];
+        const totalBalance = activeRecharges.reduce((sum, r) => sum + r.remainingDuration, 0);
+
+        if (totalBalance > 0) {
+          if (activeRecharges.length === 1) {
+            const single = activeRecharges[0];
+            return {
+              ...prev,
+              [activeConfigPlayerId]: {
+                mode: 'recharge',
+                packageId: single.packageId || single.id,
+                rechargeId: single.id,
+                name: `Recharge: ${single.packageName}`,
+                duration: single.remainingDuration,
+                price: 0,
+                reminderDuration: single.remainingDuration,
+                savedWalkin: existing?.savedWalkin
+              }
+            };
+          }
+          return {
+            ...prev,
+            [activeConfigPlayerId]: {
+              mode: 'recharge',
+              packageId: 'pool',
+              rechargeId: 'pool',
+              name: `Recharge: Combined Balance`,
+              duration: totalBalance,
+              price: 0,
+              reminderDuration: totalBalance,
+              savedWalkin: existing?.savedWalkin
+            }
+          };
+        }
 
         return {
           ...prev,
           [activeConfigPlayerId]: {
-            mode: defaultMode,
+            mode: 'walkin',
             packageId: null,
             rechargeId: null,
             name: null,
             duration: null,
-            price: null
+            price: null,
+            reminderDuration: null
           }
         };
       });
@@ -472,7 +603,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
     }
     const newCount = targetSlotsCount + 1;
     setTargetSlotsCount(newCount);
-    
+
     // Set active slot index to the first empty slot or newly added slot
     const firstEmptyIndex = selectedPlayers.findIndex((p, idx) => !p && idx < newCount);
     if (firstEmptyIndex !== -1) {
@@ -573,209 +704,381 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
   };
 
   const handleSetPlayerMode = (playerId: string, mode: 'recharge' | 'walkin' | 'buy-recharge') => {
-      setConfigs(prev => ({
+    setConfigs(prev => {
+      const current = prev[playerId];
+      const member = loadedMembers[playerId];
+      const balance = member ? getMemberTotalBalance(member) : 0;
+
+      // Preserve previously selected package across tab switches
+      const savedWalkin = current?.savedWalkin || (current?.mode === 'walkin' && current.name ? {
+        packageId: current.packageId,
+        name: current.name,
+        duration: current.duration,
+        price: current.price
+      } : undefined);
+
+      const savedRecharge = current?.savedRecharge || ((current?.mode === 'recharge' || current?.mode === 'buy-recharge') && current.name ? {
+        mode: current.mode,
+        packageId: current.packageId,
+        rechargeId: current.rechargeId,
+        name: current.name,
+        duration: current.duration,
+        price: current.price,
+        reminderDuration: current.reminderDuration
+      } : undefined);
+
+      if (mode === 'recharge') {
+        if (savedRecharge) {
+          return {
+            ...prev,
+            [playerId]: {
+              ...savedRecharge,
+              savedWalkin,
+              savedRecharge
+            }
+          };
+        }
+        if (balance > 0) {
+          return {
+            ...prev,
+            [playerId]: {
+              mode: 'recharge',
+              packageId: 'pool',
+              rechargeId: 'pool',
+              name: `Recharge: Combined Balance`,
+              duration: balance,
+              price: 0,
+              reminderDuration: balance,
+              savedWalkin,
+              savedRecharge
+            }
+          };
+        }
+        return {
           ...prev,
-          [playerId]: { ...prev[playerId], mode, packageId: null, rechargeId: null, name: null, duration: null, price: null, reminderDuration: null }
-      }));
+          [playerId]: {
+            mode: 'recharge',
+            packageId: null,
+            rechargeId: null,
+            name: null,
+            duration: null,
+            price: null,
+            reminderDuration: null,
+            savedWalkin,
+            savedRecharge
+          }
+        };
+      }
+
+      // Switching to Quick Play (walkin)
+      if (savedWalkin) {
+        return {
+          ...prev,
+          [playerId]: {
+            mode: 'walkin',
+            packageId: savedWalkin.packageId,
+            rechargeId: null,
+            name: savedWalkin.name,
+            duration: savedWalkin.duration,
+            price: savedWalkin.price,
+            reminderDuration: null,
+            savedWalkin,
+            savedRecharge
+          }
+        };
+      }
+
+      return {
+        ...prev,
+        [playerId]: {
+          mode: 'walkin',
+          packageId: null,
+          rechargeId: null,
+          name: null,
+          duration: null,
+          price: null,
+          reminderDuration: null,
+          savedWalkin,
+          savedRecharge
+        }
+      };
+    });
   };
 
   const handleSetPoolDuration = (playerId: string, seconds: number) => {
-      setConfigs(prev => ({
-          ...prev,
-          [playerId]: { ...prev[playerId], reminderDuration: seconds }
-      }));
+    setConfigs(prev => {
+      const current = prev[playerId];
+      const updated = {
+        ...current,
+        reminderDuration: seconds,
+        duration: seconds
+      };
+      return {
+        ...prev,
+        [playerId]: {
+          ...updated,
+          savedRecharge: {
+            mode: updated.mode,
+            packageId: updated.packageId,
+            rechargeId: updated.rechargeId,
+            name: updated.name,
+            duration: seconds,
+            price: updated.price,
+            reminderDuration: seconds
+          }
+        }
+      };
+    });
   };
 
   const handlePickConfig = (playerId: string, item: GamingPackage | MemberRecharge | 'pool', isRecharge: boolean, isBuy: boolean = false) => {
-      setConfigs(prev => {
-          const next = { ...prev };
-          if (item === 'pool') {
-              const member = loadedMembers[playerId];
-              const balance = member ? getMemberTotalBalance(member) : 0;
-              next[playerId] = { 
-                  mode: 'recharge', 
-                  packageId: 'pool', 
-                  rechargeId: 'pool', 
-                  name: `Recharge: Combined Balance`, 
-                  duration: balance, 
-                  price: 0, 
-                  reminderDuration: balance
-              };
+    setConfigs(prev => {
+      const next = { ...prev };
+      const current = prev[playerId];
+      if (item === 'pool') {
+        const member = loadedMembers[playerId];
+        const balance = member ? getMemberTotalBalance(member) : 0;
+        const cfg = {
+          mode: 'recharge' as const,
+          packageId: 'pool',
+          rechargeId: 'pool',
+          name: `Recharge: Combined Balance`,
+          duration: balance,
+          price: 0,
+          reminderDuration: balance,
+          savedWalkin: current?.savedWalkin
+        };
+        next[playerId] = {
+          ...cfg,
+          savedRecharge: cfg
+        };
 
-          } else {
-              const isRec = isRecharge && !isBuy;
-              const pkg = item as GamingPackage;
-              const rec = item as MemberRecharge;
+      } else {
+        const isRec = isRecharge && !isBuy;
+        const pkg = item as GamingPackage;
+        const rec = item as MemberRecharge;
 
-              const pkgId = isBuy ? pkg.id : (isRec ? rec.packageId : pkg.id);
-              const rId = isRec ? rec.id : null;
+        const pkgId = isBuy ? pkg.id : (isRec ? rec.packageId : pkg.id);
+        const rId = isRec ? rec.id : null;
+        const mode = isBuy ? ('buy-recharge' as const) : (isRec ? ('recharge' as const) : ('walkin' as const));
+        const name = isBuy ? `Buy Recharge: ${pkg.name}` : (isRec ? `Recharge: ${rec.packageName}` : pkg.name);
+        const duration = isRec ? rec.remainingDuration : pkg.duration;
+        const price = isRec ? 0 : pkg.price;
+        const reminderDuration = isRec ? rec.remainingDuration : null;
 
-              next[playerId] = {
-                  mode: isBuy ? 'buy-recharge' : (isRec ? 'recharge' : 'walkin'),
-                  packageId: pkgId,
-                  rechargeId: rId,
-                  name: isBuy ? `Buy Recharge: ${pkg.name}` : (isRec ? `Recharge: ${rec.packageName}` : pkg.name),
-                  duration: isRec ? rec.remainingDuration : pkg.duration,
-                  price: isRec ? 0 : pkg.price,
-                  reminderDuration: null
-              };
-          }
-          return next;
-      });
+        const cfg = {
+          mode,
+          packageId: pkgId,
+          rechargeId: rId,
+          name,
+          duration,
+          price,
+          reminderDuration,
+          savedWalkin: mode === 'walkin' ? { packageId: pkgId, name, duration, price } : current?.savedWalkin,
+          savedRecharge: mode !== 'walkin' ? { mode, packageId: pkgId, rechargeId: rId, name, duration, price, reminderDuration } : current?.savedRecharge
+        };
+
+        next[playerId] = cfg;
+      }
+      return next;
+    });
   };
 
   const handlePickCustomWalkin = (playerId: string) => {
-      const mins = parseInt(customMinutes);
-      const price = parseInt(customPrice) || 0;
-      if (isNaN(mins) || mins <= 0) {
-          toast({ variant: 'destructive', title: 'Invalid Time', description: 'Please enter a valid number of minutes.' });
-          return;
-      }
-      
-      const customPkg = {
-          id: `custom-walkin-${Date.now()}`,
-          name: `Custom (${mins}m)`,
-          duration: mins * 60,
-          price: price,
-          validity: 1,
-      } as GamingPackage;
-      
-      handlePickConfig(playerId, customPkg, false);
-      setCustomMinutes('');
-      setCustomPrice('');
+    const mins = parseInt(customMinutes);
+    const price = parseInt(customPrice) || 0;
+    if (isNaN(mins) || mins <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Time', description: 'Please enter a valid number of minutes.' });
+      return;
+    }
+
+    const customPkg = {
+      id: `custom-walkin-${Date.now()}`,
+      name: `Custom (${mins}m)`,
+      duration: mins * 60,
+      price: price,
+      validity: 1,
+    } as GamingPackage;
+
+    handlePickConfig(playerId, customPkg, false);
+    setCustomMinutes('');
+    setCustomPrice('');
   };
 
   const handleApplyAllAndStart = () => {
-      if (!activeConfigPlayerId) return;
-      const currentConfig = configs[activeConfigPlayerId];
-      if (!currentConfig || !currentConfig.name) {
-          toast({ variant: 'destructive', title: "No Plan Selected", description: "Select a plan for the active player first." });
-          return;
+    if (!activeConfigPlayerId) return;
+    const currentConfig = configs[activeConfigPlayerId];
+    if (!currentConfig || !currentConfig.name) {
+      toast({ variant: 'destructive', title: "No Plan Selected", description: "Select a plan for the active player first." });
+      return;
+    }
+
+    let calculatedTotalCost = 0;
+    const validPlayers = selectedPlayers.filter(Boolean);
+    const playerDurations: Record<string, number> = {};
+
+    const finalPlayers = validPlayers.map(p => {
+      let configToUse = { ...currentConfig };
+
+      if (!configToUse || !configToUse.name) return null;
+
+      const isOriginalPlayer = p.id === activeConfigPlayerId;
+      const targetMember = loadedMembers[p.id];
+      const targetBalance = targetMember ? getMemberTotalBalance(targetMember) : 0;
+      const durationSeconds = configToUse.reminderDuration || configToUse.duration || 3600;
+
+      let playerRechargeId = configToUse.rechargeId || null;
+      let playerPackageId = configToUse.packageId || null;
+      let isNewRec = configToUse.mode === 'buy-recharge';
+      let playerPrice = configToUse.price || 0;
+
+      if (p.id.startsWith('guest-')) {
+        playerRechargeId = null;
+        isNewRec = false;
+        playerPrice = calculatePlayerPrice(station?.type || 'ps5', validPlayers.length, Math.round(durationSeconds / 60));
+      } else if (!isOriginalPlayer && configToUse.mode === 'recharge') {
+        if (targetBalance >= durationSeconds) {
+          playerRechargeId = 'pool';
+          playerPrice = 0;
+        } else {
+          playerRechargeId = null;
+          playerPrice = calculatePlayerPrice(station?.type || 'ps5', validPlayers.length, Math.round(durationSeconds / 60));
+        }
       }
 
-      let calculatedTotalCost = 0;
-      const validPlayers = selectedPlayers.filter(Boolean);
-      const playerDurations: Record<string, number> = {};
+      const billingType: SessionBillingType = isNewRec 
+        ? 'recharge_purchase' 
+        : (playerRechargeId ? 'prepaid' : 'walk_in');
 
-      const finalPlayers = validPlayers.map(p => {
-          let configToUse = { ...currentConfig };
-          
-          if (!configToUse || !configToUse.name) return null;
+      playerDurations[p.id] = durationSeconds;
+      calculatedTotalCost += playerPrice;
 
-          const durationSeconds = configToUse.reminderDuration || configToUse.duration || 0;
-          playerDurations[p.id] = durationSeconds;
-          calculatedTotalCost += (configToUse.price || 0);
+      return {
+        ...p,
+        billingType,
+        rechargeId: playerRechargeId,
+        packageId: playerPackageId,
+        isNewRecharge: isNewRec,
+        allocatedSeconds: durationSeconds,
+        consumedSeconds: 0,
+        rechargeProcessed: false,
+        startTime: null,
+        endTime: null,
+        status: 'active' as const,
+        remainingTimeOnPause: null
+      };
+    }).filter(Boolean) as AssignedMember[];
 
-          return { 
-              ...p, 
-              rechargeId: configToUse.rechargeId || null, 
-              packageId: configToUse.packageId || null, 
-              isNewRecharge: configToUse.mode === 'buy-recharge',
-              startTime: null,
-              endTime: null,
-              status: 'active' as const,
-              remainingTimeOnPause: null
-          };
-      }).filter(Boolean) as AssignedMember[];
+    if (finalPlayers.length === 0) {
+      toast({ variant: 'destructive', title: "Invalid Setup", description: "At least one player must have a valid configuration." });
+      return;
+    }
 
-      if (finalPlayers.length === 0) {
-          toast({ variant: 'destructive', title: "Invalid Setup", description: "At least one player must have a valid configuration." });
-          return;
-      }
+    let sessionName = currentConfig.name || "Standard Session";
+    const durationSeconds = currentConfig.reminderDuration || currentConfig.duration || 3600;
+    const virtualPackage: GamingPackage = { id: 'mixed-session', name: sessionName, duration: durationSeconds, price: 0, validity: 1 };
+    const durationText = currentConfig.name || formatPackageDuration(durationSeconds);
 
-      let sessionName = currentConfig.name || "Standard Session";
-      const durationSeconds = currentConfig.reminderDuration || currentConfig.duration || 3600;
-      const virtualPackage: GamingPackage = { id: 'mixed-session', name: sessionName, duration: durationSeconds, price: 0, validity: 1 };
-      const durationText = currentConfig.name || formatPackageDuration(durationSeconds);
-
-      setChecklist({ charged: false, cable: false, takenUpstairs: false });
-      setStartTimerConfirm({
-          finalPlayers,
-          virtualPackage,
-          totalCost: calculatedTotalCost,
-          durationText,
-          playerDurations
-      });
+    setChecklist({ charged: false, cable: false, takenUpstairs: false });
+    setStartTimerConfirm({
+      finalPlayers,
+      virtualPackage,
+      totalCost: calculatedTotalCost,
+      durationText,
+      playerDurations
+    });
   };
 
   const validPlayers = useMemo(() => selectedPlayers.filter(Boolean), [selectedPlayers]);
 
   const allPlayersConfigured = useMemo(() => {
-      if (validPlayers.length === 0) return false;
-      return validPlayers.every(p => configs[p.id]?.name != null);
-  }, [validPlayers, configs]);
+    if (validPlayers.length === 0 || targetSlotsCount !== validPlayers.length) return false;
+    return validPlayers.every(p => {
+      const cfg = configs[p.id];
+      return cfg?.name != null && ((cfg.duration != null && cfg.duration > 0) || (cfg.reminderDuration != null && cfg.reminderDuration > 0));
+    });
+  }, [validPlayers, targetSlotsCount, configs]);
 
   const handleConfirmAll = () => {
-      if (!allPlayersConfigured) return;
-      let calculatedTotalCost = 0;
-      const playerDurations: Record<string, number> = {};
-      
-      const finalPlayers = validPlayers.map(p => {
-          const config = configs[p.id];
-          const durationSeconds = config.reminderDuration || config.duration || 0;
-          playerDurations[p.id] = durationSeconds;
-          calculatedTotalCost += (config.price || 0);
+    if (!allPlayersConfigured) return;
+    let calculatedTotalCost = 0;
+    const playerDurations: Record<string, number> = {};
 
-          return { 
-              ...p, 
-              rechargeId: config.rechargeId || null, 
-              packageId: config.packageId || null, 
-              isNewRecharge: config.mode === 'buy-recharge',
-              startTime: null,
-              endTime: null,
-              status: 'active' as const,
-              remainingTimeOnPause: null
-          };
-      });
+    const finalPlayers = validPlayers.map(p => {
+      const config = configs[p.id];
+      const durationSeconds = config.reminderDuration || config.duration || 0;
+      playerDurations[p.id] = durationSeconds;
+      calculatedTotalCost += (config.price || 0);
 
-      let minDuration = 24 * 3600; 
-      let sessionName = "Session";
-      Object.values(configs).forEach(c => {
-          const dur = c.reminderDuration || c.duration;
-          if (dur && dur < minDuration) { minDuration = dur; sessionName = c.name || sessionName; }
-      });
+      const isBuy = config.mode === 'buy-recharge';
+      const billingType: SessionBillingType = isBuy 
+        ? 'recharge_purchase' 
+        : (config.rechargeId ? 'prepaid' : 'walk_in');
 
-      const virtualPackage: GamingPackage = { id: 'mixed-session', name: sessionName, duration: minDuration, price: 0, validity: 1 };
-      const firstConfig = configs[validPlayers[0]?.id];
-      const durationText = firstConfig?.name || formatPackageDuration(minDuration);
+      return {
+        ...p,
+        billingType,
+        rechargeId: config.rechargeId || null,
+        packageId: config.packageId || null,
+        isNewRecharge: isBuy,
+        allocatedSeconds: durationSeconds,
+        consumedSeconds: 0,
+        rechargeProcessed: false,
+        startTime: null,
+        endTime: null,
+        status: 'active' as const,
+        remainingTimeOnPause: null
+      };
+    });
 
-      setChecklist({ charged: false, cable: false, takenUpstairs: false });
-      setStartTimerConfirm({
-          finalPlayers,
-          virtualPackage,
-          totalCost: calculatedTotalCost,
-          durationText,
-          playerDurations
-      });
+    let minDuration = 24 * 3600;
+    let sessionName = "Session";
+    Object.values(configs).forEach(c => {
+      const dur = c.reminderDuration || c.duration;
+      if (dur && dur < minDuration) { minDuration = dur; sessionName = c.name || sessionName; }
+    });
+
+    const virtualPackage: GamingPackage = { id: 'mixed-session', name: sessionName, duration: minDuration, price: 0, validity: 1 };
+    const firstConfig = configs[validPlayers[0]?.id];
+    const durationText = firstConfig?.name || formatPackageDuration(minDuration);
+
+    setChecklist({ charged: false, cable: false, takenUpstairs: false });
+    setStartTimerConfirm({
+      finalPlayers,
+      virtualPackage,
+      totalCost: calculatedTotalCost,
+      durationText,
+      playerDurations
+    });
   };
 
   const handleStartTimerFromConfirm = () => {
-      if (!startTimerConfirm) return;
-      if (!isAllChecked) {
-          toast({
-              variant: 'destructive',
-              title: "Checklist Incomplete",
-              description: "Please tick all 3 checkboxes before starting the timer."
-          });
-          return;
-      }
-
-      const syncedNow = getSyncedNow();
-      const freshStartTime = new Date(syncedNow).toISOString();
-
-      const freshPlayers: AssignedMember[] = startTimerConfirm.finalPlayers.map(p => {
-          const durationSeconds = startTimerConfirm.playerDurations[p.id] || 0;
-          return {
-              ...p,
-              startTime: freshStartTime,
-              endTime: durationSeconds > 0 ? new Date(syncedNow + durationSeconds * 1000).toISOString() : null,
-              status: 'active' as const,
-              remainingTimeOnPause: null
-          };
+    if (!startTimerConfirm) return;
+    if (!isAllChecked) {
+      toast({
+        variant: 'destructive',
+        title: "Checklist Incomplete",
+        description: "Please tick all 3 checkboxes before starting the timer."
       });
+      return;
+    }
 
-      onConfirm(freshPlayers, startTimerConfirm.virtualPackage);
-      setStartTimerConfirm(null);
+    const syncedNow = getSyncedNow();
+    const freshStartTime = new Date(syncedNow).toISOString();
+
+    const freshPlayers: AssignedMember[] = startTimerConfirm.finalPlayers.map(p => {
+      const durationSeconds = startTimerConfirm.playerDurations[p.id] || 0;
+      return {
+        ...p,
+        startTime: freshStartTime,
+        endTime: durationSeconds > 0 ? new Date(syncedNow + durationSeconds * 1000).toISOString() : null,
+        status: 'active' as const,
+        remainingTimeOnPause: null
+      };
+    });
+
+    onConfirm(freshPlayers, startTimerConfirm.virtualPackage);
+    setStartTimerConfirm(null);
   };
 
   if (!station) return null;
@@ -790,7 +1093,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
         {startTimerConfirm && (
           <div className="absolute inset-0 z-50 bg-zinc-950/98 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-7 animate-in zoom-in-95 duration-200 border-2 border-primary/40 rounded-xl overflow-y-auto max-h-[100dvh] font-body">
             <div className="space-y-4">
-              
+
               {/* Header */}
               <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
                 <div className="flex items-center gap-3">
@@ -867,7 +1170,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                         </p>
                       </div>
                     </div>
-                    
+
                     <button
                       type="button"
                       onClick={() => setChecklist({ charged: true, cable: true, takenUpstairs: true })}
@@ -878,12 +1181,12 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-zinc-800/80">
-                    <div 
+                    <div
                       onClick={() => toggleChecklistItem('charged')}
                       className={cn(
                         "p-2.5 rounded-lg border flex items-center gap-2.5 cursor-pointer transition-all text-xs font-extrabold uppercase select-none",
-                        checklist.charged 
-                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300" 
+                        checklist.charged
+                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300"
                           : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                       )}
                     >
@@ -896,12 +1199,12 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                       <span>Controller{startTimerConfirm.finalPlayers.length > 1 ? 's' : ''} Charged</span>
                     </div>
 
-                    <div 
+                    <div
                       onClick={() => toggleChecklistItem('cable')}
                       className={cn(
                         "p-2.5 rounded-lg border flex items-center gap-2.5 cursor-pointer transition-all text-xs font-extrabold uppercase select-none",
-                        checklist.cable 
-                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300" 
+                        checklist.cable
+                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300"
                           : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                       )}
                     >
@@ -914,12 +1217,12 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                       <span>Cable Collected</span>
                     </div>
 
-                    <div 
+                    <div
                       onClick={() => toggleChecklistItem('takenUpstairs')}
                       className={cn(
                         "p-2.5 rounded-lg border flex items-center gap-2.5 cursor-pointer transition-all text-xs font-extrabold uppercase select-none",
-                        checklist.takenUpstairs 
-                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300" 
+                        checklist.takenUpstairs
+                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300"
                           : "bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                       )}
                     >
@@ -937,7 +1240,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
 
               {/* 4. RETURN CONTROLLER NOTICE */}
               <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 text-amber-300 text-xs font-medium flex items-center gap-2">
-                <span className="font-extrabold text-amber-400 shrink-0">⚠ RETURN CONTROLLER:</span>
+                <span className="font-extrabold text-amber-400 shrink-0">⚠️ RETURN CONTROLLER:</span>
                 <span className="text-zinc-300 truncate">Bring controller{startTimerConfirm.finalPlayers.length > 1 ? 's' : ''} + cable back downstairs after session.</span>
               </div>
 
@@ -960,12 +1263,12 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
                 onClick={handleStartTimerFromConfirm}
                 className={cn(
                   "flex-1 h-14 text-base font-extrabold uppercase transition-all shadow-2xl rounded-xl gap-2 tracking-wide",
-                  isAllChecked 
-                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/30 active:scale-[0.98] ring-2 ring-primary/40 cursor-pointer" 
+                  isAllChecked
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/30 active:scale-[0.98] ring-2 ring-primary/40 cursor-pointer"
                     : "bg-zinc-900 border border-zinc-800 text-zinc-500 cursor-not-allowed opacity-50"
                 )}
               >
-                <Play className="h-5 w-5 fill-current" /> 
+                <Play className="h-5 w-5 fill-current" />
                 {isAllChecked ? 'START TIMER' : 'START TIMER (TICK ALL 3 BOXES)'}
               </Button>
             </div>
@@ -1036,957 +1339,1085 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-950">
-            {/* STEP 0: ARE YOU A MEMBER HERE? */}
-            {step === 'membership-check' && (
-              <div className="flex-1 flex flex-col justify-start sm:justify-center items-center px-4 py-3 sm:p-8 space-y-3 sm:space-y-6 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto w-full my-auto">
-                <div className="text-center space-y-1.5 sm:space-y-2.5 max-w-md w-full">
-                  <div className="h-11 w-11 sm:h-16 sm:w-16 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto text-primary shadow-xl">
-                    <Crown className="h-6 w-6 sm:h-8 sm:w-8" />
+          {/* STEP 0: ARE YOU A MEMBER HERE? */}
+          {step === 'membership-check' && (
+            <div className="flex-1 flex flex-col justify-start sm:justify-center items-center px-4 py-3 sm:p-8 space-y-3 sm:space-y-6 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto w-full my-auto">
+              <div className="text-center space-y-1.5 sm:space-y-2.5 max-w-md w-full">
+                <div className="h-11 w-11 sm:h-16 sm:w-16 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto text-primary shadow-xl">
+                  <Crown className="h-6 w-6 sm:h-8 sm:w-8" />
+                </div>
+                <h3 className="text-lg sm:text-2xl font-extrabold uppercase text-white tracking-wide font-headline">
+                  ARE YOU A MEMBER HERE?
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-300 font-medium leading-relaxed italic border-l-2 border-primary/50 pl-2.5 text-left bg-zinc-900/40 p-2 rounded-r-xl">
+                  "Welcome to The 8 Bit Bistro! Are you registered with us as a member?"
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 w-full max-w-lg">
+                {/* YES BUTTON */}
+                <div
+                  onClick={() => setStep('selection')}
+                  className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 hover:bg-emerald-500/25 hover:border-emerald-400 transition-all flex flex-col items-center text-center gap-2 sm:gap-3 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[90px] sm:min-h-[130px] justify-center"
+                >
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all shrink-0">
+                    <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7" />
                   </div>
-                  <h3 className="text-lg sm:text-2xl font-extrabold uppercase text-white tracking-wide font-headline">
-                    ARE YOU A MEMBER HERE?
+                  <div>
+                    <h4 className="text-base sm:text-xl font-extrabold uppercase text-white tracking-wide">
+                      YES, I'M A MEMBER
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-emerald-300 font-semibold pt-0.5">
+                      Search existing member database
+                    </p>
+                  </div>
+                </div>
+
+                {/* NO BUTTON */}
+                <div
+                  onClick={() => setStep('registration')}
+                  className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-amber-500/50 bg-gradient-to-b from-amber-500/15 to-amber-500/5 hover:bg-amber-500/25 hover:border-amber-400 transition-all flex flex-col items-center text-center gap-2 sm:gap-3 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[90px] sm:min-h-[130px] justify-center"
+                >
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all shrink-0">
+                    <UserPlus className="h-6 w-6 sm:h-7 sm:w-7" />
+                  </div>
+                  <div>
+                    <h4 className="text-base sm:text-xl font-extrabold uppercase text-white tracking-wide">
+                      NO, NEW CUSTOMER
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-amber-300 font-semibold pt-0.5">
+                      Register new account in 10 seconds
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancel & Go Back Button for Mobile */}
+              <div className="w-full max-w-lg pt-1 pb-safe flex justify-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onOpenChange(false)}
+                  className="h-10 sm:h-12 px-5 text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-xl gap-2 active:scale-95 border border-zinc-800/80"
+                >
+                  <X className="h-4 w-4" /> Cancel & Close
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 0.5: CUSTOMER REGISTRATION PAGE */}
+          {step === 'registration' && (
+            <div className="flex-1 flex flex-col justify-between p-6 sm:p-8 animate-in fade-in slide-in-from-right-4 duration-300 overflow-y-auto">
+              <form onSubmit={handleRegisterNewMember} className="space-y-6 max-w-lg mx-auto w-full my-auto">
+                <div className="text-center space-y-2">
+                  <div className="h-14 w-14 rounded-2xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center mx-auto text-amber-400 shadow-lg">
+                    <UserPlus className="h-7 w-7" />
+                  </div>
+                  <h3 className="text-2xl font-extrabold uppercase text-white tracking-wide font-headline">
+                    NEW CUSTOMER REGISTRATION
                   </h3>
-                  <p className="text-xs sm:text-sm text-zinc-300 font-medium leading-relaxed italic border-l-2 border-primary/50 pl-2.5 text-left bg-zinc-900/40 p-2 rounded-r-xl">
-                    "Welcome to The 8 Bit Bistro! Are you registered with us as a member?"
+                  <p className="text-xs text-zinc-400 font-medium">
+                    Register a new customer for <strong className="text-white">{station?.name}</strong> player {activeSlotIndex + 1}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 w-full max-w-lg">
-                  {/* YES BUTTON */}
-                  <div
-                    onClick={() => setStep('selection')}
-                    className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 hover:bg-emerald-500/25 hover:border-emerald-400 transition-all flex flex-col items-center text-center gap-2 sm:gap-3 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[90px] sm:min-h-[130px] justify-center"
-                  >
-                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all shrink-0">
-                      <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7" />
-                    </div>
-                    <div>
-                      <h4 className="text-base sm:text-xl font-extrabold uppercase text-white tracking-wide">
-                        YES, I'M A MEMBER
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-emerald-300 font-semibold pt-0.5">
-                        Search existing member database
+                <div className="p-5 rounded-2xl bg-zinc-900/90 border-2 border-zinc-800 space-y-4 shadow-xl">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase text-zinc-300">
+                      Customer Full Name <span className="text-primary">*</span>
+                    </Label>
+                    <Input
+                      autoFocus
+                      required
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="e.g. John Doe"
+                      className="h-12 text-base font-bold bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
+                    />
+                    {regName.trim() && (Object.values(loadedMembers).some(m => m.name.toLowerCase().trim() === regName.trim().toLowerCase()) || members.some(m => m.name.toLowerCase().trim() === regName.trim().toLowerCase())) && (
+                      <p className="text-[11px] text-amber-400 font-semibold flex items-center gap-1.5 pt-0.5">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                        A customer named "{regName.trim()}" exists. Gamer name prompt will appear on save.
                       </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase text-zinc-300">
+                      Phone Number <span className="text-zinc-500 font-normal">(Optional)</span>
+                    </Label>
+                    <Input
+                      type="tel"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                      className="h-12 text-base font-mono bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold uppercase text-zinc-300">
+                        Birthday <span className="text-zinc-500 font-normal">(Optional)</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        value={regBirthday}
+                        onChange={(e) => setRegBirthday(e.target.value)}
+                        className="h-12 text-sm bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold uppercase text-zinc-300">
+                        Email <span className="text-zinc-500 font-normal">(Optional)</span>
+                      </Label>
+                      <Input
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="e.g. customer@example.com"
+                        className="h-12 text-sm bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
+                      />
                     </div>
                   </div>
 
-                  {/* NO BUTTON */}
-                  <div
-                    onClick={() => setStep('registration')}
-                    className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-amber-500/50 bg-gradient-to-b from-amber-500/15 to-amber-500/5 hover:bg-amber-500/25 hover:border-amber-400 transition-all flex flex-col items-center text-center gap-2 sm:gap-3 cursor-pointer shadow-xl group active:scale-[0.98] min-h-[90px] sm:min-h-[130px] justify-center"
-                  >
-                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-black transition-all shrink-0">
-                      <UserPlus className="h-6 w-6 sm:h-7 sm:w-7" />
-                    </div>
-                    <div>
-                      <h4 className="text-base sm:text-xl font-extrabold uppercase text-white tracking-wide">
-                        NO, NEW CUSTOMER
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-amber-300 font-semibold pt-0.5">
-                        Register new account in 10 seconds
-                      </p>
+                  {/* MEMBERSHIP TIER TO GRANT */}
+                  <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+                    <Label className="text-xs font-bold uppercase text-zinc-300 flex items-center justify-between">
+                      <span>Membership Tier to Grant</span>
+                      {regPhone.trim() ? (
+                        <span className="text-[11px] text-zinc-400 font-medium">Selected: <strong className="text-white">{regTier} Tier</strong></span>
+                      ) : (
+                        <span className="text-[11px] text-amber-400 font-semibold italic flex items-center gap-1">
+                          <Lock className="h-3 w-3 text-amber-400" /> Enter phone number to unlock Green & Gold
+                        </span>
+                      )}
+                    </Label>
+
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {/* RED TIER */}
+                      <button
+                        type="button"
+                        onClick={() => setRegTier('Red')}
+                        className={cn(
+                          "p-3 rounded-xl border-2 flex flex-col items-center justify-center text-center transition-all cursor-pointer",
+                          regTier === 'Red'
+                            ? "border-red-500 bg-red-500/20 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)] font-extrabold"
+                            : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-3 w-3 rounded-full mb-1.5",
+                          regTier === 'Red' ? "bg-red-500 shadow-[0_0_8px_#ef4444]" : "bg-red-500/40"
+                        )} />
+                        <span className="text-xs uppercase tracking-wide font-extrabold text-red-400">Red</span>
+                        <span className="text-[10px] text-zinc-400 mt-0.5 font-medium">Standard</span>
+                      </button>
+
+                      {/* GREEN TIER */}
+                      <button
+                        type="button"
+                        disabled={!regPhone.trim()}
+                        onClick={() => regPhone.trim() && setRegTier('Green')}
+                        className={cn(
+                          "p-3 rounded-xl border-2 flex flex-col items-center justify-center text-center transition-all relative overflow-hidden",
+                          !regPhone.trim()
+                            ? "border-zinc-800/60 bg-zinc-950/30 text-zinc-600 opacity-50 cursor-not-allowed"
+                            : regTier === 'Green'
+                              ? "border-emerald-500 bg-emerald-500/20 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] font-extrabold cursor-pointer"
+                              : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 cursor-pointer"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-3 w-3 rounded-full mb-1.5",
+                          !regPhone.trim() ? "bg-zinc-700" : regTier === 'Green' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-emerald-500/40"
+                        )} />
+                        <span className={cn("text-xs uppercase tracking-wide font-extrabold flex items-center justify-center gap-1", !regPhone.trim() ? "text-zinc-500" : "text-emerald-400")}>
+                          {!regPhone.trim() && <Lock className="h-3 w-3" />} Green
+                        </span>
+                        <span className="text-[10px] text-zinc-400 mt-0.5 font-medium">
+                          {!regPhone.trim() ? "Needs Phone" : "Verified"}
+                        </span>
+                      </button>
+
+                      {/* GOLD TIER */}
+                      <button
+                        type="button"
+                        disabled={!regPhone.trim()}
+                        onClick={() => regPhone.trim() && setRegTier('Gold')}
+                        className={cn(
+                          "p-3 rounded-xl border-2 flex flex-col items-center justify-center text-center transition-all relative overflow-hidden",
+                          !regPhone.trim()
+                            ? "border-zinc-800/60 bg-zinc-950/30 text-zinc-600 opacity-50 cursor-not-allowed"
+                            : regTier === 'Gold'
+                              ? "border-amber-500 bg-amber-500/20 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)] font-extrabold cursor-pointer"
+                              : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 cursor-pointer"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-3 w-3 rounded-full mb-1.5",
+                          !regPhone.trim() ? "bg-zinc-700" : regTier === 'Gold' ? "bg-amber-400 shadow-[0_0_8px_#f59e0b]" : "bg-amber-400/40"
+                        )} />
+                        <span className={cn("text-xs uppercase tracking-wide font-extrabold flex items-center justify-center gap-1", !regPhone.trim() ? "text-zinc-500" : "text-amber-400")}>
+                          {!regPhone.trim() && <Lock className="h-3 w-3" />} Gold
+                        </span>
+                        <span className="text-[10px] text-zinc-400 mt-0.5 font-medium">
+                          {!regPhone.trim() ? "Needs Phone" : "VIP Pass"}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Cancel & Go Back Button for Mobile */}
-                <div className="w-full max-w-lg pt-1 pb-safe flex justify-center">
+                <div className="pt-2 flex items-center gap-3">
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => onOpenChange(false)}
-                    className="h-10 sm:h-12 px-5 text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-xl gap-2 active:scale-95 border border-zinc-800/80"
+                    onClick={() => setStep('membership-check')}
+                    className="h-13 px-5 text-xs font-extrabold uppercase text-zinc-400 hover:text-white border border-zinc-800 rounded-xl"
                   >
-                    <X className="h-4 w-4" /> Cancel & Close
+                    &larr; BACK
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!regName.trim() || isSubmittingReg}
+                    className="flex-1 h-13 text-sm font-extrabold uppercase bg-amber-500 hover:bg-amber-600 text-black shadow-2xl rounded-xl gap-2 tracking-wide transition-all active:scale-[0.98]"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    {isSubmittingReg ? 'REGISTERING...' : 'REGISTER & ASSIGN PLAYER →'}
                   </Button>
                 </div>
+              </form>
+            </div>
+          )}
+
+          {/* STEP 1: PLAYER ASSIGNMENT */}
+          {step === 'selection' && (
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-5 space-y-4 animate-in fade-in duration-200">
+
+              {/* Customer-First Hospitality Dialogue Quote */}
+              <div className="px-1">
+                <p className="text-sm sm:text-base font-medium tracking-wide text-zinc-200 leading-relaxed italic border-l-2 border-primary/50 pl-3.5 bg-zinc-900/30 p-2.5 rounded-r-xl">
+                  "Welcome to The 8 Bit Bistro! May I have your name to assign players today?"
+                </p>
               </div>
-            )}
 
-            {/* STEP 0.5: CUSTOMER REGISTRATION PAGE */}
-            {step === 'registration' && (
-              <div className="flex-1 flex flex-col justify-between p-6 sm:p-8 animate-in fade-in slide-in-from-right-4 duration-300 overflow-y-auto">
-                <form onSubmit={handleRegisterNewMember} className="space-y-6 max-w-lg mx-auto w-full my-auto">
-                  <div className="text-center space-y-2">
-                    <div className="h-14 w-14 rounded-2xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center mx-auto text-amber-400 shadow-lg">
-                      <UserPlus className="h-7 w-7" />
-                    </div>
-                    <h3 className="text-2xl font-extrabold uppercase text-white tracking-wide font-headline">
-                      NEW CUSTOMER REGISTRATION
-                    </h3>
-                    <p className="text-xs text-zinc-400 font-medium">
-                      Register a new customer for <strong className="text-white">{station?.name}</strong> player {activeSlotIndex + 1}
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-zinc-900/90 border-2 border-zinc-800 space-y-4 shadow-xl">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase text-zinc-300">
-                        Customer Full Name <span className="text-primary">*</span>
-                      </Label>
-                      <Input
-                        autoFocus
-                        required
-                        value={regName}
-                        onChange={(e) => setRegName(e.target.value)}
-                        placeholder="e.g. John Doe"
-                        className="h-12 text-base font-bold bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
-                      />
-                      {regName.trim() && (Object.values(loadedMembers).some(m => m.name.toLowerCase().trim() === regName.trim().toLowerCase()) || members.some(m => m.name.toLowerCase().trim() === regName.trim().toLowerCase())) && (
-                        <p className="text-[11px] text-amber-400 font-semibold flex items-center gap-1.5 pt-0.5">
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                          A customer named "{regName.trim()}" exists. Gamer name prompt will appear on save.
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase text-zinc-300">
-                        Phone Number <span className="text-zinc-500 font-normal">(Optional)</span>
-                      </Label>
-                      <Input
-                        type="tel"
-                        value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="e.g. 9876543210"
-                        className="h-12 text-base font-mono bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase text-zinc-300">
-                          Birthday <span className="text-zinc-500 font-normal">(Optional)</span>
-                        </Label>
-                        <Input
-                          type="date"
-                          value={regBirthday}
-                          onChange={(e) => setRegBirthday(e.target.value)}
-                          className="h-12 text-sm bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase text-zinc-300">
-                          Email <span className="text-zinc-500 font-normal">(Optional)</span>
-                        </Label>
-                        <Input
-                          type="email"
-                          value={regEmail}
-                          onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="e.g. customer@example.com"
-                          className="h-12 text-sm bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-amber-500 rounded-xl"
-                        />
-                      </div>
-                    </div>
-
-                    {/* MEMBERSHIP TIER TO GRANT */}
-                    <div className="space-y-2 pt-2 border-t border-zinc-800/80">
-                      <Label className="text-xs font-bold uppercase text-zinc-300 flex items-center justify-between">
-                        <span>Membership Tier to Grant</span>
-                        {regPhone.trim() ? (
-                          <span className="text-[11px] text-zinc-400 font-medium">Selected: <strong className="text-white">{regTier} Tier</strong></span>
-                        ) : (
-                          <span className="text-[11px] text-amber-400 font-semibold italic flex items-center gap-1">
-                            <Lock className="h-3 w-3 text-amber-400" /> Enter phone number to unlock Green & Gold
-                          </span>
-                        )}
-                      </Label>
-
-                      <div className="grid grid-cols-3 gap-2.5">
-                        {/* RED TIER */}
-                        <button
-                          type="button"
-                          onClick={() => setRegTier('Red')}
-                          className={cn(
-                            "p-3 rounded-xl border-2 flex flex-col items-center justify-center text-center transition-all cursor-pointer",
-                            regTier === 'Red'
-                              ? "border-red-500 bg-red-500/20 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)] font-extrabold"
-                              : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-                          )}
-                        >
-                          <div className={cn(
-                            "h-3 w-3 rounded-full mb-1.5",
-                            regTier === 'Red' ? "bg-red-500 shadow-[0_0_8px_#ef4444]" : "bg-red-500/40"
-                          )} />
-                          <span className="text-xs uppercase tracking-wide font-extrabold text-red-400">Red</span>
-                          <span className="text-[10px] text-zinc-400 mt-0.5 font-medium">Standard</span>
-                        </button>
-
-                        {/* GREEN TIER */}
-                        <button
-                          type="button"
-                          disabled={!regPhone.trim()}
-                          onClick={() => regPhone.trim() && setRegTier('Green')}
-                          className={cn(
-                            "p-3 rounded-xl border-2 flex flex-col items-center justify-center text-center transition-all relative overflow-hidden",
-                            !regPhone.trim()
-                              ? "border-zinc-800/60 bg-zinc-950/30 text-zinc-600 opacity-50 cursor-not-allowed"
-                              : regTier === 'Green'
-                                ? "border-emerald-500 bg-emerald-500/20 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] font-extrabold cursor-pointer"
-                                : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 cursor-pointer"
-                          )}
-                        >
-                          <div className={cn(
-                            "h-3 w-3 rounded-full mb-1.5",
-                            !regPhone.trim() ? "bg-zinc-700" : regTier === 'Green' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-emerald-500/40"
-                          )} />
-                          <span className={cn("text-xs uppercase tracking-wide font-extrabold flex items-center justify-center gap-1", !regPhone.trim() ? "text-zinc-500" : "text-emerald-400")}>
-                            {!regPhone.trim() && <Lock className="h-3 w-3" />} Green
-                          </span>
-                          <span className="text-[10px] text-zinc-400 mt-0.5 font-medium">
-                            {!regPhone.trim() ? "Needs Phone" : "Verified"}
-                          </span>
-                        </button>
-
-                        {/* GOLD TIER */}
-                        <button
-                          type="button"
-                          disabled={!regPhone.trim()}
-                          onClick={() => regPhone.trim() && setRegTier('Gold')}
-                          className={cn(
-                            "p-3 rounded-xl border-2 flex flex-col items-center justify-center text-center transition-all relative overflow-hidden",
-                            !regPhone.trim()
-                              ? "border-zinc-800/60 bg-zinc-950/30 text-zinc-600 opacity-50 cursor-not-allowed"
-                              : regTier === 'Gold'
-                                ? "border-amber-500 bg-amber-500/20 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)] font-extrabold cursor-pointer"
-                                : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 cursor-pointer"
-                          )}
-                        >
-                          <div className={cn(
-                            "h-3 w-3 rounded-full mb-1.5",
-                            !regPhone.trim() ? "bg-zinc-700" : regTier === 'Gold' ? "bg-amber-400 shadow-[0_0_8px_#f59e0b]" : "bg-amber-400/40"
-                          )} />
-                          <span className={cn("text-xs uppercase tracking-wide font-extrabold flex items-center justify-center gap-1", !regPhone.trim() ? "text-zinc-500" : "text-amber-400")}>
-                            {!regPhone.trim() && <Lock className="h-3 w-3" />} Gold
-                          </span>
-                          <span className="text-[10px] text-zinc-400 mt-0.5 font-medium">
-                            {!regPhone.trim() ? "Needs Phone" : "VIP Pass"}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setStep('membership-check')}
-                      className="h-13 px-5 text-xs font-extrabold uppercase text-zinc-400 hover:text-white border border-zinc-800 rounded-xl"
-                    >
-                      &larr; BACK
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={!regName.trim() || isSubmittingReg}
-                      className="flex-1 h-13 text-sm font-extrabold uppercase bg-amber-500 hover:bg-amber-600 text-black shadow-2xl rounded-xl gap-2 tracking-wide transition-all active:scale-[0.98]"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      {isSubmittingReg ? 'REGISTERING...' : 'REGISTER & ASSIGN PLAYER →'}
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {/* STEP 1: PLAYER ASSIGNMENT */}
-            {step === 'selection' && (
-                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-5 space-y-4 animate-in fade-in duration-200">
-                    
-                    {/* Customer-First Hospitality Dialogue Quote */}
-                    <div className="px-1">
-                      <p className="text-sm sm:text-base font-medium tracking-wide text-zinc-200 leading-relaxed italic border-l-2 border-primary/50 pl-3.5 bg-zinc-900/30 p-2.5 rounded-r-xl">
-                        "Welcome to The 8 Bit Bistro! May I have your name to assign players today?"
-                      </p>
-                    </div>
-
-                    {/* Customer Name Search & Input Field */}
-                    <div className="space-y-2.5 pt-1">
-                      <div className="flex items-center justify-between px-1">
-                        <label className="text-xs sm:text-sm font-extrabold uppercase text-zinc-300 tracking-wide flex items-center gap-2">
-                          <Search className="h-4 w-4 text-primary" />
-                          <span>WHO'S PLAYING?</span>
-                          {targetSlotsCount > 1 && (
-                            <Badge className="bg-primary/20 text-primary border border-primary/30 text-xs font-extrabold uppercase px-2 py-0.5 rounded-md">
-                              PLAYER {activeSlotIndex + 1}
-                            </Badge>
-                          )}
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (selectedPlayers[activeSlotIndex]) {
-                                const emptySlotIndex = Array.from({ length: targetSlotsCount }).findIndex(
-                                  (_, idx) => !selectedPlayers[idx]
-                                );
-                                if (emptySlotIndex !== -1) {
-                                  setActiveSlotIndex(emptySlotIndex);
-                                } else if (targetSlotsCount < playerLimit) {
-                                  const nextSlot = targetSlotsCount;
-                                  setTargetSlotsCount(prev => prev + 1);
-                                  setActiveSlotIndex(nextSlot);
-                                }
-                              }
-                              setShowGuestConfirmModal(true);
-                            }}
-                            className="text-xs sm:text-sm text-zinc-400 hover:text-white underline font-semibold transition-colors py-1"
-                          >
-                            Add a guest instead
-                          </button>
-                          {targetSlotsCount > 1 && (
-                            <span className="text-xs text-zinc-400 font-bold uppercase">
-                              Slot {activeSlotIndex + 1} of {targetSlotsCount}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="relative flex items-center gap-3.5 bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border-2 border-primary shadow-[0_0_25px_rgba(239,68,68,0.3)] focus-within:shadow-[0_0_35px_rgba(239,68,68,0.55)] focus-within:border-primary rounded-2xl px-4 py-3.5 transition-all cursor-text min-h-[58px]">
-                        <div className="h-11 w-11 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center shrink-0">
-                          <Search className="h-6 w-6 stroke-[2.5]" />
-                        </div>
-                        <Input 
-                          ref={searchInputRef}
-                          autoFocus
-                          value={searchTerm}
-                          onChange={(e) => handleSearchChange(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && searchTerm.trim()) {
-                              const exactMatch = filteredMembers.find(m => m.name.toLowerCase() === searchTerm.trim().toLowerCase());
-                              if (exactMatch) {
-                                handleSelectCustomer(exactMatch);
-                              } else {
-                                handleCreateNewCustomer(searchTerm.trim());
-                              }
-                            }
-                          }}
-                          placeholder={`Search customer name or phone number...`}
-                          className="h-12 text-base sm:text-lg font-medium bg-transparent border-none focus-visible:ring-0 px-0 text-white placeholder:text-zinc-400 transition-colors flex-1"
-                        />
-                        {searchTerm.trim() ? (
-                          <button
-                            type="button"
-                            onClick={() => setSearchTerm('')}
-                            className="h-9 w-9 rounded-full bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition-colors shrink-0 shadow-inner"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        ) : (
-                          <Badge className="hidden sm:flex text-[11px] font-extrabold uppercase border border-primary/40 text-primary bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">
-                            START TYPING
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* MATCHING EXISTING CUSTOMERS & "+ CREATE NEW CUSTOMER" (ONLY SHOWN WHEN TYPING) */}
-                    {searchTerm.trim().length > 0 && (
-                      <div className="max-h-[260px] overflow-y-auto min-h-0 space-y-2.5 pr-1 animate-in fade-in-50 slide-in-from-top-1 duration-200">
-                        
-                        {/* + CREATE NEW CUSTOMER BUTTON */}
-                        {searchTerm.trim().length > 0 && (
-                          <div 
-                            onClick={() => handleCreateNewCustomer(searchTerm.trim())}
-                            className="p-3.5 sm:p-4 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex items-center justify-between gap-3 shadow-md cursor-pointer active:scale-[0.99]"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10 border-2 border-emerald-500/50">
-                                <AvatarImage src={GUEST_AVATAR} />
-                                <AvatarFallback className="font-bold text-xs bg-emerald-500 text-black">
-                                  {searchTerm.trim().substring(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="text-sm sm:text-base font-extrabold uppercase text-white tracking-wide">{searchTerm.trim()}</p>
-                                <p className="text-xs text-emerald-400 font-semibold">Not registered? Fill registration form</p>
-                              </div>
-                            </div>
-
-                            <Button 
-                              size="sm" 
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCreateNewCustomer(searchTerm.trim());
-                              }}
-                              className="h-9 px-3.5 font-bold uppercase text-xs bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-1 rounded-lg"
-                            >
-                              <UserPlus className="h-4 w-4" /> + REGISTER
-                            </Button>
-                          </div>
-                        )}
-
-                        {/* MATCHING EXISTING CUSTOMERS */}
-                        {filteredMembers.map(member => {
-                          const balance = getMemberTotalBalance(member);
-                          const isMember = !!member.tier;
-
-                          return (
-                            <div 
-                              key={member.id} 
-                              onClick={() => {
-                                handleSelectCustomer(member);
-                                setTimeout(() => searchInputRef.current?.focus(), 20);
-                              }}
-                              className="w-full p-3.5 rounded-xl border-2 border-zinc-800 bg-zinc-900/90 hover:border-primary/50 hover:bg-zinc-800 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99]"
-                            >
-                              <div className="flex items-center gap-3.5 min-w-0">
-                                <Avatar className="h-11 w-11 border border-zinc-700 shrink-0">
-                                  <AvatarImage src={member.avatarUrl} />
-                                  <AvatarFallback className="font-bold text-sm bg-zinc-800 text-white">{member.name[0]}</AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm sm:text-base font-extrabold uppercase truncate text-white">{member.name}</p>
-                                    {isMember ? (
-                                      <Badge className="text-[10px] font-bold uppercase px-1.5 py-0 border-amber-500/30 text-amber-400 bg-amber-500/10">
-                                        MEMBER
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="text-[10px] font-bold uppercase px-1.5 py-0 border-zinc-700 text-zinc-400">
-                                        CUSTOMER
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-zinc-400 font-bold uppercase font-mono mt-0.5">@{member.username}</p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                {balance > 0 && (
-                                  <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-xs font-bold uppercase">
-                                    <Zap className="h-3.5 w-3.5 fill-current" />{formatPackageDuration(balance)}
-                                  </div>
-                                )}
-                                <Button
-                                  size="sm"
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSelectCustomer(member);
-                                    setTimeout(() => searchInputRef.current?.focus(), 20);
-                                  }}
-                                  className="h-9 px-3.5 text-xs font-bold uppercase bg-primary hover:bg-primary/90 text-primary-foreground gap-1 rounded-lg"
-                                >
-                                  <UserPlus className="h-4 w-4" /> SELECT
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+              {/* Customer Name Search & Input Field */}
+              <div className="space-y-2.5 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-xs sm:text-sm font-extrabold uppercase text-zinc-300 tracking-wide flex items-center gap-2">
+                    <Search className="h-4 w-4 text-primary" />
+                    <span>WHO'S PLAYING?</span>
+                    {targetSlotsCount > 1 && (
+                      <Badge className="bg-primary/20 text-primary border border-primary/30 text-xs font-extrabold uppercase px-2 py-0.5 rounded-md">
+                        PLAYER {activeSlotIndex + 1}
+                      </Badge>
                     )}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedPlayers[activeSlotIndex]) {
+                          const emptySlotIndex = Array.from({ length: targetSlotsCount }).findIndex(
+                            (_, idx) => !selectedPlayers[idx]
+                          );
+                          if (emptySlotIndex !== -1) {
+                            setActiveSlotIndex(emptySlotIndex);
+                          } else if (targetSlotsCount < playerLimit) {
+                            const nextSlot = targetSlotsCount;
+                            setTargetSlotsCount(prev => prev + 1);
+                            setActiveSlotIndex(nextSlot);
+                          }
+                        }
+                        setShowGuestConfirmModal(true);
+                      }}
+                      className="text-xs sm:text-sm text-zinc-400 hover:text-white underline font-semibold transition-colors py-1"
+                    >
+                      Add a guest instead
+                    </button>
+                    {targetSlotsCount > 1 && (
+                      <span className="text-xs text-zinc-400 font-bold uppercase">
+                        Slot {activeSlotIndex + 1} of {targetSlotsCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-                    {/* INDIVIDUAL PLAYER SLOTS DISPLAY */}
-                    <div className="space-y-2.5 pt-3 border-t border-zinc-800">
-                      <div className="flex justify-between items-center text-xs sm:text-sm font-bold uppercase text-zinc-400">
-                        <span>SESSION PLAYER SLOTS ({validPlayers.length}/{targetSlotsCount})</span>
-                        {targetSlotsCount < playerLimit && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleAddPlayerSlot}
-                            className="h-8 px-3 text-xs font-extrabold uppercase border-primary/40 text-primary hover:bg-primary hover:text-black transition-all gap-1 rounded-lg shadow-sm"
-                          >
-                            <Plus className="h-3.5 w-3.5" /> ADD PLAYER
-                          </Button>
-                        )}
+                <div className="relative flex items-center gap-3.5 bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border-2 border-primary shadow-[0_0_25px_rgba(239,68,68,0.3)] focus-within:shadow-[0_0_35px_rgba(239,68,68,0.55)] focus-within:border-primary rounded-2xl px-4 py-3.5 transition-all cursor-text min-h-[58px]">
+                  <div className="h-11 w-11 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center shrink-0">
+                    <Search className="h-6 w-6 stroke-[2.5]" />
+                  </div>
+                  <Input
+                    ref={searchInputRef}
+                    autoFocus
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchTerm.trim()) {
+                        const exactMatch = filteredMembers.find(m => m.name.toLowerCase() === searchTerm.trim().toLowerCase());
+                        if (exactMatch) {
+                          handleSelectCustomer(exactMatch);
+                        } else {
+                          handleCreateNewCustomer(searchTerm.trim());
+                        }
+                      }
+                    }}
+                    placeholder={`Search customer name or phone number...`}
+                    className="h-12 text-base sm:text-lg font-medium bg-transparent border-none focus-visible:ring-0 px-0 text-white placeholder:text-zinc-400 transition-colors flex-1"
+                  />
+                  {searchTerm.trim() ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="h-9 w-9 rounded-full bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition-colors shrink-0 shadow-inner"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  ) : (
+                    <Badge className="hidden sm:flex text-[11px] font-extrabold uppercase border border-primary/40 text-primary bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">
+                      START TYPING
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* MATCHING EXISTING CUSTOMERS & "+ CREATE NEW CUSTOMER" (ONLY SHOWN WHEN TYPING) */}
+              {searchTerm.trim().length > 0 && (
+                <div className="max-h-[260px] overflow-y-auto min-h-0 space-y-2.5 pr-1 animate-in fade-in-50 slide-in-from-top-1 duration-200">
+
+                  {/* + CREATE NEW CUSTOMER BUTTON */}
+                  {searchTerm.trim().length > 0 && (
+                    <div
+                      onClick={() => handleCreateNewCustomer(searchTerm.trim())}
+                      className="p-3.5 sm:p-4 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex items-center justify-between gap-3 shadow-md cursor-pointer active:scale-[0.99]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 border-2 border-emerald-500/50">
+                          <AvatarImage src={GUEST_AVATAR} />
+                          <AvatarFallback className="font-bold text-xs bg-emerald-500 text-black">
+                            {searchTerm.trim().substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm sm:text-base font-extrabold uppercase text-white tracking-wide">{searchTerm.trim()}</p>
+                          <p className="text-xs text-emerald-400 font-semibold">Not registered? Fill registration form</p>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {Array.from({ length: targetSlotsCount }).map((_, idx) => {
-                          const player = selectedPlayers[idx];
-                          const isSelectedForEdit = activeSlotIndex === idx;
-                          const isMember = player && loadedMembers[player.id]?.tier;
+                      <Button
+                        size="sm"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCreateNewCustomer(searchTerm.trim());
+                        }}
+                        className="h-9 px-3.5 font-bold uppercase text-xs bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-1 rounded-lg"
+                      >
+                        <UserPlus className="h-4 w-4" /> + REGISTER
+                      </Button>
+                    </div>
+                  )}
 
-                          return (
-                            <div
-                              key={idx}
-                              onClick={() => { setActiveSlotIndex(idx); setSearchTerm(''); }}
-                              className={cn(
-                                "p-3.5 sm:p-4 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer min-h-[68px]",
-                                player ? "border-zinc-800 bg-zinc-900/90" : "border-dashed border-zinc-800 bg-zinc-950 hover:border-zinc-700",
-                                isSelectedForEdit && "border-primary bg-primary/10 ring-1 ring-primary"
-                              )}
-                            >
-                              <div className="flex items-center gap-3.5 min-w-0">
-                                <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border border-zinc-700">
-                                  <AvatarImage src={player?.avatarUrl || GUEST_AVATAR} />
-                                  <AvatarFallback className="font-bold text-sm bg-zinc-800 text-white">
-                                    {player ? player.name[0] : `P${idx + 1}`}
-                                  </AvatarFallback>
-                                </Avatar>
+                  {/* MATCHING EXISTING CUSTOMERS */}
+                  {filteredMembers.map(member => {
+                    const balance = getMemberTotalBalance(member);
+                    const isMember = !!member.tier;
 
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold uppercase text-zinc-400">Player {idx + 1}:</span>
-                                    {player ? (
-                                      <span className="text-sm sm:text-base font-extrabold uppercase text-white truncate">{player.name}</span>
-                                    ) : (
-                                      <span className="text-sm font-semibold text-zinc-400 italic">Tap to add customer</span>
-                                    )}
-                                  </div>
-                                  {isMember && (
-                                    <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold uppercase px-1.5 py-0 mt-0.5">
-                                      MEMBER
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-
-                              {player ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemovePlayerAt(idx);
-                                  }}
-                                  className="h-9 w-9 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
-                                >
-                                  <X className="h-5 w-5" />
-                                </button>
-                              ) : targetSlotsCount > 1 ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemovePlayerAt(idx);
-                                  }}
-                                  className="h-9 w-9 flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-full transition-colors"
-                                  title="Remove empty slot"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
+                    return (
+                      <div
+                        key={member.id}
+                        onClick={() => {
+                          handleSelectCustomer(member);
+                          setTimeout(() => searchInputRef.current?.focus(), 20);
+                        }}
+                        className="w-full p-3.5 rounded-xl border-2 border-zinc-800 bg-zinc-900/90 hover:border-primary/50 hover:bg-zinc-800 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99]"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <Avatar className="h-11 w-11 border border-zinc-700 shrink-0">
+                            <AvatarImage src={member.avatarUrl} />
+                            <AvatarFallback className="font-bold text-sm bg-zinc-800 text-white">{member.name[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm sm:text-base font-extrabold uppercase truncate text-white">{member.name}</p>
+                              {isMember ? (
+                                <Badge className="text-[10px] font-bold uppercase px-1.5 py-0 border-amber-500/30 text-amber-400 bg-amber-500/10">
+                                  MEMBER
+                                </Badge>
                               ) : (
-                                <Badge variant="outline" className="text-xs font-bold uppercase border-primary/40 text-primary px-2.5 py-1">
-                                  Select
+                                <Badge variant="outline" className="text-[10px] font-bold uppercase px-1.5 py-0 border-zinc-700 text-zinc-400">
+                                  CUSTOMER
                                 </Badge>
                               )}
                             </div>
-                          );
-                        })}
-
-                        {targetSlotsCount < playerLimit && (
-                          <div
-                            onClick={handleAddPlayerSlot}
-                            className="p-3.5 rounded-xl border-2 border-dashed border-zinc-800 hover:border-primary/50 bg-zinc-950/50 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer text-zinc-400 hover:text-primary min-h-[68px]"
-                          >
-                            <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
-                              <Plus className="h-5 w-5" />
-                            </div>
-                            <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wide">ADD PLAYER SLOT</span>
+                            <p className="text-xs text-zinc-400 font-bold uppercase font-mono mt-0.5">@{member.username}</p>
                           </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Footer Bar */}
-                    <div className="pt-4 pb-4 pb-safe border-t border-zinc-800 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onOpenChange(false)}
-                          className="h-11 sm:h-12 px-3 text-xs sm:text-sm text-zinc-400 uppercase font-bold gap-1.5 hover:text-white border border-zinc-800/80 rounded-xl"
-                        >
-                          <X className="h-4 w-4" /> CANCEL
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleResetAll}
-                          className="h-11 sm:h-12 px-3 text-xs sm:text-sm text-zinc-500 uppercase font-bold gap-1 hover:text-white"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" /> RESET
-                        </Button>
-                      </div>
-
-                      <Button 
-                        type="button"
-                        onClick={handleProceedToConfiguration} 
-                        disabled={validPlayers.length === 0} 
-                        className="h-12 sm:h-12 px-6 sm:px-8 font-extrabold text-sm sm:text-base uppercase bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl rounded-xl gap-2 transition-transform active:scale-[0.99] flex-1 sm:flex-initial"
-                      >
-                        NEXT STEP &rarr;
-                      </Button>
-                    </div>
-
-                </div>
-            )}
-
-            {/* STEP 2: SESSION CONFIGURATION */}
-            {step === 'configuration' && (
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="p-3 sm:p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
-                        <div className="flex items-center justify-between shrink-0 mb-3">
-                            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wide">2. SELECT SESSION TIME</h3>
-                            <Button variant="ghost" size="sm" onClick={() => setStep('selection')} className="h-7 uppercase text-xs font-bold text-zinc-400 hover:text-white"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> CHANGE PLAYERS</Button>
                         </div>
 
-                        <div className="space-y-1.5 mb-2 sm:mb-2.5 shrink-0 overflow-y-auto max-h-[100px] sm:max-h-[120px] border-b border-zinc-800 pb-2">
-                            {validPlayers.map((player) => {
-                                const config = configs[player.id];
-                                const isSelected = activeConfigPlayerId === player.id;
-                                const hasSelection = !!config?.name;
-                                return (
-                                    <div key={player.id} onClick={() => setActiveConfigPlayerId(player.id)} className={cn("p-2 rounded-lg border-2 transition-all cursor-pointer flex items-center justify-between", isSelected ? "border-primary bg-primary/10 ring-1 ring-primary shadow-md" : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/60", hasSelection && !isSelected && "border-green-500/30 opacity-80")}>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8 border border-zinc-700"><AvatarImage src={player.avatarUrl} /><AvatarFallback className="text-sm font-bold">{player.name[0]}</AvatarFallback></Avatar>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-bold uppercase leading-tight truncate text-white">{player.name}</p>
-                                                {hasSelection ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-bold uppercase text-green-400 block truncate max-w-[140px]">{config.name}</span>
-                                                        {config.reminderDuration && <Badge className="h-4 text-[10px] font-bold bg-amber-500">{formatPackageDuration(config.reminderDuration)}</Badge>}
-                                                    </div>
-                                                ) : <p className="text-xs text-zinc-500 font-bold uppercase">Tap to configure time</p>}
-                                            </div>
-                                        </div>
-                                        {hasSelection && !isSelected && <Badge variant="outline" className="h-5 px-2 text-[10px] font-bold bg-green-500/10 text-green-400 border-green-500/30 uppercase">READY</Badge>}
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {activeConfigPlayerId && (
-                            <div className="flex-1 flex flex-col min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden">
-                                <div className="p-2 sm:p-2.5 border border-zinc-800 rounded-xl bg-zinc-900/30 flex-1 flex flex-col min-h-0 overflow-hidden">
-                                    <div className="flex items-center justify-between px-2 mb-2.5">
-                                        <h4 className="text-xs font-bold uppercase text-zinc-400 tracking-wide">CONFIGURING FOR: <strong className="text-white">{validPlayers.find(p => p.id === activeConfigPlayerId)?.name}</strong></h4>
-                                    </div>
-                                    <div className="flex gap-3 mb-3 shrink-0">
-                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'walkin' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'walkin')}><Gamepad2 className="h-4 w-4" /> QUICK PLAY</Button>
-                                        <Button variant={configs[activeConfigPlayerId]?.mode === 'recharge' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'recharge')}><Zap className="h-4 w-4" /> RECHARGE</Button>
-                                    </div>
-                                    <ScrollArea className="flex-1 bg-zinc-950/60 rounded-xl border border-zinc-800 min-h-0">
-                                        <div className="p-2.5 space-y-2.5 pb-4 font-body">
-                                            {configs[activeConfigPlayerId]?.mode === 'recharge' ? (
-                                                <div className="space-y-4">
-                                                    {(() => {
-                                                        const activeRecharges = getMemberActiveRecharges(activeConfigPlayerId);
-                                                        const totalBalance = activeRecharges.reduce((sum, r) => sum + r.remainingDuration, 0);
-                                                        const isSelected = configs[activeConfigPlayerId]?.rechargeId === 'pool';
-                                                        if (totalBalance <= 0) return null;
-                                                        return (
-                                                             <div className={cn("p-4 rounded-xl border-2 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 transition-all shadow-md", isSelected ? "border-yellow-500 ring-2 ring-yellow-500/20" : "border-yellow-500/10")}>
-                                                                 <div className="flex justify-between items-center">
-                                                                     <div className="min-w-0">
-                                                                         <p className="text-xs font-bold uppercase text-yellow-500/80 tracking-normal">TOTAL COMBINED BALANCE</p>
-                                                                         <div className="flex items-center gap-2 text-2xl font-bold text-yellow-500 font-mono tracking-tight"><Zap className="h-5 w-5 fill-current" /> {formatPackageDuration(totalBalance)}</div>
-                                                                     </div>
-                                                                     {!isSelected ? (
-                                                                         <Button size="sm" onClick={() => handlePickConfig(activeConfigPlayerId, 'pool', true)} className="h-9 px-5 text-xs font-bold bg-yellow-500 text-black uppercase shadow-lg hover:bg-yellow-600">
-                                                                             Use Pool
-                                                                         </Button>
-                                                                     ) : (
-                                                                         <Badge className="bg-green-600 text-white text-xs font-bold uppercase h-6 shadow-sm">
-                                                                             <CheckCircle2 className="h-4 w-4 mr-1.5"/> Selected
-                                                                         </Badge>
-                                                                     )}
-                                                                 </div>
-
-                                                                 {isSelected && (
-                                                                     <div className="mt-4 pt-4 border-t border-yellow-500/20 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                                                                         <p className="text-xs font-bold uppercase text-yellow-500/80 tracking-normal px-1">Duration to Deduct</p>
-                                                                         <div className="grid grid-cols-4 gap-1.5">
-                                                                             {[1800, 3600, 7200].map(s => {
-                                                                                 const isCurrent = configs[activeConfigPlayerId].reminderDuration === s;
-                                                                                 return (
-                                                                                     <Button 
-                                                                                         key={s} 
-                                                                                         variant="outline" 
-                                                                                         size="sm" 
-                                                                                         className={cn(
-                                                                                             "h-8 text-xs font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
-                                                                                             isCurrent && "bg-yellow-500 text-black border-yellow-500"
-                                                                                         )}
-                                                                                         onClick={() => handleSetPoolDuration(activeConfigPlayerId, s)}
-                                                                                         disabled={s > totalBalance}
-                                                                                     >
-                                                                                         {formatPackageDuration(s)}
-                                                                                     </Button>
-                                                                                 );
-                                                                             })}
-                                                                             <Button 
-                                                                                 variant="outline" 
-                                                                                 size="sm" 
-                                                                                 className={cn(
-                                                                                     "h-8 text-xs font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
-                                                                                     configs[activeConfigPlayerId].reminderDuration === totalBalance && "bg-yellow-500 text-black border-yellow-500"
-                                                                                 )}
-                                                                                 onClick={() => handleSetPoolDuration(activeConfigPlayerId, totalBalance)}
-                                                                             >
-                                                                                 FULL
-                                                                             </Button>
-                                                                         </div>
-                                                                     </div>
-                                                                 )}
-                                                             </div>
-                                                        );
-                                                    })()}
-                                                    <div className="space-y-2.5">
-                                                        <p className="text-xs font-bold uppercase text-zinc-400 px-1 tracking-normal">INDIVIDUAL PACKS</p>
-                                                        {getMemberActiveRecharges(activeConfigPlayerId).length > 0 ? (
-                                                            getMemberActiveRecharges(activeConfigPlayerId).map((r, rIdx) => {
-                                                                const isSelected = configs[activeConfigPlayerId]?.rechargeId === r.id;
-                                                                return (
-                                                                    <div 
-                                                                        key={`${r.id}-${rIdx}`} 
-                                                                        className={cn(
-                                                                            "p-3 rounded-lg border-2 transition-all", 
-                                                                            isSelected 
-                                                                                ? "border-primary bg-primary/10 ring-1 ring-primary shadow-md" 
-                                                                                : "border-zinc-800 bg-zinc-900 opacity-70 hover:opacity-100"
-                                                                        )}
-                                                                    >
-                                                                        <div className="flex justify-between items-center">
-                                                                            <div className="min-w-0">
-                                                                                <p className="text-xs font-bold uppercase truncate text-white">{r.packageName}</p>
-                                                                                <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase mt-0.5"><Clock className="h-3 w-3" /> {formatPackageDuration(r.remainingDuration)} LEFT</div>
-                                                                            </div>
-                                                                            <Button size="sm" variant="ghost" onClick={() => handlePickConfig(activeConfigPlayerId, r, true)} className="h-7 px-3 text-xs font-bold uppercase hover:bg-primary/10">Select</Button>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })
-                                                        ) : (
-                                                            <div className="p-3 text-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500 font-bold uppercase">
-                                                                No active time packs &bull; Select a package below
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="pt-3">
-                                                        <p className="text-xs font-bold uppercase text-zinc-500 text-center mb-3 tracking-normal border-t border-zinc-800 pt-3">--- BUY NEW PACK ---</p>
-                                                        {(() => {
-                                                            const sessionPacks = rechargePackages.filter(p => p.duration < 14400 && (!p.validity || p.validity <= 1));
-                                                            const bulkPacks = rechargePackages.filter(p => p.duration >= 14400 || (p.validity && p.validity > 1));
-
-                                                            return (
-                                                                <div className="space-y-3">
-                                                                    {sessionPacks.length > 0 && (
-                                                                        <div className="space-y-2">
-                                                                            {sessionPacks.map(pkg => {
-                                                                                const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
-                                                                                return (
-                                                                                    <div 
-                                                                                        key={pkg.id} 
-                                                                                        onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)} 
-                                                                                        className={cn(
-                                                                                            "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
-                                                                                            isSelected 
-                                                                                                ? "border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500 shadow-md" 
-                                                                                                : "border-zinc-800 bg-zinc-900 hover:border-yellow-500/50"
-                                                                                        )}
-                                                                                    >
-                                                                                        <div className="min-w-0">
-                                                                                            <div className="flex items-center gap-2">
-                                                                                                <p className={cn("text-xs font-bold uppercase truncate text-white group-hover:text-yellow-400", isSelected && "text-yellow-400 font-bold")}>{pkg.name}</p>
-                                                                                                {isSelected && (
-                                                                                                    <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
-                                                                                                        <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
-                                                                                                    </Badge>
-                                                                                                )}
-                                                                                                {pkg.isPriorityOffer && !isSelected && (
-                                                                                                    <Badge className="h-4 px-1 text-[8px] bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase font-bold">
-                                                                                                        SPECIAL
-                                                                                                    </Badge>
-                                                                                                )}
-                                                                                            </div>
-                                                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                                                <p className="text-xs font-bold text-zinc-400 uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} {pkg.validity === 1 ? 'Day' : 'Days'}</p>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <span className={cn(
-                                                                                            "text-xs font-bold transition-colors",
-                                                                                            isSelected ? "text-yellow-400 font-bold" : "text-primary"
-                                                                                        )}>
-                                                                                            ₹{pkg.price}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {bulkPacks.length > 0 && (
-                                                                        <div className="mt-3 pt-3 border-t border-zinc-800/80">
-                                                                            <div className="flex items-center justify-between mb-2">
-                                                                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
-                                                                                    Multi-Hour Time Banking Passes
-                                                                                </span>
-                                                                                <span className="text-[10px] font-bold text-zinc-500 uppercase">Save Unspent Hours</span>
-                                                                            </div>
-                                                                            <div className="space-y-2">
-                                                                                {bulkPacks.map(pkg => {
-                                                                                    const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
-                                                                                    return (
-                                                                                        <div 
-                                                                                            key={pkg.id} 
-                                                                                            onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)} 
-                                                                                            className={cn(
-                                                                                                "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
-                                                                                                isSelected 
-                                                                                                    ? "border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500 shadow-md" 
-                                                                                                    : "border-zinc-800 bg-zinc-900/60 hover:border-yellow-500/50"
-                                                                                            )}
-                                                                                        >
-                                                                                            <div className="min-w-0">
-                                                                                                <div className="flex items-center gap-2">
-                                                                                                    <p className={cn("text-xs font-bold uppercase truncate text-white group-hover:text-yellow-400", isSelected && "text-yellow-400 font-bold")}>{pkg.name}</p>
-                                                                                                    {isSelected && (
-                                                                                                        <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
-                                                                                                            <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
-                                                                                                        </Badge>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                                                    <p className="text-xs font-bold text-zinc-400 uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} {pkg.validity === 1 ? 'Day' : 'Days'}</p>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <span className={cn(
-                                                                                                "text-xs font-bold transition-colors",
-                                                                                                isSelected ? "text-yellow-400 font-bold" : "text-primary"
-                                                                                            )}>
-                                                                                                ₹{pkg.price}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {sessionPacks.length === 0 && bulkPacks.length === 0 && (
-                                                                        <div className="p-3 text-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500 font-bold uppercase">
-                                                                            No recharge packages available for {station?.name || 'this station'}.
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                    </div>
-                                                </div>
-                                            ) : configs[activeConfigPlayerId]?.mode === 'walkin' ? (
-                                                <div className="space-y-2.5">
-                                                    {walkInPackages.map(pkg => {
-                                                        const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'walkin';
-                                                        return (
-                                                            <div 
-                                                                key={pkg.id} 
-                                                                onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false)} 
-                                                                className={cn(
-                                                                    "p-3.5 rounded-xl border-2 transition-all cursor-pointer group shadow-md flex justify-between items-center",
-                                                                    isSelected 
-                                                                        ? "border-primary bg-primary/15 ring-1 ring-primary scale-[1.01]" 
-                                                                        : "border-zinc-800 bg-zinc-900/80 hover:border-primary/50"
-                                                                )}
-                                                            >
-                                                                <div className="min-w-0">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <p className={cn(
-                                                                            "text-sm font-extrabold uppercase truncate text-white group-hover:text-primary", 
-                                                                            isSelected && "text-primary"
-                                                                        )}>
-                                                                            {pkg.name}
-                                                                        </p>
-                                                                        {isSelected && (
-                                                                            <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
-                                                                                <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
-                                                                            </Badge>
-                                                                        )}
-                                                                    </div>
-                                                                    <p className="text-xs font-bold text-primary mt-1 uppercase flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatPackageDuration(pkg.duration)}</p>
-                                                                </div>
-                                                                <div className="text-right font-mono">
-                                                                    <span className={cn(
-                                                                        "font-bold text-base transition-colors block",
-                                                                        isSelected ? "text-primary font-bold" : "text-white"
-                                                                    )}>
-                                                                        ₹{pkg.price * validPlayers.length}
-                                                                    </span>
-                                                                    {validPlayers.length > 1 && (
-                                                                        <span className="text-[11px] text-zinc-400 font-semibold block">
-                                                                            ₹{pkg.price} / player
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    <div className="pt-3">
-                                                        <p className="text-xs font-bold uppercase text-zinc-500 text-center mb-3 tracking-normal border-t border-zinc-800 pt-3">--- CUSTOM QUICK PLAY ---</p>
-                                                        <div className="p-3 rounded-xl border-2 border-dashed border-zinc-800 bg-zinc-900/60 shadow-sm space-y-3">
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                <div className="space-y-1">
-                                                                    <Label className="text-xs font-bold uppercase text-zinc-400">Minutes</Label>
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        placeholder="e.g. 60" 
-                                                                        value={customMinutes} 
-                                                                        onChange={(e) => setCustomMinutes(e.target.value)}
-                                                                        className="h-10 text-xs font-bold font-mono bg-zinc-950 border-zinc-800"
-                                                                    />
-                                                                </div>
-                                                                <div className="space-y-1">
-                                                                    <Label className="text-xs font-bold uppercase text-zinc-400">Charge (₹)</Label>
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        placeholder="e.g. 100" 
-                                                                        value={customPrice} 
-                                                                        onChange={(e) => setCustomPrice(e.target.value)}
-                                                                        className="h-10 text-xs font-bold font-mono bg-zinc-950 border-zinc-800"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                            <Button 
-                                                                onClick={() => handlePickCustomWalkin(activeConfigPlayerId)} 
-                                                                className="w-full h-10 text-xs font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90"
-                                                                disabled={!customMinutes}
-                                                            >
-                                                                Set Custom Time
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ) : <div className="h-40 flex items-center justify-center opacity-40 italic text-xs font-bold uppercase tracking-normal text-center px-10 text-zinc-400">Choose a login type above</div>}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {balance > 0 && (
+                            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-xs font-bold uppercase">
+                              <Zap className="h-3.5 w-3.5 fill-current" />{formatPackageDuration(balance)}
                             </div>
-                        )}
-                    </div>
-                    <div className="p-3 sm:p-4 shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-2">
-                        <Button 
-                            onClick={handleApplyAllAndStart} 
-                            disabled={!activeConfigPlayerId || !configs[activeConfigPlayerId]?.name}
-                            className="font-headline text-xs sm:text-sm font-extrabold h-11 sm:h-12 uppercase tracking-wide shadow-2xl transition-all active:scale-[0.98] gap-2 bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
-                        >
-                            APPLY TO ALL & START &rarr;
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            onClick={handleConfirmAll}
-                            disabled={!allPlayersConfigured}
-                            className="font-headline text-xs sm:text-sm font-extrabold h-11 sm:h-12 uppercase tracking-wide shadow-sm transition-all active:scale-[0.98] border-2 border-zinc-700 text-white hover:bg-zinc-800 flex-1"
-                        >
-                            START SESSION &rarr;
-                        </Button>
-                        <Button
+                          )}
+                          <Button
+                            size="sm"
                             type="button"
-                            variant="ghost"
-                            onClick={() => onOpenChange(false)}
-                            className="h-10 px-4 text-xs font-bold uppercase text-zinc-400 hover:text-white border border-zinc-800 rounded-xl sm:hidden"
-                        >
-                            <X className="h-4 w-4 mr-1.5" /> CANCEL & CLOSE
-                        </Button>
-                    </div>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectCustomer(member);
+                              setTimeout(() => searchInputRef.current?.focus(), 20);
+                            }}
+                            className="h-9 px-3.5 text-xs font-bold uppercase bg-primary hover:bg-primary/90 text-primary-foreground gap-1 rounded-lg"
+                          >
+                            <UserPlus className="h-4 w-4" /> SELECT
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-            )}
+              )}
+
+              {/* INDIVIDUAL PLAYER SLOTS DISPLAY */}
+              <div className="space-y-2.5 pt-3 border-t border-zinc-800">
+                <div className="flex justify-between items-center text-xs sm:text-sm font-bold uppercase text-zinc-400">
+                  <span>SESSION PLAYER SLOTS ({validPlayers.length}/{targetSlotsCount})</span>
+                  {targetSlotsCount < playerLimit && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddPlayerSlot}
+                      className="h-8 px-3 text-xs font-extrabold uppercase border-primary/40 text-primary hover:bg-primary hover:text-black transition-all gap-1 rounded-lg shadow-sm"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> ADD PLAYER
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {Array.from({ length: targetSlotsCount }).map((_, idx) => {
+                    const player = selectedPlayers[idx];
+                    const isSelectedForEdit = activeSlotIndex === idx;
+                    const isMember = player && loadedMembers[player.id]?.tier;
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => { setActiveSlotIndex(idx); setSearchTerm(''); }}
+                        className={cn(
+                          "p-3.5 sm:p-4 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer min-h-[68px]",
+                          player ? "border-zinc-800 bg-zinc-900/90" : "border-dashed border-zinc-800 bg-zinc-950 hover:border-zinc-700",
+                          isSelectedForEdit && "border-primary bg-primary/10 ring-1 ring-primary"
+                        )}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border border-zinc-700">
+                            <AvatarImage src={player?.avatarUrl || GUEST_AVATAR} />
+                            <AvatarFallback className="font-bold text-sm bg-zinc-800 text-white">
+                              {player ? player.name[0] : `P${idx + 1}`}
+                            </AvatarFallback>
+                          </Avatar>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold uppercase text-zinc-400">Player {idx + 1}:</span>
+                              {player ? (
+                                <span className="text-sm sm:text-base font-extrabold uppercase text-white truncate">{player.name}</span>
+                              ) : (
+                                <span className="text-sm font-semibold text-zinc-400 italic">Tap to add customer</span>
+                              )}
+                            </div>
+                            {isMember && (
+                              <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold uppercase px-1.5 py-0 mt-0.5">
+                                MEMBER
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {player ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePlayerAt(idx);
+                            }}
+                            className="h-9 w-9 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        ) : targetSlotsCount > 1 ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePlayerAt(idx);
+                            }}
+                            className="h-9 w-9 flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-full transition-colors"
+                            title="Remove empty slot"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <Badge variant="outline" className="text-xs font-bold uppercase border-primary/40 text-primary px-2.5 py-1">
+                            Select
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {targetSlotsCount < playerLimit && (
+                    <div
+                      onClick={handleAddPlayerSlot}
+                      className="p-3.5 rounded-xl border-2 border-dashed border-zinc-800 hover:border-primary/50 bg-zinc-950/50 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer text-zinc-400 hover:text-primary min-h-[68px]"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+                        <Plus className="h-5 w-5" />
+                      </div>
+                      <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wide">ADD PLAYER SLOT</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Bar */}
+              <div className="pt-4 pb-4 pb-safe border-t border-zinc-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onOpenChange(false)}
+                    className="h-11 sm:h-12 px-3 text-xs sm:text-sm text-zinc-400 uppercase font-bold gap-1.5 hover:text-white border border-zinc-800/80 rounded-xl"
+                  >
+                    <X className="h-4 w-4" /> CANCEL
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetAll}
+                    className="h-11 sm:h-12 px-3 text-xs sm:text-sm text-zinc-500 uppercase font-bold gap-1 hover:text-white"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> RESET
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleProceedToConfiguration}
+                  disabled={validPlayers.length === 0}
+                  className="h-12 sm:h-12 px-6 sm:px-8 font-extrabold text-sm sm:text-base uppercase bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl rounded-xl gap-2 transition-transform active:scale-[0.99] flex-1 sm:flex-initial"
+                >
+                  NEXT STEP &rarr;
+                </Button>
+              </div>
+
+            </div>
+          )}
+
+          {/* STEP 2: SESSION CONFIGURATION */}
+          {step === 'configuration' && (
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="p-3 sm:p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="flex items-center justify-between shrink-0 mb-3">
+                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wide">2. SELECT SESSION TIME</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setStep('selection')} className="h-7 uppercase text-xs font-bold text-zinc-400 hover:text-white"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> CHANGE PLAYERS</Button>
+                </div>
+
+                <div className="space-y-1.5 mb-2 sm:mb-2.5 shrink-0 overflow-y-auto max-h-[100px] sm:max-h-[120px] border-b border-zinc-800 pb-2">
+                  {validPlayers.map((player) => {
+                    const config = configs[player.id];
+                    const isSelected = activeConfigPlayerId === player.id;
+                    const hasSelection = !!config?.name;
+                    return (
+                      <div key={player.id} onClick={() => setActiveConfigPlayerId(player.id)} className={cn("p-2 rounded-lg border-2 transition-all cursor-pointer flex items-center justify-between", isSelected ? "border-primary bg-primary/10 ring-1 ring-primary shadow-md" : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/60", hasSelection && !isSelected && "border-green-500/30 opacity-80")}>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8 border border-zinc-700"><AvatarImage src={player.avatarUrl} /><AvatarFallback className="text-sm font-bold">{player.name[0]}</AvatarFallback></Avatar>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold uppercase leading-tight truncate text-white">{player.name}</p>
+                            {hasSelection ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold uppercase text-green-400 block truncate max-w-[140px]">{config.name}</span>
+                                {config.reminderDuration && <Badge className="h-4 text-[10px] font-bold bg-amber-500">{formatPackageDuration(config.reminderDuration)}</Badge>}
+                              </div>
+                            ) : <p className="text-xs text-zinc-500 font-bold uppercase">Tap to configure time</p>}
+                          </div>
+                        </div>
+                        {hasSelection && !isSelected && <Badge variant="outline" className="h-5 px-2 text-[10px] font-bold bg-green-500/10 text-green-400 border-green-500/30 uppercase">READY</Badge>}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {activeConfigPlayerId && (
+                  <div className="flex-1 flex flex-col min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden">
+                    <div className="p-2 sm:p-2.5 border border-zinc-800 rounded-xl bg-zinc-900/30 flex-1 flex flex-col min-h-0 overflow-hidden">
+                      <div className="flex items-center justify-between px-2 mb-2.5">
+                        <h4 className="text-xs font-bold uppercase text-zinc-400 tracking-wide">CONFIGURING FOR: <strong className="text-white">{validPlayers.find(p => p.id === activeConfigPlayerId)?.name}</strong></h4>
+                      </div>
+                      <div className="flex gap-3 mb-3 shrink-0">
+                        <Button variant={configs[activeConfigPlayerId]?.mode === 'walkin' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'walkin')}><Gamepad2 className="h-4 w-4" /> QUICK PLAY</Button>
+                        <Button variant={configs[activeConfigPlayerId]?.mode === 'recharge' || configs[activeConfigPlayerId]?.mode === 'buy-recharge' ? 'default' : 'outline'} className="flex-1 h-10 uppercase text-xs font-bold gap-2 border-2" onClick={() => handleSetPlayerMode(activeConfigPlayerId, 'recharge')}><Zap className="h-4 w-4" /> RECHARGE</Button>
+                      </div>
+                      <ScrollArea className="flex-1 bg-zinc-950/60 rounded-xl border border-zinc-800 min-h-0">
+                        <div className="p-2.5 space-y-2.5 pb-4 font-body">
+                          {configs[activeConfigPlayerId]?.mode === 'recharge' || configs[activeConfigPlayerId]?.mode === 'buy-recharge' ? (
+                            <div className="space-y-4">
+                              {(() => {
+                                const activeRecharges = getMemberActiveRecharges(activeConfigPlayerId);
+                                if (activeRecharges.length === 0) {
+                                  return (
+                                    <div className="p-3 text-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500 font-bold uppercase">
+                                      No active time packs &bull; Select a package below
+                                    </div>
+                                  );
+                                }
+
+                                if (activeRecharges.length === 1) {
+                                  const singlePack = activeRecharges[0];
+                                  const isSelected = configs[activeConfigPlayerId]?.rechargeId === singlePack.id || configs[activeConfigPlayerId]?.rechargeId === 'pool';
+                                  const totalBalance = singlePack.remainingDuration;
+                                  const currentReminderDuration = configs[activeConfigPlayerId]?.reminderDuration || totalBalance;
+                                  const matchedPkg = allPackages?.find(p => p.id === singlePack.packageId || p.name.toLowerCase() === singlePack.packageName?.toLowerCase());
+                                  const totalPackDuration = singlePack.totalDuration || matchedPkg?.duration || Math.max(totalBalance, 3600);
+                                  const usedDuration = Math.max(0, totalPackDuration - totalBalance);
+
+                                  return (
+                                    <div className={cn("p-4 rounded-xl border-2 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 transition-all shadow-md", isSelected ? "border-yellow-500 ring-2 ring-yellow-500/20" : "border-yellow-500/10")}>
+                                      <div className="flex justify-between items-start">
+                                        <div className="min-w-0">
+                                          <p className="text-[10px] font-bold uppercase text-yellow-500/80 tracking-normal">ACTIVE RECHARGE PACK</p>
+                                          <p className="text-sm font-bold uppercase truncate text-white mt-0.5">{singlePack.packageName}</p>
+                                          <div className="flex items-center gap-1.5 text-xl font-bold text-yellow-500 font-mono tracking-tight mt-1">
+                                            <Zap className="h-4 w-4 fill-current" /> {formatPackageDuration(totalBalance)} AVAILABLE
+                                          </div>
+                                        </div>
+                                        {!isSelected ? (
+                                          <Button size="sm" onClick={() => handlePickConfig(activeConfigPlayerId, singlePack, true)} className="h-9 px-5 text-xs font-bold bg-yellow-500 text-black uppercase shadow-lg hover:bg-yellow-600">
+                                            Use Pack
+                                          </Button>
+                                        ) : (
+                                          <Badge className="bg-green-600 text-white text-xs font-bold uppercase h-6 shadow-sm">
+                                            <CheckCircle2 className="h-4 w-4 mr-1.5" /> Selected
+                                          </Badge>
+                                        )}
+                                      </div>
+
+                                      {/* Time Used vs Time Left breakdown */}
+                                      <div className="mt-3 grid grid-cols-3 gap-2 py-2 px-2.5 bg-black/50 rounded-lg border border-yellow-500/20 text-center font-mono">
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase text-zinc-400">Total Pack</p>
+                                          <p className="text-xs font-bold text-white">{formatPackageDuration(totalPackDuration)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase text-amber-400">Time Used</p>
+                                          <p className="text-xs font-bold text-amber-400">{usedDuration > 0 ? formatPackageDuration(usedDuration) : '0M'}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase text-emerald-400">Time Left</p>
+                                          <p className="text-xs font-bold text-emerald-400">{formatPackageDuration(totalBalance)}</p>
+                                        </div>
+                                      </div>
+
+                                      {isSelected && (
+                                        <div className="mt-4 pt-4 border-t border-yellow-500/20 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                          <p className="text-xs font-bold uppercase text-yellow-500/80 tracking-normal px-1">Duration to Deduct</p>
+                                          <div className="grid grid-cols-4 gap-1.5">
+                                            {[1800, 3600, 7200].map(s => {
+                                              const isCurrent = currentReminderDuration === s;
+                                              return (
+                                                <Button
+                                                  key={s}
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className={cn(
+                                                    "h-8 text-xs font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                    isCurrent && "bg-yellow-500 text-black border-yellow-500"
+                                                  )}
+                                                  onClick={() => handleSetPoolDuration(activeConfigPlayerId, s)}
+                                                  disabled={s > totalBalance}
+                                                >
+                                                  {formatPackageDuration(s)}
+                                                </Button>
+                                              );
+                                            })}
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className={cn(
+                                                "h-8 text-xs font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                currentReminderDuration === totalBalance && "bg-yellow-500 text-black border-yellow-500"
+                                              )}
+                                              onClick={() => handleSetPoolDuration(activeConfigPlayerId, totalBalance)}
+                                            >
+                                              FULL
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                }
+
+                                // When member has 2 or more packs, show combined pool + individual packs
+                                const totalBalance = activeRecharges.reduce((sum, r) => sum + r.remainingDuration, 0);
+                                const totalInitialBalance = activeRecharges.reduce((sum, r) => {
+                                  const matchedPkg = allPackages?.find(p => p.id === r.packageId || p.name.toLowerCase() === r.packageName?.toLowerCase());
+                                  return sum + (r.totalDuration || matchedPkg?.duration || Math.max(r.remainingDuration, 3600));
+                                }, 0);
+                                const totalUsedBalance = Math.max(0, totalInitialBalance - totalBalance);
+                                const isPoolSelected = configs[activeConfigPlayerId]?.rechargeId === 'pool';
+
+                                return (
+                                  <div className="space-y-3">
+                                    <div className={cn("p-4 rounded-xl border-2 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 transition-all shadow-md", isPoolSelected ? "border-yellow-500 ring-2 ring-yellow-500/20" : "border-yellow-500/10")}>
+                                      <div className="flex justify-between items-start">
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-bold uppercase text-yellow-500/80 tracking-normal">TOTAL COMBINED BALANCE</p>
+                                          <div className="flex items-center gap-2 text-2xl font-bold text-yellow-500 font-mono tracking-tight"><Zap className="h-5 w-5 fill-current" /> {formatPackageDuration(totalBalance)} AVAILABLE</div>
+                                        </div>
+                                        {!isPoolSelected ? (
+                                          <Button size="sm" onClick={() => handlePickConfig(activeConfigPlayerId, 'pool', true)} className="h-9 px-5 text-xs font-bold bg-yellow-500 text-black uppercase shadow-lg hover:bg-yellow-600">
+                                            Use Pool
+                                          </Button>
+                                        ) : (
+                                          <Badge className="bg-green-600 text-white text-xs font-bold uppercase h-6 shadow-sm">
+                                            <CheckCircle2 className="h-4 w-4 mr-1.5" /> Selected
+                                          </Badge>
+                                        )}
+                                      </div>
+
+                                      {/* Combined Pool Breakdown */}
+                                      <div className="mt-3 grid grid-cols-3 gap-2 py-2 px-2.5 bg-black/50 rounded-lg border border-yellow-500/20 text-center font-mono">
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase text-zinc-400">Total Balance</p>
+                                          <p className="text-xs font-bold text-white">{formatPackageDuration(totalInitialBalance)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase text-amber-400">Total Used</p>
+                                          <p className="text-xs font-bold text-amber-400">{totalUsedBalance > 0 ? formatPackageDuration(totalUsedBalance) : '0M'}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase text-emerald-400">Total Left</p>
+                                          <p className="text-xs font-bold text-emerald-400">{formatPackageDuration(totalBalance)}</p>
+                                        </div>
+                                      </div>
+
+                                      {isPoolSelected && (
+                                        <div className="mt-4 pt-4 border-t border-yellow-500/20 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                          <p className="text-xs font-bold uppercase text-yellow-500/80 tracking-normal px-1">Duration to Deduct</p>
+                                          <div className="grid grid-cols-4 gap-1.5">
+                                            {[1800, 3600, 7200].map(s => {
+                                              const isCurrent = configs[activeConfigPlayerId]?.reminderDuration === s;
+                                              return (
+                                                <Button
+                                                  key={s}
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className={cn(
+                                                    "h-8 text-xs font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                    isCurrent && "bg-yellow-500 text-black border-yellow-500"
+                                                  )}
+                                                  onClick={() => handleSetPoolDuration(activeConfigPlayerId, s)}
+                                                  disabled={s > totalBalance}
+                                                >
+                                                  {formatPackageDuration(s)}
+                                                </Button>
+                                              );
+                                            })}
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className={cn(
+                                                "h-8 text-xs font-bold border-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all",
+                                                configs[activeConfigPlayerId]?.reminderDuration === totalBalance && "bg-yellow-500 text-black border-yellow-500"
+                                              )}
+                                              onClick={() => handleSetPoolDuration(activeConfigPlayerId, totalBalance)}
+                                            >
+                                              FULL
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="space-y-2.5">
+                                      <p className="text-xs font-bold uppercase text-zinc-400 px-1 tracking-normal">OR CHOOSE SPECIFIC PACK</p>
+                                      {activeRecharges.map((r, rIdx) => {
+                                        const isSelected = configs[activeConfigPlayerId]?.rechargeId === r.id;
+                                        const matchedPkg = allPackages?.find(p => p.id === r.packageId || p.name.toLowerCase() === r.packageName?.toLowerCase());
+                                        const packTotal = r.totalDuration || matchedPkg?.duration || Math.max(r.remainingDuration, 3600);
+                                        const packUsed = Math.max(0, packTotal - r.remainingDuration);
+                                        return (
+                                          <div
+                                            key={`${r.id}-${rIdx}`}
+                                            className={cn(
+                                              "p-3 rounded-lg border-2 transition-all",
+                                              isSelected
+                                                ? "border-primary bg-primary/10 ring-1 ring-primary shadow-md"
+                                                : "border-zinc-800 bg-zinc-900 opacity-70 hover:opacity-100"
+                                            )}
+                                          >
+                                            <div className="flex justify-between items-center">
+                                              <div className="min-w-0">
+                                                <p className="text-xs font-bold uppercase truncate text-white">{r.packageName}</p>
+                                                <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 mt-1">
+                                                  <span>Total: <strong className="text-white">{formatPackageDuration(packTotal)}</strong></span>
+                                                  <span>&bull;</span>
+                                                  <span>Used: <strong className="text-amber-400">{packUsed > 0 ? formatPackageDuration(packUsed) : '0M'}</strong></span>
+                                                  <span>&bull;</span>
+                                                  <span>Left: <strong className="text-emerald-400">{formatPackageDuration(r.remainingDuration)}</strong></span>
+                                                </div>
+                                              </div>
+                                              {isSelected ? (
+                                                <Badge className="bg-green-600 text-white text-xs font-bold uppercase h-6 shadow-sm">
+                                                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Selected
+                                                </Badge>
+                                              ) : (
+                                                <Button size="sm" variant="ghost" onClick={() => handlePickConfig(activeConfigPlayerId, r, true)} className="h-7 px-3 text-xs font-bold uppercase hover:bg-primary/10">Select</Button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                              <div className="pt-3">
+                                <p className="text-xs font-bold uppercase text-zinc-500 text-center mb-3 tracking-normal border-t border-zinc-800 pt-3">--- BUY NEW PACK ---</p>
+                                {(() => {
+                                  const sessionPacks = rechargePackages.filter(p => p.duration < 14400 && (!p.validity || p.validity <= 1));
+                                  const bulkPacks = rechargePackages.filter(p => p.duration >= 14400 || (p.validity && p.validity > 1));
+
+                                  return (
+                                    <div className="space-y-3">
+                                      {sessionPacks.length > 0 && (
+                                        <div className="space-y-2">
+                                          {sessionPacks.map(pkg => {
+                                            const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
+                                            return (
+                                              <div
+                                                key={pkg.id}
+                                                onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)}
+                                                className={cn(
+                                                  "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
+                                                  isSelected
+                                                    ? "border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500 shadow-md"
+                                                    : "border-zinc-800 bg-zinc-900 hover:border-yellow-500/50"
+                                                )}
+                                              >
+                                                <div className="min-w-0">
+                                                  <div className="flex items-center gap-2">
+                                                    <p className={cn("text-xs font-bold uppercase truncate text-white group-hover:text-yellow-400", isSelected && "text-yellow-400 font-bold")}>{pkg.name}</p>
+                                                    {isSelected && (
+                                                      <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
+                                                        <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
+                                                      </Badge>
+                                                    )}
+                                                    {pkg.isPriorityOffer && !isSelected && (
+                                                      <Badge className="h-4 px-1 text-[8px] bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase font-bold">
+                                                        SPECIAL
+                                                      </Badge>
+                                                    )}
+                                                  </div>
+                                                  <div className="flex items-center gap-2 mt-0.5">
+                                                    <p className="text-xs font-bold text-zinc-400 uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} {pkg.validity === 1 ? 'Day' : 'Days'}</p>
+                                                  </div>
+                                                </div>
+                                                <span className={cn(
+                                                  "text-xs font-bold transition-colors",
+                                                  isSelected ? "text-yellow-400 font-bold" : "text-primary"
+                                                )}>
+                                                  ₹{pkg.price}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {bulkPacks.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-zinc-800/80">
+                                          <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                                              Multi-Hour Time Banking Passes
+                                            </span>
+                                            <span className="text-[10px] font-bold text-zinc-500 uppercase">Save Unspent Hours</span>
+                                          </div>
+                                          <div className="space-y-2">
+                                            {bulkPacks.map(pkg => {
+                                              const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'buy-recharge';
+                                              return (
+                                                <div
+                                                  key={pkg.id}
+                                                  onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false, true)}
+                                                  className={cn(
+                                                    "p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer flex justify-between items-center shadow-sm group",
+                                                    isSelected
+                                                      ? "border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500 shadow-md"
+                                                      : "border-zinc-800 bg-zinc-900/60 hover:border-yellow-500/50"
+                                                  )}
+                                                >
+                                                  <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                      <p className={cn("text-xs font-bold uppercase truncate text-white group-hover:text-yellow-400", isSelected && "text-yellow-400 font-bold")}>{pkg.name}</p>
+                                                      {isSelected && (
+                                                        <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
+                                                          <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
+                                                        </Badge>
+                                                      )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                      <p className="text-xs font-bold text-zinc-400 uppercase">{formatPackageDuration(pkg.duration)} &bull; {pkg.validity} {pkg.validity === 1 ? 'Day' : 'Days'}</p>
+                                                    </div>
+                                                  </div>
+                                                  <span className={cn(
+                                                    "text-xs font-bold transition-colors",
+                                                    isSelected ? "text-yellow-400 font-bold" : "text-primary"
+                                                  )}>
+                                                    ₹{pkg.price}
+                                                  </span>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {sessionPacks.length === 0 && bulkPacks.length === 0 && (
+                                        <div className="p-3 text-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500 font-bold uppercase">
+                                          No recharge packages available for {station?.name || 'this station'}.
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          ) : configs[activeConfigPlayerId]?.mode === 'walkin' ? (
+                            <div className="space-y-2.5">
+                              {walkInPackages.map(pkg => {
+                                const isSelected = configs[activeConfigPlayerId]?.packageId === pkg.id && configs[activeConfigPlayerId]?.mode === 'walkin';
+                                return (
+                                  <div
+                                    key={pkg.id}
+                                    onClick={() => handlePickConfig(activeConfigPlayerId, pkg, false)}
+                                    className={cn(
+                                      "p-3.5 rounded-xl border-2 transition-all cursor-pointer group shadow-md flex justify-between items-center",
+                                      isSelected
+                                        ? "border-primary bg-primary/15 ring-1 ring-primary scale-[1.01]"
+                                        : "border-zinc-800 bg-zinc-900/80 hover:border-primary/50"
+                                    )}
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <p className={cn(
+                                          "text-sm font-extrabold uppercase truncate text-white group-hover:text-primary",
+                                          isSelected && "text-primary"
+                                        )}>
+                                          {pkg.name}
+                                        </p>
+                                        {isSelected && (
+                                          <Badge className="h-4 px-1.5 text-[9px] bg-emerald-500 text-white font-bold uppercase flex items-center gap-1">
+                                            <CheckCircle2 className="h-2.5 w-2.5" /> SELECTED
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-xs font-bold text-primary mt-1 uppercase flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatPackageDuration(pkg.duration)}</p>
+                                    </div>
+                                    <div className="text-right font-mono">
+                                      <span className={cn(
+                                        "font-bold text-base transition-colors block",
+                                        isSelected ? "text-primary font-bold" : "text-white"
+                                      )}>
+                                        ₹{pkg.price * validPlayers.length}
+                                      </span>
+                                      {validPlayers.length > 1 && (
+                                        <span className="text-[11px] text-zinc-400 font-semibold block">
+                                          ₹{pkg.price} / player
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              <div className="pt-3">
+                                <p className="text-xs font-bold uppercase text-zinc-500 text-center mb-3 tracking-normal border-t border-zinc-800 pt-3">--- CUSTOM QUICK PLAY ---</p>
+                                <div className="p-3 rounded-xl border-2 border-dashed border-zinc-800 bg-zinc-900/60 shadow-sm space-y-3">
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <Label className="text-xs font-bold uppercase text-zinc-400">Minutes</Label>
+                                      <Input
+                                        type="number"
+                                        placeholder="e.g. 60"
+                                        value={customMinutes}
+                                        onChange={(e) => setCustomMinutes(e.target.value)}
+                                        className="h-10 text-xs font-bold font-mono bg-zinc-950 border-zinc-800"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs font-bold uppercase text-zinc-400">Charge (₹)</Label>
+                                      <Input
+                                        type="number"
+                                        placeholder="e.g. 100"
+                                        value={customPrice}
+                                        onChange={(e) => setCustomPrice(e.target.value)}
+                                        className="h-10 text-xs font-bold font-mono bg-zinc-950 border-zinc-800"
+                                      />
+                                    </div>
+                                  </div>
+                                  <Button
+                                    onClick={() => handlePickCustomWalkin(activeConfigPlayerId)}
+                                    className="w-full h-10 text-xs font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90"
+                                    disabled={!customMinutes}
+                                  >
+                                    Set Custom Time
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : <div className="h-40 flex items-center justify-center opacity-40 italic text-xs font-bold uppercase tracking-normal text-center px-10 text-zinc-400">Choose a login type above</div>}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="p-3 sm:p-4 shrink-0 bg-zinc-950 border-t border-zinc-800 flex flex-col sm:flex-row-reverse gap-2">
+                <Button
+                  onClick={handleApplyAllAndStart}
+                  disabled={!activeConfigPlayerId || !configs[activeConfigPlayerId]?.name}
+                  className="font-headline text-xs sm:text-sm font-extrabold h-11 sm:h-12 uppercase tracking-wide shadow-2xl transition-all active:scale-[0.98] gap-2 bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
+                >
+                  APPLY TO ALL & START &rarr;
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleConfirmAll}
+                  disabled={!allPlayersConfigured}
+                  className="font-headline text-xs sm:text-sm font-extrabold h-11 sm:h-12 uppercase tracking-wide shadow-sm transition-all active:scale-[0.98] border-2 border-zinc-700 text-white hover:bg-zinc-800 flex-1"
+                >
+                  START SESSION &rarr;
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onOpenChange(false)}
+                  className="h-10 px-4 text-xs font-bold uppercase text-zinc-400 hover:text-white border border-zinc-800 rounded-xl sm:hidden"
+                >
+                  <X className="h-4 w-4 mr-1.5" /> CANCEL & CLOSE
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
 
@@ -2001,7 +2432,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
             Guests should only be used as an exception. Please specify why the customer's name/details are not being recorded:
           </DialogDescription>
 
-          <form 
+          <form
             onSubmit={(e) => {
               e.preventDefault();
               handleConfirmAddGuest();
@@ -2067,8 +2498,8 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
       </Dialog>
 
       {/* DUPLICATE NAME GAMER TAG MODAL */}
-      <Dialog 
-        open={duplicatePromptState.isOpen} 
+      <Dialog
+        open={duplicatePromptState.isOpen}
         onOpenChange={(open) => setDuplicatePromptState(prev => ({ ...prev, isOpen: open }))}
       >
         <DialogContent className="sm:max-w-md font-body border-2 border-amber-500/40 bg-zinc-950 text-white p-6 shadow-2xl rounded-2xl">
@@ -2080,7 +2511,7 @@ export function SelectMemberModal({ isOpen, onOpenChange, members, onConfirm, st
             A customer named <strong className="text-amber-400">"{duplicatePromptState.originalName}"</strong> is already registered. Enter a gamer name or handle to append to their profile:
           </DialogDescription>
 
-          <form 
+          <form
             onSubmit={(e) => {
               e.preventDefault();
               handleConfirmDuplicateGamerTag();

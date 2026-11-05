@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import type { Bill, Expense, FixedBill, InventoryPurchase, LiabilityState, Settings } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,16 +35,31 @@ export default function FinancialDashboardPage() {
   }, [db]);
 
   // 1. Fetch Data
-  const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
+  const monthRange = useMemo(() => {
+    const start = startOfMonth(selectedDate).toISOString();
+    const end = endOfMonth(selectedDate).toISOString();
+    return { start, end };
+  }, [selectedDate]);
+
+  const billsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'bills'), where('timestamp', '>=', monthRange.start), where('timestamp', '<=', monthRange.end));
+  }, [db, monthRange]);
   const { data: bills } = useCollection<Bill>(billsQuery);
 
-  const expensesQuery = useMemo(() => !db ? null : collection(db, 'expenses'), [db]);
+  const expensesQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'expenses'), where('timestamp', '>=', monthRange.start), where('timestamp', '<=', monthRange.end));
+  }, [db, monthRange]);
   const { data: expenses } = useCollection<Expense>(expensesQuery);
 
   const fixedBillsQuery = useMemo(() => !db ? null : collection(db, 'fixedBills'), [db]);
   const { data: fixedBills } = useCollection<FixedBill>(fixedBillsQuery);
 
-  const inventoryQuery = useMemo(() => !db ? null : collection(db, 'inventory'), [db]);
+  const inventoryQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'inventory'), where('purchaseDate', '>=', monthRange.start), where('purchaseDate', '<=', monthRange.end));
+  }, [db, monthRange]);
   const { data: inventory } = useCollection<InventoryPurchase>(inventoryQuery);
 
   // 2. Process Statistics

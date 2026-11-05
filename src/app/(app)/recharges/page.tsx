@@ -24,13 +24,14 @@ export default function RechargesPage() {
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
 
   // 1. Fetch Members
-  const membersQuery = useMemo(() => !db ? null : query(collection(db, 'members'), orderBy('name')), [db]);
+  const membersQuery = useMemo(() => !db ? null : query(collection(db, 'members'), orderBy('name'), limit(50)), [db]);
   const { data: members, loading: membersLoading } = useCollection<Member>(membersQuery);
 
   // 2. Fetch Recent Recharge Logs
   const logsQuery = useMemo(() => !db ? null : query(
     collection(db, 'logs'),
-    where('type', '==', 'MEMBER_RECHARGED')
+    where('type', '==', 'MEMBER_RECHARGED'),
+    limit(20)
   ), [db]);
   const { data: unsortedLogs, loading: logsLoading } = useCollection<LogEntry>(logsQuery);
 

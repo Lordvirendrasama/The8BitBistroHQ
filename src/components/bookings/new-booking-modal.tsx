@@ -299,7 +299,7 @@ export function NewBookingModal({
           estimatedTotal: estimatedPrice,
           notes: notes.trim() || undefined,
         }, {
-          uid: user?.username || user?.uid || 'staff',
+          uid: user?.username || (user as any)?.uid || 'staff',
           displayName: user?.displayName || 'Staff'
         });
 
@@ -335,7 +335,7 @@ export function NewBookingModal({
           estimatedTotal: estimatedPrice,
           notes: notes.trim() || undefined,
           createdBy: {
-            uid: user?.username || user?.uid || 'staff',
+            uid: user?.username || (user as any)?.uid || 'staff',
             displayName: user?.displayName || 'Staff',
             role: user?.role || 'staff'
           }

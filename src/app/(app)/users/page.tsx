@@ -4,11 +4,12 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy } from 'firebase/firestore';
+import { useData } from '@/context/data-context';
 import type { Member, Station } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 
-import { deleteMember, updateMember, recordTransaction, adjustMemberBalancePool } from '@/firebase/firestore/members';
+import { deleteMember, updateMember, recordTransaction, adjustMemberBalancePool, isRechargeValid } from '@/firebase/firestore/members';
 import { settings } from '@/lib/data';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,16 +88,13 @@ export default function UserManagementPage() {
   
   const membersQuery = useMemo(() => {
     if (!db) return null;
-    return query(collection(db, 'members'), orderBy('joinDate', 'desc'));
+    return collection(db, 'members');
   }, [db]);
   
-  const stationsQuery = useMemo(() => {
-    if (!db) return null;
-    return collection(db, 'stations');
-  }, [db]);
+  const { stations } = useData();
 
   const { data: members, loading, error } = useCollection<Member>(membersQuery);
-  const { data: stations } = useCollection<Station>(stationsQuery);
+
 
   
   const getSortValue = (member: Member, key: SortableKeys) => {
@@ -391,8 +389,9 @@ export default function UserManagementPage() {
 
     useEffect(() => {
         const calculate = () => {
+            const now = new Date();
             const staticSeconds = (member.recharges || [])
-                .filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                .filter(r => isRechargeValid(r, now) && r.remainingDuration > 0)
                 .reduce((sum, r) => sum + r.remainingDuration, 0);
 
             if (!activeSession || !assignedMember) {
@@ -408,7 +407,7 @@ export default function UserManagementPage() {
                 if (assignedMember.rechargeId) {
                    // Add back other recharges if it's not a generic 'pool' ID
                    const otherRecharges = (member.recharges || [])
-                       .filter(r => r.id !== assignedMember.rechargeId && new Date(r.expiryDate) > new Date() && r.remainingDuration > 0)
+                       .filter(r => r.id !== assignedMember.rechargeId && isRechargeValid(r, now) && r.remainingDuration > 0)
                        .reduce((sum, r) => sum + r.remainingDuration, 0);
                    
                    setDisplaySeconds(remOnPause + otherRecharges);
@@ -557,7 +556,8 @@ export default function UserManagementPage() {
             </TableHeader>
             <TableBody>
               {(filteredMembers || []).map((member) => {
-                const activeRecharges = (member.recharges || []).filter(r => new Date(r.expiryDate) > new Date() && r.remainingDuration > 0);
+                const now = new Date();
+                const activeRecharges = (member.recharges || []).filter(r => isRechargeValid(r, now) && r.remainingDuration > 0);
                 const totalBalanceSeconds = activeRecharges.reduce((sum, r) => sum + r.remainingDuration, 0);
 
                 return (

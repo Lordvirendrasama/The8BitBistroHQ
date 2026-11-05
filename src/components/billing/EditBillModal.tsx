@@ -136,11 +136,11 @@ export function EditBillModal({ isOpen, onOpenChange, bill, foodItems, gamingPac
   };
 
   const foodSubtotal = useMemo(() => {
-    return billItems.filter(item => !item.name.startsWith('Time:') && !item.name.startsWith('Recharge:')).reduce((total, item) => total + (item.price * item.quantity), 0);
+    return billItems.filter(item => !item.name.startsWith('Time:') && !item.name.startsWith('Recharge:') && !item.name.startsWith('Buy Recharge:')).reduce((total, item) => total + (item.price * item.quantity), 0);
   }, [billItems]);
 
   const timePackageTotal = useMemo(() => {
-    return billItems.filter(item => item.name.startsWith('Time:') || item.name.startsWith('Recharge:')).reduce((total, item) => total + (item.price * item.quantity), 0);
+    return billItems.filter(item => item.name.startsWith('Time:') || item.name.startsWith('Recharge:') || item.name.startsWith('Buy Recharge:')).reduce((total, item) => total + (item.price * item.quantity), 0);
   }, [billItems]);
   
   const totalDiscountValue = Math.min(foodSubtotal, discount);

@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, getDoc } from 'firebase/firestore';
+import { useData } from '@/context/data-context';
 import type { Bill, FoodItem, GamingPackage, Station, Member } from '@/lib/types';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
@@ -31,6 +32,21 @@ export default function BillingHistoryPage() {
     const { toast } = useToast();
     const [editingBill, setEditingBill] = useState<Bill | null>(null);
     const [whatsAppBill, setWhatsAppBill] = useState<Bill | null>(null);
+    const [whatsAppPhone, setWhatsAppPhone] = useState('');
+
+    useEffect(() => {
+        if (!db || !whatsAppBill?.members || whatsAppBill.members.length === 0) {
+            setWhatsAppPhone('');
+            return;
+        }
+        const memberId = whatsAppBill.members[0].id;
+        if (!memberId) return;
+        getDoc(doc(db, 'members', memberId)).then(snap => {
+            if (snap.exists()) {
+                setWhatsAppPhone(snap.data()?.phone || '');
+            }
+        }).catch(() => {});
+    }, [db, whatsAppBill]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
 
@@ -63,25 +79,37 @@ export default function BillingHistoryPage() {
 
     const billsQuery = useMemo(() => {
         if (!db) return null;
-        return query(collection(db, 'bills'), orderBy('timestamp', 'desc'));
-    }, [db]);
+        if (selectedBusinessDate) {
+            const [y, m, d] = selectedBusinessDate.split('-').map(Number);
+            const windowStart = new Date(Date.UTC(y, m - 1, d - 1, 0, 0, 0)).toISOString();
+            const windowEnd = new Date(Date.UTC(y, m - 1, d + 2, 0, 0, 0)).toISOString();
+            return query(
+                collection(db, 'bills'),
+                where('timestamp', '>=', windowStart),
+                where('timestamp', '<=', windowEnd),
+                orderBy('timestamp', 'desc')
+            );
+        }
+        return query(collection(db, 'bills'), orderBy('timestamp', 'desc'), limit(100));
+    }, [db, selectedBusinessDate]);
 
     const { data: bills, loading, error } = useCollection<Bill>(billsQuery);
     
-    const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
-    const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
+    const { stations: allStations, gamingPackages, foodItems } = useData();
+    const activeStations = useMemo(() => (allStations || []).filter(s => s.status === 'in-use' || s.status === 'paused'), [allStations]);
 
-    const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
-    const { data: gamingPackages } = useCollection<GamingPackage>(packagesQuery);
 
-    const activeStationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), where('status', 'in', ['in-use', 'paused'])), [db]);
-    const { data: activeStations } = useCollection<Station>(activeStationsQuery);
 
-    const allStationsQuery = useMemo(() => !db ? null : collection(db, 'stations'), [db]);
-    const { data: allStations } = useCollection<Station>(allStationsQuery);
 
-    const membersQuery = useMemo(() => !db ? null : collection(db, 'members'), [db]);
-    const { data: members } = useCollection<Member>(membersQuery);
+
+
+
+
+
+
+
+
+
 
     const filteredBills = useMemo(() => {
         if (!bills) return [];
@@ -579,7 +607,7 @@ export default function BillingHistoryPage() {
                     bill={whatsAppBill}
                     defaultPhone={
                         whatsAppBill.members && whatsAppBill.members.length > 0
-                            ? members?.find(m => m.id === whatsAppBill.members[0].id)?.phone || ''
+                            ? whatsAppPhone
                             : ''
                     }
                     defaultName={

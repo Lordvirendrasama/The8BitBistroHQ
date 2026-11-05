@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
+import { useData } from '@/context/data-context';
 import { useFirebase } from '@/firebase/provider';
 import { useAuth } from '@/firebase/auth/use-user';
 import type {
@@ -84,9 +85,10 @@ export default function OwnerDashboardPage() {
     getAvailableCycles().then(setAvailableCycles);
   }, []);
 
-  // Firestore Data Subscriptions
-  const stationsQuery = useMemo(() => (!db ? null : collection(db, 'stations')), [db]);
-  const { data: stations } = useCollection<Station>(stationsQuery);
+  // Firestore Data Subscriptions - reuse global entities
+  const { stations, employees, foodItems } = useData();
+
+
 
   const billsQuery = useMemo(() => (!db ? null : collection(db, 'bills')), [db]);
   const { data: bills } = useCollection<Bill>(billsQuery);
@@ -94,11 +96,10 @@ export default function OwnerDashboardPage() {
   const expensesQuery = useMemo(() => (!db ? null : collection(db, 'expenses')), [db]);
   const { data: expenses } = useCollection<Expense>(expensesQuery);
 
-  const employeesQuery = useMemo(
-    () => (!db ? null : query(collection(db, 'employees'), where('isActive', '==', true))),
-    [db]
-  );
-  const { data: employees } = useCollection<Employee>(employeesQuery);
+
+
+
+
 
   const shiftsQuery = useMemo(() => (!db ? null : collection(db, 'shifts')), [db]);
   const { data: allShifts } = useCollection<Shift>(shiftsQuery);
@@ -109,8 +110,6 @@ export default function OwnerDashboardPage() {
   const membersQuery = useMemo(() => (!db ? null : collection(db, 'members')), [db]);
   const { data: members } = useCollection<Member>(membersQuery);
 
-  const foodItemsQuery = useMemo(() => (!db ? null : collection(db, 'foodItems')), [db]);
-  const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
 
   const rawMaterialsQuery = useMemo(() => (!db ? null : collection(db, 'rawMaterials')), [db]);
   const { data: rawMaterials } = useCollection<RawMaterial>(rawMaterialsQuery);

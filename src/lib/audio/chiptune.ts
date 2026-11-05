@@ -109,6 +109,8 @@ export function playChiptuneAlarmSound(): void {
   }
 }
 
+export const playWarningSound = playChiptuneAlarmSound;
+
 /**
  * ⭐ Retro Level-Up Fanfare (XP Grant / Reward Claim)
  * Ascending arpeggio (C5 -> E5 -> G5 -> C6) with sustain fanfare

@@ -39,6 +39,7 @@ import { Progress } from "@/components/ui/progress";
 import { OwnerConsumptionModal } from "@/components/owner/owner-consumption-modal";
 import { LogOut, Volume2, VolumeX, Clock, ShoppingCart, ShieldCheck, Bell, TrendingUp, Settings2, Moon, Sun, Utensils, Target, ListTodo, CheckCircle2, AlertCircle, Crown, Coffee, History, Edit, CalendarDays, Activity, ShieldAlert, Percent, Zap, ChevronDown, ChevronUp, X, Save, Eye, EyeOff, User, ListChecks } from "lucide-react";
 import { useCustomerView } from '@/context/customer-view-context';
+import { useData } from '@/context/data-context';
 import { getSyncedNow } from '@/lib/synced-time';
 import { isSoundEnabled, toggleSound } from '@/lib/audio/chiptune';
 import { getCycleInfo } from '@/components/owner-pulse/owner-pulse-employee-intel';
@@ -391,11 +392,16 @@ const OwnerConsumptionHeader = () => {
   const [viewMode, setViewMode] = useState<'day' | 'month'>('day');
   const [editingConsumption, setEditingConsumption] = useState<OwnerConsumption | null>(null);
 
-  const consumptionQuery = useMemo(() => !db ? null : collection(db, 'ownerConsumption'), [db]);
+  const { foodItems } = useData();
+  const consumptionQuery = useMemo(() => {
+    if (!db) return null;
+    const start = startOfMonth(new Date()).toISOString();
+    return query(collection(db, 'ownerConsumption'), where('timestamp', '>=', start));
+  }, [db]);
   const { data: consumptions } = useCollection<OwnerConsumption>(consumptionQuery);
 
-  const foodItemsQuery = useMemo(() => !db ? null : collection(db, 'foodItems'), [db]);
-  const { data: foodItems } = useCollection<FoodItem>(foodItemsQuery);
+
+
 
   const todayConsumptions = useMemo(() => {
     if (!consumptions) return [];
@@ -541,7 +547,8 @@ const TodayExpenses = () => {
   
   const expensesQuery = useMemo(() => {
     if (!db) return null;
-    return collection(db, 'expenses');
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    return query(collection(db, 'expenses'), where('timestamp', '>=', cutoff));
   }, [db]);
 
   const { data: expenses } = useCollection<Expense>(expensesQuery);
@@ -644,11 +651,15 @@ const OwnerStaffFoodHeader = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployeeUsername, setSelectedEmployeeUsername] = useState<string>('all');
 
-  const staffOrdersQuery = useMemo(() => !db ? null : collection(db, 'staffOrders'), [db]);
+  const staffOrdersQuery = useMemo(() => {
+    if (!db) return null;
+    const cutoff = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    return query(collection(db, 'staffOrders'), where('timestamp', '>=', cutoff));
+  }, [db]);
   const { data: staffOrders } = useCollection<StaffOrder>(staffOrdersQuery);
 
-  const employeesQuery = useMemo(() => !db ? null : collection(db, 'employees'), [db]);
-  const { data: allEmployees } = useCollection<Employee>(employeesQuery);
+  const { employees: allEmployees } = useData();
+
 
   // Automatically check and reset 1,000 quota whenever an employee's salary cycle resets!
   useEffect(() => {
@@ -1031,7 +1042,11 @@ const StaffFoodHeaderButton = ({
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const staffOrdersQuery = useMemo(() => !db ? null : collection(db, 'staffOrders'), [db]);
+  const staffOrdersQuery = useMemo(() => {
+    if (!db) return null;
+    const cutoff = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    return query(collection(db, 'staffOrders'), where('timestamp', '>=', cutoff));
+  }, [db]);
   const { data: staffOrders } = useCollection<StaffOrder>(staffOrdersQuery);
 
   const balance = useMemo(() => {
@@ -1109,7 +1124,7 @@ const OwnerTaskDropdown = () => {
 
   const tasksQuery = useMemo(() => {
     if (!db || user?.username !== 'Viren') return null;
-    return collection(db, 'ownerTasks');
+    return query(collection(db, 'ownerTasks'), where('status', '==', 'pending'));
   }, [db, user]);
 
   const { data: tasks } = useCollection<OwnerTask>(tasksQuery);
@@ -1560,11 +1575,12 @@ export function AppHeader({
     const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
 
     // Fetch current logged-in employee record in real-time
-    const allEmployeesQuery = useMemo(() => {
-        if (!db) return null;
-        return collection(db, 'employees');
-    }, [db]);
-    const { data: allEmployeesDocs } = useCollection<Employee>(allEmployeesQuery);
+    const { employees: allEmployeesDocs, stations: allStations, gamingPackages: packages } = useData();
+
+
+
+
+
     const currentEmployee = useMemo(() => {
         if (!allEmployeesDocs || !user?.username) return null;
         const target = user.username.toLowerCase();
@@ -1572,12 +1588,19 @@ export function AppHeader({
     }, [allEmployeesDocs, user?.username]);
 
     // Fetch active settings/cycle in real-time
-    const settingsQuery = useMemo(() => {
-        if (!db) return null;
-        return query(collection(db, 'settings'));
+    const [appConfig, setAppConfig] = useState<any>(null);
+    useEffect(() => {
+        if (!db) return;
+        const unsub = onSnapshot(doc(db, 'settings', 'app_config'), (snap) => {
+            if (snap.exists()) setAppConfig({ id: snap.id, ...snap.data() });
+        });
+        return () => unsub();
     }, [db]);
-    const { data: settingsDocs } = useCollection<any>(settingsQuery);
-    const appConfig = settingsDocs?.find(doc => doc.id === 'app_config');
+
+
+
+
+
     const activeCycle = appConfig?.activeCycle || 'Launch Live';
 
     const handleSaveStaffOrder = async (items: BillItem[], totalAmount: number, newBalance: number, targetEmployee?: Employee | null) => {
@@ -1613,14 +1636,25 @@ export function AppHeader({
         }
     };
 
-    const activeStationsQuery = useMemo(() => !db ? null : query(collection(db, 'stations'), where('status', 'in', ['in-use', 'paused'])), [db]);
-    const { data: stations } = useCollection<Station>(activeStationsQuery);
+    const stations = useMemo(() => (allStations || []).filter(s => s.status === 'in-use' || s.status === 'paused'), [allStations]);
 
-    const billsQuery = useMemo(() => !db ? null : collection(db, 'bills'), [db]);
+
+    const bMonthStartIso = useMemo(() => {
+      const bDateStr = getBusinessDate();
+      const parts = bDateStr.split('-');
+      const bYear = parseInt(parts[0], 10);
+      const bMonth = parseInt(parts[1], 10) - 1;
+      return new Date(bYear, bMonth, 1, 0, 0, 0).toISOString();
+    }, []);
+
+    const billsQuery = useMemo(() => {
+      if (!db) return null;
+      return query(collection(db, 'bills'), where('timestamp', '>=', bMonthStartIso));
+    }, [db, bMonthStartIso]);
     const { data: bills } = useCollection<Bill>(billsQuery);
 
-    const packagesQuery = useMemo(() => !db ? null : collection(db, 'gamingPackages'), [db]);
-    const { data: packages } = useCollection<GamingPackage>(packagesQuery);
+
+
 
     const activeTimers = useMemo(() => (stations || []).filter(s => !!s.endTime || s.status === 'paused'), [stations]);
 
