@@ -49,28 +49,28 @@ function getAudioContext() {
 function playBeep() {
   const ctx = getAudioContext();
   if (!ctx) return;
-  
+
   try {
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
-    
+
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    
+
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
-    
+
     osc.type = 'sine';
     osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
     osc.frequency.setValueAtTime(1108.73, ctx.currentTime + 0.1); // C#6
     osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.2); // E6
-    
+
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
     gainNode.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.05);
     gainNode.gain.setValueAtTime(1, ctx.currentTime + 0.4);
     gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
-    
+
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.5);
   } catch (e) {
@@ -80,7 +80,7 @@ function playBeep() {
 
 async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) {
   if (isProcessingQueue || audioQueue.length === 0 || !audioRef?.current) return;
-  
+
   isProcessingQueue = true;
   const text = audioQueue.shift()!;
 
@@ -95,16 +95,16 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
       utterance.rate = 0.95;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
-      
+
       const voices = window.speechSynthesis.getVoices();
       // Try to find a natural sounding English voice
-      const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium') || v.name.includes('Natural'))) || 
-                             voices.find(v => v.lang.startsWith('en')) || 
-                             voices[0];
-      
+      const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium') || v.name.includes('Natural'))) ||
+        voices.find(v => v.lang.startsWith('en')) ||
+        voices[0];
+
       if (preferredVoice) utterance.voice = preferredVoice;
       activeUtterance = utterance; // Keep reference to prevent GC
-      
+
       utterance.onend = () => {
         activeUtterance = null;
         isProcessingQueue = false;
@@ -115,11 +115,11 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
         activeUtterance = null;
         const errCode = (e as any).error;
         if (errCode === 'interrupted' || errCode === 'canceled' || errCode === 'not-allowed') {
-           // Standard interruptions or browser autoplay permission restrictions, fail silently
+          // Standard interruptions or browser autoplay permission restrictions, fail silently
         } else {
-           console.warn(`SpeechSynthesis audio note [${errCode}]:`, e);
+          console.warn(`SpeechSynthesis audio note [${errCode}]:`, e);
         }
-        
+
         isProcessingQueue = false;
         setTimeout(() => processQueue(audioRef), 100);
       };
@@ -127,10 +127,10 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
       // Brave/Linux specific: utterances can sometimes hang if too long or if voices aren't ready
       setTimeout(() => {
         if (isProcessingQueue) {
-            console.warn("SpeechSynthesis timed out, forcing next in queue");
-            activeUtterance = null;
-            isProcessingQueue = false;
-            processQueue(audioRef);
+          console.warn("SpeechSynthesis timed out, forcing next in queue");
+          activeUtterance = null;
+          isProcessingQueue = false;
+          processQueue(audioRef);
         }
       }, 10000);
 
@@ -154,7 +154,7 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
 
   try {
     const ttsPromise = generateSpeech({ text });
-    const timeoutPromise = new Promise<{ audioDataUri?: string; error?: string }>((_, reject) => 
+    const timeoutPromise = new Promise<{ audioDataUri?: string; error?: string }>((_, reject) =>
       setTimeout(() => reject(new Error('TTS timeout')), 3500)
     );
     const response = await Promise.race([ttsPromise, timeoutPromise]);
@@ -167,7 +167,7 @@ async function processQueue(audioRef: React.RefObject<HTMLAudioElement | null>) 
       audioRef.current.onerror = () => {
         fallbackSpeech();
       };
-      
+
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {
@@ -187,7 +187,7 @@ let globalUnlockFunc: (() => void) | null = null;
 
 export async function announceGlobally(text: string, audioRef?: React.RefObject<HTMLAudioElement | null>) {
   if (typeof window === 'undefined') return;
-  
+
   if (audioRef) {
     globalAudioRef = audioRef;
   }
@@ -195,7 +195,7 @@ export async function announceGlobally(text: string, audioRef?: React.RefObject<
   if (!text || text.trim() === "") return;
 
   audioQueue.push(text);
-  
+
   if (globalAudioRef) {
     if (globalUnlockFunc) globalUnlockFunc();
     processQueue(globalAudioRef);
@@ -236,9 +236,11 @@ export function GlobalTimerNotifications() {
   // Map of "stationId::memberId" -> announced endTime timestamp in ms
   const announcedWarnings = useRef<Map<string, number>>(new Map());
   const announcedEnds = useRef<Map<string, number>>(new Map());
+  const announcedFinishingReminders = useRef<Map<string, number>>(new Map());
   const processedAnnouncements = useRef<Set<string>>(new Set());
   const [activeEndAlert, setActiveEndAlert] = useState<{ station: Station, memberName: string, endTime?: string | null } | null>(null);
   const [activeWarningAlert, setActiveWarningAlert] = useState<{ station: Station, memberName: string } | null>(null);
+  const [activeFinishingAlert, setActiveFinishingAlert] = useState<{ station: Station, memberName: string, finishStartTime: number } | null>(null);
   const activeEndAlertRef = useRef<{ station: Station, memberName: string, endTime?: string | null } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isUnlocked = useRef(false);
@@ -253,12 +255,12 @@ export function GlobalTimerNotifications() {
   }, [activeEndAlert]);
 
   const { stations } = useData();
-  const activeStations = useMemo(() => stations?.filter(s => s.status === 'in-use' || s.status === 'paused') || null, [stations]);
+  const activeStations = useMemo(() => stations?.filter(s => s.status === 'in-use' || s.status === 'paused' || s.status === 'finishing') || null, [stations]);
 
   const announcementsQuery = useMemo(() => {
     if (!db) return null;
     return query(
-      collection(db, 'announcements'), 
+      collection(db, 'announcements'),
       where('timestamp', '>', sessionStartTime.current),
       limit(10)
     );
@@ -313,14 +315,14 @@ export function GlobalTimerNotifications() {
 
   const unlockAudio = useCallback(() => {
     if (isUnlocked.current) return;
-    
+
     // 1. Unlock Web Audio API (AudioContext)
     const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (AudioContext) {
       const context = new AudioContext();
       if (context.state === 'suspended') {
         context.resume().then(() => {
-            console.log("AudioContext resumed successfully");
+          console.log("AudioContext resumed successfully");
         });
       }
     }
@@ -330,8 +332,8 @@ export function GlobalTimerNotifications() {
       // Use a slightly longer silent buffer to ensure the hardware is engaged
       audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
       audioRef.current.play()
-        .then(() => { 
-          isUnlocked.current = true; 
+        .then(() => {
+          isUnlocked.current = true;
           console.log("HTML5 Audio unlocked");
         })
         .catch((err) => {
@@ -345,11 +347,11 @@ export function GlobalTimerNotifications() {
       const u = new SpeechSynthesisUtterance("");
       u.volume = 0;
       window.speechSynthesis.speak(u);
-      
+
       // Force voice loading for Linux/Brave
       window.speechSynthesis.getVoices();
     }
-    
+
     // If we've done all we can, mark as unlocked (or at least attempted)
     isUnlocked.current = true;
   }, []);
@@ -365,20 +367,20 @@ export function GlobalTimerNotifications() {
       const loadVoices = () => {
         window.speechSynthesis.getVoices();
       };
-      
+
       loadVoices();
       if (window.speechSynthesis.onvoiceschanged !== undefined) {
         window.speechSynthesis.onvoiceschanged = loadVoices;
       }
-      
+
       const voiceInterval = setInterval(() => {
         if (window.speechSynthesis.getVoices().length === 0) {
-            window.speechSynthesis.getVoices();
+          window.speechSynthesis.getVoices();
         } else {
-            clearInterval(voiceInterval);
+          clearInterval(voiceInterval);
         }
       }, 5000);
-      
+
       return () => clearInterval(voiceInterval);
     }
   }, []);
@@ -395,7 +397,7 @@ export function GlobalTimerNotifications() {
     window.addEventListener('keydown', handleInteraction, { passive: true });
     window.addEventListener('touchstart', handleInteraction, { passive: true });
     window.addEventListener('click', handleInteraction, { passive: true });
-    
+
     return () => {
       window.removeEventListener('mousedown', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
@@ -436,8 +438,43 @@ export function GlobalTimerNotifications() {
           announcedWarnings.current.delete(key);
         }
       }
+      for (const stId of Array.from(announcedFinishingReminders.current.keys())) {
+        const st = activeStations.find(s => s.id === stId);
+        if (!st || st.status !== 'finishing') {
+          announcedFinishingReminders.current.delete(stId);
+        }
+      }
 
       activeStations.forEach((station) => {
+        // 0. FINISHING EXTRA TIME CHECK (Alert when 4 extra minutes are done)
+        if (station.status === 'finishing') {
+          if (!station.finishingStartTime) return;
+          const finishStartTs = new Date(station.finishingStartTime).getTime();
+          if (isNaN(finishStartTs)) return;
+
+          const elapsed = now - finishStartTs;
+          const fourMinutesMs = 4 * 60 * 1000;
+
+          if (elapsed >= fourMinutesMs && announcedFinishingReminders.current.get(station.id) !== finishStartTs) {
+            announcedFinishingReminders.current.set(station.id, finishStartTs);
+            playChiptuneAlarmSound();
+            playAnnouncement(`Attention. Four extra minutes are up for ${station.name}. Please make sure their time is up.`);
+
+            const activeMembers = (station.members || []).filter(m => m.status !== 'finished');
+            const memberName = activeMembers.length > 1
+              ? "EVERYONE"
+              : (activeMembers[0]?.name || "Customer");
+
+            setActiveFinishingAlert({
+              station,
+              memberName,
+              finishStartTime: finishStartTs
+            });
+            setActiveWarningAlert(null);
+          }
+          return;
+        }
+
         if (station.status !== 'in-use') return;
 
         const activeMembersWithTimers = station.members.filter(
@@ -464,7 +501,7 @@ export function GlobalTimerNotifications() {
             }
           }
         });
-        
+
         // 1. SESSION END CHECK
         const endCandidates = activeMembersWithTimers.filter(m => {
           const mEndTime = new Date(m.endTime!).getTime();
@@ -504,11 +541,11 @@ export function GlobalTimerNotifications() {
           const mEndTime = new Date(m.endTime!).getTime();
           const mRemaining = mEndTime - now;
           const memberKey = `${station.id}::${m.id}`;
-          
+
           return (
             mRemaining <= fiveMinutes &&
-            mRemaining > 0 && 
-            announcedWarnings.current.get(memberKey) !== mEndTime && 
+            mRemaining > 0 &&
+            announcedWarnings.current.get(memberKey) !== mEndTime &&
             announcedEnds.current.get(memberKey) !== mEndTime
           );
         });
@@ -633,6 +670,16 @@ export function GlobalTimerNotifications() {
     }
   }, [activeStations, activeEndAlert]);
 
+  // Sync activeFinishingAlert with activeStations list to auto-dismiss if station leaves 'finishing' state
+  useEffect(() => {
+    if (!activeFinishingAlert || !activeStations) return;
+
+    const currentStation = activeStations.find(s => s.id === activeFinishingAlert.station.id);
+    if (!currentStation || currentStation.status !== 'finishing') {
+      setActiveFinishingAlert(null);
+    }
+  }, [activeStations, activeFinishingAlert]);
+
   const handleAcknowledge = () => {
     if (activeEndAlert) {
       router.push(`/dashboard?checkoutId=${activeEndAlert.station.id}`);
@@ -644,14 +691,14 @@ export function GlobalTimerNotifications() {
     if (activeEndAlert) {
       const stationId = activeEndAlert.station.id;
       const currentStation = stations?.find(s => s.id === stationId) || activeEndAlert.station;
-      
+
       let endedTimeISO = new Date().toISOString();
-      
+
       if (activeEndAlert.endTime) {
         endedTimeISO = activeEndAlert.endTime;
       } else if (currentStation) {
         let endedTimeMs = 0;
-        
+
         if (activeEndAlert.memberName !== "EVERYONE") {
           const member = currentStation.members.find(
             m => m.name === activeEndAlert.memberName && m.status !== 'finished'
@@ -667,11 +714,11 @@ export function GlobalTimerNotifications() {
             endedTimeMs = Math.max(...endedMembers.map(m => new Date(m.endTime!).getTime()));
           }
         }
-        
+
         if (!endedTimeMs && currentStation.endTime) {
           endedTimeMs = new Date(currentStation.endTime).getTime();
         }
-        
+
         if (endedTimeMs) {
           endedTimeISO = new Date(endedTimeMs).toISOString();
         }
@@ -704,6 +751,24 @@ export function GlobalTimerNotifications() {
     setActiveWarningAlert(null);
   };
 
+  const handleFinishingAddTime = () => {
+    if (activeFinishingAlert) {
+      router.push(`/dashboard?addTimeId=${activeFinishingAlert.station.id}`);
+    }
+    setActiveFinishingAlert(null);
+  };
+
+  const handleFinishingCheckout = () => {
+    if (activeFinishingAlert) {
+      router.push(`/dashboard?checkoutId=${activeFinishingAlert.station.id}`);
+    }
+    setActiveFinishingAlert(null);
+  };
+
+  const handleFinishingAcknowledge = () => {
+    setActiveFinishingAlert(null);
+  };
+
   return (
     <>
       <AlertDialog open={!!activeEndAlert} onOpenChange={(open) => !open && setActiveEndAlert(null)}>
@@ -717,9 +782,9 @@ export function GlobalTimerNotifications() {
               <span className="font-semibold text-muted-foreground mt-4 block italic text-sm border bg-muted/50 p-2 rounded">Station: {activeEndAlert?.station.name}</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
-            <Button 
+            <Button
               variant="outline"
               className="h-14 sm:h-16 font-bold text-sm lg:text-base uppercase border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm whitespace-normal text-center leading-tight"
               onClick={handleAddTime}
@@ -727,7 +792,7 @@ export function GlobalTimerNotifications() {
               <Clock className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
               Add Time
             </Button>
-            <Button 
+            <Button
               variant="outline"
               className="h-14 sm:h-16 font-bold text-sm lg:text-base uppercase border-2 border-amber-500/50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm whitespace-normal text-center leading-tight"
               onClick={handleStartFinishing}
@@ -735,8 +800,8 @@ export function GlobalTimerNotifications() {
               <CheckCircle2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
               Finishing Game
             </Button>
-            <Button 
-              className="bg-destructive hover:bg-destructive/90 text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight" 
+            <Button
+              className="bg-destructive hover:bg-destructive/90 text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight"
               onClick={handleAcknowledge}
             >
               Acknowledge & Close
@@ -758,9 +823,9 @@ export function GlobalTimerNotifications() {
               <span className="text-sm block mt-4 font-bold text-foreground/80 uppercase tracking-wide">Please ask the customer if they will be continuing or ending their session.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
-            <Button 
+            <Button
               variant="outline"
               className="h-14 sm:h-16 font-bold text-sm lg:text-base uppercase border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm whitespace-normal text-center leading-tight"
               onClick={handleWarningAddTime}
@@ -768,12 +833,58 @@ export function GlobalTimerNotifications() {
               <Clock className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
               Add More Time
             </Button>
-            <Button 
-              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight" 
+            <Button
+              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight"
               onClick={handleWarningAcknowledge}
             >
               <CheckCircle2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
               Acknowledged
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!activeFinishingAlert} onOpenChange={(open) => !open && setActiveFinishingAlert(null)}>
+        <AlertDialogContent className="border-4 border-amber-500 z-[10000] w-[95vw] max-w-2xl font-body">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-4xl text-amber-500 font-headline text-center animate-pulse uppercase tracking-tight flex items-center justify-center gap-2">
+              <Clock className="h-8 w-8 text-amber-500" />
+              4 Extra Minutes Done!
+            </AlertDialogTitle>
+            <Separator className="bg-amber-500/20 my-4" />
+            <AlertDialogDescription className="text-xl text-center pt-2 text-foreground font-medium">
+              The 4 extra minutes given for finishing the game are up for:
+              <span className="font-bold text-2xl block mt-2 text-primary">{activeFinishingAlert?.memberName}</span>
+              <span className="font-semibold text-muted-foreground mt-3 block italic text-sm border bg-muted/50 p-2 rounded">
+                Station: {activeFinishingAlert?.station.name}
+              </span>
+              <span className="text-base block mt-4 font-bold text-amber-500 uppercase tracking-wide">
+                ⚠️ Please go to the station now to make sure their time is up!
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
+            <Button
+              variant="outline"
+              className="h-14 sm:h-16 font-bold text-sm lg:text-base uppercase border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm whitespace-normal text-center leading-tight"
+              onClick={handleFinishingAddTime}
+            >
+              <Clock className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              Add More Time
+            </Button>
+            <Button
+              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight"
+              onClick={handleFinishingAcknowledge}
+            >
+              <CheckCircle2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              Checking Now
+            </Button>
+            <Button
+              className="bg-destructive hover:bg-destructive/90 text-sm lg:text-base h-14 sm:h-16 font-bold shadow-lg whitespace-normal text-center leading-tight"
+              onClick={handleFinishingCheckout}
+            >
+              Go to Checkout
             </Button>
           </div>
         </AlertDialogContent>
@@ -794,10 +905,10 @@ export function GlobalTimerNotifications() {
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="flex justify-center mt-6">
-            <Button 
-              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 px-8 font-bold uppercase tracking-normal shadow-lg" 
+            <Button
+              className="bg-amber-500 hover:bg-amber-600 text-white text-sm lg:text-base h-14 sm:h-16 px-8 font-bold uppercase tracking-normal shadow-lg"
               onClick={handleAcknowledgeBreakOver}
             >
               Acknowledge & Reset

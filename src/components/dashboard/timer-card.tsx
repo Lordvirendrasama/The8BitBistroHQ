@@ -497,9 +497,20 @@ export function TimerCard({
   const isTimeUp = maxRemaining <= 0 && (longestMember?.endTime || station.endTime) && isRunning;
   const isTimeLow = maxRemaining > 0 && maxRemaining < 5 * 60 * 1000 && isRunning;
   const isGraceOver = isFinishing && graceRemaining <= 0;
+  const isGraceWarning = isFinishing && graceRemaining <= 60 * 1000 && !isGraceOver;
 
-  const cardBorderColor = isTimeUp ? 'border-destructive shadow-lg shadow-destructive/5' : isFinishing && isGraceOver ? 'border-destructive animate-pulse shadow-lg shadow-destructive/5' : 'border-zinc-800';
-  const cardBgColor = isTimeUp ? 'bg-destructive/5' : isFinishing && isGraceOver ? 'bg-destructive/5' : 'bg-card';
+  const cardBorderColor = isTimeUp 
+    ? 'border-destructive shadow-lg shadow-destructive/5' 
+    : isFinishing && isGraceOver 
+    ? 'border-destructive animate-pulse shadow-lg shadow-destructive/5' 
+    : isGraceWarning
+    ? 'border-amber-500 animate-pulse shadow-lg shadow-amber-500/10'
+    : 'border-zinc-800';
+  const cardBgColor = (isTimeUp || (isFinishing && isGraceOver)) 
+    ? 'bg-destructive/5' 
+    : isGraceWarning
+    ? 'bg-amber-500/5'
+    : 'bg-card';
 
   const showTwoTimers = activeWithTimers.length > 1 && maxRemaining > minRemaining + 1000 && !isFinishing;
 
@@ -602,10 +613,11 @@ export function TimerCard({
                 isRunning && !isTimeLow && !isTimeUp && 'bg-zinc-800 text-white border-zinc-700',
                 isTimeLow && 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
                 isTimeUp && 'bg-primary/20 text-primary border-primary/30 animate-pulse',
-                isFinishing && !isGraceOver && 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+                isFinishing && !isGraceOver && !isGraceWarning && 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+                isGraceWarning && 'bg-amber-500/20 text-amber-500 border-amber-500/30 animate-pulse',
                 isGraceOver && 'bg-primary/20 text-primary border-primary/30 animate-pulse'
             )}>
-                {isPaused ? "Paused" : isFinishing ? (isGraceOver ? "Grace Expired" : "Finishing Up") : isTimeUp ? "Time's Up" : isRunning ? 'In Use' : 'Available'}
+                {isPaused ? "Paused" : isFinishing ? (isGraceOver ? "Grace Expired" : isGraceWarning ? "1m Left (Wrap Up)" : "Finishing Up") : isTimeUp ? "Time's Up" : isRunning ? 'In Use' : 'Available'}
             </Badge>
 
             {isViren && (isRunning || isPaused || isFinishing || (station.currentBill && station.currentBill.length > 0) || (station.members && station.members.length > 0)) && (
@@ -629,12 +641,19 @@ export function TimerCard({
             {isFinishing ? (
                 <div className="flex flex-col items-center">
                     <div className={cn(
-                        "text-4xl font-bold font-mono tracking-tight tabular-nums leading-none",
-                        isGraceOver ? "text-destructive" : "text-yellow-500"
+                        "text-4xl font-bold font-mono tracking-tight tabular-nums leading-none transition-colors",
+                        isGraceOver ? "text-destructive" : isGraceWarning ? "text-amber-500 animate-pulse" : "text-yellow-500"
                     )}>
                         {graceRemaining < 0 ? `-${formatTime(Math.abs(graceRemaining))}` : formatTime(graceRemaining)}
                     </div>
                     <span className="text-sm font-bold uppercase tracking-[0.2em] mt-2 opacity-60">Grace Period</span>
+                    {isGraceWarning && (
+                        <div className="mt-2 flex flex-col items-center gap-1 animate-in zoom-in-95 duration-300">
+                            <Badge variant="outline" className="h-5 px-3 text-xs font-bold uppercase tracking-normal gap-1 bg-amber-500/15 text-amber-500 border-amber-500/30 animate-pulse shadow-md">
+                                <Clock className="h-3 w-3" /> 4 MINS DONE - CHECK STATION
+                            </Badge>
+                        </div>
+                    )}
                     {isGraceOver && (
                         <div className="mt-2 flex flex-col items-center gap-1 animate-in zoom-in-95 duration-300">
                             <Badge variant="destructive" className="h-5 px-3 text-sm font-bold uppercase tracking-normal gap-1 shadow-lg">

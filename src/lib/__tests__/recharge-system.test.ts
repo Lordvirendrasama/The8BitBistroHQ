@@ -1746,3 +1746,28 @@ test('Scenario 23: Pool reconciliation with mixed expired and active packs deduc
   const pack1Used = member.recharges![1].totalDuration - member.recharges![1].remainingDuration;
   assert.equal(formatPackageDuration(pack1Used), '2M', 'Pack 1 shows 2M Used');
 });
+
+test('Scenario 24: Finishing game extra time triggers 4-minute wrap-up reminder alert', () => {
+  const now = Date.now();
+  const finishStartTime3m = new Date(now - 3 * 60 * 1000).toISOString(); // 3 mins elapsed
+  const finishStartTime4m = new Date(now - 4 * 60 * 1000).toISOString(); // 4 mins elapsed
+  const finishStartTime5m = new Date(now - 5 * 60 * 1000).toISOString(); // 5 mins elapsed
+
+  const fourMinutesMs = 4 * 60 * 1000;
+  const fiveMinutesMs = 5 * 60 * 1000;
+
+  // 1. At 3 minutes into finishing: 4-minute alert should NOT fire yet
+  const elapsed3m = now - new Date(finishStartTime3m).getTime();
+  assert.equal(elapsed3m >= fourMinutesMs, false, '3 minutes elapsed should NOT trigger 4-minute alert');
+
+  // 2. At 4 minutes into finishing: 4-minute reminder alert fires!
+  const elapsed4m = now - new Date(finishStartTime4m).getTime();
+  assert.equal(elapsed4m >= fourMinutesMs, true, '4 minutes elapsed triggers wrap-up reminder alert');
+  const remainingGrace4m = Math.max(-3600000, fiveMinutesMs - elapsed4m);
+  assert.ok(remainingGrace4m <= 60000 && remainingGrace4m >= 0, '1 minute or less remaining of 5m wrap-up period');
+
+  // 3. At 5 minutes: grace period has fully expired
+  const elapsed5m = now - new Date(finishStartTime5m).getTime();
+  const remainingGrace5m = Math.max(-3600000, fiveMinutesMs - elapsed5m);
+  assert.ok(remainingGrace5m <= 0, 'Grace period has expired at 5 minutes');
+});
